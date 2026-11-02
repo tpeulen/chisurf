@@ -1296,12 +1296,17 @@ class ChannelDefinitionWidget:
         """Remember the channel Assign LUT and the LUT tools act on."""
         self.selected_channel = int(record["id"]) if isinstance(record, dict) else None
 
-    def add_detector(self):
-        """Add a detector with the Qt defaults (channels 0, 1; range 0:2048) under an unused name."""
+    def add_detector(self, name=None):
+        """Add a detector (channels 0, 1; range 0:2048) named *name* -- one of the default
+        ``emission|excitation`` names (:func:`unused_detector_names`) -- else under an unused
+        custom name."""
         detectors = self.model.data["detectors"]
-        name, count = "New Detector", 1
-        while name in detectors:
-            name, count = f"New Detector {count}", count + 1
+        if name and name not in detectors:
+            pass
+        else:
+            name, count = "New Detector", 1
+            while name in detectors:
+                name, count = f"New Detector {count}", count + 1
         detectors[name] = {
             "chs": [0, 1],
             "micro_time_ranges": [[0, 2048]],
@@ -1312,6 +1317,13 @@ class ChannelDefinitionWidget:
         self.optical = None
         self.model.changed()
         self._refresh_rows()
+
+    def unused_detector_names(self):
+        """The default detector names this definition does not use yet, in wavelength order."""
+        from chisurf.core.fluorescence import detector_names as dn
+
+        used = {dn.canonical(n) for n in self.model.data["detectors"]}
+        return [n for n in dn.DEFAULT_NAMES if n not in used]
 
     def add_window(self):
         """Add a PIE window 0:2048 under an unused name, as Qt does."""
@@ -1836,13 +1848,21 @@ class ChannelDefinitionWidget:
             im.text(tr("Detectors"))
             im.same_line(self._width(tr("PIE Windows")))
             width = max(im.get_content_region_avail()[0], 40.0)
-            if im.button(tr("Add") + "##add_detector", (width, 0.0)):
-                self.add_detector()
+            # Add = pick the detector's name: emission|excitation (G|G green under green, R|G the
+            # FRET acceptor, R|R red under red -- the names every analysis knows), or a custom one
+            choices = [tr("Add detector ..."), *self.unused_detector_names(), tr("Custom name")]
+            im.set_next_item_width(width)
+            changed, picked = im.combo("##add_detector", 0, choices)
+            if changed and picked > 0:
+                self.add_detector(None if picked == len(choices) - 1 else choices[picked])
                 self._used("add_detector")
             self._item(
                 "add_detector",
                 tr(
-                    "Add a detector (channels 0, 1; range 0:2048) with a free name; rename and edit it in the table."
+                    "Add a detector by its name: emission|excitation colour, B G Y R (G|G green "
+                    "under green excitation, R|G red under green -- the FRET acceptor --, R|R red "
+                    "under red excitation). The analyses know these names. Then set its channels "
+                    "and gates in the table."
                 ),
             )
         width = im.get_content_region_avail()[0]

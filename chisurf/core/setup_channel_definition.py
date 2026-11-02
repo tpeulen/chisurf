@@ -2,6 +2,7 @@
 
 import copy
 import json
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -66,9 +67,28 @@ def _row_data(row, db):
     return data
 
 
+def with_detector_names(data: dict) -> tuple[dict, bool]:
+    """*data* (a setup) with its detectors under their ``emission|excitation`` names (green ->
+    G|G, red -> R|G, yellow -> R|R; :mod:`chisurf.core.fluorescence.detector_names`) -- in the
+    detector table and the optical configuration -- and whether anything changed."""
+    from chisurf.core.fluorescence import detector_names as dn
+
+    out = copy.deepcopy(data or {})
+    detectors = out.get("detectors") or {}
+    renamed = dn.canonical_detectors(detectors)
+    changed = list(renamed) != list(detectors)
+    out["detectors"] = renamed
+    for detector in (out.get("optical_config") or {}).get("detectors", []) or []:
+        if isinstance(detector, dict) and detector.get("name"):
+            new = dn.canonical(detector["name"])
+            changed |= new != detector["name"]
+            detector["name"] = new
+    return out, changed
+
+
 class ChannelDefinition:
     def __init__(self, settings=None, file_path=None, db=None):
-        self.data = copy.deepcopy(settings or {})
+        self.data = with_detector_names(settings or {})[0]
         self.data.setdefault("detectors", {})
         self.data.setdefault("windows", {})
         self.data.setdefault(
@@ -172,10 +192,42 @@ class ChannelDefinition:
 
     def apply_setups_payload(self, payload):
         """Adopt a payload of :meth:`read_setups_payload`; bumps :attr:`setups_generation`."""
-        self.setups = payload.get("setups") or {}
+        self.setups, stale = {}, {}
+        for name, data in (payload.get("setups") or {}).items():
+            self.setups[name], changed = with_detector_names(data)
+            if changed:
+                stale[name] = self.setups[name]
+        if stale:
+            self._store_detector_names(stale)
         self.last_used = str(payload.get("last_used") or "")
         self.setups_generation = getattr(self, "setups_generation", 0) + 1
         return sorted(self.setups)
+
+    def _store_detector_names(self, setups: dict) -> None:
+        """Write *setups* -- read with historic detector names -- back under the new names, once
+        (the store then holds none to convert). Only the user's own: a public setup of someone else
+        saved here would become a copy owned by this user."""
+        try:
+            user = store.resolve_active_user_id()
+        except Exception:  # noqa: BLE001 - no user: nothing is written, the names are converted on read
+            return
+        own = {
+            name: {k: v for k, v in data.items() if k != "_owner"}
+            for name, data in setups.items()
+            if data.get("_owner") in (None, user)
+        }
+        if not own:
+            return
+        try:
+            store.save_setups(
+                {"setups": own},
+                CONFIG,
+                self.file_path,
+                save_row_fn=_save_row,
+                get_db_fn=(lambda: self.db) if self.db is not None else None,
+            )
+        except Exception:  # noqa: BLE001 - converted on read again next time
+            logging.getLogger(__name__).exception("could not store the converted detector names")
 
     def refresh_setups(self):
         return self.apply_setups_payload(self.read_setups_payload())
@@ -204,7 +256,7 @@ class ChannelDefinition:
             self.refresh_setups()
         if name not in self.setups:
             raise ValueError(f"Unknown setup: {name}")
-        self.data = copy.deepcopy(self.setups[name])
+        self.data = with_detector_names(self.setups[name])[0]
         self.data.setdefault("tttr_reading", {})
         self.data.setdefault("channel_luts", {})
         self.data.setdefault("channel_shifts", {})
@@ -452,15 +504,16 @@ class ChannelDefinition:
 
     def propose_from_tttr(self, tttr):
         """Fill an empty definition from a measurement: one detector per used routing channel (two
-        channels: green, red) and the excitation windows / detector gates the shared pre-flight finds.
+        channels: G|G and R|G, and R|R gated on the delayed window under PIE) and the excitation windows / detector gates the shared pre-flight finds.
 
         A proposal, never a silent overwrite: it only runs on a definition without detectors, and
         every field stays editable. Returns the proposed detector names.
         """
+        from chisurf.core.fluorescence import detector_names as dn
         from chisurf.core.fluorescence.excitation import apply_check, check_setup, detect_windows
 
         channels = sorted(int(c) for c in tttr.get_used_routing_channels())
-        names = ["green", "red"] if len(channels) == 2 else [f"ch{c}" for c in channels]
+        names = [dn.DONOR, dn.ACCEPTOR] if len(channels) == 2 else [f"ch{c}" for c in channels]
         draft = {
             "detectors": {
                 n: {"chs": [c], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0}
@@ -478,14 +531,16 @@ class ChannelDefinition:
         if len(names) == 2 and {"prompt", "delayed"} <= set(windows):
             # Two-colour PIE, laid out as the lab's PIE setups are: donor and acceptor gated on the
             # prompt (donor-excited) window, and the acceptor channels again, gated on the delayed
-            # window, as the directly excited "yellow" detector. An ungated acceptor mixes
+            # window, as the directly excited R|R detector. An ungated acceptor mixes
             # FRET-sensitised and directly excited photons, and every per-detector analysis of it
             # (lifetimes, BVA) is then meaningless.
             prompt, delayed = list(windows["prompt"]), list(windows["delayed"])
-            green, red = draft["detectors"]["green"], draft["detectors"]["red"]
-            green["micro_time_ranges"] = [prompt]
-            red["micro_time_ranges"] = [prompt]
-            draft["detectors"]["yellow"] = {**red, "chs": list(red["chs"]), "micro_time_ranges": [delayed]}
+            donor, acceptor = draft["detectors"][dn.DONOR], draft["detectors"][dn.ACCEPTOR]
+            donor["micro_time_ranges"] = [prompt]
+            acceptor["micro_time_ranges"] = [prompt]
+            draft["detectors"][dn.ACCEPTOR_DIRECT] = {
+                **acceptor, "chs": list(acceptor["chs"]), "micro_time_ranges": [delayed]
+            }
         self.data["detectors"] = draft["detectors"]
         for key in ("windows", "alex_windows", "alex_period_s"):
             if draft.get(key):

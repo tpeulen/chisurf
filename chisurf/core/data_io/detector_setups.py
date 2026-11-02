@@ -238,14 +238,28 @@ def load_detector_setups(
                         path.unlink(missing_ok=True)
                     except OSError:
                         logger.warning("Imported %s into MMFDB but could not remove it", path)
-                return _load_mmfdb_detector_setups(db, user_id=uid)
+                return _with_detector_names(_load_mmfdb_detector_setups(db, user_id=uid))
             finally:
                 close_owned_db(db)
     if not path.exists():
         logger.debug("Detector setups file not found: %s", path)
         return {"setups": {}, "last_used": ""}
     data = load_json_setups(path, file_path=file_path) or {}
-    return {"setups": data.get("setups") or {}, "last_used": data.get("last_used") or ""}
+    return _with_detector_names(
+        {"setups": data.get("setups") or {}, "last_used": data.get("last_used") or ""}
+    )
+
+
+def _with_detector_names(payload: dict) -> dict:
+    """*payload*'s setups with their detectors under the ``emission|excitation`` names."""
+    from chisurf.core.setup_channel_definition import with_detector_names
+
+    payload = dict(payload)
+    payload["setups"] = {
+        name: with_detector_names(data)[0] if isinstance(data, dict) else data
+        for name, data in (payload.get("setups") or {}).items()
+    }
+    return payload
 
 
 def save_detector_setups(
