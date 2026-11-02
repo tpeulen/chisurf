@@ -59,6 +59,16 @@ timestamp: '2026-07-05T00:00:00Z'
     runs, incl. cold bytecode; the test prints `mle.job.error` -- suspect an import race of the
     hub's warm-up thread with MLE's job thread); hub start-up ~1.4 s (setup step icon atlas PNG
     decode 0.4-0.7 s + IMP.bff import); the search in the GUI is ~3.2 s vs 2.1 s headless.
+    **Round 3 (owner: "go"; "bva, 2cde can work in background sep task while user sets up the
+    mle; parallelize"), committed:** BVA/2CDE as tasks of a kept 2-process pool
+    (`burst_analysis/gui/background_tasks.py`; the controllers -- another lane's dirty files --
+    are fed through their `_future`); container made ahead (`ensure_container`); MLE prep without
+    list round trips. Timings vary with the machine's load (load average 24 from other work
+    during this round): with the file added and `>>` 2 s later, MLE fitted 3.5-4.6 s,
+    BVA done 2.4-3.0 s, 2CDE 4.5-6.6 s after `>>`. Tried and reverted within the round: deferring
+    BVA/2CDE until MLE was fitted (MLE ~3.1 s, but the owner wants them parallel). Open: MLE's
+    fit pool (all cores) now shares the cores with the two task processes; the hub's warm-up
+    starts the 2 task processes at hub creation (also in tests).
     Tried and reverted: workers returning column arrays instead of rows (no gain). Next: the GUI's
     `_finish` rebuilds a store from the rows (pass the table through, `gui/model.py` is shared);
     `_to_mle` still spends 0.45 s on the UI thread (`set_setup` + `burst_indices`); H2MM is now
