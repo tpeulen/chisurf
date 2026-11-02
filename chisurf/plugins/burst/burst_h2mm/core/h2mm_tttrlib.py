@@ -157,11 +157,16 @@ def fit_states(
     on_iter=None,
 ) -> H2mmModel:
     """Random-restart EM keeping the best fit — tttrlib backend."""
+    from concurrent.futures import ThreadPoolExecutor
+
     eng = _to_engine(data)
-    best: H2mmModel | None = None
     restarts = max(int(n_restarts), 1)
-    for r in range(restarts):
-        init = factory_model(n_states, data.n_streams, seed=None if seed is None else int(seed) + r)
+    inits = [
+        factory_model(n_states, data.n_streams, seed=None if seed is None else int(seed) + r)
+        for r in range(restarts)
+    ]
+
+    def run(init):
         fit = eng.optimize(
             _to_engine_model(init),
             int(max_iter),
@@ -170,10 +175,34 @@ def fit_states(
             True,
             bool(single_precision),
         )
-        cand = _from_engine_model(fit, data.n_photons)
-        if best is None or cand.loglik > best.loglik:
+        return _from_engine_model(fit, data.n_photons)
+
+    # The restarts are independent and the EM releases the GIL: run them side by side. The best
+    # is chosen by log-likelihood, first restart winning a tie, so the answer does not depend on
+    # which finished first.
+    fits: list[H2mmModel | None] = [None] * restarts
+    with ThreadPoolExecutor(max_workers=min(restarts, 4), thread_name_prefix="h2mm-restart") as pool:
+        futures = {pool.submit(run, init): r for r, init in enumerate(inits)}
+        done = 0
+        try:
+            for future in _as_completed(futures):
+                fits[futures[future]] = future.result()
+                done += 1
+                if on_iter is not None:
+                    on_iter(done * max_iter, restarts * max_iter)
+        except BaseException:
+            for future in futures:
+                future.cancel()
+            raise
+    best: H2mmModel | None = None
+    for cand in fits:
+        if cand is not None and (best is None or cand.loglik > best.loglik):
             best = cand
-        if on_iter is not None:
-            on_iter((r + 1) * max_iter, restarts * max_iter)
     assert best is not None
     return best
+
+
+def _as_completed(futures):
+    from concurrent.futures import as_completed
+
+    return as_completed(futures)
