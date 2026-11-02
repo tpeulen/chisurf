@@ -75,6 +75,11 @@ timestamp: '2026-07-05T00:00:00Z'
    native (allow-list empty); a grabber must still set the detector setup explicitly (`guides_26_36.SM_DNA_SETUP`,
    green 0/8, red 1/9) — the existing hub / Burst Selection tests still use 0/1 – 8/9 and pass only because the
    counts coincide.
+4b. Held with the shared `burst_selection/api/selection.py` (2026-11-02): the search names its run with
+   `burst_container.new_run_name` (other settings -> `run (2)`), committed helper + test in
+   `test/core/test_analysis_containers.py`. Until that file lands a re-search with other settings
+   still reuses the run name. Not ours, seen in the wide run: `test_emtk_record_embed` expects
+   Record's store default `embed`, another lane's uncommitted `record_app.py` makes it `link`.
 4a. tttrlib follow-up (2026-11-02): `TTTR::burst_search_cusum_sprt` (modules/spectroscopy/burst/src/
    TTTRBurstSearch.cpp) estimates background_cps=0 as the median rate of 100-photon bins, biased up by
    bursts. ChiSurf now passes a time-binned median (`tttrlib_search.estimate_background_cps`); port the
