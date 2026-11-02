@@ -89,7 +89,7 @@ centers, rec_hist, all_hist = rec.recurrence_histogram(
 Or through the guided burst workflow:
 
 ```python
-r = bursts.recurrence(donor="green", acceptor="red")
+r = bursts.recurrence(donor="G|G", acceptor="R|G")
 r.recurrence_time(threshold=0.5)                       # usable recurrence window (s)
 r.plot(e_range=(0.0, 0.4), dt_range_s=(1e-3, 0.1))
 ```

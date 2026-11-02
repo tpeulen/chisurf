@@ -169,7 +169,7 @@ def _read_strided(path: pathlib.Path, row_stride: int) -> Any:
         # An empty cell is a value the writer could not determine (a count rate
         # of a stream with one photon); it is missing, not text. Typed as text,
         # the column of a file holding one met the float column of a file
-        # without and the stack refused: "column 'Green Count Rate (KHz)' is
+        # without and the stack refused: "column 'G|G Count Rate (KHz)' is
         # float64 here and str there" on the bundled sm-DNA folder.
         blank = np.array([str(v).strip() == "" for v in values], dtype=bool)
         if blank.any() and not blank.all():

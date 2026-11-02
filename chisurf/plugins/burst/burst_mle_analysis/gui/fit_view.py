@@ -22,7 +22,7 @@ _TAU_COLUMN = re.compile(r"^Tau(?: S(?P<state>\d+))? \((?P<colour>.+)\)$")
 def burst_lifetimes(rows: list[dict] | None) -> dict[str, np.ndarray]:
     """Per-burst lifetimes by series from the rows of the last batch run.
 
-    The key is the detection colour (``"green"``) or, in the segment-level analysis, ``"S0 green"``. Only finite
+    The key is the detection colour (``"G|G"``) or, in the segment-level analysis, ``"S0 G|G"``. Only finite
     values are kept; a column nobody filled is left out.
     """
     series: dict[str, list[float]] = {}

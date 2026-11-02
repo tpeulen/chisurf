@@ -158,14 +158,14 @@ analyses of one experiment, six burst searches to run and six sets of results to
 pool by hand. The period and the gates are measured once, from the first file,
 because they are properties of the instrument rather than of the sample — which
 is also what makes the pieces comparable. Its windows are `prompt` and `delayed`,
-its detectors `green`, `red` and `yellow`, so the four ALEX streams appear in the
+its detectors `G|G`, `R|G` and `R|R`, so the four ALEX streams appear in the
 burst table under the names every ChiSurf reader already knows:
 
 | stream | burst-table column |
 |---|---|
-| $I_{DD}$ | `S prompt green (photons)` |
-| $I_{DA}$ | `S prompt red (photons)` |
-| $I_{AA}$ | `S delayed yellow (photons)` |
+| $I_{DD}$ | `S prompt G\|G (photons)` |
+| $I_{DA}$ | `S prompt R\|G (photons)` |
+| $I_{AA}$ | `S delayed R\|R (photons)` |
 
 Skip this step entirely if your data is already PIE / ns-ALEX.
 

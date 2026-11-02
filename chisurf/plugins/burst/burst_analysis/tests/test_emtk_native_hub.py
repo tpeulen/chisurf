@@ -22,8 +22,8 @@ DATA = Path(__file__).parents[2] / "burst_selection" / "tests" / "data" / "bh_sp
 GUI = Path(__file__).parents[1] / "gui"
 SETUP = {
     "detectors": {
-        "green": {"chs": [0, 1], "micro_time_ranges": []},
-        "red": {"chs": [8, 9], "micro_time_ranges": []},
+        "G|G": {"chs": [0, 1], "micro_time_ranges": []},
+        "R|G": {"chs": [8, 9], "micro_time_ranges": []},
     },
     "windows": {},
     "tttr_reading": {"file_type": "SPC-130"},
@@ -174,7 +174,7 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
         "SPC-130",
     )
     assert c["mle"].model.n_bursts == 198, (hub.status, c["mle"].model.status_text)
-    assert c["mle"].model.detector_names() == ["green", "red"]
+    assert c["mle"].model.detector_names() == ["G|G", "R|G"]
     assert c["mle"].model.split_by_state is False
     assert Path(c["h2mm"].model.data_folder) == run
     assert c["browser"].model.table is not None
@@ -183,15 +183,15 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
     assert Path(c["accurate_fret"].model.filename).parts[-2].endswith(".pto")
     assert Path(c["accurate_fret"].model.filename).parts[-1] == run.name  # the run the search wrote
     assert c["accurate_fret"].model.setup_name == "probe"
-    # the setup's detector names pick the photon counts, not "First Photon (green)"
+    # the setup's detector names pick the photon counts, not "First Photon (G|G)"
     assert (c["accurate_fret"].model.column_i_dd, c["accurate_fret"].model.column_i_da) == (
-        "Number of Photons (green)",
-        "Number of Photons (red)",
+        "Number of Photons (G|G)",
+        "Number of Photons (R|G)",
     )
     assert c["burst_fcs"].controller.files == [str(ctx.burst_folder)]
     assert [p["pair_name"] for p in c["burst_fcs"].controller._pair_presets] == [
-        "green_ACF",
-        "red_ACF",
+        "G|G_ACF",
+        "R|G_ACF",
     ]
     assert c["burst_gs"].model.bur_files == [str(run)]
     assert (c["burst_gs"].model.donor_channels, c["burst_gs"].model.acceptor_channels) == (
@@ -235,11 +235,11 @@ def test_send_to_mle_reaches_the_mle_step(hub, files):
         if hub.children["mle"].model.session.decay is not None
         else 64
     )
-    patterns = {"green": {"irf": np.ones(n), "bg": np.full(n, 0.5)}}
+    patterns = {"G|G": {"irf": np.ones(n), "bg": np.full(n, 0.5)}}
     assert hub.apply_irf_background_to_mle(patterns) == 1
     session = hub.children["mle"].model.session
-    np.testing.assert_array_equal(session.irf_np["green"], np.ones(n))
-    np.testing.assert_array_equal(session.bg_np["green"], np.full(n, 0.5))
+    np.testing.assert_array_equal(session.irf_np["G|G"], np.ones(n))
+    np.testing.assert_array_equal(session.bg_np["G|G"], np.full(n, 0.5))
     assert hub.context.irf_background_patterns == patterns
 
 

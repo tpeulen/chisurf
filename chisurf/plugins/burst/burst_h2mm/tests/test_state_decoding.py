@@ -83,7 +83,7 @@ def _dataset(with_background=True, n_bursts=60, burst_len=120, seed=3):
     tttr.append_events(macro, micro, chan, et, False, 0)
 
     df = pd.DataFrame(rows, columns=["First File", "First Photon", "Last Photon"])
-    defs = [StreamDef("green", [0]), StreamDef("red", [1])]
+    defs = [StreamDef("G|G", [0]), StreamDef("R|G", [1])]
     data, meta = bursts_from_dataframe(df, {"sim.spc": tttr}, defs, min_photons=3, return_meta=True)
     return data, meta, df, tttr
 

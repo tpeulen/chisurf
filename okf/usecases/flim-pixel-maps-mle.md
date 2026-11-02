@@ -65,11 +65,11 @@ opens on **Browser**, not on **Setup**.
    pipeline *source* and the tool jumps to step 1.
 5. **1. Intensity** computes in ~2 s and opens on its *Controls* tab, which
    shows only the file path and `PQ_Olympus_MFIS.ht3: 256x256 px. Windows:
-   green, red.` The maps live behind the *Intensity*, *Count rate (kHz)* and
+   G|G, R|G.` The maps live behind the *Intensity*, *Count rate (kHz)* and
    *Frames (movie)* tabs — click **Intensity** to see the frame-summed image
    (a `magma` map with a level/histogram bar and a `channel` combo switching
-   green/red). Columns produced: `Ng-p-all`, `Ng-s-all`, `Ng-all`,
-   `green Count Rate (KHz)`, `S prompt green (kHz)`, the same five for red, and
+   `G|G`/`R|G`). Columns produced: `Ng-p-all`, `Ng-s-all`, `Ng-all`,
+   `G|G Count Rate (KHz)`, `S prompt G|G (kHz)`, the same five for `R|G`, and
    `Number of Photons`.
 6. Click **💾 Create imaging HDF5** to start the standard imaging HDF5 the later
    steps enrich. It asks for a path with a modal save dialog (no default

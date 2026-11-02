@@ -17,8 +17,8 @@ COLUMNS = [
     "Last Photon",
     "Duration (ms)",
     "Number of Photons",
-    "Number of Photons (green)",
-    "Number of Photons (red)",
+    "Number of Photons (G|G)",
+    "Number of Photons (R|G)",
     "E",
     "S",
 ]

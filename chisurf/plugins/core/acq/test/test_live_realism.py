@@ -41,7 +41,7 @@ def _analyse(src, ph, factors=None):
     a = StreamingBurstAnalyzer.from_setup(
         SETUP, "pie", min_photons=30, window_photons=10, window_time=1e-3,
         macro_time_resolution=src.info.macro_clock_s, micro_time_resolution=src.info.micro_res_s,
-        factors=factors, decays=(4000, 4000, False),
+        factors=factors, decays=(4000, 4000, False), donor="G|G", acceptor="R|G",
     )  # fmt: skip
     a.push_np(ph["macro"], ph["micro"], ph["channel"].astype(np.int32))
     a.flush()
@@ -111,18 +111,18 @@ def test_the_measured_background_is_the_configured_one(realistic):
     bg = a.snapshot()["background_cps"]
     # the donor detector in the delay window: only the flat background (half the period) and
     # afterpulses -- the donor's own photons are in the prompt window
-    assert bg["delayed green"] == pytest.approx(REALISTIC.background_donor_khz * 1e3 / 2, rel=0.25)
+    assert bg["delayed G|G"] == pytest.approx(REALISTIC.background_donor_khz * 1e3 / 2, rel=0.25)
 
 
 def test_decays_show_the_instrument_response_and_the_lifetimes(realistic):
     src, _ph, a = realistic
     decays = a.snapshot()["decays"]
     res_ns = src.info.micro_res_s * 1e9
-    donor = decays["prompt green"]
+    donor = decays["prompt G|G"]
     assert int(np.argmax(donor)) * res_ns == pytest.approx(
         0.5, abs=0.2
     )  # the pulse, through the IRF
-    aa = decays["delayed red"][2000:]
+    aa = decays["delayed R|G"][2000:]
     peak = int(np.argmax(aa))
     t = np.arange(aa.size) * res_ns
     tail = (t > t[peak] + 1.0) & (t < t[peak] + 8.0) & (aa > 0)

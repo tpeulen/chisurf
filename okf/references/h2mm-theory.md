@@ -240,7 +240,7 @@ The `chisurf/plugins/burst/burst_h2mm/` plugin implements all of the above on
   (`tests/test_ab_vs_h2mm_c.py`).
 - **Photon streams.** `core/photons.py` maps detector channels (plus optional
   PIE/ALEX micro-time windows) to the H2MM channel indices; the first two
-  streams are donor/acceptor for apparent-FRET, an optional third ($AA$/"yellow")
+  streams are donor/acceptor for apparent-FRET, an optional third ($AA$/`R|R`)
   enables per-state stoichiometry. Micro-time **divisors** can split a stream
   into finer nanotime-based indices for multiparameter H2MM.
 - **Analysis.** `core/analysis.py` runs the state scan, applies BIC/ICL

@@ -15,7 +15,7 @@ The engine does three things, all governed by an :class:`ExpressionPolicy`:
    but the allowed maths can ever run.
 2. **Resolve references.** Names in the expression become *references* to a
    caller-supplied symbol table. Two reference styles are supported and toggled
-   by the policy: **quoted** names (``'Green Count Rate'`` — a string literal,
+   by the policy: **quoted** names (``'G|G Count Rate'`` — a string literal,
    so names may contain spaces) and **bare** identifiers (``tau`` — a normal
    Python name). Matching is optionally case-insensitive and optionally on the
    part of a name left of a ``|`` (column-header ``"Name | unit"`` convention).
@@ -35,6 +35,7 @@ case-insensitive, left-of-``|`` matching).
 from __future__ import annotations
 
 import ast
+import re
 import threading
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
@@ -267,9 +268,16 @@ def _allowed_nodes(policy: ExpressionPolicy) -> tuple[type, ...]:
     return nodes
 
 
+#: A detector name (``G|G``): its ``|`` is part of the name, not the ``Name | unit`` bar.
+_DETECTOR = re.compile(r"(?<![A-Za-z0-9_])[BGYRbgyr]\|[BGYRbgyr](?![A-Za-z0-9_])")
+
+
 def _normalize_left(name: str) -> str:
-    """Return the part of a name before the first ``|``, stripped."""
-    return str(name).split("|", 1)[0].strip()
+    """Return the part of a name before the first ``|`` outside a detector name, stripped
+    (``"S prompt G|G (kHz) | 0-2048"`` -> ``"S prompt G|G (kHz)"``)."""
+    text = str(name)
+    at = _DETECTOR.sub(lambda m: "#" * len(m.group()), text).find("|")
+    return (text if at < 0 else text[:at]).strip()
 
 
 class _RefRewriter(ast.NodeTransformer):

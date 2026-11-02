@@ -158,14 +158,14 @@ def test_the_written_folder_reproduces_the_emitted_photons(tmp_path, definition)
 
     data = load_mfd_data(folder, min_green_photons=20)
     preparation = data.preparation
-    assert "green" in preparation.verified_channels
-    assert "red" in preparation.verified_channels
+    assert "G|G" in preparation.verified_channels
+    assert "R|G" in preparation.verified_channels
     assert len(preparation) == len(spans)
 
     stream = np.asarray(sim.stream)
     green = [MFD_STREAMS["g_par"], MFD_STREAMS["g_perp"]]
     emitted = np.array([np.isin(stream[a : b + 1], green).sum() for a, b in spans])
-    assert np.array_equal(emitted, preparation.counts[:, preparation.channel_index("green")])
+    assert np.array_equal(emitted, preparation.counts[:, preparation.channel_index("G|G")])
 
 
 def test_the_exchange_matrix_is_transposed_and_rescaled():
@@ -432,7 +432,7 @@ def test_the_declared_response_is_the_one_that_was_simulated():
     responses = sim.true_responses()
     assert set(responses) == set(sim.detectors())
 
-    green = responses["green"]
+    green = responses["G|G"]
     irf = np.asarray(green.irf, dtype=float)
     times = np.arange(irf.size) * green.dt
     assert float((irf * times).sum() / irf.sum()) == pytest.approx(1.0, abs=0.01)
@@ -442,7 +442,7 @@ def test_the_declared_response_is_the_one_that_was_simulated():
     macro = np.asarray(sim.tttr.macro_times, dtype=float) * resolution
     duration = float(macro[-1] - macro[0])
     stream = np.asarray(sim.stream)
-    for name in ("green", "red"):
+    for name in ("G|G", "R|G"):
         channels = sim.detectors()[name]["chs"]
         measured = float(np.isin(stream, channels).sum()) / duration
         assert measured == pytest.approx(responses[name].background_rate, rel=0.15)

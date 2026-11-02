@@ -18,7 +18,7 @@ from chisurf.plugins.burst.burst_h2mm.core.decays import (
     state_decays,
 )
 
-GROUPS = [("green", (0,)), ("red", (1,))]
+GROUPS = [("G|G", (0,)), ("R|G", (1,))]
 
 
 def _photons(n_green, n_red, *, state, green_micro, red_micro, rng):
@@ -84,7 +84,7 @@ def test_streams_sharing_a_detector_stay_apart():
     strm = np.concatenate([np.ones(n, int), np.full(n, 2)])  # red vs yellow
     st = np.zeros(2 * n, dtype=int)
 
-    groups = [("green", (0,)), ("red", (1,)), ("yellow", (2,))]
+    groups = [("G|G", (0,)), ("R|G", (1,)), ("R|R", (2,))]
     d = state_decays(micro, chan, strm, st, n_states=1, groups=groups, n_bins=64)
 
     assert d.channels.tolist() == [1], "both streams are on the same detector"
@@ -108,8 +108,8 @@ def test_per_detector_counts_are_kept_not_only_the_merge():
     assert per_channel.sum(axis=1).tolist() == [n, n, n]
     # green is exactly its two detectors, summed — nothing else
     assert d.colour_counts[0, 0].sum() == 2 * n
-    assert d.colour_channels["green"] == [0, 8]
-    assert d.colour_channels["red"] == [1]
+    assert d.colour_channels["G|G"] == [0, 8]
+    assert d.colour_channels["R|G"] == [1]
 
 
 def test_the_written_table_is_numeric_and_per_detector():

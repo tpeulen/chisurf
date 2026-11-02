@@ -91,24 +91,24 @@ def test_no_text_is_clipped_or_overlaps_other_text(app, photon_folder, size):
 @pytest.mark.parametrize("size", SIZES)
 def test_the_tile_labels_do_not_overlap_each_other_and_stay_in_the_plot(app, photon_folder, size):
     drv = populated(app, photon_folder, size)
-    labels = [t for t in drv.draw(1).texts if str(t[5]).startswith(("green", "red"))]
+    labels = [t for t in drv.draw(1).texts if str(t[5]).startswith(("G|G", "R|G"))]
     assert len(labels) == 2
     assert overlap(labels[0][:4], labels[1][:4]) < 2.0
     image = app.item_rects["image"]
     assert all(inside(t[:4], image) for t in labels)
     # the label of a tile is its detector at least; a wide enough tile gets the whole text
-    assert labels[0][5].startswith("green") and labels[1][5].startswith("red")
+    assert labels[0][5].startswith("G|G") and labels[1][5].startswith("R|G")
 
 
 def test_a_zoomed_tile_shows_its_whole_label(app, photon_folder):
     drv = populated(app, photon_folder, (800, 600))
     cx, cy = app.item_rects["image"][0] + 50, app.item_rects["image"][1] + 50
-    short = [t[5] for t in drv.draw(1).texts if str(t[5]).startswith("green")][0]
+    short = [t[5] for t in drv.draw(1).texts if str(t[5]).startswith("G|G")][0]
     for _ in range(8):
         drv.wheel(cx, cy, 1)
-    full = [t[5] for t in drv.draw(1).texts if str(t[5]).startswith("green")]
+    full = [t[5] for t in drv.draw(1).texts if str(t[5]).startswith("G|G")]
     assert (
-        len(short) < len("green  |  mt: 0-4095  |  ch: 0,1") and full and len(full[0]) >= len(short)
+        len(short) < len("G|G  |  mt: 0-4095  |  ch: 0,1") and full and len(full[0]) >= len(short)
     )
 
 

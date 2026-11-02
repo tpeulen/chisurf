@@ -80,7 +80,7 @@ per-file quality control**; it sits *before*
    (or edit the *Detectors* table directly: name, routing channels, micro-time
    range, G-factor). *Polarization resolved* and the *PIE Windows* box combine
    into the channel list the count rates are reported for
-   (`prompt_green`, `delayed_red`, …).
+   (`prompt_G|G`, `delayed_R|R`, …).
 8. On the *Files* tab drop the folder of chunks from step 5 (**➕ Files** /
    **📁 Folder** / **🗄 Database**), then press **📈 Calculate**.
 9. Read the result on the *Count Rates* tab (count rate in kHz per channel
@@ -170,8 +170,8 @@ comes back verbatim, and the split chunks account for every photon.
   2.96 ms for a file that holds 294 884 photons. Nothing warns, and **💾 Save**
   writes the number into the exported table. (RF-599)
 - **The results table contradicts itself.** In the very same row, `Mean (kHz)`
-  and `#Photons / Time (s)` disagree — `prompt_green` 21.40 vs 20.47,
-  `prompt_red` 53.52 vs 51.20 — because `Mean` is the unweighted mean of the
+  and `#Photons / Time (s)` disagree — `prompt_G|G` 21.40 vs 20.47,
+  `prompt_R|G` 53.52 vs 51.20 — because `Mean` is the unweighted mean of the
   per-file rates while `Time (s)` is the *sum* over all files (75.143 s, repeated
   identically on every row). (RF-600)
 - **A finished split looks like nothing happened.** After a run that really did

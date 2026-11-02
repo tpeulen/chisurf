@@ -28,13 +28,13 @@ class PhotonStream:
 
 
 SETUP = {
-    "detectors": {"green": {"chs": [0], "micro_time_ranges": [[1, 4]]}},
+    "detectors": {"G|G": {"chs": [0], "micro_time_ranges": [[1, 4]]}},
     "windows": {"early": [0, 2], "late": [3, 5]},
 }
 
 
 def test_native_windows_and_detector_gates_are_preserved(tmp_path):
-    assert set(setup_channel_map(SETUP)) == {"early_green", "late_green"}
+    assert set(setup_channel_map(SETUP)) == {"early_G|G", "late_G|G"}
     path = tmp_path / "one.ptu"
     path.write_bytes(b"x")
     app = create_app(reader=lambda _: PhotonStream(), setups={"instrument": SETUP})
@@ -46,14 +46,14 @@ def test_native_windows_and_detector_gates_are_preserved(tmp_path):
     # windows and gates are half-open [start, stop): early [0, 2) ∩ gate [1, 4) holds
     # micro time 1, late [3, 5) holds 3
     assert [(r["channel"], r["photons"], r["mean_khz"]) for r in rows] == [
-        ("early_green", 1, 0.001),
-        ("late_green", 1, 0.001),
+        ("early_G|G", 1, 0.001),
+        ("late_G|G", 1, 0.001),
     ]
     output = tmp_path / "rates.tsv"
     assert app.tool.save(output)
     app.tool.job.future.result(timeout=5)
     app.tool.job.poll()
-    assert "early_green\t0.00" in output.read_text()
+    assert "early_G|G\t0.00" in output.read_text()
     state = app.export_state()
     app.restore_state(json.loads(json.dumps(state)))
     assert app.tool._model.results_rows() == rows
@@ -132,12 +132,12 @@ def test_native_success_status_does_not_cover_scientific_docks(tmp_path):
 
 def test_native_rebuilds_cached_channels_after_definition_edits():
     setup = {**SETUP, "channels": {"stale": []}}
-    assert set(setup_channel_map(setup)) == {"early_green", "late_green"}
+    assert set(setup_channel_map(setup)) == {"early_G|G", "late_G|G"}
 
 
 def test_native_settings_exclude_results_and_restore_control_definitions():
     app = create_app(setups={"instrument": SETUP})
-    app.tool._model._per_file = {"secret": {"green": 1}}
+    app.tool._model._per_file = {"secret": {"G|G": 1}}
     state = app.export_settings()
     assert "per_file" not in state and "measurement_times" not in state
     restored = create_app()
@@ -156,7 +156,7 @@ def test_native_full_channel_editor_changes_calculation_and_draws_all_sections(m
     editor = app.tool.channel_editor
     editor.model.data["windows"] = {"new_window": [1, 3]}
     editor.model.changed()
-    assert set(app.tool.channels()) == {"new_window_green"}
+    assert set(app.tool.channels()) == {"new_window_G|G"}
     tooltips = []
     monkeypatch.setattr(im, "set_item_tooltip", lambda text: tooltips.append(text))
     for opened in (False, True):

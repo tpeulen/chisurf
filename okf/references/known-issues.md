@@ -3922,7 +3922,7 @@ status: open
 
 **Found 2026-09-08.** `E` and `S` are ratios of photon counts. The `.bur` schema
 writes each PIE window x detector stream as a **count rate**
-(`S prompt green (kHz) | …`), and `_span_features`
+(`S prompt G|G (kHz) | …`), and `_span_features`
 (`chisurf/core/fio/fluorescence/burst.py`) computes that rate as
 
 ```
@@ -3932,8 +3932,8 @@ count_rate_khz = n_photons_in_the_stream / duration_of_that_stream's_own_span
 — the span of the *selected* photons, not of the burst. So the four rates of one
 burst have four different denominators, and their ratios are not the count
 ratios. An `E` built on them carries a per-burst bias that no histogram looks
-wrong for. The same holds for the whole-detector `Green Count Rate (KHz)` /
-`Red Count Rate (KHz)`, from which `Proximity ratio` is defined.
+wrong for. The same holds for the whole-detector `G|G Count Rate (KHz)` /
+`R|G Count Rate (KHz)`, from which `Proximity ratio` is defined.
 
 Two more artefacts of the same definition: an empty stream is written as `-1`
 (the `_SPAN_EMPTY` sentinel), and a one-photon stream as `NaN` (zero span).

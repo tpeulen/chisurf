@@ -62,7 +62,7 @@ def test_native_filters_are_bit_identical_to_the_qt_widgets_for_the_same_inputs(
 
     The reference is what the retired Qt widget computed for its built-in example. The example differs only by its
     detector table: the Qt widget left it empty (detector "default": width 0.2 ns, no shift) while the native example
-    fills "green" with the IRF the example patterns were generated with (width 0.16 ns, shift 0.03 ns), so the
+    fills "G|G" with the IRF the example patterns were generated with (width 0.16 ns, shift 0.03 ns), so the
     native model is put on the Qt defaults here.
     """
     import json
@@ -73,13 +73,13 @@ def test_native_filters_are_bit_identical_to_the_qt_widgets_for_the_same_inputs(
     reference = json.loads((Path(__file__).parent / "qt_reference.json").read_text())
     assert reference["detector_defaults"] == [0.2, 0.0, 0.0]
     native = FilterModel()
-    assert (native.detectors.width("green"), native.detectors.shift("green")) == (
+    assert (native.detectors.width("G|G"), native.detectors.shift("G|G")) == (
         0.16,
         pytest.approx(0.03),
     )
-    native.detectors.set_width("green", 0.2)
-    native.detectors.set_skew("green", 0.0)
-    native.detectors.set_shift("green", 0.0)
+    native.detectors.set_width("G|G", 0.2)
+    native.detectors.set_skew("G|G", 0.0)
+    native.detectors.set_shift("G|G", 0.0)
     native._fit_bounds = tuple(reference["fit_range"])
     native.compute()
     # The reference was recorded on macOS: other platforms differ by float rounding only.

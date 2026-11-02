@@ -43,8 +43,10 @@ UI_COLUMNS = [
     "Mean Macro Time (ms)",
     "Number of Photons",
     "Count Rate (KHz)",
-    "Number of Photons (red)",
-    "Number of Photons (green)",
+    # The acceptor (FRET) and donor photons; a table naming its detectors otherwise fills
+    # them by role (make_ui_dataframe).
+    "Number of Photons (R|G)",
+    "Number of Photons (G|G)",
 ]
 
 PROXIMITY_RATIO_COLUMN = "Proximity Ratio"
@@ -517,14 +519,14 @@ def make_ui_dataframe(df):
         name: (numeric_column(rows, name) if name in present else np.zeros(n))
         for name in UI_COLUMNS
     }
-    if "Number of Photons (red)" not in present:
-        red_series = _find_detector_series(rows, "red")
+    if "Number of Photons (R|G)" not in present:
+        red_series = _find_detector_series(rows, "acceptor")
         if red_series is not None:
-            columns["Number of Photons (red)"] = red_series
-    if "Number of Photons (green)" not in present:
-        green_series = _find_detector_series(rows, "green")
+            columns["Number of Photons (R|G)"] = red_series
+    if "Number of Photons (G|G)" not in present:
+        green_series = _find_detector_series(rows, "donor")
         if green_series is not None:
-            columns["Number of Photons (green)"] = green_series
+            columns["Number of Photons (G|G)"] = green_series
 
     for name in present:
         if name not in columns:
@@ -560,8 +562,8 @@ def burst_rows_for_display(df):
     if "Number of Photons" in names:
         photons = np.nan_to_num(numeric_column(df, "Number of Photons"))
         return take_where(df, photons > 0)
-    red = _find_detector_series(df, "red")
-    green = _find_detector_series(df, "green")
+    red = _find_detector_series(df, "acceptor")
+    green = _find_detector_series(df, "donor")
     if red is not None and green is not None:
         return take_where(df, (np.nan_to_num(red) + np.nan_to_num(green)) > 0)
     # No photon-count column: a row is a separator when every numeric column of

@@ -1,6 +1,6 @@
 """A small .pto container the inspector tour (and its e2e check) can open.
 
-``make_demo()`` writes ``demo.pto`` into the settings cache: a burst table and a (green) lifetime table derived
+``make_demo()`` writes ``demo.pto`` into the settings cache: a burst table and a (G|G) lifetime table derived
 from it, no instrument file. Nothing here is a measurement.
 """
 
@@ -66,7 +66,7 @@ def make_demo(folder: str | Path | None = None, *, overwrite: bool = False) -> P
             # The detector is part of the name: a lifetime result is exported to
             # a per-detector companion (`bg4`/`br4`/`by4`), and the name is how
             # the export knows which one this is.
-            "lifetimes green",
+            "lifetimes G|G",
             {"First Photon": np.arange(n, dtype=np.int64), "tau": np.linspace(1.0, 4.0, n)},
             artifact_kind="analysis_result",
             operation_type="burst_lifetime_fitting",

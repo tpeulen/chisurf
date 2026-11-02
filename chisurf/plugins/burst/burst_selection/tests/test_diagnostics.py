@@ -84,7 +84,7 @@ def test_histogram_data_for_a_plain_column_is_a_plain_array() -> None:
 def test_make_ui_dataframe_computes_proximity_ratio() -> None:
     """The histogram feature list should include computed proximity ratios."""
     frame = pd.DataFrame(
-        {"Number of Photons (red)": [0, 10, 30], "Number of Photons (green)": [0, 40, 70]}
+        {"Number of Photons (R|G)": [0, 10, 30], "Number of Photons (G|G)": [0, 40, 70]}
     )
     ui_frame = make_ui_dataframe(frame)
 
@@ -95,7 +95,7 @@ def test_make_ui_dataframe_computes_proximity_ratio() -> None:
 def test_histogram_data_uses_computed_proximity_ratio() -> None:
     """Histogram data should use the computed proximity-ratio column."""
     frame = pd.DataFrame(
-        {"Number of Photons (red)": [10, 30], "Number of Photons (green)": [40, 70]}
+        {"Number of Photons (R|G)": [10, 30], "Number of Photons (G|G)": [40, 70]}
     )
     assert diag.histogram_data_from_frame(frame, "Proximity Ratio").tolist() == [0.2, 3 / 10]
 
@@ -163,7 +163,7 @@ def test_the_gate_mismatch_is_named() -> None:
     class _Unconverted:
         micro_times = np.zeros(1000, dtype=int)
 
-    gated = {"green": {"chs": [1], "micro_time_ranges": [[616, 3784]]}}
+    gated = {"G|G": {"chs": [1], "micro_time_ranges": [[616, 3784]]}}
     message = diag.gate_mismatch_warning(_Unconverted(), gated)
     assert message is not None and "micro-time" in message
     assert "Alternation" in message, "the message must say what to do about it"
@@ -171,7 +171,7 @@ def test_the_gate_mismatch_is_named() -> None:
     # A file that *has* a micro time is not warned about.
     assert diag.gate_mismatch_warning(SimpleNamespace(micro_times=np.arange(1000)), gated) is None
     # Nor is an ungated setup.
-    assert diag.gate_mismatch_warning(_Unconverted(), {"green": {"chs": [1]}}) is None
+    assert diag.gate_mismatch_warning(_Unconverted(), {"G|G": {"chs": [1]}}) is None
 
 
 def test_normalised_file_types_and_the_setup_summary() -> None:

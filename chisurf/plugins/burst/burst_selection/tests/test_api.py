@@ -534,8 +534,8 @@ def test_make_ui_dataframe_adds_proximity_ratio() -> None:
             "First Photon": [0],
             "Last Photon": [2],
             "Duration (ms)": [1.0],
-            "Number of Photons (red)": [2],
-            "Number of Photons (green)": [2],
+            "Number of Photons (R|G)": [2],
+            "Number of Photons (G|G)": [2],
         }
     )
     ui_df = make_ui_dataframe(df)
@@ -552,8 +552,8 @@ def test_make_ui_dataframe_ignores_margarita_zero_rows() -> None:
             "Mean Macro Time (ms)": [0.0, 12.0, 0.0, 35.0],
             "Number of Photons": [0, 10, 0, 20],
             "Count Rate (KHz)": [0.0, 10.0, 0.0, 13.3],
-            "Number of Photons (red)": [0, 4, 0, 8],
-            "Number of Photons (green)": [0, 6, 0, 12],
+            "Number of Photons (R|G)": [0, 4, 0, 8],
+            "Number of Photons (G|G)": [0, 6, 0, 12],
         }
     )
 
@@ -588,8 +588,8 @@ def test_extract_features_derives_proximity_ratio_from_green_red() -> None:
         {
             "Number of Photons": [10, 20, 0],
             "Duration (ms)": [1.0, 2.0, 0.0],
-            "Number of Photons (red)": [2, 10, 0],
-            "Number of Photons (green)": [8, 10, 0],
+            "Number of Photons (R|G)": [2, 10, 0],
+            "Number of Photons (G|G)": [8, 10, 0],
         }
     )
     features = extract_features([df])

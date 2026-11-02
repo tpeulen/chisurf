@@ -172,7 +172,7 @@ def test_hmm_tw_and_ndx_open_their_docks_with_the_payload_applied(shell, work, t
     assert app.model.path == str(work / "m001.spc")
     assert app.model.window_ms == 10.0
     assert app.model.setup == ALEX
-    assert sorted(app.model.choices()) == ["green", "red", "yellow"]
+    assert sorted(app.model.choices()) == ["G|G", "R|G", "R|R"]
     assert app.model.counts.shape[0] > 6000 and app.model.counts.shape[1] == len(app.model.labels)
     window = shell.docks.window(trace.key)
     assert window is not None and window.workspace is False  # a tool is a dock, never a fit window

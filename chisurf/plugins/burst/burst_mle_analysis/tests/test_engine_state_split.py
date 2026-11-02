@@ -2,7 +2,7 @@
 
 The H2MM photon table is written here for the in-repository BH sample: within every burst of ``m000`` the first half
 of the photons is state 0 and the second half state 1. ``MleSession.run_batch`` with ``split_by_state`` must then give
-``Tau S0 (green)`` / ``Tau S1 (green)`` beside ``Tau (green)``, a pooled lifetime per state and detector, and write
+``Tau S0 (G|G)`` / ``Tau S1 (G|G)`` beside ``Tau (G|G)``, a pooled lifetime per state and detector, and write
 ``Info/state_lifetimes.csv`` beside the analysis. (The Qt wizard's state methods delegated to the same
 ``state_split`` functions; the wizard is retired.)
 """
@@ -52,7 +52,7 @@ def split_session(sample_copy, tmp_path_factory):
         delimiter=",",
     )
     (h2mm / "h2mm_result.json").write_text(json.dumps({"output_paths": {"sources": "m000.spc"}}))
-    for det in ("green", "red"):
+    for det in ("G|G", "R|G"):
         session.current_detector = det
         session.auto_extract()
     session.split_by_state = True
@@ -64,10 +64,10 @@ def test_the_batch_has_a_column_block_per_state(split_session):
     session, _ = split_session
     assert session.n_states == 2
     keys = set().union(*(r.keys() for r in session.burst_results))
-    for column in ("Tau (green)", "Tau S0 (green)", "Tau S1 (green)", "Tau S0 (red)"):
+    for column in ("Tau (G|G)", "Tau S0 (G|G)", "Tau S1 (G|G)", "Tau S0 (R|G)"):
         assert column in keys, column
     m000 = [r for r in session.burst_results if "m000" in str(r["First File"])]
-    fitted = [r["Tau S0 (green)"] for r in m000 if np.isfinite(r.get("Tau S0 (green)", np.nan))]
+    fitted = [r["Tau S0 (G|G)"] for r in m000 if np.isfinite(r.get("Tau S0 (G|G)", np.nan))]
     assert fitted, "no state of m000 was fitted"
 
 
@@ -75,12 +75,12 @@ def test_each_state_has_a_pooled_lifetime(split_session):
     session, _ = split_session
     rows = session.state_lifetimes
     assert {(r["Detector"], r["State"]) for r in rows} == {
-        ("green", 0),
-        ("green", 1),
-        ("red", 0),
-        ("red", 1),
+        ("G|G", 0),
+        ("G|G", 1),
+        ("R|G", 0),
+        ("R|G", 1),
     }
-    green = {r["State"]: r for r in rows if r["Detector"] == "green"}
+    green = {r["State"]: r for r in rows if r["Detector"] == "G|G"}
     assert green[0]["Photons"] > 1000 and green[1]["Photons"] > 1000
     assert 0.1 < green[0]["Tau"] < 10.0 and 0.1 < green[1]["Tau"] < 10.0
 
@@ -91,7 +91,7 @@ def test_export_writes_state_columns_and_the_state_table(split_session):
     table = analysis / "Info" / "state_lifetimes.csv"
     assert table in written and table.is_file()
     header = next(p for p in written if p.suffix == ".bg4").read_text().splitlines()[0]
-    assert "Tau S0 (green)" in header and "Tau S1 (green)" in header
+    assert "Tau S0 (G|G)" in header and "Tau S1 (G|G)" in header
 
 
 def test_without_an_h2mm_run_the_split_says_why(sample_copy, tmp_path):

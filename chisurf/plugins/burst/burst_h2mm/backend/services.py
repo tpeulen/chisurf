@@ -674,7 +674,7 @@ def _macro_resolution(tttrs) -> float:
 def _micro_resolution(tttrs) -> float:
     """Return the micro-time (TCSPC) resolution (seconds) from the first TTTR header.
 
-    Used to report the per-burst donor lifetime column (``Tau (green)``) in ns for
+    Used to report the per-burst donor lifetime column (``Tau (G|G)``) in ns for
     the ndxplorer FRET-line plot. Falls back to ``0.0`` (→ NaN lifetimes) when the
     header carries no micro-time resolution.
     """

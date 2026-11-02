@@ -125,7 +125,7 @@ def test_auto_irf_background_click_equals_the_engine_and_draws_its_curves(monkey
     reference = engine.MleSession()
     reference.set_detectors(CHANNEL_SETTINGS["detectors"], CHANNEL_SETTINGS["file_type"])
     reference.add_burst_files(list(session.bur_files))
-    reference.current_detector = "green"
+    reference.current_detector = "G|G"
     reference.auto_extract()
     assert window.model.tau_result == pytest.approx(reference.outcome.x[0], rel=1e-9)
     np.testing.assert_array_equal(session.decay, reference.decay)
@@ -196,19 +196,19 @@ def test_the_binning_choice_re_estimates_the_patterns_and_refits(fitted):
     window, drv = fitted
     old = window.model.binning
     window.model.binning = old * 2
-    assert window.model.session.irf_np["green"].size == window.model.session.decay.size
+    assert window.model.session.irf_np["G|G"].size == window.model.session.decay.size
     assert window.model.fit_curves is not None
     window.model.binning = old
-    assert window.model.session.irf_np["green"].size == window.model.session.decay.size
+    assert window.model.session.irf_np["G|G"].size == window.model.session.decay.size
 
 
 @pytest.fixture(scope="module")
 def batch(fitted):
     window, drv = fitted
-    for det in ("green", "red"):
+    for det in ("G|G", "R|G"):
         window.model.current_detector = det
         window.model.auto_extract()
-    window.model.current_detector = "green"
+    window.model.current_detector = "G|G"
     drv.draw(2)
     drv.click_name("toolAction_run")
     wait(drv)
@@ -220,7 +220,7 @@ def test_fit_bursts_click_gives_the_engines_rows_histogram_and_table(monkeypatch
     window, drv = batch
     rows = window.model.burst_results
     lifetimes = fit_view.burst_lifetimes(rows)
-    assert {"green", "red"} <= set(lifetimes) and lifetimes["green"].size > 100
+    assert {"G|G", "R|G"} <= set(lifetimes) and lifetimes["G|G"].size > 100
     spy = PlotSpy(monkeypatch)
     drv.click_text("Burst lifetimes")
     for _ in range(2):
@@ -233,10 +233,10 @@ def test_fit_bursts_click_gives_the_engines_rows_histogram_and_table(monkeypatch
     for call in bars:
         np.testing.assert_array_equal(call[2][1], np.histogram(lifetimes[call[1]], bins=edges)[0])
     table = {r["series"]: r for r in window.model.lifetime_rows()}
-    assert table["green"]["median"] == f"{np.median(lifetimes['green']):.3f}"
+    assert table["G|G"]["median"] == f"{np.median(lifetimes['G|G']):.3f}"
     drv.click_text("Lifetime table")
     shown = texts(drv.draw(2))
-    assert table["green"]["median"] in shown and table["red"]["n"] in shown
+    assert table["G|G"]["median"] in shown and table["R|G"]["n"] in shown
 
 
 def test_the_batch_rows_equal_the_engines_batch(batch):
@@ -246,18 +246,18 @@ def test_the_batch_rows_equal_the_engines_batch(batch):
     mine = np.sort(
         np.array(
             [
-                r["Tau (green)"]
+                r["Tau (G|G)"]
                 for r in again
-                if "Tau (green)" in r and np.isfinite(r["Tau (green)"])
+                if "Tau (G|G)" in r and np.isfinite(r["Tau (G|G)"])
             ]
         )
     )
     theirs = np.sort(
         np.array(
             [
-                r["Tau (green)"]
+                r["Tau (G|G)"]
                 for r in window.model.burst_results
-                if "Tau (green)" in r and np.isfinite(r["Tau (green)"])
+                if "Tau (G|G)" in r and np.isfinite(r["Tau (G|G)"])
             ]
         )
     )
@@ -276,7 +276,7 @@ def test_save_results_click_writes_the_fits_into_the_containers(batch, burst_tab
     run_name = window.model.session.bur_files[0].name  # e.g. m000.pto
     plan = {row["run"]: row for row in plan_legacy(burst_table / run_name)}
     fits = [r for r in plan.values() if r["operation"] == "burst_lifetime_fitting"]
-    assert fits and {r["run"] for r in fits} == {"mle green", "mle red"}
+    assert fits and {r["run"] for r in fits} == {"mle G|G", "mle R|G"}
     ending = "/".join(sorted(COMPANIONS["burst_lifetime_fitting"].values()))
     assert all(r["ending"] == ending for r in fits)
 
@@ -304,9 +304,9 @@ def test_the_detector_setup_is_the_shared_editor_and_its_edits_reach_the_session
     shown = texts(drv.draw(2))
     # the detector table, under its full or narrow-host name header
     assert "Channels" in shown and set(ChannelDefinitionWidget.DETECTOR_TITLES["name"]) & set(shown)
-    rec = next(r for r in app.editor.detector_rows() if r["name"] == "red")
+    rec = next(r for r in app.editor.detector_rows() if r["name"] == "R|G")
     app.editor.edit_detector(rec, "chs", "8, 9, 10")
-    assert app.model.session.detectors["red"]["chs"] == [8, 9, 10]
+    assert app.model.session.detectors["R|G"]["chs"] == [8, 9, 10]
 
 
 def test_settings_round_trip_through_the_file_dialog(app, tmp_path):

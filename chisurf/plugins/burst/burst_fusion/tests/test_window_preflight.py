@@ -16,8 +16,8 @@ pytest.importorskip("tttrlib")
 from chisurf.plugins.burst.burst_fusion.api.models import FusionSettings  # noqa: E402
 from chisurf.plugins.burst.burst_fusion.core.fusion import fuse_folder  # noqa: E402
 
-DETECTORS = {"green": {"chs": [0], "micro_time_ranges": []},
-             "red": {"chs": [1], "micro_time_ranges": []}}
+DETECTORS = {"G|G": {"chs": [0], "micro_time_ranges": []},
+             "R|G": {"chs": [1], "micro_time_ranges": []}}
 WRONG = {"prompt": [0, 2048], "delayed": [2048, 4095]}
 RIGHT = {"prompt": [50, 1613], "delayed": [1613, 3125]}
 RUN = "search"

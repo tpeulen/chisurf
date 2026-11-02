@@ -1,9 +1,9 @@
 """A photon stream with a known number of bursts, so Burst Selection can teach itself.
 
 ``make_demo(folder)`` writes ``bs_demo.spc`` (Becker & Hickl SPC-130): a weak background on the
-green (routing channel 0) and red (channel 8) detectors with :data:`N_BURSTS` bright, evenly
+donor ``G|G`` (routing channel 0) and acceptor ``R|G`` (channel 8) detectors with :data:`N_BURSTS` bright, evenly
 spaced bursts. Every burst carries :data:`PHOTONS_PER_BURST` photons spread over about a
-millisecond, of which :data:`RED_FRACTION` land on the red detector. The answer is therefore
+millisecond, of which :data:`RED_FRACTION` land on the ``R|G`` detector. The answer is therefore
 known: the search must report exactly ``N_BURSTS`` bursts, each with about
 ``PHOTONS_PER_BURST`` photons and a proximity ratio near ``RED_FRACTION``. Nothing here is a
 measurement.
@@ -22,11 +22,11 @@ STEM = "bs_demo"
 N_BURSTS = 12
 PHOTONS_PER_BURST = 200
 RED_FRACTION = 0.6
-#: The detector definition the example loads: green on channel 0, red on channel 8.
+#: The detector definition the example loads: G|G on channel 0, R|G on channel 8.
 SETUP: dict[str, Any] = {
     "detectors": {
-        "green": {"chs": [0], "micro_time_ranges": []},
-        "red": {"chs": [8], "micro_time_ranges": []},
+        "G|G": {"chs": [0], "micro_time_ranges": []},
+        "R|G": {"chs": [8], "micro_time_ranges": []},
     },
     "windows": {},
     "tttr_reading": {"file_type": "SPC-130"},

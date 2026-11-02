@@ -16,6 +16,7 @@ from chisurf.core.datastore import (
     row_count,
     store_from_arrays,
 )
+from chisurf.core.fluorescence.detector_names import role as detector_role
 from chisurf.core.ml import GaussianMixture
 
 from .models import GMMSettings
@@ -63,38 +64,40 @@ def _numeric(table, column: str) -> np.ndarray | None:
     return out
 
 
+def _column_role(det: str) -> str | None:
+    """The FRET role of the detector named *det* in a column (``G|G`` donor, ``R|G`` acceptor,
+    ``R|R`` acceptor_direct; a custom name by its ``donor`` / ``acceptor``), also as the first word
+    of a split stream such as ``G|G par``."""
+    found = detector_role(det)
+    if found is None:
+        found = detector_role(re.split(r"[\s_]+", det.strip(), maxsplit=1)[0])
+    return found
+
+
 def _find_detector_columns(names: Sequence[str], role: str) -> list[str]:
-    """Find per-detector photon count column names for role ('green'/'donor' or 'red'/'acceptor')."""
+    """Find per-detector photon count column names of *role* (``donor`` / ``acceptor``)."""
     pattern = re.compile(r"^number of photons \((?P<name>[^)]+)\)$", re.IGNORECASE)
     cols = []
     for col in names:
         m = pattern.match(str(col).strip())
-        if m:
-            det = m.group("name").lower()
-            if role == "green" and ("green" in det or "donor" in det):
-                cols.append(col)
-            elif role == "red" and ("red" in det or "acceptor" in det):
-                cols.append(col)
+        if m and _column_role(m.group("name")) == role:
+            cols.append(col)
     return cols
 
 
 def _find_rate_columns(names: Sequence[str], role: str) -> list[str]:
-    """Find per-detector count-rate column names for role ('green'/'donor' or 'red'/'acceptor')."""
+    """Find per-detector count-rate column names of *role* (``donor`` / ``acceptor``)."""
     pattern = re.compile(r"^(?P<name>.*)\s+count rate\s*\(khz\)$", re.IGNORECASE)
     cols = []
     for col in names:
         m = pattern.match(str(col).strip())
-        if m:
-            det = m.group("name").lower()
-            if role == "green" and ("green" in det or "donor" in det):
-                cols.append(col)
-            elif role == "red" and ("red" in det or "acceptor" in det):
-                cols.append(col)
+        if m and _column_role(m.group("name")) == role:
+            cols.append(col)
     return cols
 
 
 def _find_detector_series(table, role: str) -> np.ndarray | None:
-    """Return the summed numeric series for role ('green' or 'red') when present."""
+    """Return the summed numeric series of *role* (``donor`` / ``acceptor``) when present."""
     names = _names(table)
     cols = _find_detector_columns(names, role)
     if cols:
@@ -118,20 +121,19 @@ def _find_detector_series(table, role: str) -> np.ndarray | None:
 
 
 def proximity_ratio(frame) -> np.ndarray | None:
-    """Compute the burst proximity ratio PR = red / (green + red).
+    """Compute the burst proximity ratio PR = acceptor / (donor + acceptor).
 
     Uses an explicit ``Proximity Ratio`` column when present, otherwise the
-    per-detector green/red photon counts (``Number of Photons (red|green)``,
-    case-insensitive, supporting Red/Green, donor/acceptor, or polarization-split
-    streams), then the green/red count rates. Returns ``None`` when no source
-    columns exist. Bursts with no green+red signal yield ``NaN`` (excluded from
+    per-detector donor/acceptor photon counts (``Number of Photons (R|G)`` /
+    ``(G|G)``, custom donor/acceptor names, or polarization-split streams), then the donor/acceptor count rates. Returns ``None`` when no source
+    columns exist. Bursts with no donor+acceptor signal yield ``NaN`` (excluded from
     histograms), rather than collapsing to 0.
     """
     explicit = _numeric(frame, "Proximity Ratio")
     if explicit is not None:
         return explicit
-    red = _find_detector_series(frame, "red")
-    green = _find_detector_series(frame, "green")
+    red = _find_detector_series(frame, "acceptor")
+    green = _find_detector_series(frame, "donor")
     if red is not None and green is not None:
         total = red + green
         return np.divide(
@@ -172,7 +174,7 @@ def extract_features(frames: Sequence[Any]) -> Any:
         if "fret" in _names(frame):
             fret = np.asarray(frame["fret"], dtype=float)
         else:
-            # Derive the proximity ratio from green/red photon counts when there is
+            # Derive the proximity ratio from donor/acceptor photon counts when there is
             # no explicit column (generate_burst_dataframe records per-detector
             # counts but no Proximity Ratio column).
             #

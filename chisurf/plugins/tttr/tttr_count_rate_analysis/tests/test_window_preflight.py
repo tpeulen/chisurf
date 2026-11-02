@@ -21,10 +21,10 @@ from chisurf.plugins.tttr.tttr_count_rate_analysis.cli import (  # noqa: E402
     window_check,
 )
 
-GATES = {"green": {"chs": [0], "micro_time_ranges": [[0, 4095]]},
-         "red": {"chs": [1], "micro_time_ranges": [[0, 4095]]}}
-MATCHING = {"detectors": {"green": {"chs": [0], "micro_time_ranges": [[0, 3125]]},
-                          "red": {"chs": [1], "micro_time_ranges": [[0, 3125]]}},
+GATES = {"G|G": {"chs": [0], "micro_time_ranges": [[0, 4095]]},
+         "R|G": {"chs": [1], "micro_time_ranges": [[0, 4095]]}}
+MATCHING = {"detectors": {"G|G": {"chs": [0], "micro_time_ranges": [[0, 3125]]},
+                          "R|G": {"chs": [1], "micro_time_ranges": [[0, 3125]]}},
             "windows": {"prompt": [50, 1613], "delayed": [1613, 3125]}}
 
 
@@ -86,8 +86,8 @@ def test_a_setup_without_windows_is_checked_for_its_gates_only(demo):
     per_detector = {"detectors": MATCHING["detectors"], "windows": {}}
     # "no windows" is not a finding
     assert windows_message(window_check(str(demo), per_detector)) is None
-    narrow = {"detectors": {"green": {"chs": [0], "micro_time_ranges": [[0, 3125]]},
-                            "red": {"chs": [1], "micro_time_ranges": [[1700, 3000]]}},
+    narrow = {"detectors": {"G|G": {"chs": [0], "micro_time_ranges": [[0, 3125]]},
+                            "R|G": {"chs": [1], "micro_time_ranges": [[1700, 3000]]}},
               "windows": {}}
     line = windows_message(window_check(str(demo), narrow))
     assert line and line.startswith("Detector gates do not match"), line

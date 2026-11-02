@@ -232,14 +232,22 @@ def detector_window_list_switches_the_displayed_window(
     drv.escape()
 
 
+def add_custom_detector(drv: Driver) -> None:
+    """Add a detector under a custom name ("New Detector"): the editor's Add is a list of the
+    unused default names (G|G ...) and, last, "Custom name"."""
+    drv.click_text("Add detector ...")
+    drv.draw(2)
+    drv.click_text("Custom name", last=True)
+    drv.draw(2)
+
+
 def detectors_window_shows_the_computed_windows_and_adding_one_updates_the_model(
     app: Any, drv: Driver
 ) -> None:
     app.docks.focus("Detectors")
     drv.draw(3)
     assert "ch0" in drv.draw(2).strings and list(app.model._windows()) == ["ch0"]
-    drv.click_text("Add")
-    drv.draw(2)
+    add_custom_detector(drv)
     assert "New Detector" in app.model.detectors and "ch0" in app.model.detectors
     assert app.model.status_line == "Detector windows changed. Press Run to recompute."
     assert app.model.needs_recompute() or not app.model._columns

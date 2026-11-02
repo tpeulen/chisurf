@@ -16,12 +16,12 @@ from chisurf.plugins.fcs.fcs_filter_calculator.gui.model import FilterModel
 #: The detector setup the tests were written against: green, red and yellow detectors.
 SEEDED_SETUP = {
     "detectors": {
-        "green": {"chs": [0, 8]},
-        "red": {"chs": [1, 9]},
-        "yellow": {"chs": [2, 10]},
+        "G|G": {"chs": [0, 8]},
+        "R|G": {"chs": [1, 9]},
+        "R|R": {"chs": [2, 10]},
     }
 }
-DETECTORS = ["green", "red", "yellow"]
+DETECTORS = ["G|G", "R|G", "R|R"]
 
 
 @pytest.fixture(autouse=True)
@@ -98,9 +98,9 @@ def test_preloaded_patterns_are_convolved_per_detector():
     fast = model.components[0].source
     assert not np.array_equal(totals[0], totals[1])
     assert not np.allclose(
-        fast["patterns_by_detector"]["green"], fast["patterns_by_detector"]["red"]
+        fast["patterns_by_detector"]["G|G"], fast["patterns_by_detector"]["R|G"]
     )
-    assert set(model._irf_by_detector) >= {"green", "red"}
+    assert set(model._irf_by_detector) >= {"G|G", "R|G"}
 
 
 def test_example_mixture_survives_project_roundtrip(tmp_path):
@@ -111,7 +111,7 @@ def test_example_mixture_survives_project_roundtrip(tmp_path):
     irf_path = tmp_path / "scatter_irf.txt"
     np.savetxt(irf_path, [0.0, 1.0, 0.5])
     source.options_model.scatter_irf = True
-    detector = (source.detectors.selected or ["green"])[0]
+    detector = (source.detectors.selected or ["G|G"])[0]
     set_irf(source, detector, irf_path)
     source.save_project(project)
 
@@ -188,7 +188,7 @@ def test_nuisance_scatter_fit_ignores_zero_emission_species():
     real = np.exp(-x / 40.0) + 0.01
     zero = np.zeros_like(x)
 
-    detector = (model.detectors.selected or ["green"])[0]
+    detector = (model.detectors.selected or ["G|G"])[0]
     patterns, labels = model._nuisance_patterns(total, [real, zero], detector)
 
     assert any(label.startswith("Scatter / IRF (") for label in labels)
@@ -208,15 +208,15 @@ def test_fit_pattern_source_selects_detector_specific_snapshot():
             "lifetimes": [3.0],
             "bin_width": 0.1,
             "patterns_by_detector": {
-                "green": [4.0, 2.0, 1.0],
-                "red": [1.0, 0.5, 0.25],
+                "G|G": [4.0, 2.0, 1.0],
+                "R|G": [1.0, 0.5, 0.25],
                 "__default__": [4.0, 2.0, 1.0],
             },
         }
     )
     component = model.components[0]
-    green, _ = model._species_item_pattern(component, 3, ["green"])
-    red, _ = model._species_item_pattern(component, 3, ["red"])
+    green, _ = model._species_item_pattern(component, 3, ["G|G"])
+    red, _ = model._species_item_pattern(component, 3, ["R|G"])
     assert np.allclose(green, [4.0, 2.0, 1.0])
     assert np.allclose(red, [1.0, 0.5, 0.25])
 
@@ -391,6 +391,24 @@ def test_the_detector_irf_shift_moves_the_prompt_and_persists():
     assert abs(detectors.shift(detector) - 0.5) < 1e-9
 
 
+def test_detector_role_keys_are_unambiguous_with_bar_names():
+    """``G|G`` holds the key separator: keys split at the last ``|``, and the detector-wide and
+    polarisation entries of one detector stay apart."""
+    from chisurf.plugins.fcs.fcs_filter_calculator.gui.model import Detectors
+
+    detectors = Detectors()
+    for name in ("G|G", "R|G", "plain"):
+        for role in ("", "par", "perp"):
+            assert Detectors.split_key(Detectors.key(name, role)) == (name, role)
+    detectors.set_width("G|G", 0.3)
+    detectors.set_width("G|G", 0.4, role="par")
+    detectors.set_width("R|G", 0.5, role="par")
+    assert (detectors.width("G|G"), detectors.width("G|G", "par")) == (0.3, 0.4)
+    assert detectors.width("R|G", "par") == 0.5 and detectors.width("R|G") == 0.2  # default
+    assert sorted(map(Detectors.split_key, detectors.values["width"])) == [
+        ("G|G", ""), ("G|G", "par"), ("R|G", "par")]
+
+
 # -- instrument -------------------------------------------------------------------------------------
 
 
@@ -413,7 +431,7 @@ def test_a_setup_calibration_prepopulates_the_instrument():
     model = FilterModel()
     model.set_setup(
         {
-            "detectors": {"green": {}},
+            "detectors": {"G|G": {}},
             "calibration": {"alpha": 0.02, "gamma": 0.9, "g_factor": 1.15},
         }
     )
@@ -433,7 +451,7 @@ def test_a_calibration_measured_once_arrives_here():
     calib.gamma, calib.alpha, calib.beta, calib.delta, calib.r0 = 0.65, 0.08, 1.4, 0.06, 54.0
     model = FilterModel()
     model.set_setup(
-        {"detectors": {"green": {}, "red": {}}, "fret_calibration": calibration_to_setup(calib)}
+        {"detectors": {"G|G": {}, "R|G": {}}, "fret_calibration": calibration_to_setup(calib)}
     )
     assert model.instrument_model.gamma == pytest.approx(0.65)
     assert model.instrument_model.alpha == pytest.approx(0.08)
@@ -460,7 +478,7 @@ def test_the_acceptor_excitation_channel_is_not_switched_off_by_default():
         "crosstalk": {k: DEFAULTS[k] for k in ("alpha", "beta", "gamma", "delta")},
     }
     patterns = fret_species_detector_patterns(source, DETECTORS, 256)
-    assert np.sum(patterns["yellow"]) > 0.0
+    assert np.sum(patterns["R|R"]) > 0.0
 
 
 # -- auto-fit -------------------------------------------------------------------------------------
@@ -492,10 +510,10 @@ def test_auto_fit_joint_irf_fit_resolves_distinct_components(tmp_path):
     np.savetxt(total_path, total)
 
     model = FilterModel(example=False)
-    model.detectors.selected = ["green"]
+    model.detectors.selected = ["G|G"]
     model.set_total_paths([total_path])
     model._fit_bounds = (0, 255)
-    width_before = model.detectors.width("green")
+    width_before = model.detectors.width("G|G")
     model._auto_fit_components(n_components=2)
 
     assert len(model.components) == 2
@@ -504,7 +522,7 @@ def test_auto_fit_joint_irf_fit_resolves_distinct_components(tmp_path):
     assert abs(taus[1] - 4.0) < 0.6
     assert taus[1] - taus[0] > 1.0  # two DISTINCT lifetimes, not collapsed to one
     # No measured IRF -> the IRF width was fitted and written back to the detector.
-    assert abs(model.detectors.width("green") - width_before) > 1e-4
+    assert abs(model.detectors.width("G|G") - width_before) > 1e-4
     source = model.components[0].source
     assert source["start_bin"] == 0
     assert "patterns_by_detector" in source
@@ -575,7 +593,7 @@ def test_auto_fit_settings_drive_kind_and_bounds(tmp_path):
     path = tmp_path / "mix.txt"
     np.savetxt(path, total)
     model = FilterModel(example=False)
-    model.detectors.selected = ["green"]
+    model.detectors.selected = ["G|G"]
     model.set_total_paths([path])
     model._fit_bounds = (10, 1000)
 

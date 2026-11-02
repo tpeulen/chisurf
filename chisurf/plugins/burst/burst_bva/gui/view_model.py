@@ -134,7 +134,7 @@ class BvaViewModel(WindowsPreflightMixin):
         self.notify("folder")
 
     def apply_channel_settings(self, settings: dict) -> None:
-        """Take a workflow's detector definition: the green/donor and red/acceptor detectors' channels and
+        """Take a workflow's detector definition: the donor (G|G) and acceptor (R|G) detectors' channels and
         micro-time ranges, and the file type (the burst workflow hands its setup over this way)."""
         from chisurf.core.fluorescence.burst.table import fret_detectors
 

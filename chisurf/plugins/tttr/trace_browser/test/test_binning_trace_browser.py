@@ -33,7 +33,7 @@ REFERENCE = {
     1.0: {"bins": 62329, "last": 62.328},
 }
 SUMS = [22443, 56257, 0]
-LABELS = ["green", "red", "yellow"]
+LABELS = ["G|G", "R|G", "R|R"]
 
 
 @pytest.fixture
@@ -93,9 +93,9 @@ def test_empty_or_absent_mapping_uses_the_channel_list_then_all_channels(spc, ma
 
 def test_selected_names_filter_and_order_detectors(spc):
     _, c, labels = bin_trace(
-        spc, 0.01, detectors=ALEX["detectors"], selected=["red", "nope", "green"]
+        spc, 0.01, detectors=ALEX["detectors"], selected=["R|G", "nope", "G|G"]
     )
-    assert labels == ["red", "green"]
+    assert labels == ["R|G", "G|G"]
     assert [int(x) for x in c.sum(axis=0)] == [56257, 22443]
     assert bin_trace(spc, 0.01, detectors=ALEX["detectors"], selected=["nope"])[2] == []
 
@@ -185,9 +185,9 @@ class BlockQt(importlib.abc.MetaPathFinder):
             raise RuntimeError('Qt imported: ' + fullname)
 sys.meta_path.insert(0, BlockQt())
 from chisurf.plugins.tttr.trace_browser.core import binning, trace
-det = {{"green": {{"chs": [1], "micro_time_ranges": [[616, 3784]]}}}}
+det = {{"G|G": {{"chs": [1], "micro_time_ranges": [[616, 3784]]}}}}
 out = trace.load_trace({str(spc)!r}, 10.0, setup_settings={{"detectors": det}})
-assert out["labels"] == ["green"] and int(sum(r[0] for r in out["counts"])) == 22443, out["labels"]
+assert out["labels"] == ["G|G"] and int(sum(r[0] for r in out["counts"])) == 22443, out["labels"]
 bad = sorted(x for x in sys.modules if x == 'chisurf.gui' or x.startswith('chisurf.gui.'))
 assert not bad, bad[:5]
 print('QT-FREE OK')

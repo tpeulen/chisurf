@@ -104,7 +104,7 @@ csc ndxplorer image --from-mmfdb <tttr_or_image_artifact_id> --db mmfdb.sqlite \
 `--select "<param>:<min>-<max>"` (open-ended `min-` or `-max` allowed). `param`
 matches a column name case-insensitively — the whole name, or the part before
 `|` of an annotated column — as it appears in the burst files, for example
-`Number of Photons`, `Duration (ms)`, `Count Rate (KHz)`, `Number of Photons (green)`.
+`Number of Photons`, `Duration (ms)`, `Count Rate (KHz)`, `Number of Photons (G|G)`.
 Columns derived by ndX's equations are available once computed. An unknown name
 is logged and the gate skipped, so check the reported `n_out`. Use `--query`
 for expressions over any loaded column.

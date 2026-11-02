@@ -50,7 +50,7 @@ Traps: `detect_alex_period` on a stream that does not alternate used to scan hun
 (minutes) -- `min_confidence` stops it, and `detect_alex_windows` searches 2 µs–2 ms only because
 cw burst drift gives a spectral "line" of contrast > 2000 at ~90 ms. The gate rule is "a gate that
 holds **none** of the pulses its detector sees" -- the stricter "misses any pulse" flagged BVA's
-prompt-gated acceptor and the red/yellow split (tried, reverted 2026-10-29). A tttrlib built in
+prompt-gated acceptor and the `R|G`/`R|R` split (tried, reverted 2026-10-29). A tttrlib built in
 `build/dev` is shadowed by the editable finder in the arm64 env: drop it from `sys.meta_path` to
 test the build.
 

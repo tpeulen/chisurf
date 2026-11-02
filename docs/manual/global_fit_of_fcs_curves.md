@@ -9,9 +9,9 @@ tags: [manual, fitting, global-analysis, fcs, correlation]
 
 Switch back to ChiSurf2016 and load the following correlation curves form your DNA-sample:
 
-*DNA_gp.cor*: Autocrrelation of green channels in prompt time window
+*DNA_gp.cor*: Autocrrelation of green channels in prompt time window (detector `G|G`)
 
-*DNA_rd.cor*: Autocorrelation of red channels in delay time window
+*DNA_rd.cor*: Autocorrelation of red channels in delay time window (detector `R|R`)
 
 *DNA_PIE.cor*: Crosscorrelation of green signal in the prompt time window with red signal in the delay time window
 

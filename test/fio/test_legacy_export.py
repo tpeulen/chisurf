@@ -148,7 +148,7 @@ def test_a_keyed_result_is_placed_on_the_full_burst_grid(measurement: Path, tmp_
 
 
 def test_a_per_detector_fit_goes_to_its_colours_ending(measurement: Path, tmp_path: Path):
-    for detector, tau in (("green", 2.0), ("red", 1.0)):
+    for detector, tau in (("G|G", 2.0), ("R|G", 1.0)):
         _write(
             measurement,
             f"mle {detector}",
@@ -220,8 +220,8 @@ def test_mle_h2mm_fcs_are_runs_of_their_own_derived_from_the_burst_table(
     from chisurf.plugins.core.pto_inspector.core import run_rows_for
 
     box = container_for(measurement)
-    green = store_from_arrays({"Tau (green)": np.linspace(1.0, 4.0, N)})
-    write_mle_container(box, {"green": green}, parameters={"model": "a"})
+    green = store_from_arrays({"Tau (G|G)": np.linspace(1.0, 4.0, N)})
+    write_mle_container(box, {"G|G": green}, parameters={"model": "a"})
     write_h2mm_container(
         box,
         store_from_arrays({"H2MM State": np.arange(N, dtype=float)}),
@@ -242,7 +242,7 @@ def test_mle_h2mm_fcs_are_runs_of_their_own_derived_from_the_burst_table(
                 continue
             chain = m.lineage(obj.uid)
             assert chain[-1]["name"] == "m000.ptu", chain
-            if obj.name.rpartition("/")[2] in ("mle green", "h2mm", "burst fcs"):
+            if obj.name.rpartition("/")[2] in ("mle g|g", "h2mm", "burst fcs"):
                 assert chain[1]["name"].endswith("m000.bur"), chain
     out = tmp_path / "legacy"
     export_legacy(box, out)

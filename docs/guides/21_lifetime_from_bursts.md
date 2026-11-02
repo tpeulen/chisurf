@@ -72,8 +72,8 @@ stream = tttrlib.TTTR(
     "SPC-130",
 )
 detectors = {
-    "green": {"chs": [0, 8], "micro_time_ranges": [[0, 4095]]},
-    "red": {"chs": [1, 9], "micro_time_ranges": [[0, 2048]]},
+    "G|G": {"chs": [0, 8], "micro_time_ranges": [[0, 4095]]},
+    "R|G": {"chs": [1, 9], "micro_time_ranges": [[0, 2048]]},
 }
 results = extract_irf_background(
     stream, detectors, min_photons=60, photon_window=10, time_window=1e-3,
@@ -297,8 +297,8 @@ step 6 with the box already ticked, placed *after* the segmentation it consumes.
 The control is shown only there — on step 6 it offered an option whose input did
 not exist yet. Run standalone, the checkbox is always available.
 
-The results are extra **columns on the same burst row** — `Tau S0 (green)`,
-`Tau S1 (green)`, … beside the all-photon `Tau (green)`. That is deliberate and
+The results are extra **columns on the same burst row** — `Tau S0 (G|G)`,
+`Tau S1 (G|G)`, … beside the all-photon `Tau (G|G)`. That is deliberate and
 it is the only shape that works: a burst table has one row per burst, every
 companion is merged onto it by position, and the number of dwells varies from
 burst to burst. **A sub-population is a column, not a row.** The burst stays the

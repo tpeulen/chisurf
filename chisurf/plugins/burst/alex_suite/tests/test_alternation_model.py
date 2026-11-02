@@ -51,7 +51,7 @@ def test_arrival_detects_and_converts_the_demo(stream):
     assert not needs_conversion(files[0]), "the container has its micro-time: never folded twice"
     assert setup["setup_name"] == SETUP_NAME
     assert setup["windows"] == {"prompt": green, "delayed": red}
-    assert setup["detectors"]["yellow"]["chs"] == [demo.ACCEPTOR_CHANNEL]
+    assert setup["detectors"]["R|R"]["chs"] == [demo.ACCEPTOR_CHANNEL]
     assert "Press Next" in model.status_text
 
 
@@ -95,14 +95,14 @@ def test_bad_channel_fields_are_refused(stream):
 # -- the "pie" pass-through: a container converted earlier carries its setup ------------------------- #
 
 STORED_DETECTORS = {
-    "green": {
+    "G|G": {
         "chs": [demo.DONOR_CHANNEL],
         "g_factor": 1.0,
         "l1": 0.0,
         "l2": 0.0,
         "micro_time_ranges": [[100, 3900]],
     },
-    "yellow": {
+    "R|R": {
         "chs": [demo.ACCEPTOR_CHANNEL],
         "g_factor": 1.0,
         "l1": 0.0,
@@ -163,8 +163,8 @@ def test_a_converted_container_adopts_its_stored_setup(converted, wrapped):
     assert setup["setup_name"] == SETUP_NAME
     assert setup["detectors"] == STORED_DETECTORS
     assert setup["windows"] == {
-        "prompt": STORED_DETECTORS["green"]["micro_time_ranges"][0],
-        "delayed": STORED_DETECTORS["yellow"]["micro_time_ranges"][0],
+        "prompt": STORED_DETECTORS["G|G"]["micro_time_ranges"][0],
+        "delayed": STORED_DETECTORS["R|R"]["micro_time_ranges"][0],
     }
     assert setup["tttr_reading"]["file_type"] == "PTO"
     assert "stored detector setup" in model.status_text

@@ -48,8 +48,8 @@ def test_live_equals_offline_on_the_recorded_file(recorded):
     for col in (
         "First Photon",
         "Last Photon",
-        "Number of Photons (green)",
-        "Number of Photons (red)",
+        "Number of Photons (G|G)",
+        "Number of Photons (R|G)",
     ):
         assert np.array_equal(result.table[col], off[col]), col
     assert np.allclose(result.table["Proximity Ratio"], off["Proximity Ratio"])

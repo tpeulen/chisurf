@@ -59,7 +59,7 @@ def _synthetic_dataset(n_bursts=250, burst_len=80, seed=7):
 
 def test_bursts_from_dataframe_and_analyze():
     df, tttrs = _synthetic_dataset()
-    streams = [StreamDef("green", [0], []), StreamDef("red", [1], [])]
+    streams = [StreamDef("G|G", [0], []), StreamDef("R|G", [1], [])]
     data = bursts_from_dataframe(df, tttrs, streams, min_photons=5)
     assert data.n_bursts == 250
     assert data.n_streams == 2
@@ -82,7 +82,7 @@ def test_bursts_from_dataframe_and_analyze():
 def test_analyze_populates_dwells_path_and_measured_es():
     """analyze() exposes a Viterbi path and per-dwell measured E aligned to states."""
     df, tttrs = _synthetic_dataset()
-    streams = [StreamDef("green", [0], []), StreamDef("red", [1], [])]
+    streams = [StreamDef("G|G", [0], []), StreamDef("R|G", [1], [])]
     data = bursts_from_dataframe(df, tttrs, streams, min_photons=5)
     ana = analysis.analyze(
         data,
@@ -132,7 +132,7 @@ def test_analyze_stoichiometry_with_alex_stream():
         base += int(t[-1]) + 1000
     tttr = _fake_tttr(np.concatenate(macro), np.concatenate(chan), np.concatenate(micro))
     df = pd.DataFrame(rows, columns=["First File", "First Photon", "Last Photon"])
-    streams = [StreamDef("green", [0]), StreamDef("red", [1]), StreamDef("yellow", [2])]
+    streams = [StreamDef("G|G", [0]), StreamDef("R|G", [1]), StreamDef("R|R", [2])]
     data = bursts_from_dataframe(df, {"f.spc": tttr}, streams, min_photons=8)
     assert data.n_streams == 3
     ana = analysis.analyze(data, state_counts=(1, 2), base_time_s=1e-6, n_restarts=2, max_iter=200)
@@ -167,7 +167,7 @@ def test_nanotime_divisors_expand_streams_and_recover_fret():
         base += int(t[-1]) + 1000
     tttr = _fake_tttr(np.concatenate(macro), np.concatenate(chan), np.concatenate(micro))
     df = pd.DataFrame(rows, columns=["First File", "First Photon", "Last Photon"])
-    streams = [StreamDef("green", [0], []), StreamDef("red", [1], [])]
+    streams = [StreamDef("G|G", [0], []), StreamDef("R|G", [1], [])]
 
     data = bursts_from_dataframe(df, {"f.spc": tttr}, streams, min_photons=5, divisors=2)
     assert data.n_streams == 4  # 2 base streams × 2 nanotime bins
@@ -189,7 +189,7 @@ def test_profile_likelihood_peaks_at_mle_with_ordered_ci():
     from chisurf.plugins.burst.burst_h2mm.core.analysis import profile_likelihood
 
     df, tttrs = _synthetic_dataset()
-    streams = [StreamDef("green", [0], []), StreamDef("red", [1], [])]
+    streams = [StreamDef("G|G", [0], []), StreamDef("R|G", [1], [])]
     data = bursts_from_dataframe(df, tttrs, streams, min_photons=5)
     ana = analysis.analyze(data, state_counts=(2,), base_time_s=1e-6, n_restarts=2, max_iter=200)
     scans = profile_likelihood(
@@ -216,7 +216,7 @@ def test_bootstrap_uncertainty_brackets_state_fret():
     from chisurf.plugins.burst.burst_h2mm.core.analysis import bootstrap_uncertainty
 
     df, tttrs = _synthetic_dataset()
-    streams = [StreamDef("green", [0], []), StreamDef("red", [1], [])]
+    streams = [StreamDef("G|G", [0], []), StreamDef("R|G", [1], [])]
     data = bursts_from_dataframe(df, tttrs, streams, min_photons=5)
     ana = analysis.analyze(data, state_counts=(2,), base_time_s=1e-6, n_restarts=1, max_iter=200)
     unc = bootstrap_uncertainty(
@@ -241,7 +241,7 @@ def test_stream_microtime_gating():
     tttr = _fake_tttr(macro, chan, micro)
     df = pd.DataFrame([("f", 0, 4)], columns=["First File", "First Photon", "Last Photon"])
     # Green accepts ch0 with micro<=1000; red accepts ch1 any micro.
-    streams = [StreamDef("green", [0], [(0, 1000)]), StreamDef("red", [1], [])]
+    streams = [StreamDef("G|G", [0], [(0, 1000)]), StreamDef("R|G", [1], [])]
     from chisurf.core.fluorescence.burst.photons import extract_burst_photons
 
     times, sidx = extract_burst_photons(df, {"f": tttr}, streams, min_photons=1)

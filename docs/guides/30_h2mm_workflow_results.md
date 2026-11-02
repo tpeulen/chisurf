@@ -24,7 +24,7 @@ from chisurf.plugins.burst.burst_h2mm.api.models import H2mmSettings, StreamSett
 from chisurf.plugins.burst.burst_h2mm.backend.services import run_analysis
 
 settings = H2mmSettings(
-    streams=[StreamSettings("green", [0, 8]), StreamSettings("red", [1, 9])],
+    streams=[StreamSettings("G|G", [0, 8]), StreamSettings("R|G", [1, 9])],
     min_states=1, max_states=4,       # scan state counts
     criterion="bic",                  # or "icl"
     engine="em",                      # or "em-float32", "surrogate", ...

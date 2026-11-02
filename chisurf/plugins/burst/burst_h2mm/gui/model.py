@@ -18,6 +18,7 @@ from typing import Any, Callable
 
 from tttrlib import ranges_to_inclusive
 
+from chisurf.core.fluorescence.detector_names import ACCEPTOR, DONOR, detector_of_role
 from chisurf.core.fluorescence.excitation import WindowsPreflightMixin, format_ranges
 from chisurf.plugins.core.pto_inspector.core import RunPickerMixin
 
@@ -92,14 +93,14 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
         # detectors is the donor, acceptor and (optional) acceptor-excitation stream.
         self.setup: dict = {
             "detectors": {
-                "green": {
+                DONOR: {
                     "chs": [0, 8],
                     "micro_time_ranges": [],
                     "g_factor": 1.0,
                     "l1": 0.0,
                     "l2": 0.0,
                 },
-                "red": {
+                ACCEPTOR: {
                     "chs": [1, 9],
                     "micro_time_ranges": [],
                     "g_factor": 1.0,
@@ -115,8 +116,8 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
                 "micro_time_binning": 1,
             },
         }
-        self.donor: str = "green"
-        self.acceptor: str = "red"
+        self.donor: str = DONOR
+        self.acceptor: str = ACCEPTOR
         self.aex: str = NO_AEX
         # Model selection
         self.min_states: int = 1
@@ -181,9 +182,11 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
         self.setup = copy.deepcopy(settings)
         names = self.detector_names()
         if self.donor not in names:
-            self.donor = names[0] if names else ""
+            self.donor = detector_of_role(names, "donor") or (names[0] if names else "")
         if self.acceptor not in names:
-            self.acceptor = names[1] if len(names) > 1 else (names[0] if names else "")
+            self.acceptor = detector_of_role(names, "acceptor") or (
+                names[1] if len(names) > 1 else (names[0] if names else "")
+            )
         if self.aex not in names:
             self.aex = NO_AEX
         self.notify("setup")

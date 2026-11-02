@@ -24,20 +24,20 @@ def _species(**kw):
 def test_donor_only_has_no_yellow_and_green_dominates():
     sp = _species(state="d_only", crosstalk=CrosstalkFactors(alpha=0.05))
     p = fret_species_patterns(N, sp, dt=DT)
-    assert set(p) == {"green", "red", "yellow"}
-    assert p["yellow"].sum() == 0.0  # no acceptor
-    assert p["green"].sum() > p["red"].sum()  # red is only leakage
+    assert set(p) == {"G|G", "R|G", "R|R"}
+    assert p["R|R"].sum() == 0.0  # no acceptor
+    assert p["G|G"].sum() > p["R|G"].sum()  # red is only leakage
     # Red is exactly the leakage fraction of green (both convolved identically).
-    ratio = p["red"].sum() / p["green"].sum()
+    ratio = p["R|G"].sum() / p["G|G"].sum()
     assert ratio == pytest.approx(0.05, rel=1e-6)
 
 
 def test_acceptor_only_has_no_green():
     sp = _species(state="a_only", crosstalk=CrosstalkFactors(gamma=1.0, delta=0.1))
     p = fret_species_patterns(N, sp, dt=DT)
-    assert p["green"].sum() == 0.0  # no donor
-    assert p["yellow"].sum() > 0.0
-    assert p["red"].sum() > 0.0  # direct-excited acceptor
+    assert p["G|G"].sum() == 0.0  # no donor
+    assert p["R|R"].sum() > 0.0
+    assert p["R|G"].sum() > 0.0  # direct-excited acceptor
 
 
 def test_da_green_is_quenched_relative_to_donor_only():
@@ -54,8 +54,8 @@ def test_da_green_is_quenched_relative_to_donor_only():
     # A higher transfer efficiency shortens the donor decay: its mean arrival
     # time (first moment) drops relative to the unquenched donor-only channel.
     t = np.arange(N) * DT
-    mean_d = (t * d_only["green"]).sum() / d_only["green"].sum()
-    mean_da = (t * da["green"]).sum() / da["green"].sum()
+    mean_d = (t * d_only["G|G"]).sum() / d_only["G|G"].sum()
+    mean_da = (t * da["G|G"]).sum() / da["G|G"].sum()
     assert mean_da < mean_d
 
 
@@ -69,7 +69,7 @@ def test_da_red_has_sensitized_rise():
         crosstalk=CrosstalkFactors(gamma=1.0),
     )
     p = fret_species_patterns(N, sp, dt=DT, normalize=False)
-    red = p["red"]
+    red = p["R|G"]
     assert np.argmax(red) > 2  # peak is delayed (rise)
 
 
@@ -95,8 +95,8 @@ def test_efficiency_vs_distance_modes_agree_at_matched_e():
         normalize=False,
     )
     t = np.arange(N) * DT
-    m_dist = (t * dist["green"]).sum() / dist["green"].sum()
-    m_eff = (t * eff["green"]).sum() / eff["green"].sum()
+    m_dist = (t * dist["G|G"]).sum() / dist["G|G"].sum()
+    m_eff = (t * eff["G|G"]).sum() / eff["G|G"].sum()
     assert m_dist == pytest.approx(m_eff, rel=0.05)
 
 
@@ -133,7 +133,7 @@ def test_gamma_scales_red_relative_to_green():
         N, _species(state="da", crosstalk=CrosstalkFactors(gamma=2.0)), dt=DT, normalize=False
     )
     # Higher γ (acceptor detection) raises red relative to green — matrix amplitude.
-    assert (hi["red"].sum() / hi["green"].sum()) > (lo["red"].sum() / lo["green"].sum())
+    assert (hi["R|G"].sum() / hi["G|G"].sum()) > (lo["R|G"].sum() / lo["G|G"].sum())
 
 
 def test_polarized_channels_sum_to_intensity():
@@ -141,7 +141,7 @@ def test_polarized_channels_sum_to_intensity():
     inten = fret_species_patterns(N, sp, dt=DT, polarized=False, normalize=False)
     pol = fret_species_patterns(N, sp, dt=DT, polarized=True, normalize=False)
     # Magic-angle identity: I_par + 2·I_perp == I_total when G = 1 (per channel).
-    for ch in ("green", "red", "yellow"):
+    for ch in ("G|G", "R|G", "R|R"):
         recon = pol[f"{ch}_parallel"] + 2.0 * pol[f"{ch}_perpendicular"]
         assert np.allclose(recon, inten[ch], atol=1e-9)
 
@@ -151,9 +151,9 @@ def test_polarized_keys_and_anisotropy_ordering():
         state="a_only", anisotropy=Anisotropy(acceptor_r0=0.4, acceptor_rho=2.0, r_inf=0.0)
     )
     pol = fret_species_patterns(N, sp, dt=DT, polarized=True, normalize=False)
-    assert "yellow_parallel" in pol and "yellow_perpendicular" in pol
+    assert "R|R_parallel" in pol and "R|R_perpendicular" in pol
     # Early time is polarized (par > perp); at long time r→0 so they converge.
-    par, perp = pol["yellow_parallel"], pol["yellow_perpendicular"]
+    par, perp = pol["R|R_parallel"], pol["R|R_perpendicular"]
     assert par[1] > perp[1]
 
 
@@ -163,8 +163,8 @@ def test_normalize_preserves_channel_ratios():
     norm = fret_species_patterns(N, sp, dt=DT, normalize=True)
     assert sum(p.sum() for p in norm.values()) == pytest.approx(1.0)
     # Ratio green:red preserved by the common scale factor.
-    assert (norm["green"].sum() / norm["red"].sum()) == pytest.approx(
-        raw["green"].sum() / raw["red"].sum(), rel=1e-6
+    assert (norm["G|G"].sum() / norm["R|G"].sum()) == pytest.approx(
+        raw["G|G"].sum() / raw["R|G"].sum(), rel=1e-6
     )
 
 
@@ -176,7 +176,7 @@ def test_irf_convolution_delays_peak():
     sp = _species(state="d_only")
     ideal = fret_species_patterns(N, sp, dt=DT, normalize=False)
     conv = fret_species_patterns(N, sp, dt=DT, irf=irf, normalize=False)
-    assert np.argmax(conv["green"]) > np.argmax(ideal["green"])
+    assert np.argmax(conv["G|G"]) > np.argmax(ideal["G|G"])
 
 
 def test_from_dict_roundtrip():
@@ -195,7 +195,7 @@ def test_from_dict_roundtrip():
     assert sp.state == "da" and sp.fret_mode == "distance"
     assert sp.crosstalk.alpha == 0.02 and sp.anisotropy.g_factor == 1.1
     p = fret_species_patterns(N, sp, dt=DT)
-    assert set(p) == {"green", "red", "yellow"}
+    assert set(p) == {"G|G", "R|G", "R|R"}
 
 
 def test_anisotropy_spectrum_multi_component():
@@ -230,6 +230,6 @@ def test_anisotropy_spectrum_in_polarized_patterns():
     )
     pol = fret_species_patterns(N, sp, dt=DT, polarized=True, normalize=False)
     # Magic-angle identity still holds with a multi-component anisotropy.
-    recon = pol["yellow_parallel"] + 2.0 * pol["yellow_perpendicular"]
+    recon = pol["R|R_parallel"] + 2.0 * pol["R|R_perpendicular"]
     inten = fret_species_patterns(N, sp, dt=DT, polarized=False, normalize=False)
-    assert np.allclose(recon, inten["yellow"], atol=1e-9)
+    assert np.allclose(recon, inten["R|R"], atol=1e-9)

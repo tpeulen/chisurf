@@ -27,8 +27,8 @@ embeds the editor shows this same page.
 :width: 100%
 
 The page after **Read** on a BH SPC-132 measurement (timing 13.5 ns and
-3.2958984375 ps from the file header), with a test definition: green on routing
-channels 0/1, red on 8/9, two PIE windows, an identity LUT on channel 0 and a
+3.2958984375 ps from the file header), with a test definition: `G|G` on routing
+channels 0/1, `R|G` on 8/9, two PIE windows, an identity LUT on channel 0 and a
 shift of +2 on channel 1.
 ```
 
@@ -45,11 +45,35 @@ One page, four folding sections (click a header to fold it; which are open is re
 | | **Macrotime res. (ns)**, **Microtime res. (ps)**, **Microtime binning**, **Eff. microtime (ps)** | Type numbers; the effective tick is read-only. |
 | | **Plot** | The decay of each routing channel with the PIE windows and detector gates; drag a line to move a range. |
 | PIE Windows | table, **Add** | Window name, start, end; **Delete** removes a row. |
-| Detectors | table, **Add**, **Polarization resolved** | Name, routing channels, micro-time ranges, G factor, l1, l2, G-factor channels; **Calc G** opens calibration from an independent TTTR reference, **Delete** removes the detector. |
+| Detectors | table, **Add detector ...**, **Polarization resolved** | **Add detector ...** is a list: pick an unused default name (`G\|G`, `R\|G`, `R\|R`, ...) or **Custom name** (see [Detector names](#detector-names)). Table: name, routing channels, micro-time ranges, G factor, l1, l2, G-factor channels; **Calc G** opens calibration from an independent TTTR reference, **Delete** removes the detector. |
 | bottom actions | **Preview G** | Estimate G from the already loaded preview for the selected detector (the first detector if none is selected). This updates the working G without archival and clears its old calibration identifiers. |
 | LUT handling | **Apply TAC linearization (LUT) when reading** | Switch the linearization on for every read (adding a LUT switches it on). |
 | | table, **Assign LUT...**, **Configure LUTs...**, **Adjust shifts...** | A LUT file and a micro-time shift per routing channel. |
 | bottom right | **Optical Setup...** | The light-path editor: lasers, filters, fluorophores, detectors. |
+
+### Detector names
+
+A detector is named `E|X`: the colour it detects (**e**mission), a bar, and the colour of the
+excitation that produced it. The colours, in wavelength order, are blue `B`, green `G`, yellow
+`Y` and red `R`. The default names are every emission no bluer than its excitation:
+`B|B`, `G|B`, `Y|B`, `R|B`, `G|G`, `Y|G`, `R|G`, `Y|Y`, `R|Y`, `R|R` -- enough for
+three-colour FRET (`B|B`, `G|B`, `R|B`, `G|G`, `R|G`, `R|R`).
+
+In a two-colour PIE / ALEX setup the analyses find their roles by these names:
+
+| Detector | Role | Historic name |
+|---|---|---|
+| `G\|G` | donor emission under donor (green) excitation | green |
+| `R\|G` | acceptor emission under donor excitation: the FRET-sensitised acceptor | red |
+| `R\|R` | acceptor emission under acceptor (red) excitation: the directly excited acceptor | yellow |
+
+The burst-table columns carry the same names (`Number of Photons (G|G)`, `Tau (G|G)`,
+`S prompt R|G (kHz)`, `S delayed R|R (kHz)`, ...). **Add detector ...** offers the default
+names the setup does not use yet and, last, **Custom name** for any other detector; a custom
+name gets a FRET role only if it contains *donor* or *acceptor*. Where a detector
+names a file, `|` becomes `-` (`G-G`), because `|` is not allowed in Windows file names. A saved
+setup that still uses the historic names (green, red, yellow, blue) is converted once when it
+is read; burst tables written with the old names are not translated.
 
 ## 2. Typing into a table
 

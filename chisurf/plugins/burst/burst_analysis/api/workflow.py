@@ -107,8 +107,10 @@ class Detector:
     Attributes
     ----------
     name : str
-        Spectral/physical name chosen by the user, e.g. ``"green"``, ``"red"``,
-        ``"yellow"``. Purely a label — no FRET role is implied.
+        Name chosen by the user, by default emission|excitation colours
+        (``"G|G"``, ``"R|G"``, ``"R|R"``, see
+        :mod:`chisurf.core.fluorescence.detector_names`). Purely a label here —
+        no FRET role is implied.
     routing_channels : tuple of int
         TCSPC routing (detection) channels assigned to this detector.
     microtime_ranges : tuple of (int, int)

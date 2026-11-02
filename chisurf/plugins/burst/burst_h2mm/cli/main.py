@@ -6,6 +6,7 @@ import pathlib
 
 import click
 
+from chisurf.core.fluorescence.detector_names import ACCEPTOR, DONOR
 from chisurf.plugins.burst.burst_h2mm.api.models import H2mmSettings, StreamSettings
 from chisurf.plugins.burst.burst_h2mm.backend.services import (
     run_analysis,
@@ -109,8 +110,8 @@ def compute(
 
     settings = H2mmSettings(
         streams=[
-            StreamSettings("green", donor, []),
-            StreamSettings("red", acceptor, []),
+            StreamSettings(DONOR, donor, []),
+            StreamSettings(ACCEPTOR, acceptor, []),
         ],
         min_states=min_states,
         max_states=max_states,

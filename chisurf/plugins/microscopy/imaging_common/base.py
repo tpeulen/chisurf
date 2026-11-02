@@ -261,7 +261,7 @@ class ImagingMapViewModel:
     #:
     #: A prefix and not the whole name, because every imaging column is
     #: suffixed with the channel it came from — ``N (ch0)``, ``B (ch1)``,
-    #: ``Mean Micro Time (green)``. Listing the products would mean listing one
+    #: ``Mean Micro Time (G|G)``. Listing the products would mean listing one
     #: entry per channel of every file anyone opens, so an exact-match table
     #: silently matches nothing and every column comes back unitless.
     #:

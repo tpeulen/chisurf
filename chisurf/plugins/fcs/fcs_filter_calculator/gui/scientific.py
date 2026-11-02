@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from chisurf.core.fluorescence import detector_names as dn
 from chisurf.core.fluorescence.decay import (
     afterpulse_decay_pattern,
     optimize_synthetic_scatter_pattern,
@@ -687,7 +688,7 @@ class ScientificOperations:
                 (float(a), float(np.clip(1.0 - float(t) / tau_d0, 0.0, 0.999)))
                 for a, t in zip(amps, taus)
             ]
-        dets = detector_names or ["green", "red", "yellow"]
+        dets = detector_names or list(dn.TWO_COLOUR)
         for amp, efficiency in pairs:
             frac = float(amp) / scale
             tau_d0 * (1.0 - efficiency)

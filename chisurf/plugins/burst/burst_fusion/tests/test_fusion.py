@@ -40,8 +40,8 @@ ANALYSIS = "burstwise_All 0.1000#15"
 #: The fixture folder predates the reading manifest, so the detector definition
 #: has to be supplied — exactly as the workflow's channel page supplies it.
 DETECTORS = {
-    "green": {"chs": [0, 8], "micro_time_ranges": [[0, 2048]]},
-    "red": {"chs": [1, 9], "micro_time_ranges": [[0, 2048]]},
+    "G|G": {"chs": [0, 8], "micro_time_ranges": [[0, 2048]]},
+    "R|G": {"chs": [1, 9], "micro_time_ranges": [[0, 2048]]},
 }
 WINDOWS = {"prompt": [0, 2048], "delayed": [2048, 4095]}
 
@@ -112,7 +112,7 @@ def test_written_folder_is_a_burst_folder(folder, tmp_path):
     # photons (not copied), and keeps the 2n+1 interleaved layout.
     frame = read_bur_file(target / "bi4_bur" / "m000.bur")
     assert row_count(frame) % 2 == 1
-    for column in ("First Photon", "Number of Photons (green)", "Mean Microtime (red) (ns)"):
+    for column in ("First Photon", "Number of Photons (G|G)", "Mean Microtime (R|G) (ns)"):
         assert column in column_names(frame)
 
     rows = data_rows(frame)

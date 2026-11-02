@@ -108,8 +108,8 @@ upstream one actually changes.
 ### 2. Check the channel mapping
 
 The four **Channels** combos are filled automatically from the column names
-(`Green Count Rate (KHz)`, `Red Count Rate (KHz)`, `S delayed yellow (kHz)`,
-`Tau (green)`, the plain `i_dd`/`i_da`/`i_aa` spelling, and the usual `.bur`
+(`G|G Count Rate (KHz)`, `R|G Count Rate (KHz)`, `S delayed R|R (kHz)`,
+`Tau (G|G)`, the plain `i_dd`/`i_da`/`i_aa` spelling, and the usual `.bur`
 headers are all recognised). Fix them if the guess is wrong:
 
 | combo | channel |
@@ -457,7 +457,7 @@ result = auto_calibrate(
     tau_f=tau,                                         # per-burst donor lifetime (ns)
     line=line,
     lightpath={"matrices": crosstalk, "donor": "AF488", "acceptor": "AF647",
-               "green_detector": "green", "red_detector": "red",
+               "green_detector": "G|G", "red_detector": "R|G",
                "qy_d": 0.92, "qy_a": 0.33},            # the optics prior
     n_bootstrap=100,
 )

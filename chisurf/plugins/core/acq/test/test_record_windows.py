@@ -17,7 +17,7 @@ from chisurf.plugins.core.acq.live.window_check import LiveWindowCheck, convert_
 
 RES, N = 32e-12, 3125
 SPC130 = {
-    "detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}},
+    "detectors": {"G|G": {"chs": [0]}, "R|G": {"chs": [1]}},
     "windows": {"prompt": [0, 2048], "delayed": [2048, 4095]},
     "tttr_reading": {"micro_time_resolution": 50.0},
 }
@@ -40,9 +40,9 @@ def _decays(pulses=((2e-9, "d"), (52e-9, "a")), photons=200_000, n_bins=1024, se
     bg = 0.01 * photons / n_bins
     return {
         "decays": {
-            "green": rng.poisson(green / s * photons + bg).astype(float),
-            "red": rng.poisson(red / s * photons + bg).astype(float),
-            "prompt green": np.zeros(n_bins),
+            "G|G": rng.poisson(green / s * photons + bg).astype(float),
+            "R|G": rng.poisson(red / s * photons + bg).astype(float),
+            "prompt G|G": np.zeros(n_bins),
         }
     }
 
@@ -174,7 +174,7 @@ def test_an_alex_run_with_the_wrong_period_warns_and_update_takes_period_and_win
     from chisurf.plugins.core.acq.live.setups import Experiment
 
     m = RecordModel(output_dir=tmp_path, realtime=False)
-    setup = {"detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}}}
+    setup = {"detectors": {"G|G": {"chs": [0]}, "R|G": {"chs": [1]}}}
     exp = Experiment(setup, "alex", alex_period_s=60e-6)  # the stream alternates every 100 µs
     m.session, m.snapshot = _AlexSession(exp, *alex_stream), {"bursts": 0}
     m.window_check_poll()
@@ -192,7 +192,7 @@ def test_an_alex_run_without_macro_times_says_so(tmp_path):
     from chisurf.plugins.core.acq.live.setups import Experiment
 
     m = RecordModel(output_dir=tmp_path, realtime=False)
-    exp = Experiment({"detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}}}, "alex",
+    exp = Experiment({"detectors": {"G|G": {"chs": [0]}, "R|G": {"chs": [1]}}}, "alex",
                      alex_period_s=100e-6)
     m.session, m.snapshot = _AlexSession(exp), {"bursts": 0}
     m.window_check_poll()
@@ -201,16 +201,16 @@ def test_an_alex_run_without_macro_times_says_so(tmp_path):
 
 
 def test_detector_gates_of_another_resolution_are_converted_with_the_windows():
-    setup = {**SPC130, "detectors": {"green": {"chs": [0], "micro_time_ranges": [[0, 4095]]},
-                                     "red": {"chs": [1]}}}
+    setup = {**SPC130, "detectors": {"G|G": {"chs": [0], "micro_time_ranges": [[0, 4095]]},
+                                     "R|G": {"chs": [1]}}}
     out, note = convert_setup_windows(setup, RES)
-    assert out["detectors"]["green"]["micro_time_ranges"] == [[0, 6398]]
+    assert out["detectors"]["G|G"]["micro_time_ranges"] == [[0, 6398]]
     assert "detector gates" in note
 
 
 def test_a_gate_that_holds_no_pulse_is_flagged_live():
     live = LiveWindowCheck()
     windows = {"prompt": [40, 1600], "delayed": [1600, 3125]}
-    live.update(_decays(), windows, RES, N, gates={"red": [[1700, 3000]]})
+    live.update(_decays(), windows, RES, N, gates={"R|G": [[1700, 3000]]})
     assert live.asking
-    assert live.check.proposal_gates["red"] == [[0, N]]
+    assert live.check.proposal_gates["R|G"] == [[0, N]]

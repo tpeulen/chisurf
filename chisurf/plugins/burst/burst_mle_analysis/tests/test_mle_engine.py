@@ -29,7 +29,7 @@ def session(sample_copy):
     s = engine.MleSession()
     s.set_detectors(CHANNEL_SETTINGS["detectors"], CHANNEL_SETTINGS["file_type"])
     s.add_burst_files([sample_copy / BURST_TABLE])
-    s.current_detector = "green"
+    s.current_detector = "G|G"
     return s
 
 
@@ -54,19 +54,19 @@ def test_burst_files_header_and_indices_equal_the_wizards(session, qt_reference)
     assert list(indices[:5]) == ref["indices_first"] and list(indices[-5:]) == ref["indices_last"]
     assert session.current_tttr() is not None
     # recorded at the binning of the green auto-extract, so the channel width is binning x header resolution
-    binning = qt_reference["green"]["binning"]
+    binning = qt_reference["G|G"]["binning"]
     dt, period = engine.header_time_ns(session.current_tttr(), binning)
     assert (dt, period) == tuple(qt_reference["header_time_ns"])
     assert dt == pytest.approx(binning * engine.header_time_ns(session.current_tttr(), 1)[0])
 
 
 def test_auto_extract_equals_the_wizards_one_click(session, qt_reference):
-    ref = qt_reference["green"]
+    ref = qt_reference["G|G"]
     session.auto_extract()
     assert session.outcome is not None
     assert session.settings.micro_time_binning == ref["binning"]
     assert list(session.micro_time_range) == ref["micro_time_range"]
-    for det in ("green", "red"):
+    for det in ("G|G", "R|G"):
         # A Gaussian least-squares fit to the prompt: equal to the optimiser's tolerance, which
         # differs between compilers in the last digits (1e-6 relative, x86 Linux vs arm64 macOS).
         np.testing.assert_allclose(session.irf_np[det], _a(ref["irf_np"][det]), rtol=1e-5, atol=0)
@@ -92,7 +92,7 @@ def test_auto_extract_equals_the_wizards_one_click(session, qt_reference):
 
 
 def test_the_second_detector_and_a_changed_window_equal_the_wizard(session, qt_reference):
-    session.current_detector = "red"
+    session.current_detector = "R|G"
     session.auto_extract()
     assert session.outcome.x[0] == pytest.approx(qt_reference["red_tau"], abs=6e-4)
     assert session.outcome.two_istar == pytest.approx(qt_reference["red_twoIstar"], abs=6e-4)
@@ -160,13 +160,13 @@ def test_the_batch_rows_equal_the_wizards_process_bursts(sample_copy, tmp_path, 
     own = tmp_path / "own"
     shutil.copytree(sample_copy, own)  # the session exports into its own copy
     session.add_burst_files([own / BURST_TABLE])
-    for det in ("green", "red"):
+    for det in ("G|G", "R|G"):
         session.current_detector = det
         session.auto_extract()
     seen = []
     session.run_batch(progress=lambda done, total: seen.append((done, total)))
     mine = _tau_columns(session.burst_results)
-    assert sorted(mine) == sorted(ref["columns"]) and "Tau (green)" in mine and "Tau (red)" in mine
+    assert sorted(mine) == sorted(ref["columns"]) and "Tau (G|G)" in mine and "Tau (R|G)" in mine
     for key in mine:
         if key.startswith("Number of Photons (fit window)"):
             # the photons the fit saw (inside its window), not the wizard's all-photon count
@@ -182,10 +182,10 @@ def test_the_batch_rows_equal_the_wizards_process_bursts(sample_copy, tmp_path, 
         assert np.mean(np.isfinite(wizard) & ~np.isfinite(mine[key])) < 0.03, key
     # the batch fitted the detector on screen with its live window (it used the 0..128 seed before the fix)
     assert (
-        session.settings_of("red").micro_time_start
+        session.settings_of("R|G").micro_time_start
         == ref["red_micro_time_start_in_channel_settings"]
     )
-    assert session.settings_of("red").micro_time_start == ref["wizard_micro_time_start"] != 0
+    assert session.settings_of("R|G").micro_time_start == ref["wizard_micro_time_start"] != 0
     assert len(session.burst_results) == ref["n_rows"] == 2 * engine.row_count(session.df_bursts)
     assert seen and seen[-1][0] == seen[-1][1] == engine.row_count(session.df_bursts)
     # the exported b?4 tables: the same files, the same header and the same number of lines
@@ -203,23 +203,23 @@ def test_the_batch_rows_equal_the_wizards_process_bursts(sample_copy, tmp_path, 
         lines = path.read_text().splitlines()
         assert lines[0] == ref["exports"][name]["header"], name
         assert len(lines) == ref["exports"][name]["n_lines"], name
-    finite = mine["Tau (green)"][np.isfinite(mine["Tau (green)"])]
+    finite = mine["Tau (G|G)"][np.isfinite(mine["Tau (G|G)"])]
     assert finite.size > 100 and 0.1 < np.median(finite) < 10.0
 
 
 def test_session_settings_round_trip():
     s = engine.MleSession()
     s.set_detectors(CHANNEL_SETTINGS["detectors"], "SPC-130")
-    s.current_detector = "red"
+    s.current_detector = "R|G"
     s.settings.tau, s.settings.fix_gamma, s.settings.micro_time_stop = 2.5, False, 99
     s.set_binning(16)
     other = engine.MleSession()
     other.apply_settings_payload(s.settings_payload())
-    assert other.settings_of("red").tau == 2.5 and other.settings_of("red").fix_gamma is False
+    assert other.settings_of("R|G").tau == 2.5 and other.settings_of("R|G").fix_gamma is False
     assert (
-        other.settings_of("red").micro_time_stop == 99 and other.template.micro_time_binning == 16
+        other.settings_of("R|G").micro_time_stop == 99 and other.template.micro_time_binning == 16
     )
-    assert other.file_type == "SPC-130" and list(other.detectors) == ["green", "red"]
+    assert other.file_type == "SPC-130" and list(other.detectors) == ["G|G", "R|G"]
 
 
 def test_the_irf_width_is_the_peak_not_the_span_between_pulses():

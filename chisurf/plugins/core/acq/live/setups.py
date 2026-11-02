@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from chisurf.core.fluorescence import detector_names as dn
+
 from .analyzer import PRESETS, make_analyzer
 
 __all__ = [
@@ -67,11 +69,11 @@ def infer_preset(setup: dict) -> str:
 
 
 def default_setup(preset: str, n_micro: int) -> dict:
-    """The simulator's (and a first measurement's) setup: routing channel 0 the donor (green)
-    detector, 1 the acceptor (red); PIE splits the laser period into prompt and delay halves."""
-    det = {"green": {"chs": [0]}, "red": {"chs": [1]}}
+    """The simulator's (and a first measurement's) setup: routing channel 0 the donor (``G|G``)
+    detector, 1 the acceptor (``R|G``); PIE splits the laser period into prompt and delay halves."""
+    det = {dn.DONOR: {"chs": [0]}, dn.ACCEPTOR: {"chs": [1]}}
     if preset == "single_color":
-        return {"detectors": {"green": {"chs": [0]}}}
+        return {"detectors": {dn.DONOR: {"chs": [0]}}}
     if preset == "pie":
         half = int(n_micro) // 2
         return {"detectors": det, "windows": {"prompt": [0, half], "delayed": [half, int(n_micro)]}}
@@ -104,8 +106,8 @@ class Experiment:
     alex_period_s: float | None = None
     #: µs-ALEX laser windows ``{name: (start, stop)}`` in seconds of the cycle (``None``: halves)
     alex_windows_s: dict | None = None
-    donor: str = "green"
-    acceptor: str = "red"
+    donor: str = dn.DONOR
+    acceptor: str = dn.ACCEPTOR
     prompt: str = "prompt"
     delay: str = "delayed"
 

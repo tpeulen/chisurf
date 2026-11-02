@@ -46,7 +46,7 @@ def _doc() -> dict:
         },
         experiment={
             "preset": "pie",
-            "setup": {"detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}}},
+            "setup": {"detectors": {"G|G": {"chs": [0]}, "R|G": {"chs": [1]}}},
             "burst": {"min_photons": 30, "window_photons": 10, "window_time_ms": 1.0},
         },
         run={"duration_s": 600, "name": "sample", "project_data": "link"},

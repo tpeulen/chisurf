@@ -133,7 +133,7 @@ class CountRateController(WindowsPreflightMixin):
         setup = self._setups.get(
             self.selected_setup,
             {
-                "detectors": {"green": {"chs": [0], "micro_time_ranges": [[0, 4095]]}},
+                "detectors": {"G|G": {"chs": [0], "micro_time_ranges": [[0, 4095]]}},
                 "windows": {"all": None},
             },
         )

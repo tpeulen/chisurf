@@ -45,8 +45,8 @@ class MfdReader(ExperimentReader):
     def __init__(
         self,
         name: str = "MFD (burst folder)",
-        green: str = "green",
-        red: str = "red",
+        green: str = "",
+        red: str = "",
         n_ratio_bins: int = 41,
         n_micro_time_bins: int = 41,
         micro_time_min: float = 0.0,
@@ -64,7 +64,8 @@ class MfdReader(ExperimentReader):
         name : str
             Human-readable reader name.
         green, red : str
-            Detector names in the burst tables.
+            Detector names in the burst tables; empty takes the detector whose role is
+            donor / acceptor (``G|G`` / ``R|G`` in a default setup).
         n_ratio_bins, n_micro_time_bins : int
             Histogram resolution on the proximity-ratio and mean-micro-time axes.
         micro_time_min, micro_time_max : float
@@ -155,8 +156,8 @@ class MfdReader(ExperimentReader):
         )
         mfd = load_mfd_data(
             folder,
-            green=self.green,
-            red=self.red,
+            green=self.green or None,
+            red=self.red or None,
             axes=axes,
             min_green_photons=self.min_green_photons,
             n_signal_bins=self.n_signal_bins,
@@ -189,8 +190,8 @@ class MfdReader(ExperimentReader):
                     "size": int(y.size),
                 },
                 "mfd": {
-                    "green": self.green,
-                    "red": self.red,
+                    "green": mfd.channels[0],
+                    "red": mfd.channels[1],
                     "ratio_edges": axes.ratio_edges,
                     "micro_time_edges": axes.micro_time_edges,
                     "min_green_photons": self.min_green_photons,

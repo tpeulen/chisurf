@@ -500,45 +500,45 @@ def test_the_detector_table_edits_the_synthetic_irf(drv):
     drv.settle()
     assert edit(drv, "detector_rows", 0, "shift", "-0.05")
     d = model(drv).detectors
-    assert (d.width("green"), d.skew("green"), d.shift("green")) == (0.3, 0.2, -0.05)
+    assert (d.width("G|G"), d.skew("G|G"), d.shift("G|G")) == (0.3, 0.2, -0.05)
     drv.settle()
     assert model(drv)._result is not None
 
 
 def test_a_negative_width_is_clamped_and_text_is_ignored(drv):
     edit(drv, "detector_rows", 0, "width", "-1")
-    assert model(drv).detectors.width("green") == 0.0
+    assert model(drv).detectors.width("G|G") == 0.0
     edit(drv, "detector_rows", 0, "width", "abc")
-    assert model(drv).detectors.width("green") == 0.0
+    assert model(drv).detectors.width("G|G") == 0.0
 
 
 def test_the_last_detector_cannot_be_unticked(drv):
     drv.click_cell("detector_rows", 0, "use")
-    assert model(drv).detectors.selected == ["green"]
+    assert model(drv).detectors.selected == ["G|G"]
 
 
 def test_the_irf_is_picked_from_the_workspace_and_typed_away(drv, tmp_path):
     ref = decay_file(tmp_path, "irf.txt", n=256, tau=1.5, scale=500.0)
     drv.click_cell("detector_rows", 0, "name")
     pick(drv, "irf", ref)
-    assert model(drv).detectors.irf_path("green") == str(ref)
+    assert model(drv).detectors.irf_path("G|G") == str(ref)
     assert edit(drv, "detector_rows", 0, "irf", "")
-    assert model(drv).detectors.irf_path("green") == ""
+    assert model(drv).detectors.irf_path("G|G") == ""
 
 
 def test_an_irf_without_a_selected_detector_is_refused_with_a_reason(drv, tmp_path):
     ref = decay_file(tmp_path, "irf.txt", n=256, tau=1.5, scale=500.0)
     drv.app.selected_detector_row = None
     pick(drv, "irf", ref)
-    assert model(drv).detectors.irf_path("green") == ""
+    assert model(drv).detectors.irf_path("G|G") == ""
     assert "Select a detector row" in model(drv).message
 
 
 def test_polarization_resolved_detectors_get_a_row_per_role(drv):
     drv.click("polarized")
     drv.draw(3)
-    names = [c for c in drv.painter.strings if c.startswith("green")]
-    assert "green par" in names and "green perp" in names
+    names = [c for c in drv.painter.strings if c.startswith("G|G")]
+    assert "G|G par" in names and "G|G perp" in names
 
 
 def test_the_instrument_table_values_are_typed_and_the_period_toggle_clicked(drv):
@@ -557,10 +557,10 @@ def test_the_instrument_table_values_are_typed_and_the_period_toggle_clicked(drv
 def test_the_info_tab_edits_the_per_detector_range(drv):
     drv.tab("Info")
     assert edit(drv, "range_rows", 0, "start", "30")
-    assert model(drv)._detector_fit_ranges["green"] == (30, 254)
+    assert model(drv)._detector_fit_ranges["G|G"] == (30, 254)
     drv.settle()
     assert edit(drv, "range_rows", 0, "stop", "100")
-    assert model(drv)._detector_fit_ranges["green"] == (30, 100)
+    assert model(drv)._detector_fit_ranges["G|G"] == (30, 100)
     assert not edit(drv, "range_rows", 0, "detector", "x")
     strings = drv.draw(2).strings
     assert "== Mixed decay ==" in strings and "== Components ==" in strings
@@ -614,14 +614,20 @@ def test_the_detector_setup_tab_embeds_the_shared_editor(drv):
     painter = drv.tab("Detector setup")
     assert {"Setup:", "Save", "TTTR Reading routine", "Optical Setup..."} & set(painter.strings)
     assert "Detectors" in painter.strings or "Detector Name" in painter.strings
-    drv.click_text("Add")  # a detector row of the shared table
+    # the shared editor's Add is a list of the unused default names: pick R|G
+    drv.click_text("Add detector ...")
+    drv.draw(2)
+    drv.click_text("R|G")
     drv.draw(3)
     assert len(drv.app.setup.model.get_settings().get("detectors", {})) >= 2
 
 
 def test_a_new_detector_from_the_shared_editor_reaches_the_calculator(drv):
     drv.tab("Detector setup")
-    drv.click_text("Add")
+    # the shared editor's Add is a list of the unused default names: pick R|G
+    drv.click_text("Add detector ...")
+    drv.draw(2)
+    drv.click_text("R|G")
     drv.draw(3)
     drv.settle()
     assert len(model(drv).detectors.names) >= 2

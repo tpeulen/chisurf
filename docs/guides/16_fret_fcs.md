@@ -168,7 +168,7 @@ settings = BurstFcsSettings(n_bins=3, n_casc=12, padding_ms=0,
 curves = correlate_burst_file(
     Path("test/data/tttr/BH/132/BH_SPC132.spc"),
     [(0, 5000), (6000, 11000), (12000, 17000)],
-    [PairConfig("green_ACF", [0, 1], [0, 1])], settings,
+    [PairConfig("G|G_ACF", [0, 1], [0, 1])], settings,
 )
 ```
 

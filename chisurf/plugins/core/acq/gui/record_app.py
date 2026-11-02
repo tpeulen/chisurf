@@ -1159,13 +1159,87 @@ def _plot_histogram(hist: dict, height: float) -> None:
 
 def _shown_streams(snap: dict, exp: Experiment | None) -> list[str]:
     """The streams the rate and decay plots draw: per window and detector when there are windows
-    (PIE: prompt/delayed x green/red), else per detector."""
+    (PIE: prompt/delayed x G|G/R|G), else per detector."""
     names = list((snap.get("decays") or snap.get("background_cps") or {}).keys())
     windowed = [n for n in names if " " in n]
     return windowed or names
 
 
-def _plot_rates(snap: dict, exp: Experiment | None, size) -> None:
+def _detector_of_stream(name: str) -> str:
+    """A stream's detector: the last word of a windowed stream ("prompt G|G" -> "G|G"),
+    the name itself otherwise ("ch0") -- the grouping ``_shown_streams`` draws by."""
+    return name.rsplit(" ", 1)[1] if " " in name else name
+
+
+def detector_rates(snap: dict | None) -> list[dict]:
+    """Per-detector count rates of a snapshot: ``khz`` now (the trace's last second) and
+    ``mean_khz`` over the whole trace window. A detector's streams -- a windowed stream belongs
+    to its detector -- are added up per bin."""
+    trace = (snap or {}).get("trace") or {}
+    counts = trace.get("counts") or {}
+    width = float(trace.get("bin_width_s") or 0.0)
+    if width <= 0.0 or not counts:
+        return []
+    groups: dict[str, list[np.ndarray]] = {}
+    for name, stream in counts.items():
+        groups.setdefault(_detector_of_stream(name), []).append(np.asarray(stream, dtype=float))
+    now_bins = max(1, int(round(1.0 / width)))
+    rows = []
+    for name, arrays in groups.items():
+        n = min(a.size for a in arrays)
+        if n <= 0:
+            continue  # nothing binned yet (the first frames of a run)
+        total = np.zeros(n)
+        for a in arrays:
+            total += a[:n]
+        rows.append({
+            "name": name,
+            "khz": float(total[-now_bins:].mean()) / width / 1e3,
+            "mean_khz": float(total.mean()) / width / 1e3,
+        })
+    return rows
+
+
+def overall_mean_khz(snap: dict | None) -> float | None:
+    """The mean rate of all streams together over the trace window (kHz), or None without one."""
+    trace = (snap or {}).get("trace") or {}
+    counts = trace.get("counts") or {}
+    width = float(trace.get("bin_width_s") or 0.0)
+    if width <= 0.0 or not counts:
+        return None
+    n = min(np.asarray(a).size for a in counts.values())
+    total = sum(float(np.asarray(a, dtype=float)[:n].sum()) for a in counts.values())
+    return total / (n * width) / 1e3
+
+
+def _rate_text(hz: float) -> str:
+    """A count rate for the dock's big digits: the unit that keeps them readable."""
+    hz = float(hz)
+    a = abs(hz)
+    if a >= 0.995e6:
+        return f"{hz / 1e6:.2f} MHz"
+    if a >= 0.995e3:
+        return f"{hz / 1e3:.1f} kHz"
+    return f"{hz:.0f} Hz"
+
+
+def _rate_value(hz: float) -> None:
+    """One count rate in large digits (the dock's point is reading it from the desk)."""
+    im.push_font_scale(1.9)
+    im.text(_rate_text(hz))
+    im.pop_font_scale()
+
+
+def _view_limit(lo: float, hi: float, data_lo: float, data_hi: float) -> tuple[float, float]:
+    """The axis limits a user range asks for: 0 means auto (the data's extent)."""
+    return (float(lo) or float(data_lo), float(hi) or float(data_hi))
+
+
+def _plot_rates(snap: dict, exp: Experiment | None, size,
+                view: tuple[float, float, float] = (0.0, 0.0, 0.0)) -> None:
+    """The count rates per stream over the run (image mode and runs without a mirrored trace).
+
+    *view* is the user's viewing range (x min/max in s, y max in kHz; 0 = auto)."""
     from emtk import implot
 
     trace = snap.get("trace") or {}

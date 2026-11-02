@@ -88,6 +88,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from chisurf.core.fluorescence.detector_names import ACCEPTOR, DONOR
+
 if TYPE_CHECKING:
     import tttrlib
 
@@ -110,7 +112,7 @@ __all__ = [
 STREAMS = {"i_dd": 0, "i_da": 1, "i_ad": 2, "i_aa": 3}
 
 #: Routing channel per (colour, polarization) pair — the MFD detector convention.
-#: The burst pipeline discovers ``green`` as ``[0, 8]`` and ``red`` as ``[1, 9]``.
+#: The burst pipeline discovers ``G|G`` as ``[0, 8]`` and ``R|G`` as ``[1, 9]``.
 MFD_STREAMS = {"g_par": 0, "g_perp": 8, "r_par": 1, "r_perp": 9}
 
 #: Engine detection channel per (colour, polarization), before the remap above.
@@ -917,15 +919,15 @@ class SimulatedSmfret:
         """
         if not self.parameters.polarized:
             return {
-                "green": {"chs": [STREAMS["i_dd"]], "micro_time_ranges": []},
-                "red": {"chs": [STREAMS["i_da"]], "micro_time_ranges": []},
+                DONOR: {"chs": [STREAMS["i_dd"]], "micro_time_ranges": []},
+                ACCEPTOR: {"chs": [STREAMS["i_da"]], "micro_time_ranges": []},
             }
         return {
-            "green": {
+            DONOR: {
                 "chs": [MFD_STREAMS["g_par"], MFD_STREAMS["g_perp"]],
                 "micro_time_ranges": [],
             },
-            "red": {"chs": [MFD_STREAMS["r_par"], MFD_STREAMS["r_perp"]], "micro_time_ranges": []},
+            ACCEPTOR: {"chs": [MFD_STREAMS["r_par"], MFD_STREAMS["r_perp"]], "micro_time_ranges": []},
             "green_par": {"chs": [MFD_STREAMS["g_par"]], "micro_time_ranges": []},
             "green_perp": {"chs": [MFD_STREAMS["g_perp"]], "micro_time_ranges": []},
         }

@@ -28,13 +28,13 @@ def test_each_state_of_a_colour_gets_its_own_dash(monkeypatch):
     decays = SimpleNamespace(
         centers_ns=lambda: np.arange(8.0),
         micro_time_ns=True,
-        colours=["green"],
+        colours=["G|G"],
         n_states=3,
         colour_counts=counts,
     )
     owner = plots.ResultPlots()
-    owner.draw_decays(decays, {"green"}, {0, 1, 2})
+    owner.draw_decays(decays, {"G|G"}, {0, 1, 2})
     dashes = [c[1] for c in calls if c[0] == "style"]
-    assert [c[1] for c in calls if c[0] == "line"] == ["green S0", "green S1", "green S2"]
+    assert [c[1] for c in calls if c[0] == "line"] == ["G|G S0", "G|G S1", "G|G S2"]
     assert dashes[0] is None  # S0 solid
     assert len({str(d) for d in dashes}) == 3  # three states, three styles

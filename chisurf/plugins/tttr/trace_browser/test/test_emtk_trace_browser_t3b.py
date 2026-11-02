@@ -32,7 +32,7 @@ from chisurf.plugins.tttr.trace_browser.test.test_emtk_trace_browser_t2 import (
     table,
 )
 
-LABELS = ["green", "red", "yellow"]
+LABELS = ["G|G", "R|G", "R|R"]
 SUMS = [22443, 56257, 0]
 BINS_10MS = 6233
 BINS_1MS = 62329
@@ -165,7 +165,7 @@ def test_selecting_a_row_loads_and_draws_the_trace(alex_dir, recorder):
         for (label, x, y), column in zip(trace_lines[1:], counts.T):
             assert len(y) <= 4000 and y.max() == column.max() and y.min() == column.min()
             assert np.all(np.isin(y, column))
-        yellow_hist = [entry for entry in drawn[4:] if entry[0] == "yellow"]
+        yellow_hist = [entry for entry in drawn[4:] if entry[0] == "R|R"]
         assert not yellow_hist  # an all-zero series has no histogram
     finally:
         app.close()
@@ -678,9 +678,9 @@ def test_the_page_draws_populated_with_the_trace(alex_dir, size):
             "Time (s)",
             "Counts / 10 ms",
             "Counts (log)",
-            "green",
-            "red",
-            "yellow",
+            "G|G",
+            "R|G",
+            "R|R",
             "Sum",
             "Annotation",
             "Precompute",
@@ -773,7 +773,7 @@ def test_settings_round_trip_includes_the_precompute_toggle(alex_dir):
 
 def test_the_emtk_app_shows_the_series_the_qt_widget_plotted(alex_dir):
     """Same file, same setup: the series and sums the retired Qt plot drew (recorded 2026-10-10)."""
-    qt_series = {"green": 22443.0, "red": 56257.0, "yellow": 0.0, "Sum": 78700.0}
+    qt_series = {"G|G": 22443.0, "R|G": 56257.0, "R|R": 0.0, "Sum": 78700.0}
     app = make_alex_app()
     try:
         open_and_show(app, alex_dir)

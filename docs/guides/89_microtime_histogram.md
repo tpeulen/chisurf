@@ -44,7 +44,7 @@ windowless computation.
 :name: fig-microtime-histogram
 :width: 100%
 
-Measured BH132 photon fixture (183,657 photons), green detector: parallel
+Measured BH132 photon fixture (183,657 photons), donor detector `G|G`: parallel
 channels 8 and 3, perpendicular channel 0. The selected VV/VH counts are
 79,468/56,499. The combined 113-bin width reads 0.372 ns under provider/header-derived
 0.0032958984375 ns/bin timing; this headerless SPC fixture does not independently
@@ -113,7 +113,7 @@ saves and adds a TCSPC dataset (polarization from the **Polarization** choice, t
 toggles above the decay show or hide each trace and switch the axis between logarithmic and linear; the wheel zooms
 and a drag pans.
 
-With the measured BH132 file and the green channel selection shown here, the
+With the measured BH132 file and the `G|G` detector selection shown here, the
 unshifted combined trace has FWHM **113 bins**, or **0.3724365234375 ns** using
 the provider/header-derived timing. This time value is not an independently
 validated instrument-response calibration. The export contains **8,192 integer rows**:
@@ -130,7 +130,7 @@ The computation has no GUI dependency:
 from chisurf.plugins.tttr.microtime_histogram.gui.model import HistogramModel
 
 model = HistogramModel()
-model.set_setup({"detectors": {"green": {"chs": [8, 0, 3], "micro_time_ranges": [[0, 4095]], "g_factor": 1.0}},
+model.set_setup({"detectors": {"G|G": {"chs": [8, 0, 3], "micro_time_ranges": [[0, 4095]], "g_factor": 1.0}},
                  "windows": {}, "tttr_reading": {}})
 model.filetype = "SPC-130"
 model.add_paths(["BH_SPC132.spc"])

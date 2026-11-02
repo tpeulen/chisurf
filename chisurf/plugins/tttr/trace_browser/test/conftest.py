@@ -56,21 +56,21 @@ ALEX = {
     "setup_name": "ALEX Suite (auto)",
     "windows": {"prompt": [616, 3784], "delayed": [4278, 7762]},
     "detectors": {
-        "green": {
+        "G|G": {
             "chs": [1],
             "micro_time_ranges": [[616, 3784]],
             "g_factor": 1.0,
             "l1": 0.0,
             "l2": 0.0,
         },
-        "red": {
+        "R|G": {
             "chs": [0],
             "micro_time_ranges": [[616, 3784]],
             "g_factor": 1.0,
             "l1": 0.0,
             "l2": 0.0,
         },
-        "yellow": {
+        "R|R": {
             "chs": [0],
             "micro_time_ranges": [[4278, 7762]],
             "g_factor": 1.0,
@@ -87,21 +87,21 @@ OVERLAP = {
     "setup_name": "Overlap",
     "windows": {"prompt": [0, 2048]},
     "detectors": {
-        "green": {
+        "G|G": {
             "chs": [8, 0, 3],
             "micro_time_ranges": [[0, 4095]],
             "g_factor": 1,
             "l1": 0,
             "l2": 0,
         },
-        "red": {
+        "R|G": {
             "chs": [9, 1, 2],
             "micro_time_ranges": [[0, 2048]],
             "g_factor": 1,
             "l1": 0,
             "l2": 0,
         },
-        "yellow": {
+        "R|R": {
             "chs": [9, 1, 2],
             "micro_time_ranges": [[2048, 4095]],
             "g_factor": 1,

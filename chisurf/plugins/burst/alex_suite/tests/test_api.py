@@ -35,9 +35,9 @@ def burst_table(n, e_true, *, s_true=0.5, size=200, seed=0):
     green = total * s_true
     i_da = rng.binomial(green.astype(int), e_true).astype(float)
     return {
-        "Number of Photons (green)": green - i_da,
-        "Number of Photons (red)": i_da,
-        "Number of Photons (yellow)": total - green,
+        "Number of Photons (G|G)": green - i_da,
+        "Number of Photons (R|G)": i_da,
+        "Number of Photons (R|R)": total - green,
         "Duration (ms)": np.full(n, 1.0),
     }
 
@@ -72,7 +72,7 @@ def test_stoichiometry_gate_does_not_empty_a_non_alex_table():
     stoichiometry filter that was simply strict.
     """
     table = burst_table(500, 0.5)
-    del table["Number of Photons (yellow)"]
+    del table["Number of Photons (R|R)"]
     result = es_histograms(table, thresholds=Thresholds(total_min=0))
     assert result.e.size == 500
     assert not np.isfinite(result.s).any()

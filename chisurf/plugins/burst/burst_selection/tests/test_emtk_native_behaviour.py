@@ -155,7 +155,7 @@ def test_all_means_no_selection(model):  # noqa: F811
     model.detector, model.window = "All", "All"
     s = model.analysis_settings().photon_filter
     assert list(s.channels) == [] and list(s.microtime_ranges) == []
-    model.detector = "green"
+    model.detector = "G|G"
     assert list(model.analysis_settings().photon_filter.channels) == [0, 1]
     assert model.detector_options()[0] == "All" and model.window_options()[0] == "All"
     # the options follow the detector setup
@@ -393,7 +393,7 @@ def test_the_search_refuses_unconverted_alex_data(model, monkeypatch):  # noqa: 
         micro_times = np.zeros(1000, dtype=int)
 
     model.files = [Path("/data/a.sm")]
-    model.detectors = {"green": {"chs": [1], "micro_time_ranges": [[616, 3784]]}}
+    model.detectors = {"G|G": {"chs": [1], "micro_time_ranges": [[616, 3784]]}}
     monkeypatch.setattr(staging, "open_tttr", lambda *_a, **_k: _Unconverted())
     reason = model.blocked_reason()
     assert reason is not None
@@ -401,7 +401,7 @@ def test_the_search_refuses_unconverted_alex_data(model, monkeypatch):  # noqa: 
     assert model.prepare_run() == reason, "the run is refused with the same sentence"
 
     # An ungated setup is not blocked.
-    model.detectors = {"green": {"chs": [1]}}
+    model.detectors = {"G|G": {"chs": [1]}}
     assert model.blocked_reason() is None
 
 
@@ -688,18 +688,18 @@ def test_pooling_the_files_stacks_every_files_bursts_for_the_histogram_and_the_t
 
 
 def test_the_summary_reports_the_mean_photons_per_burst_in_each_detector(model):  # noqa: F811
-    """The Qt info box listed ``Mean ph (green)`` and ``Mean ph (red)`` beside the overall means."""
+    """The Qt info box listed ``Mean ph (G|G)`` and ``Mean ph (R|G)`` beside the overall means."""
     model.run()
     rows = {r["key"]: r["value"] for r in model.summary_rows()}
     assert {
         "Mean photons",
         "Mean duration (ms)",
-        "Mean photons (green)",
-        "Mean photons (red)",
+        "Mean photons (G|G)",
+        "Mean photons (R|G)",
     } <= set(rows)
     frame = model.display_frame
     from chisurf.core.datastore import numeric_column
 
-    green = numeric_column(frame, "Number of Photons (green)")
+    green = numeric_column(frame, "Number of Photons (G|G)")
     nonzero = green[np.isfinite(green) & (numeric_column(frame, "Number of Photons") > 0)]
-    assert float(rows["Mean photons (green)"]) == pytest.approx(float(nonzero.mean()), rel=1e-3)
+    assert float(rows["Mean photons (G|G)"]) == pytest.approx(float(nonzero.mean()), rel=1e-3)

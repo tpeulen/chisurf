@@ -25,8 +25,8 @@ def app():
         (
             "lab_alex",
             {
-                "green": {"chs": [0, 8], "micro_time_ranges": [[0, 2000]]},
-                "red": {"chs": [1, 9], "micro_time_ranges": [[100, 4000]]},
+                "G|G": {"chs": [0, 8], "micro_time_ranges": [[0, 2000]]},
+                "R|G": {"chs": [1, 9], "micro_time_ranges": [[100, 4000]]},
             },
         ),
         (
@@ -68,14 +68,14 @@ def test_setup_combo_lists_the_saved_setups_and_picking_one_sets_donor_and_accep
     assert "FRET Pair Assignment" in strings and "Donor detector:" in strings
     pick(app, "bva_setup", "lab_alex")
     assert gui.editor.model.current_name == "lab_alex"
-    assert (gui.donor_detector, gui.acceptor_detector) == ("green", "red")
+    assert (gui.donor_detector, gui.acceptor_detector) == ("G|G", "R|G")
     assert model.donor_channels == [0, 8] and model.acceptor_channels == [1, 9]
     # the setup's gates [0, 2000) and [100, 4000) as BVA's inclusive ranges
     assert model.donor_micro_time_ranges == [(0, 1999)] and model.acceptor_micro_time_ranges == [
         (100, 3999)
     ]
     assert model.file_type == "PTU"
-    assert {"green", "red"} <= set(draw(app).strings)
+    assert {"G|G", "R|G"} <= set(draw(app).strings)
 
 
 def test_donor_and_acceptor_combos_offer_the_detectors_of_the_setup_and_assign_their_channels(app):

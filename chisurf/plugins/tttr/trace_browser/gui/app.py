@@ -57,6 +57,7 @@ from emtk.view_form import FormState, draw_form
 from chisurf.core import setup_channel_definition as definition
 from chisurf.core.fio import setup_store as store
 from chisurf.core.setup_channel_definition import ChannelDefinition
+from chisurf.core.fluorescence import detector_names as dn
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
@@ -70,9 +71,9 @@ HERE = Path(__file__).parent
 #: Line colours of the detectors the setups name (the Qt tool's traces are blue; here a
 #: detector keeps its own colour), RGBA in 0..1 as ``emtk.implot`` reads them.
 DETECTOR_COLOURS = {
-    "green": (0.15, 0.78, 0.25, 1.0),
-    "red": (0.92, 0.25, 0.22, 1.0),
-    "yellow": (0.95, 0.80, 0.10, 1.0),
+    dn.DONOR: (0.15, 0.78, 0.25, 1.0),  # green
+    dn.ACCEPTOR: (0.92, 0.25, 0.22, 1.0),  # red
+    dn.ACCEPTOR_DIRECT: (0.95, 0.80, 0.10, 1.0),  # yellow, as the historic R|R
 }
 #: Colours of every other label, in order of appearance.
 PALETTE = (
@@ -101,7 +102,7 @@ def series_colour(label: str, index: int) -> tuple:
     Parameters
     ----------
     label : str
-        The series label (a detector name such as ``green``, or any other text).
+        The series label (a detector name such as ``G|G``, or any other text).
     index : int
         Position of the series, picking from :data:`PALETTE` for a label without own colour.
     """

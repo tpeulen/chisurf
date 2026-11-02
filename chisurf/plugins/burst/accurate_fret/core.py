@@ -31,7 +31,42 @@ from chisurf.core.fluorescence.fret.lines import FretLine, dynamic_fret_line, st
 logger = logging.getLogger(__name__)
 
 # Which column is which channel is tttrlib.guess_burst_columns, shared with ndX.
+
+#: The columns ChiSurf names after the detectors (``G|G`` donor, ``R|G`` FRET, ``R|R`` acceptor
+#: excitation), tried before tttrlib's own conventions (which predate these names). The gated
+#: PIE streams (``S prompt G|G (photons) | lo-hi``) win over everything, counts over rates.
+GATED_COLUMN_HINTS: dict[str, tuple[str, ...]] = {
+    "i_dd": ("prompt g|g (photons)", "prompt g|g"),
+    "i_da": ("prompt r|g (photons)", "prompt r|g"),
+    # a two-detector PIE table: the acceptor detector in the acceptor-excitation window
+    "i_aa": ("delayed r|r (photons)", "delayed r|r", "delayed r|g (photons)", "delayed r|g"),
+}
+DETECTOR_COLUMN_HINTS: dict[str, tuple[str, ...]] = {
+    "i_dd": ("number of photons (g|g)", "g|g count rate"),
+    "i_da": ("number of photons (r|g)", "r|g count rate"),
+    "i_aa": ("number of photons (r|r)", "r|r count rate"),
+    "tau_f": ("tau (g|g)",),
+}
+
+
+def guess_columns(names, extra_hints: dict | None = None) -> dict:
+    """``tttrlib.guess_burst_columns`` with the detector-name hints: the gated streams first,
+    then *extra_hints*, then :data:`DETECTOR_COLUMN_HINTS`."""
+    import tttrlib
+
+    extra = extra_hints or {}
+    hints: dict[str, list[str]] = {}
+    for role in dict.fromkeys([*GATED_COLUMN_HINTS, *extra, *DETECTOR_COLUMN_HINTS]):
+        hints[role] = [
+            *GATED_COLUMN_HINTS.get(role, ()),
+            *extra.get(role, ()),
+            *DETECTOR_COLUMN_HINTS.get(role, ()),
+        ]
+    return tttrlib.guess_burst_columns(list(names), hints)
+
+
 __all__ = [
+    "guess_columns",
     "CalibrationResult",
     "read_burst_table",
     "columns_from_data",

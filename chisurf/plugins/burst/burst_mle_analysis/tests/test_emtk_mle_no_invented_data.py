@@ -108,18 +108,18 @@ def test_the_parameter_table_is_the_models_not_a_copy(hermetic_env):
 def test_burst_lifetimes_reads_the_columns_of_the_rows_and_nothing_else():
     rows = [
         {
-            "Tau (green)": 2.0,
-            "Tau S0 (green)": 1.0,
-            "Number of Photons (fit window) (green)": 99,
+            "Tau (G|G)": 2.0,
+            "Tau S0 (G|G)": 1.0,
+            "Number of Photons (fit window) (G|G)": 99,
             "First File": "a",
         },
-        {"Tau (green)": float("nan"), "Tau S0 (green)": 1.5, "Tau (red)": 3.0},
-        {"Tau (green)": 2.5},
+        {"Tau (G|G)": float("nan"), "Tau S0 (G|G)": 1.5, "Tau (R|G)": 3.0},
+        {"Tau (G|G)": 2.5},
     ]
     got = fit_view.burst_lifetimes(rows)
-    assert sorted(got) == ["S0 green", "green", "red"]
-    np.testing.assert_array_equal(got["green"], [2.0, 2.5])
-    np.testing.assert_array_equal(got["S0 green"], [1.0, 1.5])
+    assert sorted(got) == ["G|G", "R|G", "S0 G|G"]
+    np.testing.assert_array_equal(got["G|G"], [2.0, 2.5])
+    np.testing.assert_array_equal(got["S0 G|G"], [1.0, 1.5])
     assert fit_view.burst_lifetimes(None) == {} and fit_view.burst_lifetimes([]) == {}
     assert fit_view.lifetime_histograms({}) == []
 

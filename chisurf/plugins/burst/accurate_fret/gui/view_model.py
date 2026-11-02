@@ -13,7 +13,6 @@ from collections.abc import Callable
 from concurrent.futures import CancelledError
 
 import numpy as np
-import tttrlib
 from emtk.i18n import tr
 
 from chisurf.core.fluorescence.fret.dyes import FretPair
@@ -156,8 +155,13 @@ class AccurateFretViewModel:
         """Whether the loaded table splits its photons by detector at all."""
         from tttrlib import BURST_DETECTOR_ROLE_WORDS as DETECTOR_ROLE_WORDS
 
+        from chisurf.core.fluorescence.detector_names import column_detector
+
         words = tuple(DETECTOR_ROLE_WORDS)
-        return any(any(word in str(name).lower() for word in words) for name in self._columns)
+        return any(
+            column_detector(str(name)) is not None or any(word in str(name).lower() for word in words)
+            for name in self._columns
+        )
 
     def column_names(self) -> list[str]:
         """Column names of the loaded table (for the column pickers)."""
@@ -251,29 +255,33 @@ class AccurateFretViewModel:
     def _window_hints(self) -> dict:
         """Column-name fragments per channel role, from the setup's windows.
 
-        A window called ``green`` marks the donor channel, ``red`` the FRET
-        channel and ``yellow`` the acceptor-excitation channel — the convention
-        the detector setups use.
+        The detector names carry the role: ``G|G`` is the donor channel, ``R|G`` the
+        FRET channel and ``R|R`` the acceptor-excitation channel; a custom name is
+        matched by its words.
         """
+        from chisurf.core.fluorescence.detector_names import role as detector_role
+
+        by_role = {"donor": "i_dd", "acceptor": "i_da", "acceptor_direct": "i_aa"}
         keywords = {
-            "i_dd": ("green", "donor"),
-            "i_da": ("red", "acceptor", "fret"),
-            "i_aa": ("yellow", "delayed"),
+            "i_dd": ("donor",),
+            "i_da": ("acceptor", "fret"),
+            "i_aa": ("delayed",),
         }
         hints: dict[str, list[str]] = {}
         for window in self.detectors:
             low = str(window).strip().lower()
-            for role, words in keywords.items():
-                if any(word in low for word in words):
-                    # The photon count of that detector first: the bare name also matches
-                    # "First Photon (green)", the burst's first photon index, which is no intensity.
-                    hints.setdefault(role, []).extend([f"number of photons ({low})", low])
-                    break
+            channel = by_role.get(detector_role(str(window)))
+            if channel is None:
+                channel = next((c for c, words in keywords.items() if any(w in low for w in words)), None)
+            if channel is not None:
+                # The photon count of that detector first: the bare name also matches
+                # "First Photon (G|G)", the burst's first photon index, which is no intensity.
+                hints.setdefault(channel, []).extend([f"number of photons ({low})", low])
         return hints
 
     def _map_columns(self) -> None:
         """Fill the four channel combos from the loaded columns."""
-        guess = tttrlib.guess_burst_columns(list(self._columns), self._window_hints())
+        guess = _core.guess_columns(list(self._columns), self._window_hints())
         self.column_i_dd = guess.get("i_dd", "")
         self.column_i_da = guess.get("i_da", "")
         self.column_i_aa = guess.get("i_aa", "")

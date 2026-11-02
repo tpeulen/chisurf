@@ -37,13 +37,13 @@ def test_the_window_lands_inside_every_detector():
 
     The regression this pins: the window was seeded at a fraction of the longest
     inter-photon time found in *any* detector. That time is the single largest
-    gap in the file, so on real ALEX data (green 5.0 ms, red 8.8, yellow 10.9)
-    the window opened at 8.7 ms -- past the end of green's data entirely.
+    gap in the file, so on real ALEX data (G|G 5.0 ms, R|G 8.8, R|R 10.9)
+    the window opened at 8.7 ms -- past the end of G|G's data entirely.
     """
     streams = {
-        "green": _exponential(4.0, 60_000, 1),
-        "red": _exponential(2.0, 60_000, 2),
-        "yellow": _exponential(8.0, 60_000, 3),
+        "G|G": _exponential(4.0, 60_000, 1),
+        "R|G": _exponential(2.0, 60_000, 2),
+        "R|R": _exponential(8.0, 60_000, 3),
     }
     model = _model(streams)
 
@@ -60,7 +60,7 @@ def test_the_window_lands_inside_every_detector():
 
 def test_the_slider_still_spans_the_whole_measurement():
     """Seeding narrow must not stop the user dragging out to the far tail."""
-    streams = {"green": _exponential(4.0, 40_000, 4), "red": _exponential(1.0, 40_000, 5)}
+    streams = {"G|G": _exponential(4.0, 40_000, 4), "R|G": _exponential(1.0, 40_000, 5)}
     model = _model(streams)
     assert model.max_dt_ms == pytest.approx(max(float(s.max()) for s in streams.values()))
     assert model.fit_to_ms <= model.max_dt_ms
@@ -68,7 +68,7 @@ def test_the_slider_still_spans_the_whole_measurement():
 
 def test_a_window_the_user_placed_is_not_moved_by_a_re_estimate():
     """Re-reading with more files must not silently re-seed a chosen window."""
-    streams = {"green": _exponential(4.0, 40_000, 6)}
+    streams = {"G|G": _exponential(4.0, 40_000, 6)}
     model = _model(streams)
     model.fit_from_ms, model.fit_to_ms = 0.4, 1.2
     model._seed_fit_window()
@@ -81,12 +81,12 @@ def test_a_starved_detector_is_named_rather_than_reported_as_zero():
     Zero background is not a measurement, it is a missing one -- and it is the
     one value that passes through the corrections without complaint.
     """
-    streams = {"green": _exponential(4.0, 40_000, 7)}
+    streams = {"G|G": _exponential(4.0, 40_000, 7)}
     model = _model(streams)
     # Push the window past the end of the data, as the old seed effectively did.
-    model.fit_from_ms = float(streams["green"].max()) * 1.5
+    model.fit_from_ms = float(streams["G|G"].max()) * 1.5
     model.fit_to_ms = model.fit_from_ms + 1.0
     model.refit()
 
-    assert "green" in model._underdetermined()
-    assert "green" in model.status and "⚠" in model.status
+    assert "G|G" in model._underdetermined()
+    assert "G|G" in model.status and "⚠" in model.status

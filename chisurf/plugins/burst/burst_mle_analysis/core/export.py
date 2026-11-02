@@ -30,11 +30,13 @@ from typing import Any
 
 import numpy as np
 
+from .._mp_worker import colour_of
+
 __all__ = ["write_mle_container"]
 
 #: Units for the MLE result columns whose name does not carry one.
 #:
-#: The per-detector columns are named ``Tau (green)``, ``Tau S0 (red)`` and so
+#: The per-detector columns are named ``Tau (G|G)``, ``Tau S0 (R|G)`` and so
 #: on — a colour in the parenthesis, not a unit — so the label convention that
 #: covers the burst table cannot reach them. They are matched by prefix instead
 #: of listed, because the state split multiplies every one of them by the number
@@ -163,7 +165,7 @@ def write_mle_container(
         written = write_burst_artifact(
             source,
             table,
-            name=artifact_name(run, f"mle {str(detector).lower()}"),
+            name=artifact_name(run, f"mle {colour_of(detector)}"),
             artifact_kind="fit_result",
             operation_type="burst_lifetime_fitting",
             algorithm="mle",
@@ -184,7 +186,7 @@ def write_mle_container(
             algorithm="mle",
             row_grain="state",
             parameters=parameters,
-            derived_from=[artifact_name(run, f"mle {str(d).lower()}") for d in tables] or parent_of,
+            derived_from=[artifact_name(run, f"mle {colour_of(d)}") for d in tables] or parent_of,
             source_row_column="State",
             units={
                 "Tau": "nanoseconds",
@@ -216,7 +218,7 @@ def write_mle_container(
         written = write_burst_artifact(
             source,
             store_from_arrays(curve),
-            name=artifact_name(run, f"irf {str(detector).lower()}"),
+            name=artifact_name(run, f"irf {colour_of(detector)}"),
             artifact_kind="irf_curve",
             operation_type="calibration",
             algorithm=_IRF_ALGORITHM.get(str((parameters or {}).get("irf_model", "")).lower(), ""),

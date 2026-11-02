@@ -56,7 +56,7 @@ panel a third (blue) row and turns the micro-time fields into the two
 **excitation periods** (the blue and green halves of the PIE cycle) rather than
 per-detector photon-selection windows. Because those are different quantities,
 changing the selector re-derives the windows from the micro-time span and moves
-the green and red detectors into their roles; the new blue row is left empty for
+the `G|G` and `R|G` detectors into their roles; the new blue row is left empty for
 you to fill rather than guessed.
 
 :::{admonition} Burst selection is not identical between the two paths

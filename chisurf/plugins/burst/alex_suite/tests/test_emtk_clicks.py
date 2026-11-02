@@ -36,9 +36,9 @@ def _burst_table(n, e_true, *, s_true=0.5, size=200, seed=0):
     green = total * s_true
     i_da = rng.binomial(green.astype(int), e_true).astype(float)
     return {
-        "Number of Photons (green)": green - i_da,
-        "Number of Photons (red)": i_da,
-        "Number of Photons (yellow)": total - green,
+        "Number of Photons (G|G)": green - i_da,
+        "Number of Photons (R|G)": i_da,
+        "Number of Photons (R|R)": total - green,
         "Duration (ms)": np.full(n, 1.0),
     }
 

@@ -180,7 +180,7 @@ your calibration; free one deliberately and it joins the fit as a
 In the {doc}`FRET-line tool <82_fret_lines>`, **Push to ndX** sends the computed
 lines to the open ndX windows. ndX switches to fluorescence-weighted lifetime
 on x and efficiency on y before adding the lines. Quantity hints `tau_f` and
-`e_fret` resolve to columns such as `Tau (green)` and `FRET efficiency` when
+`e_fret` resolve to columns such as `Tau (G|G)` and `FRET efficiency` when
 there is exactly one match. The species-weighted lifetime `tau_x` is not a
 substitute. If the table has missing or ambiguous columns, the push is rejected
 rather than drawn on unrelated axes; the tool reports that rejection.
@@ -197,7 +197,7 @@ From Python, use explicit column names when aliases would be ambiguous:
 app.add_overlay_lines([{
     "name": "Reference line",
     "x": [0.0, 4.0], "y": [1.0, 0.0],
-    "axes": {"x": "Tau (green)", "y": "FRET efficiency"},
+    "axes": {"x": "Tau (G|G)", "y": "FRET efficiency"},
 }], source="My analysis")
 ```
 
@@ -205,7 +205,7 @@ app.add_overlay_lines([{
 :width: 100%
 
 Measured MFD bursts in the ChiSurf ndX host after pushing a FRET line from a
-reversed E/lifetime view: x is now `Tau (green)`, y is `FRET efficiency`, and
+reversed E/lifetime view: x is now `Tau (G|G)`, y is `FRET efficiency`, and
 the orange line is bound to that projection. The Overlays tab lists it as a
 tabulated curve, without fit parameters.
 ```
@@ -213,8 +213,8 @@ tabulated curve, without fit parameters.
 (phasor-plots-are-overlays)=
 ### Phasor plots are overlays
 
-A phasor plot is a map whose axes are the phasor columns (`g (green)` against
-`s (green)` on an image table), so its reference geometry is overlay curves
+A phasor plot is a map whose axes are the phasor columns (`g (G|G)` against
+`s (G|G)` on an image table), so its reference geometry is overlay curves
 from the **Equation** list, and the apparent lifetimes are equations:
 
 - **Universal circle** — $g = 1/(1+(\omega\tau)^2)$, $s = \omega\tau/(1+(\omega\tau)^2)$,
@@ -235,7 +235,7 @@ the constants **f_rep** and **harmonic** of the Parameters tab (and `tau0` to
 `tauD0`), so one edit there moves every phasor curve. The columns
 `tau_phi` and `tau_m` ($\tau_\phi = s/(\omega g)$,
 $\tau_M = \sqrt{1/(g^2+s^2)-1}/\omega$, $\omega = 2\pi f_{rep} n$) appear
-wherever the table has g and s columns (per channel: `tau_phi (green)`).
+wherever the table has g and s columns (per channel: `tau_phi (G|G)`).
 
 ```{figure} figures/ndxplorer_chisurf_phasor.png
 An image table on g/s with three overlays from the list: Universal circle
@@ -255,15 +255,15 @@ the phasor is divided by the IRF phasor,
 $$z_{corr} = \frac{z - f_{bg}\, z_{bg}}{(1 - f_{bg})\, z_{irf}},\qquad
 z = g + i s,\; z_{irf} = g_{irf} + i s_{irf},\; f_{bg} = n_{bg}/N .$$
 
-The columns are `f_bg`, `g corr`, `s corr` (plain, `(green)`, `(red)`), and
+The columns are `f_bg`, `g corr`, `s corr` (plain, `(G|G)`, `(R|G)`), and
 `tau_phi` / `tau_m` read `g corr` / `s corr`. The constants (Parameters tab,
 defaults meaning *no correction*): `g_irf`, `s_irf` per channel (1, 0),
 `n_bg` per channel — background photons per pixel or burst (0) — and `g_bg`,
 `s_bg`, the background's own phasor (0, 0: uncorrelated background spread over
 the period). The background fraction is photon-count based, as tttrlib
 subtracts a background histogram from the counts; a burst table can make it
-rate based by editing the `f_bg (green)` equation to
-`'Bg' * 'Duration (ms)' / 'Number of Photons (green)'`.
+rate based by editing the `f_bg (G|G)` equation to
+`'Bg' * 'Duration (ms)' / 'Number of Photons (G|G)'`.
 
 **FRET > Phasor reference from IRF…** fills the constants from measurements
 with tttrlib: an IRF (scatter or mirror; or a dye of known **reference
@@ -272,7 +272,7 @@ $z_{irf} = z_{ref}(1 - i\omega\tau_{ref})$) gives `g_irf`, `s_irf` per colour
 at `f_rep` × `harmonic`, its flat background (dark counts) removed first; the
 measurement the pixel table was made from gives `n_bg`: its flat background
 fraction times the table's photons over its pixels × frames. Compute shows the
-values, Apply writes them. A channel without an IRF (a red detector the
+values, Apply writes them. A channel without an IRF (an `R|G` detector the
 mirror did not reach) is refused rather than turned into a phasor of noise.
 
 ```{figure} figures/ndxplorer_phasor_reference_dialog.png
@@ -283,14 +283,14 @@ background in the measurement, n_bg = 0.2 photons per pixel and frame.
 ```
 
 ```{figure} figures/ndxplorer_phasor_uncorrected.png
-Before: `g (green)` against `s (green)` with the Universal circle (f_rep 32
+Before: `g (G|G)` against `s (G|G)` with the Universal circle (f_rep 32
 MHz). The cloud lies outside the circle, rotated by the IRF's phase.
 ```
 
 ```{figure} figures/ndxplorer_phasor_corrected.png
-After: `g corr (green)` against `s corr (green)`. The cloud is on the circle;
+After: `g corr (G|G)` against `s corr (G|G)`. The cloud is on the circle;
 the median pixel moves from (0.69, 0.47), outside, to (0.79, 0.33), inside, and
-`tau_phi (green)` is 2.4 ns. The remaining spread is shot noise: a pixel of one
+`tau_phi (G|G)` is 2.4 ns. The remaining spread is shot noise: a pixel of one
 frame holds 3–30 photons.
 ```
 
@@ -741,7 +741,7 @@ session was saved.
   **File › Forget session** removes them all from the file.
 - A session saved on a different table (another burst search, other columns,
   another number of bursts) is applied where it still fits; the status line
-  lists what was not restored ("gate G (no column 'Tau (green)')", "cluster
+  lists what was not restored ("gate G (no column 'Tau (G|G)')", "cluster
   labels (the table has another number of rows)").
 - If another program (ChiSurf) is writing the file, the save says so and the
   window carries on; save again once that program is done.

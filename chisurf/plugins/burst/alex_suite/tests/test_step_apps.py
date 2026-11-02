@@ -13,9 +13,9 @@ def _table(path, e_true, n=150, seed=0):
     green = total * 0.5
     i_da = rng.binomial(green.astype(int), e_true).astype(float)
     cols = {
-        "Number of Photons (green)": green - i_da,
-        "Number of Photons (red)": i_da,
-        "Number of Photons (yellow)": total - green,
+        "Number of Photons (G|G)": green - i_da,
+        "Number of Photons (R|G)": i_da,
+        "Number of Photons (R|R)": total - green,
         "Duration (ms)": np.full(n, 1.0),
     }
     lines = ["\t".join(cols)] + [

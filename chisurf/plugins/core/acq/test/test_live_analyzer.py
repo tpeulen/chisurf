@@ -99,25 +99,25 @@ def test_the_contract_columns_snapshot_and_histograms(pie_run):
         "First Photon", "Last Photon", "Duration (ms)", "Mean Macro Time (ms)",
         "Number of Photons", "Count Rate (KHz)",
     ]  # fmt: skip
-    assert "S prompt green (photons) | 0-2000" in names and names[-2:] == [
+    assert "S prompt G|G (photons) | 0-2000" in names and names[-2:] == [
         "Proximity Ratio",
         "Stoichiometry",
     ]
     assert (
         table["First Photon"].dtype == np.int64
-        and table["S prompt green (photons) | 0-2000"].dtype == np.int64
+        and table["S prompt G|G (photons) | 0-2000"].dtype == np.int64
     )
     snap = a.snapshot()
     for key in ("revision", "bursts", "photons", "elapsed_s", "burst_rate_hz", "background_cps",
                 "histograms", "trace", "decays", "burst_decays"):  # fmt: skip
         assert key in snap, key
     assert set(snap["background_cps"]) == {
-        "prompt green",
-        "prompt red",
-        "delayed green",
-        "delayed red",
-        "green",
-        "red",
+        "prompt G|G",
+        "prompt R|G",
+        "delayed G|G",
+        "delayed R|G",
+        "G|G",
+        "R|G",
     }
     es = snap["histograms"]["Proximity Ratio vs Stoichiometry"]
     assert es["counts"].shape == (50, 50) and len(es["x_edges"]) == 51

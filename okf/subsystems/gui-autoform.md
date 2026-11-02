@@ -594,7 +594,7 @@ feedback. Everything is governed by an `ExpressionPolicy`: which node kinds are
 allowed (arithmetic, optional comparisons/bit-ops), the whitelisted function set
 (`DEFAULT_POLICY` ships a rich NumPy library — `sin/cos/exp/log/sqrt/where/clip/
 minimum/maximum/…`), the named constants (`pi/e/inf/nan`), and how names
-resolve: **quoted** references (`'Green Count Rate'`, so names may contain
+resolve: **quoted** references (`'G|G Count Rate'`, so names may contain
 spaces) vs **bare** identifiers (`tau`), optionally case-insensitive and matched
 on the part left of a `|` (the `"Name | unit"` column convention). A caller
 symbol always **shadows** a constant of the same name — a column called `e` is

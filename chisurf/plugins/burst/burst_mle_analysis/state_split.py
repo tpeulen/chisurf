@@ -1,7 +1,7 @@
 """Burst MLE split by H2MM state, without a toolkit: the per-state global fit and its seeding of the burst fits.
 
 A burst analysed by H2MM carries one state per photon. Splitting the burst-MLE fit by state widens each burst's row
-(``Tau S0 (green)`` beside ``Tau (green)``, see :func:`.engine.state_result_columns`) and adds one global fit per
+(``Tau S0 (G|G)`` beside ``Tau (G|G)``, see :func:`.engine.state_result_columns`) and adds one global fit per
 ``(detector, state)``: the decay of every photon the measurement assigned to that state, pooled over all bursts. That
 pooled lifetime is the number to quote (one burst's state holds tens of photons) and the start value of every
 per-burst fit of the state.
@@ -19,6 +19,8 @@ from typing import Any, Callable
 import numpy as np
 
 from chisurf.core.datastore import store_from_rows, write_csv_table
+
+from ._mp_worker import colour_of
 
 logger = logging.getLogger(__name__)
 
@@ -211,7 +213,7 @@ def state_lifetime_rows(fits: dict, model: str, param_names, *, perdet_cfg=None)
 
             row = {
                 "Detector": det,
-                "Colour": det.lower(),
+                "Colour": colour_of(det),
                 "State": int(state),
                 "Photons (parallel)": entry["cp"],
                 "Photons (perpendicular)": entry["cs"],

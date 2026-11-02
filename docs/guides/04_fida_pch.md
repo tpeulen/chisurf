@@ -53,7 +53,7 @@ load, compute and fit, and a photon file dropped on the window is loaded.
 :name: fig-pch-tool
 :width: 100%
 
-The PCH tool on `test/data/tttr/BH/132/BH_SPC132.spc`, green detectors
+The PCH tool on `test/data/tttr/BH/132/BH_SPC132.spc`, the `G|G` detector
 (channels 0, 8), 50 µs bins: 1 246 577 bins, counts 0–24 per bin. The long tail
 is single-molecule bursts on a nearly empty focus.
 ```

@@ -96,8 +96,8 @@ def _pool(bursts, mt, rc, st, **cfg_kw):
             mt_sh.name,
             mt.shape,
             str(mt.dtype),
-            ["green"],
-            {"green": _cfg(**cfg_kw)},
+            ["G|G"],
+            {"G|G": _cfg(**cfg_kw)},
             (st_sh.name, st.shape, str(st.dtype), 1),
         )
         return pool_states_worker(args)
@@ -121,8 +121,8 @@ def _fit(bursts, mt, rc, **cfg_kw):
             mt_sh.name,
             mt.shape,
             str(mt.dtype),
-            ["green"],
-            {"green": _cfg(**cfg_kw)},
+            ["G|G"],
+            {"G|G": _cfg(**cfg_kw)},
             0,
             None,
         )
@@ -143,7 +143,7 @@ def test_the_slice_helper_counts_the_last_photon():
 def test_the_pooled_decay_holds_the_bursts_last_photon():
     """The photon at ``Last Photon`` is inside the burst, not after it."""
     mt, rc, st = _photons(marker_at=19)
-    green = _pool([(10, 19)], mt, rc, st)["green"]
+    green = _pool([(10, 19)], mt, rc, st)["G|G"]
 
     assert int(green[0].sum()) == 10, "Last - First + 1 photons"
     assert int(green[0, :, MARKER_BIN].sum()) == 1, (
@@ -153,7 +153,7 @@ def test_the_pooled_decay_holds_the_bursts_last_photon():
 
 def test_a_one_photon_burst_pools_one_photon():
     mt, rc, st = _photons(marker_at=5)
-    green = _pool([(5, 5)], mt, rc, st)["green"]
+    green = _pool([(5, 5)], mt, rc, st)["G|G"]
     assert int(green[0].sum()) == 1
     assert int(green[0, :, MARKER_BIN].sum()) == 1
 
@@ -163,7 +163,7 @@ def test_the_fit_window_photon_count_matches_the_burst_row():
     mt, rc, _ = _photons(marker_at=19)
     rows = _fit([(10, 19), (30, 30), (40, 63)], mt, rc)
 
-    counts = [r["Number of Photons (fit window) (green)"] for r in rows]
+    counts = [r["Number of Photons (fit window) (G|G)"] for r in rows]
     assert counts == [10, 1, 24]
     assert [r["Ng-p-all"] + r["Ng-s-all"] for r in rows] == [10, 1, 24]
 
@@ -172,6 +172,6 @@ def test_a_burst_exactly_on_the_photon_floor_is_fitted():
     """The floor is applied to the burst's real count, so 10 >= 10 passes."""
     mt, rc, _ = _photons(marker_at=19)
     (row,) = _fit([(10, 19)], mt, rc, min_photons=10)
-    assert np.isfinite(row["Tau (green)"]), (
+    assert np.isfinite(row["Tau (G|G)"]), (
         "with the last photon dropped the burst held 9 and was rejected"
     )

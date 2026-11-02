@@ -76,7 +76,7 @@ from chisurf.plugins.tttr.tttr_count_rate_analysis.gui.controller import create_
 app = create_app()
 tool = app.tool
 tool.channel_editor.load_definition({
-    "detectors": {"green": {"chs": [0, 1], "micro_time_ranges": [], "g_factor": 1.0}},
+    "detectors": {"G|G": {"chs": [0, 1], "micro_time_ranges": [], "g_factor": 1.0}},
     "windows": {},
     "tttr_reading": {"file_type": "SPC-130"},
 })

@@ -14,6 +14,8 @@ import numpy as np
 import tttrlib
 from tttrlib import micro_time_mask
 
+from chisurf.core.fluorescence import detector_names as dn
+
 __all__ = ["PRESETS", "analyze_offline", "make_analyzer"]
 
 #: The detection schemes ("presets") the analyzer knows.
@@ -21,12 +23,15 @@ PRESETS = tuple(tttrlib.StreamingBurstAnalyzer.PRESETS)
 
 
 def make_analyzer(setup: dict, preset: str, **kw):
-    """``tttrlib.StreamingBurstAnalyzer.from_setup(setup, preset, **kw)``."""
+    """``tttrlib.StreamingBurstAnalyzer.from_setup(setup, preset, **kw)``, the donor and acceptor
+    by default ``G|G`` and ``R|G`` (tttrlib's own defaults are the historic green / red)."""
+    kw.setdefault("donor", dn.DONOR)
+    kw.setdefault("acceptor", dn.ACCEPTOR)
     return tttrlib.StreamingBurstAnalyzer.from_setup(setup, preset, **kw)
 
 
 def analyze_offline(tttr, setup: dict, preset: str, *, min_photons=20, window_photons=10, window_time=5e-4,
-                    donor="green", acceptor="red", prompt="prompt", delay="delayed") -> dict:  # fmt: skip
+                    donor=dn.DONOR, acceptor=dn.ACCEPTOR, prompt="prompt", delay="delayed") -> dict:  # fmt: skip
     """The batch reference: burst selection's search over a whole file, counted per stream.
 
     Written independently of both analyzers -- the photons of the detector channels selected,

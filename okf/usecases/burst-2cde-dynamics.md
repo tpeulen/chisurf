@@ -70,7 +70,7 @@ under `/tmp` so the repo's test data stayed clean.
 8. Headless equivalent:
    `2cde compute "<analysis folder>" --variant fret --kernel laplace --tau 100e-6
    --file-type SPC-130`, or in the guided workflow API
-   `bursts.two_cde(donor="green", acceptor="red", tau=100e-6).dynamic_fraction(12.0)`.
+   `bursts.two_cde(donor="G|G", acceptor="R|G", tau=100e-6).dynamic_fraction(12.0)`.
 
 ## Expected
 

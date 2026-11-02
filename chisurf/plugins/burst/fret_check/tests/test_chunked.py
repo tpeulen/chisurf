@@ -58,8 +58,8 @@ def test_chunked_analysis_finds_the_same_bursts(tmp_path):
         assert np.allclose(whole.t_start, parts.t_start)
         for stream, rate in whole.background.items():
             assert parts.background[stream] == pytest.approx(rate, rel=0.02, abs=1.0)
-        if "Tau (green)" in whole.extra:
-            assert np.nanmax(np.abs(whole.extra["Tau (green)"] - parts.extra["Tau (green)"])) < 0.05
+        if "Tau (G|G)" in whole.extra:
+            assert np.nanmax(np.abs(whole.extra["Tau (G|G)"] - parts.extra["Tau (G|G)"])) < 0.05
         assert trace["rates"] and micro
 
 

@@ -29,13 +29,16 @@ from typing import Any
 import numpy as np
 
 from chisurf import logging
+from chisurf.core.fluorescence.detector_names import ACCEPTOR, DONOR
 
 #: Row label per detection colour, by colour count. Two-colour PDA counts a
 #: green and a red channel; three-colour adds the blue donor.
 COLOUR_LABELS = {2: ("Green", "Red"), 3: ("Blue", "Green", "Red")}
 
-#: Detector name preferred for each row when the selected setup defines one.
-COLOUR_DEFAULTS = {2: ("green", "red"), 3: ("blue", "green", "red")}
+#: Detector name preferred for each row when the selected setup defines one: the
+#: donor and FRET-acceptor detectors, and the blue detector before them at three
+#: colours. A row reads only its detector's channels, not its micro-time window.
+COLOUR_DEFAULTS = {2: (DONOR, ACCEPTOR), 3: ("B|B", DONOR, ACCEPTOR)}
 
 #: Default routing channels per row, used when the reader has none.
 COLOUR_CHANNELS = {2: ("0,3", "1,2"), 3: ("0", "1", "2")}
@@ -177,8 +180,8 @@ def format_channels(group: Any) -> str:
 def preferred_detectors(detectors: Mapping, n_colors: int) -> list[str]:
     """Choose one detector of a setup per colour row.
 
-    A row takes the detector named after its colour (``green``, ``red``,
-    ``blue``) when the setup has one, else the setup's detectors in their
+    A row takes the detector of :data:`COLOUR_DEFAULTS` (``G|G``, ``R|G``;
+    ``B|B``, ``G|G``, ``R|G``) when the setup has one, else the setup's detectors in their
     declared order -- so two rows never silently point at the same channels.
 
     Parameters

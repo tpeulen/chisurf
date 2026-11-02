@@ -22,16 +22,16 @@ BURSTS = DATA / "burstwise_All 0.1000#15"
 SETUPS = {
     "Confocal": {
         "detectors": {
-            "green": {"chs": [0, 2], "micro_time_ranges": [[0, 4095]]},
-            "red": {"chs": [1, 3], "micro_time_ranges": [[100, 3000]]},
+            "G|G": {"chs": [0, 2], "micro_time_ranges": [[0, 4095]]},
+            "R|G": {"chs": [1, 3], "micro_time_ranges": [[100, 3000]]},
         },
         "tttr_reading": {"file_type": "SPC-130"},
     },
     "Three": {
         "detectors": {
-            "blue": {"chs": [4], "micro_time_ranges": [[0, 10]]},
-            "green": {"chs": [0], "micro_time_ranges": [[0, 10]]},
-            "red": {"chs": [1], "micro_time_ranges": [[0, 10]]},
+            "B|B": {"chs": [4], "micro_time_ranges": [[0, 10]]},
+            "G|G": {"chs": [0], "micro_time_ranges": [[0, 10]]},
+            "R|G": {"chs": [1], "micro_time_ranges": [[0, 10]]},
         },
     },
 }
@@ -62,9 +62,9 @@ def test_channel_fields_skip_what_is_not_a_channel():
 
 def test_a_row_takes_the_detector_named_after_its_colour():
     detectors = SETUPS["Confocal"]["detectors"]
-    assert inputs.preferred_detectors(detectors, 2) == ["green", "red"]
+    assert inputs.preferred_detectors(detectors, 2) == ["G|G", "R|G"]
     # No blue detector: rows fall back to the setup's order, never all to one.
-    assert inputs.preferred_detectors(detectors, 3) == ["green", "green", "red"]
+    assert inputs.preferred_detectors(detectors, 3) == ["G|G", "G|G", "R|G"]
     assert inputs.preferred_detectors({}, 2) == ["", ""]
 
 
@@ -87,11 +87,11 @@ def test_the_setup_fills_the_rows_and_the_routine():
     # the setup's gates [0, 4095) and [100, 3000) as the reader's inclusive windows
     assert reader.micro_time_ranges == [[[0, 4094]], [[100, 2999]]]
     assert reader.reading_routine == "SPC-130"
-    settings.detector_0 = "red"
+    settings.detector_0 = "R|G"
     assert reader.channels[0] == [1, 3]
     # A second form over the same reader keeps what the first chose.
     again = PdaReaderSettings(reader, setups=SETUPS, routines=["PTU"])
-    assert again.detector_0 == "red" and reader.channels[0] == [1, 3]
+    assert again.detector_0 == "R|G" and reader.channels[0] == [1, 3]
 
 
 def test_without_a_setup_the_rows_are_typed_by_hand():
@@ -112,7 +112,7 @@ def test_three_colours_make_the_windows_excitation_periods():
     settings.setup = "Three"
     reader.n_colors = 3
     assert settings.sync() is True and settings.three_colours
-    assert reader.detector_names == ["blue", "green", "red"]
+    assert reader.detector_names == ["B|B", "G|G", "R|G"]
     assert reader.channels == [[4], [0], [1]]
     settings.window_0, settings.window_1 = "0-8000", "8000-16000"
     assert reader.micro_time_ranges == [[0, 8000], [8000, 16000]]

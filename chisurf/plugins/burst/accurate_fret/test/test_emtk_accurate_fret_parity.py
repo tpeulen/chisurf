@@ -29,10 +29,10 @@ def _bursts(tmp_path) -> Path:
     np.savez(
         path,
         **{
-            "Green Count Rate (KHz)": dd,
-            "Red Count Rate (KHz)": da,
-            "S delayed yellow (kHz)": aa,
-            "Tau (green)": tau,
+            "G|G Count Rate (KHz)": dd,
+            "R|G Count Rate (KHz)": da,
+            "S delayed R|R (kHz)": aa,
+            "Tau (G|G)": tau,
         },
     )
     return path

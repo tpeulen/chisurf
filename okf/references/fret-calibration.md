@@ -26,7 +26,7 @@ timestamp: '2026-09-23T00:00:00Z'
    the gates slightly -- do it in both places or neither.
 
 Accurate single-molecule FRET requires calibration factors that turn raw
-green/red/yellow photon counts into a true efficiency: the detection/quantum-yield
+`G|G`/`R|G`/`R|R` photon counts into a true efficiency: the detection/quantum-yield
 ratio `gamma`, the donor spectral leakage `alpha`, the direct acceptor excitation
 `delta`, the channel backgrounds and the Förster radius `R0`. ChiSurf models these
 as real **fitting parameters** with a Bayesian workflow:
@@ -74,7 +74,7 @@ Moved here unchanged: notes that are history, done work or standing rules rather
    cannot be opened -- see known-issues.
 
 5. **Why "gamma 0.8256" and "gamma 0.7502" are both right for cal1.** 0.8256 is
-   `tttrlib.auto_calibrate` on the raw `Number of Photons (green/red/yellow)`
+   `tttrlib.auto_calibrate` on the raw `Number of Photons (G|G)` / `(R|G)` / `(R|R)`
    with zero background; the FRET menu's default is `background="fit"`
    (per-burst background from the reference populations, two passes) on the
    gated photon columns, starting from the window's constants: 0.7502. With
@@ -111,7 +111,7 @@ Moved here unchanged: notes that are history, done work or standing rules rather
   `set_priors_from_lightpath(...)` attaches a `NormalPrior` on `gamma`/`R0` and a
   `TruncatedNormalPrior` on the bounded `alpha`/`delta`. The returned factors are in
   the Hellenkamp convention the consumers apply — in particular `alpha = I_DA/I_DD`,
-  the leakage relative to the **green channel alone**, matching
+  the leakage relative to the **donor detector `G|G` alone**, matching
   `leakage_from_donor_only`. It is *not* the legacy MFD fraction-of-all-donor-photons
   `R_D0/(G_D0 + R_D0)` (= `alpha/(1+alpha)`), which `pda/nusiance.py` keeps on purpose
   for the PDA models. Mixing the two biases every corrected `E`.

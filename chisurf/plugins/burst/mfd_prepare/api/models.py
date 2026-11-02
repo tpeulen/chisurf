@@ -16,7 +16,7 @@ class PrepareRequest:
         Path to the burst-analysis folder (containing ``.bur`` files and
         co-located TTTR photon sources).
     streams : list of dict, optional
-        Explicit stream definitions (``{"name": "green", "channels": [0, 8]}``).
+        Explicit stream definitions (``{"name": "G|G", "channels": [0, 8]}``).
         If omitted, streams are inferred from the burst table and photons.
     with_photons : bool
         Load photon streams for micro-time computation (default ``True``).

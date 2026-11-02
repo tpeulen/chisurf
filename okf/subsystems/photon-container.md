@@ -116,10 +116,10 @@ Consequences worth not re-deriving:
      the guard here is `test_replacing_a_result_leaves_the_container_readable`.
    · *Units matched on the whole column name matched nothing.* Every imaging
      column is suffixed with the channel it came from — `N (ch0)`,
-     `Mean Micro Time (green)` — so an exact-match table silently produced a
+     `Mean Micro Time (G|G)` — so an exact-match table silently produced a
      unitless file, "no unit" and "unknown unit" being written the same way.
      `ImagingMapViewModel.COLUMN_UNITS` matches by **prefix**; the MLE writer
-     has the same rule for `Tau S0 (red)`. Found by reading the output, not by
+     has the same rule for `Tau S0 (R|G)`. Found by reading the output, not by
      a test passing.
 
    **Four read-side gaps closed, all one shape — a writer with no reader.**

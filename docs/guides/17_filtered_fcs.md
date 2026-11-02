@@ -165,7 +165,7 @@ plugin's own inversions, pass `basis=api.exp_curves(...).binned_log` and its
 ### Instrument parameters
 
 When a species is a coupled smFRET decay rather than a plain lifetime spectrum,
-its green/red/yellow patterns depend on the correction factors, so the filter
+its `G|G`/`R|G`/`R|R` patterns depend on the correction factors, so the filter
 calculator carries an **Instrument** tab holding $\alpha$ (donor leakage),
 $\beta$ (excitation-flux ratio of the acceptor to the donor laser), $\gamma$
 (detection / quantum yield), $\delta$ (direct acceptor excitation), the
@@ -181,7 +181,7 @@ over the stored value for the current session.
 ```{note}
 $\beta$ is a *ratio*, so its neutral value is **1**, not 0. The excitation
 matrix is $\begin{pmatrix}1 & \delta\\ 0 & \beta\end{pmatrix}$: at $\beta = 0$
-the acceptor laser excites nothing and the acceptor-excitation (yellow) pattern
+the acceptor laser excites nothing and the acceptor-excitation (`R|R`) pattern
 is identically zero, which silently removes that channel from the filters.
 ```
 

@@ -26,9 +26,9 @@ from chisurf.plugins.tttr.trace_browser.gui.model import (  # noqa: E402
 # Setup as the detector wizard returns it ("ALEX Suite (auto)"): detectors only matter here.
 SETUP = {
     "detectors": {
-        "green": {"chs": [1], "micro_time_ranges": [(616, 3784)]},
-        "red": {"chs": [0], "micro_time_ranges": [(616, 3784)]},
-        "yellow": {"chs": [0], "micro_time_ranges": [(4278, 7762)]},
+        "G|G": {"chs": [1], "micro_time_ranges": [(616, 3784)]},
+        "R|G": {"chs": [0], "micro_time_ranges": [(616, 3784)]},
+        "R|R": {"chs": [0], "micro_time_ranges": [(4278, 7762)]},
     }
 }
 
@@ -264,7 +264,7 @@ def test_trace_matches_the_reference(real_dir):
     m.open_folder(real_dir)
     for ms, bins, last in ((10.0, 6233, 62.32), (1.0, 62329, 62.328)):
         ta, pad, labels = m.compute_trace_cached(real_dir / "m000.spc", ms)
-        assert labels == ["green", "red", "yellow"]
+        assert labels == ["G|G", "R|G", "R|R"]
         assert pad.shape == (bins, 3)
         assert [int(x) for x in pad.sum(axis=0)] == [22443, 56257, 0]
         assert ta[-1] == pytest.approx(last)

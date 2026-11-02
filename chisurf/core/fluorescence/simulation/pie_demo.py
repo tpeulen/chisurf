@@ -17,6 +17,8 @@ from pathlib import Path
 
 import numpy as np
 
+from chisurf.core.fluorescence.detector_names import ACCEPTOR, DONOR
+
 STEM = "excitation_windows_demo.ptu"
 DONOR_ONLY_STEM = "excitation_windows_demo_donor_only.ptu"
 RESOLUTION_S = 32e-12
@@ -74,7 +76,7 @@ def make_demo(folder: Path, *, donor_only: bool = False, n_photons: int = 300_00
 def wrong_setup() -> dict:
     """A detector setup made for another TCSPC (SPC-130, 50 ps, 4096 channels)."""
     return {
-        "detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}},
+        "detectors": {DONOR: {"chs": [0]}, ACCEPTOR: {"chs": [1]}},
         "windows": {"prompt": [0, 2048], "delayed": [2048, 4095]},
         "tttr_reading": {"micro_time_resolution": 50.0, "macro_time_resolution": 50.0},
     }

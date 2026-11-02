@@ -24,6 +24,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from chisurf.core.datastore import column_names, store_from_arrays
+from chisurf.core.fluorescence.detector_names import ACCEPTOR, DONOR
 
 from .h2mm import BurstPhotons
 from .photons import PhotonMeta
@@ -77,7 +78,7 @@ def build_tables(
         first, acceptor second, then any acceptor-excitation. Each yields a
         ``Mean Microtime (<name>)`` column; the first two define the measured E /
         proximity ratio. Several indices per role support nanotime divisors.
-        Defaults to ``[("green", (0,)), ("red", (1,))]`` limited to what exists.
+        Defaults to ``[("G|G", (0,)), ("R|G", (1,))]`` limited to what exists.
     micro_time_ns : float, optional
         Nanoseconds per micro-time channel. When given the ``Mean Microtime``
         columns are in ns; otherwise they are ``NaN``.
@@ -117,9 +118,9 @@ def build_tables(
     photons = store_from_arrays(photon_columns)
 
     if stream_groups is None:
-        stream_groups = [("green", (0,))]
+        stream_groups = [(DONOR, (0,))]
         if int(data.n_streams) > 1:
-            stream_groups.append(("red", (1,)))
+            stream_groups.append((ACCEPTOR, (1,)))
     groups = [(str(name), np.atleast_1d(np.asarray(idx, dtype=int))) for name, idx in stream_groups]
 
     # Per-burst aggregation.
@@ -214,9 +215,9 @@ def build_dwell_table(
         One row per dwell.
     """
     if stream_groups is None:
-        stream_groups = [("green", (0,))]
+        stream_groups = [(DONOR, (0,))]
         if int(data.n_streams) > 1:
-            stream_groups.append(("red", (1,)))
+            stream_groups.append((ACCEPTOR, (1,)))
     groups = [(str(name), np.atleast_1d(np.asarray(idx, dtype=int))) for name, idx in stream_groups]
 
     offsets = np.asarray(data.burst_offsets)

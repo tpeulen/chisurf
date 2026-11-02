@@ -30,7 +30,7 @@ QT_SP8 = dict(
     shape=[256, 512],
     cols=2,
     rows=1,
-    labels=["green  |  mt: 0-4095  |  ch: 0,1", "red  |  mt: 0-4095  |  ch: 2"],
+    labels=["G|G  |  mt: 0-4095  |  ch: 0,1", "R|G  |  mt: 0-4095  |  ch: 2"],
     sum=547933,
     max=212,
     sha1="c12bdf5fb28317ad7abfe2aef4b8836eb7756997",
@@ -49,10 +49,10 @@ QT_SP5 = dict(
     sha1="5258d6537c943e9aceda951d46f4b9d397e056d2",
 )
 QT_TIFF = {
-    "Leica_SP5_green.tiff": ([230, 256, 256], 3037446),  # re-pinned, see QT_SP5
-    "Leica_SP5_red.tiff": ([230, 256, 256], 0),
-    "Leica_SP8_green.tiff": ([93, 512, 512], 2710575),
-    "Leica_SP8_red.tiff": ([93, 512, 512], 0),
+    "Leica_SP5_G-G.tiff": ([230, 256, 256], 3037446),  # re-pinned, see QT_SP5
+    "Leica_SP5_R-G.tiff": ([230, 256, 256], 0),
+    "Leica_SP8_G-G.tiff": ([93, 512, 512], 2710575),
+    "Leica_SP8_R-G.tiff": ([93, 512, 512], 0),
 }
 
 
@@ -684,8 +684,8 @@ def test_the_app_draws_empty_and_populated_at_both_sizes(size, photon_folder):
         full = RecordingPainter()
         app.draw(full, 0, 0, *size)
     assert "Leica_SP8.ptu: 2 tile(s), mosaic 512 x 256 px" in full.strings
-    assert any(s.startswith("green") for s in full.strings) and any(
-        s.startswith("red") for s in full.strings
+    assert any(s.startswith("G|G") for s in full.strings) and any(
+        s.startswith("R|G") for s in full.strings
     )
     assert "x [px]" in full.strings and "level" in full.strings
     app.pending_page = "setup"

@@ -246,8 +246,7 @@ def test_a_window_added_in_the_editor_is_computed_by_the_next_run(app, drv, flim
     loaded = C.loaded(app, drv, flim)
     app.docks.focus("Detectors")
     drv.draw(3)
-    drv.click_text("Add")
-    drv.draw(2)
+    C.add_custom_detector(drv)
     app.docks.focus("Intensity")
     C.run(app, drv)
     assert sorted(loaded._by_window) == ["New Detector", "ch0"]
@@ -370,8 +369,8 @@ def test_the_imaging_hub_drives_the_tool(app, drv, flim):
         flim,
         drv,
         {
-            "green": {"chs": [0], "micro_time_ranges": []},
-            "red": {"chs": [1], "micro_time_ranges": [(0, 100)]},
+            "G|G": {"chs": [0], "micro_time_ranges": []},
+            "R|G": {"chs": [1], "micro_time_ranges": [(0, 100)]},
         },
         {},
     )

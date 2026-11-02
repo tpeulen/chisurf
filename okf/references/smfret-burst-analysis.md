@@ -91,9 +91,9 @@ donor/acceptor experiment the three counts have friendly aliases:
 
 | Alias | Index | Meaning | Nickname |
 |---|---|---|---|
-| `i_dd` | $I_{11}$ | donor emission under **donor** excitation | "green" |
-| `i_da` | $I_{12}$ | acceptor emission under **donor** excitation (the FRET signal) | "red" |
-| `i_aa` | $I_{22}$ | acceptor emission under **acceptor** excitation | "yellow" |
+| `i_dd` | $I_{11}$ | donor emission under **donor** excitation | `G\|G` |
+| `i_da` | $I_{12}$ | acceptor emission under **donor** excitation (the FRET signal) | `R\|G` |
+| `i_aa` | $I_{22}$ | acceptor emission under **acceptor** excitation | `R\|R` |
 
 Continuous-wave single-laser FRET has only $I_{dd}$ and $I_{da}$. The third
 channel $I_{aa}$ requires **alternating excitation** — µs-ALEX (the acceptor

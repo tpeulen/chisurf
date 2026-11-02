@@ -83,14 +83,14 @@ def test_the_tables_show_the_models_values(drv):
     assert [r["enabled"] for r in panel.component_rows()] == [True, True]
     det = panel.detector_rows()[0]
     assert (det["name"], det["width"], det["skew"], det["shift"], det["irf"], det["use"]) == (
-        "green",
+        "G|G",
         0.16,
         0.0,
         pytest.approx(0.03),
         "",
         True,
     )
-    assert panel.range_rows() == [{"detector": "green", "start": 10, "stop": 254}]
+    assert panel.range_rows() == [{"detector": "G|G", "start": 10, "stop": 254}]
     assert "== Mixed decay ==" in panel.info_text() and "Fast example" in panel.info_text()
 
 
@@ -209,13 +209,13 @@ def test_the_reconstruction_plot_shows_the_decay_and_the_fit_range(drv):
     painter = drv.draw(3)
     # every axis label drawn whole (the residual label used to run off its short panel)
     assert {"Counts", "TAC bin", "Filter value", "Residual / σ"} <= set(painter.strings)
-    assert any(s == "green  measured" for s in painter.strings)
+    assert any(s == "G|G  measured" for s in painter.strings)
 
 
 def test_a_project_round_trips_through_save_and_load(drv, tmp_path):
     m = drv.app.model
     m.components[0].enabled = False
-    m.detectors.set_width("green", 0.25)
+    m.detectors.set_width("G|G", 0.25)
     m._fit_bounds = (20, 200)
     drv.settle()
     path = tmp_path / "round.json"
@@ -224,7 +224,7 @@ def test_a_project_round_trips_through_save_and_load(drv, tmp_path):
     try:
         other.model.load_project(path)
         assert other.model.components[0].enabled is False
-        assert other.model.detectors.width("green") == 0.25 and other.model._fit_bounds == (20, 200)
+        assert other.model.detectors.width("G|G") == 0.25 and other.model._fit_bounds == (20, 200)
     finally:
         other.close()
 
@@ -237,7 +237,10 @@ def test_the_real_user_settings_are_never_touched(drv):
         else []
     )
     drv.tab("Detector setup")
-    drv.click_text("Add")
+    # the shared editor's Add is a list of the unused default names: pick R|G
+    drv.click_text("Add detector ...")
+    drv.draw(2)
+    drv.click_text("R|G")
     drv.settle()
     drv.app.close()
     after = (

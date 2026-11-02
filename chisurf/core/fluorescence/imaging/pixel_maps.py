@@ -19,6 +19,8 @@ from typing import Any
 
 import numpy as np
 
+from chisurf.core.fluorescence.detector_names import ACCEPTOR, ACCEPTOR_DIRECT, DONOR
+
 from .intensity import clsm_intensity_counts
 from .number_brightness import nb_pipeline
 
@@ -448,18 +450,19 @@ def build_clsm_windowed(tttr: Any, channels, micro_time_ranges=None) -> Any:
 
 #: Map a detector-window name to the per-pixel intensity column name expected by
 #: ndxplorer's MFD equations (so 'FRET efficiency', 'Proximity ratio', ... compute
-#: directly). Detector windows already encode the PIE combos (green = prompt green,
-#: red = prompt red, yellow = delayed acceptor).
+#: directly). Detector windows already encode the PIE combos (G|G = prompt donor,
+#: R|G = prompt acceptor, R|R = delayed acceptor).
 MFD_INTENSITY_COLUMNS = {
-    "green": "S prompt green (kHz)",
-    "red": "S prompt red (kHz)",
-    "yellow": "S delayed yellow (kHz)",
+    DONOR: f"S prompt {DONOR} (kHz)",
+    ACCEPTOR: f"S prompt {ACCEPTOR} (kHz)",
+    ACCEPTOR_DIRECT: f"S delayed {ACCEPTOR_DIRECT} (kHz)",
 }
 
 
 def mfd_intensity_column(window_name: str) -> str:
     """Return the ndxplorer-MFD intensity column name for a detector window."""
-    return MFD_INTENSITY_COLUMNS.get(str(window_name).strip().lower(), f"S {window_name} (kHz)")
+    name = str(window_name).strip()
+    return MFD_INTENSITY_COLUMNS.get(name.upper(), f"S {name} (kHz)")
 
 
 def windows_from_payload(payload: dict) -> dict[str, dict]:

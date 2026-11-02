@@ -174,7 +174,7 @@ def detect_pie_windows(
     ----------
     histograms : mapping or array
         ``{detector: counts per micro-time channel}`` (or one histogram). Detector names are free
-        (``"green"``, ``"ch 1"``); they are what :attr:`Pulse.excites` reports.
+        (``"G|G"``, ``"ch 1"``); they are what :attr:`Pulse.excites` reports.
     resolution_s : float
         Micro-time channel width, in seconds.
     n_channels : int, optional

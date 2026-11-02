@@ -91,7 +91,7 @@ def test_guide_29_numbers_on_the_ten_repeats(tmp_path, monkeypatch):
         "guide29",
         {
             "windows": {"prompt": [0, 4096]},
-            "detectors": {"green": det([0, 8]), "red": det([1, 9])},
+            "detectors": {"G|G": det([0, 8]), "R|G": det([1, 9])},
             "tttr_reading": {"file_type": "SPC-130", "micro_time_binning": 1},
         },
     )

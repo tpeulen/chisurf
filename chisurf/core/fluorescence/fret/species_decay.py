@@ -4,13 +4,13 @@ In a multi-detector smFRET / ALEX / PIE experiment a single species does *not*
 share one decay across channels — each detection channel sees a different,
 physically-coupled decay:
 
-- **green**  (donor emission, donor excitation): the donor decay, FRET-quenched
+- **G|G**  (donor emission, donor excitation): the donor decay, FRET-quenched
   in a donor+acceptor (DA) species, unquenched in a donor-only species.
-- **red**    (acceptor emission, donor excitation): the FRET-*sensitized*
+- **R|G**  (acceptor emission, donor excitation): the FRET-*sensitized*
   acceptor — its rise is governed by the donor decay (see
   :func:`chisurf.core.fluorescence.fret.acceptor.da_a0_to_ad`) — plus spectral
   donor leakage (``alpha``) and directly-excited acceptor (``delta``).
-- **yellow** (acceptor emission, acceptor excitation): the acceptor's own decay.
+- **R|R**  (acceptor emission, acceptor excitation): the acceptor's own decay.
 
 The mixing between channels is set by the Hellenkamp correction factors
 (``alpha`` leakage, ``beta`` excitation-flux, ``gamma`` detection/QY, ``delta``
@@ -31,8 +31,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+import re
+
 import numpy as np
 
+from chisurf.core.fluorescence.detector_names import ACCEPTOR, ACCEPTOR_DIRECT, DONOR, role
 from chisurf.core.fluorescence.fret.acceptor import da_a0_to_ad
 from chisurf.core.fluorescence.general import (
     calculate_fluorescence_decay,
@@ -228,8 +231,11 @@ def _resolve_fret(species: FretSpecies, donor: np.ndarray) -> tuple[np.ndarray, 
     return quenched, efficiency
 
 
-# Channels are (detector, laser) pairs; detectors (green=0, red=1), lasers (donor=0, acceptor=1).
-_CHANNELS = {"green": (0, 0), "red": (1, 0), "yellow": (1, 1)}
+# Channels are (detector, laser) pairs, named by their detector; detectors (green=0, red=1),
+# lasers (donor=0, acceptor=1).
+_CHANNELS = {DONOR: (0, 0), ACCEPTOR: (1, 0), ACCEPTOR_DIRECT: (1, 1)}
+#: The channel of each FRET role (:func:`~chisurf.core.fluorescence.detector_names.role`).
+_CHANNEL_OF_ROLE = {"donor": DONOR, "acceptor": ACCEPTOR, "acceptor_direct": ACCEPTOR_DIRECT}
 
 
 def _channel_contributions(
@@ -239,7 +245,7 @@ def _channel_contributions(
 
     Amplitudes come from the full excitation/emission matrices, so the relative
     weights of donor / sensitized-acceptor / directly-excited-acceptor across the
-    green/red/yellow channels are physically consistent.
+    G|G / R|G / R|R channels are physically consistent.
     """
     donor = _spectrum_pairs(species.donor_spectrum)
     acceptor = _spectrum_pairs(species.acceptor_spectrum)
@@ -334,7 +340,7 @@ def fret_species_patterns(
     polarized: bool = False,
     normalize: bool = True,
 ) -> dict[str, np.ndarray]:
-    """Return the coupled green/red/yellow decays for one labeling state.
+    """Return the coupled G|G / R|G / R|R decays for one labeling state.
 
     Parameters
     ----------
@@ -353,7 +359,7 @@ def fret_species_patterns(
     polarized : bool
         When true, each channel is split into ``*_parallel`` / ``*_perpendicular``
         using the per-chromophore anisotropy; otherwise intensity channels
-        ``green`` / ``red`` / ``yellow`` are returned.
+        ``G|G`` / ``R|G`` / ``R|R`` are returned.
     normalize : bool
         Scale the whole set by one factor so the summed integral is 1 — preserves
         the physically-meaningful ratios *between* channels.
@@ -418,13 +424,17 @@ def _component_irf(component: dict, n_bins: int, dt: float):
     return None
 
 
+_DETECTOR_IN_NAME = re.compile(r"[BGYR]\|[BGYR]")
+
+
 def _channel_for_detector(name: str) -> str:
-    """Map a detector name to its FRET colour channel (green / red / yellow)."""
-    lowered = str(name).lower()
-    for channel in ("green", "red", "yellow"):
-        if channel in lowered:
-            return channel
-    return "green"
+    """Map a detector name to its FRET channel (G|G / R|G / R|R) by its role; the donor
+    channel when the name has none. A name carrying a detector name (``G|G par``) counts."""
+    found = role(name)
+    if found is None:
+        named = _DETECTOR_IN_NAME.search(str(name).upper())
+        found = role(named.group()) if named else None
+    return _CHANNEL_OF_ROLE.get(found, DONOR)
 
 
 def fret_species_detector_patterns(
@@ -435,7 +445,7 @@ def fret_species_detector_patterns(
 ) -> dict[str, np.ndarray]:
     """Expand a ``fret_species`` component into per-detector decay patterns.
 
-    Each detector name is mapped to its colour channel (green/red/yellow) and
+    Each detector name is mapped to its FRET channel (G|G / R|G / R|R) and
     assigned the corresponding coupled decay. The decay is generated *ideal*
     (no IRF); each detector then gets its **own** IRF via ``irf_for_detector`` —
     a ``name -> irf array`` callable, normally the FCS detector settings — which
@@ -464,7 +474,7 @@ def fret_species_detector_patterns(
     if patterns:
         patterns.setdefault("__default__", next(iter(patterns.values())))
     else:
-        patterns = {"__default__": np.asarray(channels["green"], dtype=float)}
+        patterns = {"__default__": np.asarray(channels[DONOR], dtype=float)}
     return patterns
 
 

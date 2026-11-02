@@ -10,7 +10,7 @@ def test_background_view_model_estimate_reports_reason():
     model.add_files(["/nonexistent/a.spc"])
     model.channels_provider = lambda: {}
     assert "detector" in (model.can_estimate() or "").lower()
-    model.channels_provider = lambda: {"green": {"chs": [0, 8]}}
+    model.channels_provider = lambda: {"G|G": {"chs": [0, 8]}}
     assert model.can_estimate() is None
 
 

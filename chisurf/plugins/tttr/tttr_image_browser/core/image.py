@@ -584,7 +584,7 @@ def save_tiff_stacks(
                 if stack is None:
                     continue
                 safe_name = "".join(
-                    ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in str(combo_name)
+                    ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in str(combo_name).replace("|", "-")  # a detector G|G names the file G-G
                 )
                 dest = out / f"{p.stem}_{safe_name}.tiff"
                 try:

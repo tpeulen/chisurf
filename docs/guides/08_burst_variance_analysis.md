@@ -109,7 +109,7 @@ this gives 223 bursts, mean proximity ratio 0.280 and mean slice standard
 deviation 0.161; the static line at $p = 0.5$, $n = 5$ is 0.2236
 ($\sqrt{0.25/5}$).
 
-From the guided workflow: `bursts.bva("green", "red", photons_per_slice=5)`
+From the guided workflow: `bursts.bva("G|G", "R|G", photons_per_slice=5)`
 returns a `Bva` result with `.dynamic_fraction` and `.plot()` (0.423 for
 `m000`–`m002.spc` searched with `min_photons=20`). `.plot()` returns a figure
 panel that needs no GUI: `bursts.bva(...).plot().figure.save("bva.png")` writes

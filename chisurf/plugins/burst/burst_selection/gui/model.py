@@ -1064,7 +1064,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
                 ("Duration (ms)", "Mean duration (ms)"),
                 ("Count Rate (KHz)", "Mean rate (kHz)"),
             ]
-            # mean photons per burst in each detector (the Qt info box's "Mean ph (green)" rows)
+            # mean photons per burst in each detector (the Qt info box's "Mean ph (G|G)" rows)
             for detector in self.detectors:
                 column = f"Number of Photons ({detector})"
                 if column in names:

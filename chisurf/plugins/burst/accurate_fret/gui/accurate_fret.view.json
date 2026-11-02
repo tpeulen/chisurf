@@ -24,7 +24,7 @@
                 "call": "apply_setup_settings",
                 "placeholder": "— no detector setup —"
               },
-              "description": "Detector setup whose named windows (green, red, yellow, …) say which detection channels this measurement has. Picking one helps the channel columns below map themselves even when the table uses site-specific names, and it names the detectors when the optical model supplies the prior."
+              "description": "Detector setup whose named detectors (G|G, R|G, R|R, …) say which detection channels this measurement has. Picking one helps the channel columns below map themselves even when the table uses site-specific names, and it names the detectors when the optical model supplies the prior."
             },
             {
               "type": "custom",
@@ -51,7 +51,7 @@
                   "attr": "column_i_dd",
                   "label": "I_DD (donor)",
                   "options_source": "column_names",
-                  "description": "Donor signal under donor excitation — the 'green' channel. Auto-detected from the column names; counts and count rates both work as long as every channel uses the same unit. Type to filter the list.",
+                  "description": "Donor signal under donor excitation — the donor detector G|G. Auto-detected from the column names; counts and count rates both work as long as every channel uses the same unit. Type to filter the list.",
                   "editable": true
                 },
                 {
@@ -67,7 +67,7 @@
                   "attr": "column_i_aa",
                   "label": "I_AA (acceptor)",
                   "options_source": "column_names",
-                  "description": "Acceptor signal under acceptor excitation (ALEX/PIE) — the 'yellow' channel. Optional, but without it there is no stoichiometry: donor-only and acceptor-only bursts can then not be found automatically and every burst is assumed to be doubly labelled. Type to filter the list.",
+                  "description": "Acceptor signal under acceptor excitation (ALEX/PIE) — the R|R channel. Optional, but without it there is no stoichiometry: donor-only and acceptor-only bursts can then not be found automatically and every burst is assumed to be doubly labelled. Type to filter the list.",
                   "editable": true
                 },
                 {
@@ -264,7 +264,7 @@
                   "maximum": 10.0,
                   "step": 0.01,
                   "decimals": 3,
-                  "description": "Detection efficiency of the donor (green) channel, beyond what the light path already models."
+                  "description": "Detection efficiency of the donor (G|G) channel, beyond what the light path already models."
                 },
                 {
                   "type": "value",
@@ -275,7 +275,7 @@
                   "maximum": 10.0,
                   "step": 0.01,
                   "decimals": 3,
-                  "description": "Detection efficiency of the acceptor (red) channel."
+                  "description": "Detection efficiency of the acceptor (R|G) channel."
                 }
               ]
             },

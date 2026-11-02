@@ -139,6 +139,18 @@
     }
   },
   "experiment": {
-    "preset": "pie"
+    "preset": "pie",
+    "setup": {
+      "detectors": {
+        "G|G": {"chs": [0]},
+        "R|G": {"chs": [2]}
+      },
+      "windows": {
+        "prompt": [0, 781],
+        "delayed": [781, 1563]
+      },
+      "tttr_reading": {"micro_time_resolution": 32}
+    },
+    "note": "Detector 0/2 assignment follows MT200 inputs 1/3; confirm dye-to-detector assignment experimentally. The 25 ns split is provisional, derived from the 2026-10-30 20 MHz recording; inspect and calibrate excitation windows before interpreting PIE stoichiometry."
   }
 }

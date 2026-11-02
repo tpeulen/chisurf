@@ -37,7 +37,7 @@ from typing import Any
 import numpy as np
 
 from chisurf.core.fluorescence.mfd.moments import mixture_moments
-from chisurf.core.fluorescence.mfd.prepare import BurstPreparation, NuisanceMeasure
+from chisurf.core.fluorescence.mfd.prepare import BurstPreparation, NuisanceMeasure, fret_channels
 
 __all__ = [
     "HistogramAxes",
@@ -142,8 +142,8 @@ def observed_histogram(
     preparation: BurstPreparation,
     axes: HistogramAxes | None = None,
     *,
-    green: str = "green",
-    red: str = "red",
+    green: str | None = None,
+    red: str | None = None,
     min_green_photons: int = DEFAULT_MIN_GREEN_PHOTONS,
 ) -> MfdHistogram:
     """Bin the measured bursts onto the raw axes, once and for all.
@@ -154,8 +154,9 @@ def observed_histogram(
         From :func:`~chisurf.core.fluorescence.mfd.prepare.prepare_burst_folder`.
     axes : HistogramAxes, optional
         Bin edges; a default covering the full ratio range is used when omitted.
-    green, red : str
-        Detector names.
+    green, red : str, optional
+        Detector names; default the donor and acceptor detectors
+        (:func:`~chisurf.core.fluorescence.mfd.prepare.fret_channels`).
     min_green_photons : int
         Bursts with fewer green photons are excluded, because the Gaussian ``⟨t⟩``
         kernel the model uses is not valid there. The **model must apply the same
@@ -165,6 +166,7 @@ def observed_histogram(
     -------
     MfdHistogram
     """
+    green, red = fret_channels(preparation, green, red)
     preparation.require_verified([green, red])
     axes = axes or HistogramAxes.default()
     g = preparation.channel_index(green)
@@ -552,8 +554,8 @@ def observed_pooled_decays(
     preparation: BurstPreparation,
     axes: HistogramAxes,
     *,
-    green: str = "green",
-    red: str = "red",
+    green: str | None = None,
+    red: str | None = None,
     min_green_photons: int = DEFAULT_MIN_GREEN_PHOTONS,
     n_decay_channels: int = 64,
 ) -> np.ndarray:
@@ -577,8 +579,9 @@ def observed_pooled_decays(
         Must carry its photons.
     axes : HistogramAxes
         Supplies the proximity-ratio bin edges.
-    green, red : str
-        Detector names.
+    green, red : str, optional
+        Detector names; default the donor and acceptor detectors
+        (:func:`~chisurf.core.fluorescence.mfd.prepare.fret_channels`).
     min_green_photons : int
         The same cut the histogram applies.
     n_decay_channels : int
@@ -601,6 +604,7 @@ def observed_pooled_decays(
         raise ValueError(
             "pooled decays need the photons; prepare the folder with with_photons=True"
         )
+    green, red = fret_channels(preparation, green, red)
     preparation.require_verified([green, red])
     green_index = preparation.channel_index(green)
     red_index = preparation.channel_index(red)

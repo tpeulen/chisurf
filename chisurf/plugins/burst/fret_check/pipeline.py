@@ -78,15 +78,15 @@ class Bursts:
             "Duration (ms)": self.duration * 1e3,
             "Number of Photons": self.size,
             "Count Rate (KHz)": self.count_rate * 1e-3,
-            "Number of Photons (green)": self.counts["DD"],
-            "Number of Photons (red)": self.counts["DA"],
-            "Green Count Rate (KHz)": self.counts["DD"] / np.maximum(self.duration, 1e-9) * 1e-3,
-            "Red Count Rate (KHz)": self.counts["DA"] / np.maximum(self.duration, 1e-9) * 1e-3,
+            "Number of Photons (G|G)": self.counts["DD"],
+            "Number of Photons (R|G)": self.counts["DA"],
+            "G|G Count Rate (KHz)": self.counts["DD"] / np.maximum(self.duration, 1e-9) * 1e-3,
+            "R|G Count Rate (KHz)": self.counts["DA"] / np.maximum(self.duration, 1e-9) * 1e-3,
             "Proximity ratio": self.E,
         }
         if "AA" in self.counts:
-            cols["Number of Photons (yellow)"] = self.counts["AA"]
-            cols["Yellow Count Rate (KHz)"] = (
+            cols["Number of Photons (R|R)"] = self.counts["AA"]
+            cols["R|R Count Rate (KHz)"] = (
                 self.counts["AA"] / np.maximum(self.duration, 1e-9) * 1e-3
             )
         if self.S is not None:
@@ -261,7 +261,7 @@ def burst_details(data, exp: Experiment, stream, bursts, macro_s, g_factor=1.0, 
 
     Lifetimes are the mean arrival time of each stream's burst photons after
     the half-rise of that stream's whole decay -- a model-free estimate that
-    needs no IRF file (``Tau (green)``: DD, ``Tau (yellow)``: AA). They are
+    needs no IRF file (``Tau (G|G)``: DD, ``Tau (R|R)``: AA). They are
     only computed with a TCSPC micro time (not for µsALEX, whose micro time
     is the alternation phase).
     """
@@ -276,8 +276,13 @@ def burst_details(data, exp: Experiment, stream, bursts, macro_s, g_factor=1.0, 
     # Anisotropies (G factor, no l1/l2 or background correction).
     if exp.polarization:
         for label, (par, perp), stream_ids in (
-            ("green", exp.donor_pol, (0,)),
-            ("red", exp.acceptor_pol, (2,) if exp.excitation == "alternating" else (1,)),
+            ("G|G", exp.donor_pol, (0,)),
+            # the acceptor: under its own laser (R|R) when alternating, else FRET-sensitised (R|G)
+            (
+                ("R|R", exp.acceptor_pol, (2,))
+                if exp.excitation == "alternating"
+                else ("R|G", exp.acceptor_pol, (1,))
+            ),
         ):
             sel = np.isin(stream, stream_ids)
             i_par = _burst_sum(sel & (routing == par), bursts)
@@ -294,7 +299,7 @@ def burst_details(data, exp: Experiment, stream, bursts, macro_s, g_factor=1.0, 
     )
     if tcspc:
         dt_ns = exp.micro_time_resolution_s * 1e9
-        for label, sid in (("green", 0), ("yellow", 2)):
+        for label, sid in (("G|G", 0), ("R|R", 2)):
             sel = stream == sid
             if not sel.any():
                 continue

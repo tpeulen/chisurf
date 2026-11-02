@@ -32,7 +32,7 @@ tttrlib reads (PTU, HT3, SPC, Photon-HDF5, `.pto`).
 
 The intensity trace of an smFRET measurement on freely diffusing molecules
 (`test/data/tttr/BH/132/BH_SPC132.spc`), binned at 5 ms. Rows, top to bottom:
-red detector, green detector, their sum, each with its count histogram on the
+the `R|G` detector, the `G|G` detector, their sum, each with its count histogram on the
 right; the decoded two-state HMM path with its occupancy; the per-bin fraction
 $n_\mathrm{red}/(n_\mathrm{red}+n_\mathrm{green})$ with its histogram per state.
 The bursts are the bright state. Right: the dwell times of the two states.
@@ -230,7 +230,7 @@ t = tttrlib.TTTR("measurement.ptu")
 route = np.asarray(t.routing_channels)
 bin_s = 5e-3                                   # seconds
 
-detectors = {"red": [1, 9], "green": [0, 8]}   # acceptor first
+detectors = {"R|G": [1, 9], "G|G": [0, 8]}   # acceptor first
 traces = [
     np.asarray(t[np.flatnonzero(np.isin(route, chs))].get_intensity_trace(bin_s))
     for chs in detectors.values()

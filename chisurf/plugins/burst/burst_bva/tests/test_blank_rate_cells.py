@@ -3,7 +3,7 @@
 Undetermined count rates are written as empty cells (a stream with one photon has
 no duration). The BVA reader typed such a column as text in that file and as
 float64 in the others, then refused to stack them -- BVA on the bundled sm-DNA
-folder failed with "column 'Green Count Rate (KHz)' is float64 here and str there".
+folder failed with "column 'G|G Count Rate (KHz)' is float64 here and str there".
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ HEADER = [
     "First Photon",
     "Last Photon",
     "Number of Photons",
-    "Green Count Rate (KHz)",
+    "G|G Count Rate (KHz)",
     "First File",
 ]
 
@@ -39,6 +39,6 @@ def test_an_empty_rate_cell_is_missing_and_the_files_stack(tmp_path):
     (bur / "b.bur").write_text("\n".join(text) + "\n")
     table, _ = read_burst_analysis(tmp_path / "analysis", "SPC-130", pattern="bi4_bur")
     assert row_count(table) == 4
-    rate = numeric_column(table, "Green Count Rate (KHz)")
+    rate = numeric_column(table, "G|G Count Rate (KHz)")
     np.testing.assert_array_equal(np.isnan(rate), [False, False, True, False])
     np.testing.assert_allclose(rate[[0, 1, 3]], [12.5, 12.5, 3.0])

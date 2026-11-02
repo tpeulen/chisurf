@@ -22,8 +22,8 @@ REPO = Path(__file__).resolve().parents[5]
 DATA = Path(__file__).parent / "data" / "bh_spc132_sm_dna"
 SETUP = {
     "detectors": {
-        "green": {"chs": [0, 1], "micro_time_ranges": []},
-        "red": {"chs": [8, 9], "micro_time_ranges": []},
+        "G|G": {"chs": [0, 1], "micro_time_ranges": []},
+        "R|G": {"chs": [8, 9], "micro_time_ranges": []},
     },
     "windows": {"prompt": [0, 2048], "delayed": [2048, 4095]},
     "tttr_reading": {"file_type": "SPC-130"},
@@ -149,9 +149,9 @@ def test_unchanged_request_is_kept_and_restart_forces(model):
 
 
 def test_detector_and_window_choices_drive_the_filter(model):
-    assert model.detector_options() == ["All", "green", "red"]
+    assert model.detector_options() == ["All", "G|G", "R|G"]
     assert model.channels == []
-    model.detector = "red"
+    model.detector = "R|G"
     assert model.channels == [8, 9]
     model.window = "delayed"
     assert model.microtime_ranges == [(2048, 4095)]

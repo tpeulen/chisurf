@@ -34,7 +34,15 @@ _FALLBACK = [(148, 103, 189), (255, 127, 14), (23, 190, 207), (140, 86, 75)]
 
 
 def det_color(name: str) -> tuple[int, int, int]:
-    """Return an RGB colour for detector *name* (named palette, else a hash)."""
+    """Return an RGB colour for detector *name*: its emission colour (``R|G`` red), else a hash.
+    ``R|R`` (acceptor under acceptor excitation) keeps the yellow the PIE plots used for it."""
+    from chisurf.core.fluorescence.detector_names import COLOURS, canonical, emission
+
+    if canonical(name) == "R|R":
+        return _COLORS["yellow"]
+    letter = emission(name)
+    if letter is not None:
+        return _COLORS[dict(COLOURS)[letter]]
     key = str(name).lower()
     if key in _COLORS:
         return _COLORS[key]

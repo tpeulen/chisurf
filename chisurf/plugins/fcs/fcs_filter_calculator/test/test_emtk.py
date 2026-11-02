@@ -26,7 +26,7 @@ def test_native_project_preserves_detectors_options_and_disabled_components(tmp_
     source = FilterModel()
     source.components[0].enabled = False
     source.options_model.scatter_irf = False
-    source.detectors.set_shift("green", 0.1)
+    source.detectors.set_shift("G|G", 0.1)
     source.compute()
     path = tmp_path / "project.json"
     source.save_project(path)
@@ -34,7 +34,7 @@ def test_native_project_preserves_detectors_options_and_disabled_components(tmp_
     restored.load_project(path)
     assert len(restored.components) == 2
     assert not restored.components[0].enabled
-    assert restored.detectors.shift("green") == 0.1
+    assert restored.detectors.shift("G|G") == 0.1
     assert not restored.options_model.scatter_irf
     np.testing.assert_array_equal(restored._total_vector, source._total_vector)
     np.testing.assert_allclose(restored._result.filters, source._result.filters)
@@ -53,7 +53,7 @@ def test_native_export_has_real_species_filters(tmp_path):
 
 def test_native_independent_and_stacked_detector_filters():
     model = FilterModel()
-    model.detectors.names = model.detectors.selected = ["green", "red"]
+    model.detectors.names = model.detectors.selected = ["G|G", "R|G"]
     model.populate_example()
     model.compute()
     assert len(model._result_multi_detector) == 2
@@ -91,7 +91,7 @@ for app in (create_app(),merger()):
 
 def test_native_mfd_keeps_full_axis_and_zeros_outside_fit_range():
     model = FilterModel()
-    original = [np.asarray(c.source["patterns_by_detector"]["green"]) for c in model.components]
+    original = [np.asarray(c.source["patterns_by_detector"]["G|G"]) for c in model.components]
     model._total_vectors_by_detector = {
         "routing_0": 80000 * (0.7 * original[0] + 0.3 * original[1]),
         "routing_1": 40000 * (0.7 * original[0] + 0.3 * original[1]),
@@ -201,7 +201,7 @@ def test_native_selects_authoritative_saved_detector_setup(monkeypatch):
 
     def refresh(store):
         store.setups = {
-            "Instrument A": {"detectors": {"green": {"chs": [2, 3]}}, "tttr_reading": {}}
+            "Instrument A": {"detectors": {"G|G": {"chs": [2, 3]}}, "tttr_reading": {}}
         }
         return ["Instrument A"]
 
@@ -213,7 +213,7 @@ def test_native_selects_authoritative_saved_detector_setup(monkeypatch):
     app.setup.model.refresh_setups()
     app.setup.select_setup("Instrument A")
     app.apply_setup()
-    assert app.model._detector_settings["detectors"]["green"]["chs"] == [2, 3]
+    assert app.model._detector_settings["detectors"]["G|G"]["chs"] == [2, 3]
     assert app.setup.model.current_name == "Instrument A"
     app.job.future.result(timeout=5)
     app.job.poll()

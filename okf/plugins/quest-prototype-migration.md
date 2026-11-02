@@ -135,7 +135,7 @@ The history of each package, with its measurements and traps.
    quench_contact_offset, rotamer_weight, static_quench_strength, static_quench_offset, shield_lifetime_increment}`. Reuse
    `_flr_fit_parameter.{kQ,tau0}`, `_flr_probe_list.chromophore_name` (dye), `_chem_comp.id` (residue),
    `_flr_poly_probe_position.seq_id` (site), and for WP4's estimate tables `_mmfdb_parameter.{name,value,
-   confidence_interval_low,confidence_interval_high}`. The red MLE burst columns (`Tau/2I*/gamma/r0/rho (red)`) are in
+   confidence_interval_low,confidence_interval_high}`. The acceptor MLE burst columns (`Tau/2I*/gamma/r0/rho (R|G)`) are in
    `mmfdb_workflow_ext.dic`, because that is the file the burstwise importer reads, not `mmfdb_flr_ext.dic`.
    The same commit fixes an mmfdb parser gap. A looped `_item.name` (the DDL2 parent form) was dropped, so about 60 PDBx key
    items (`_chem_comp.id`, `_entity.id`, …) did not resolve. Descriptions written before `_item.name` were lost too

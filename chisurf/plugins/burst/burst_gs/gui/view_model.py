@@ -108,7 +108,7 @@ class BurstGsViewModel:
         return ["auto", "SPC-130", "SPC-600_256", "PTU", "HT3", "HDF"]
 
     def apply_channel_settings(self, settings: dict) -> None:
-        """Take a workflow's detector definition: the donor (green) and acceptor (red) channels and the file
+        """Take a workflow's detector definition: the donor (G|G) and acceptor (R|G) channels and the file
         type (the burst workflow hands its setup over this way)."""
         from chisurf.core.fluorescence.burst.table import fret_detectors
 

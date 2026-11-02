@@ -80,13 +80,13 @@ column exactly. On the shipped folder (no manifest):
 
 | detector | channels | micro-time window |
 |---|---|---|
-| green | 0, 8 | all |
-| red | 1, 9 | all |
-| yellow | 1, 9 | 2048–4094 |
+| `G\|G` | 0, 8 | all |
+| `R\|G` | 1, 9 | all |
+| `R\|R` | 1, 9 | 2048–4094 |
 
-"yellow" is the acceptor under acceptor excitation: the same channels as red,
+`R|R` is the acceptor under acceptor excitation: the same channels as `R|G`,
 delayed. That is why no detector name can define it. If inference fails, the
-last resort is the conventional green = (0, 8), red = (1, 9), and a detector
+last resort is the conventional `G|G` = (0, 8), `R|G` = (1, 9), and a detector
 that then disagrees with its counts is reported `UNVERIFIED` and refused by
 the MFD fit.
 
@@ -101,7 +101,7 @@ the MFD fit.
   bursts can be displayed, but ⟨t⟩, the IRF and the background, which the MFD
   fit takes from the photons, cannot be computed.
 * **Many bursts with no photons in one detector** (here 1231 of 2980 in
-  yellow): donor-only bursts, or an acceptor that bleached. Expected in PIE
+  `R|R`): donor-only bursts, or an acceptor that bleached. Expected in PIE
   data, and it becomes the donor-only population in the fit.
 
 ## 4. Headless
@@ -132,23 +132,23 @@ folder = "path/to/burstwise_All 0.1000#15"
 prep = prepare_burst_folder(folder, with_photons=True)
 print(prep.report())
 print(len(prep), prep.channels, prep.verified_channels)
-# 2980 ('green', 'red', 'yellow') ('green', 'red', 'yellow')
-prep.require_verified(["green", "red"])      # raises, naming the fix, if either is not
+# 2980 ('G|G', 'R|G', 'R|R') ('G|G', 'R|G', 'R|R')
+prep.require_verified(["G|G", "R|G"])      # raises, naming the fix, if either is not
 
 # an explicit channel definition instead of inference: one entry per detector
 prep = prepare_burst_folder(folder, streams=[
-    {"name": "green", "channels": [0, 8]},
-    {"name": "red", "channels": [1, 9]},
-    {"name": "yellow", "channels": [1, 9], "micro_time_ranges": [[2048, 4094]]},
+    {"name": "G|G", "channels": [0, 8]},
+    {"name": "R|G", "channels": [1, 9]},
+    {"name": "R|R", "channels": [1, 9], "micro_time_ranges": [[2048, 4094]]},
 ])
 print(prep.summary["stream_origin"], prep.summary["count_agreement"])
-# caller {'green': 1.0, 'red': 1.0, 'yellow': 1.0}
+# caller {'G|G': 1.0, 'R|G': 1.0, 'R|R': 1.0}
 ```
 
 Explicit definitions are matched to the detector columns by name, in any
-order. Every detector needs one: leaving `yellow` out raises
-`ValueError: streams= must define every detector of … (green, red, yellow): no
-definition for 'yellow'`, and a name the folder does not have is refused the
+order. Every detector needs one: leaving `R|R` out raises
+`ValueError: streams= must define every detector of … (G|G, R|G, R|R): no
+definition for 'R|R'`, and a name the folder does not have is refused the
 same way. A detector is never completed from a guess, because its name does
 not determine its definition.
 

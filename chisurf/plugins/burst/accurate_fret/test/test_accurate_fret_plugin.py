@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-import tttrlib
 
 from chisurf.core.fluorescence.fret.lines import static_fret_line
 from chisurf.plugins.burst.accurate_fret import core as _core
@@ -52,8 +51,8 @@ def burst_table(tmp_path):
     i_dd, i_da, i_aa, tau = _simulate()
     path = tmp_path / "bursts.csv"
     header = (
-        "Green Count Rate (KHz),Red Count Rate (KHz),"
-        "S delayed yellow (kHz),Tau (green),Duration (ms)"
+        "G|G Count Rate (KHz),R|G Count Rate (KHz),"
+        "S delayed R|R (kHz),Tau (G|G),Duration (ms)"
     )
     data = np.column_stack([i_dd, i_da, i_aa, tau, np.full(i_dd.size, 1.0)])
     np.savetxt(path, data, delimiter=",", header=header, comments="", fmt="%.6g")
@@ -64,11 +63,11 @@ def test_read_and_guess_columns(burst_table):
     """A burst table is read and its channels recognised by their column names."""
     columns = _core.read_burst_table(burst_table)
     assert len(columns) == 5
-    guess = tttrlib.guess_burst_columns(list(columns))
-    assert guess["i_dd"] == "Green Count Rate (KHz)"
-    assert guess["i_da"] == "Red Count Rate (KHz)"
-    assert guess["i_aa"] == "S delayed yellow (kHz)"
-    assert guess["tau_f"] == "Tau (green)"
+    guess = _core.guess_columns(list(columns))
+    assert guess["i_dd"] == "G|G Count Rate (KHz)"
+    assert guess["i_da"] == "R|G Count Rate (KHz)"
+    assert guess["i_aa"] == "S delayed R|R (kHz)"
+    assert guess["tau_f"] == "Tau (G|G)"
 
 
 def test_calibrate_recovers_the_factors():
@@ -106,8 +105,8 @@ def test_view_model_end_to_end(burst_table):
     events: list[str] = []
     model.add_observer(events.append)
     model.set_filename(str(burst_table))
-    assert model.column_i_dd == "Green Count Rate (KHz)"
-    assert model.column_tau_f == "Tau (green)"
+    assert model.column_i_dd == "G|G Count Rate (KHz)"
+    assert model.column_tau_f == "Tau (G|G)"
     assert model.can_run() is None
 
     model.n_bootstrap = 0
@@ -157,7 +156,7 @@ def test_rpc_calibrate_file(burst_table):
     assert result["factors"]["gamma"] == pytest.approx(GAMMA, rel=0.05)
     assert isinstance(result["static_line"]["tau_f"], list)
     assert "Automatic FRET calibration" in result["report"]
-    assert result["columns"]["i_dd"] == "Green Count Rate (KHz)"
+    assert result["columns"]["i_dd"] == "G|G Count Rate (KHz)"
 
 
 def test_rpc_rejects_a_table_without_channels(tmp_path):
@@ -194,4 +193,4 @@ def test_cli_lists_columns(burst_table):
 
     result = CliRunner().invoke(cli, [str(burst_table), "--list-columns"])
     assert result.exit_code == 0
-    assert "Tau (green)" in result.output
+    assert "Tau (G|G)" in result.output

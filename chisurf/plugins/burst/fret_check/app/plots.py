@@ -63,9 +63,9 @@ class Plots:
         )
         cols = b.extra
         self.tau = None
-        if "Tau (green)" in cols:
+        if "Tau (G|G)" in cols:
             self.tau = _hist2d(
-                cols["Tau (green)"], e if len(e) == b.n else b.E, (50, 50), ((0, 6), (-0.1, 1.1))
+                cols["Tau (G|G)"], e if len(e) == b.n else b.E, (50, 50), ((0, 6), (-0.1, 1.1))
             )
         q = s.qc
         self.trace = (q.trace_t, q.trace_rate)
@@ -186,7 +186,7 @@ def draw_bursts(s, p) -> None:
     hist_plot("Count rate", p.rate_hist, "log10 count rate (kHz)", size)
     im.same_line()
     if p.tau is not None:
-        heatmap("E vs donor lifetime", p.tau, "Tau (green) (ns)", "E", ((0, 6), (-0.1, 1.1)), size)
+        heatmap("E vs donor lifetime", p.tau, "Tau (G|G) (ns)", "E", ((0, 6), (-0.1, 1.1)), size)
     else:
         heatmap("FRET-2CDE vs E", p.cde, "E", "FRET-2CDE", ((-0.1, 1.1), (0, 100)), size)
 

@@ -21,7 +21,7 @@ def _table(path):
         np.column_stack([dd, da, aa, tau]),
         delimiter=",",
         comments="",
-        header="Green Count Rate (KHz),Red Count Rate (KHz),S delayed yellow (kHz),Tau (green)",
+        header="G|G Count Rate (KHz),R|G Count Rate (KHz),S delayed R|R (kHz),Tau (G|G)",
     )
     return path
 

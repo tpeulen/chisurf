@@ -1116,7 +1116,7 @@ class MleSession:
     decay: np.ndarray | None = None
     outcome: FitOutcome | None = None
     status: str = ""
-    #: Fit every burst once more per H2MM state (``Tau S0 (green)`` ...), after a pooled fit of each state's decay.
+    #: Fit every burst once more per H2MM state (``Tau S0 (G|G)`` ...), after a pooled fit of each state's decay.
     split_by_state: bool = False
     #: Photon floor of a per-state burst fit (a state sees far fewer photons than the whole burst).
     state_min_photons: int = 20
@@ -1174,12 +1174,16 @@ class MleSession:
     def default_models(self) -> dict[str, str]:
         """The model each detector starts with, from its role in the setup.
 
-        The first detector is the donor: ``fit23`` (polarisation-resolved when it has a parallel
-        and a perpendicular channel). A detector gated on a later PIE window (the acceptor under
-        its own laser, "yellow") is ``fit23`` too. Any other detector sees the acceptor's
-        sensitised emission -- a rise from the donor, then the acceptor's decay -- where a
-        deconvolution with the IRF does not apply: the tail fit.
+        The donor (``G|G``) is ``fit23`` (polarisation-resolved when it has a parallel and a
+        perpendicular channel), and so is the acceptor under its own laser (``R|R``). The
+        FRET-sensitised acceptor (``R|G``) sees a rise from the donor, then the acceptor's decay --
+        where a deconvolution with the IRF does not apply: the tail fit. A detector whose name
+        carries no role is judged by its place: the first is the donor, one gated on a later PIE
+        window ``fit23``, any other the tail fit.
         """
+        from chisurf.core.fluorescence.detector_names import role
+
+        by_role = {"donor": "fit23", "acceptor_direct": "fit23", "acceptor": TAIL_MODEL}
         windows = [list(map(int, w)) for w in (self.definition.get("windows") or {}).values()
                    if isinstance(w, (list, tuple)) and len(w) >= 2]
         first_window = min(windows, key=lambda w: w[0]) if windows else None
@@ -1189,7 +1193,8 @@ class MleSession:
             later_window = bool(
                 first_window and gates and int(gates[0][0]) >= int(first_window[1]) - 1
             )
-            out[name] = "fit23" if index == 0 or later_window else TAIL_MODEL
+            by_place = "fit23" if index == 0 or later_window else TAIL_MODEL
+            out[name] = by_role.get(role(name), by_place)
         return out
 
     def set_binning(self, binning: int) -> None:
@@ -1826,7 +1831,7 @@ class MleSession:
         """Fit every burst of every loaded file and detector in worker processes (the wizard's ``process_bursts``).
 
         The photon channels and micro times of each raw file go to the workers through shared memory; each worker
-        returns one row per burst (``Tau (green)``, ``gamma (green)``, ...). Nothing is exported here: the rows are kept
+        returns one row per burst (``Tau (G|G)``, ``gamma (G|G)``, ...). Nothing is exported here: the rows are kept
         on :attr:`burst_results`.
         """
         import multiprocessing as mp
@@ -2056,10 +2061,12 @@ class MleSession:
         for det, payload in settings.items():
             st = MleSettings(**payload)
             names, _, _ = st.parameter_state()
-            color = det.lower()
+            from ._mp_worker import colour_of, letter_of
+
+            color = colour_of(det)
             det_meta[det] = (
                 color,
-                color[0],
+                letter_of(det),
                 state_result_columns(color, st.model, names, self.n_states),
             )
         in_container = [r for r in rows if _is_container(files_by_stem[r["First Stem"]])]

@@ -45,7 +45,7 @@ def test_the_search_finds_every_planted_burst(hermetic):
     assert len(rows) == N_BURSTS
     photons = np.array([float(r["Number of Photons"]) for r in rows])
     assert photons.mean() == pytest.approx(PHOTONS_PER_BURST, rel=0.05)
-    red = np.array([float(r["Number of Photons (red)"]) for r in rows])
+    red = np.array([float(r["Number of Photons (R|G)"]) for r in rows])
     assert (red / photons).mean() == pytest.approx(RED_FRACTION, abs=0.05)
 
 

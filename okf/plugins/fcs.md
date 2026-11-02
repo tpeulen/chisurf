@@ -71,7 +71,7 @@ optionally split into ∥/⊥ by a per-chromophore **anisotropy spectrum** `r(t)
 The channel **amplitudes** come from the full **excitation**
 (`[laser, chromophore]`) and **emission** (`[chromophore, detector]`) matrices —
 so the relative weights of donor / sensitized / directly-excited emission across
-green/red/yellow are physically consistent, not approximated; the familiar
+`G|G`/`R|G`/`R|R` are physically consistent, not approximated; the familiar
 Hellenkamp α/β/γ/δ stay the user-facing knobs and induce those matrices
 (`CrosstalkFactors.{excitation,emission}_matrix`). FRET is given either as a
 transfer efficiency E or physically as a **distributed distance** — Gaussian
@@ -85,7 +85,7 @@ filters recover the populations. The GUI editor
 (`chisurf/gui/widgets/fret_species_editor.py` + `.view.json`, opened from the
 Components context menu as *🔬 Add FRET species…*, double-click to edit) uses
 AutoForm tables for the donor/acceptor spectra and the distance distribution,
-previews the ideal green/red/yellow (∥/⊥) decays live, and seeds α/β/γ/δ/R0 from
+previews the ideal `G|G`/`R|G`/`R|R` (∥/⊥) decays live, and seeds α/β/γ/δ/R0 from
 the selected detector-setup calibration (editable); on accept it expands to a
 `patterns_by_detector` (via `fret_species_detector_patterns`, mapping each
 detector's colour to its channel and applying that detector's IRF) that the

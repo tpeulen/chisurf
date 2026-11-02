@@ -23,6 +23,7 @@ from chisurf.plugins.core.setup_channel_definition.test.driver import (  # noqa:
     CAL,
     DATA,
     STAMP,
+    new_names,
     norm,
 )
 
@@ -83,7 +84,9 @@ def add_calibration(db_path, name):
 
 def run_qt():
     """Return the immutable original Qt/MMFDB observations with their independent provenance."""
-    fixture = json.loads((Path(__file__).parent / "fixtures/detector_page_legacy.json").read_text())
+    fixture = new_names(
+        json.loads((Path(__file__).parent / "fixtures/detector_page_legacy.json").read_text())
+    )
     assert fixture["provenance"]["normal_exit"] is True
     return fixture["mmfdb_qt"]
 

@@ -170,7 +170,7 @@ class FrcViewModel:
 
         The Setup panel of Image Tools defines the detector windows once for the
         whole workflow. Adopting them here means a photon stream is filled by
-        *named window* rather than by raw routing channel, so "green" and "red"
+        *named window* rather than by raw routing channel, so "G|G" and "R|G"
         are what the channel selector offers — and a two-channel FRC then
         correlates the two detectors the user actually defined.
         """

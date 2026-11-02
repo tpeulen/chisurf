@@ -60,8 +60,8 @@ def wait(drv, timeout=180.0):
 
 BH_SETUP = {
     "detectors": {
-        "green": {"chs": [0, 1], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
-        "red": {"chs": [8, 9], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
+        "G|G": {"chs": [0, 1], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
+        "R|G": {"chs": [8, 9], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
     },
     "windows": {},
     "tttr_reading": {
@@ -237,7 +237,7 @@ def test_a_handed_over_burst_run_becomes_the_input(app, sample):
 
 def test_settings_file_round_trip(tmp_path):
     model = H2mmViewModel()
-    model.restarts, model.criterion, model.donor, model.decoder = 9, "icl", "red", "ffbs"
+    model.restarts, model.criterion, model.donor, model.decoder = 9, "icl", "R|G", "ffbs"
     path = tmp_path / "h2mm.json"
     model.save_settings(path)
     other = H2mmViewModel()
@@ -245,7 +245,7 @@ def test_settings_file_round_trip(tmp_path):
     assert (other.restarts, other.criterion, other.donor, other.decoder) == (
         9,
         "icl",
-        "red",
+        "R|G",
         "ffbs",
     )
 
@@ -319,10 +319,10 @@ def test_the_detector_setup_is_the_shared_editor_and_edits_reach_the_model(app):
         set(ChannelDefinitionWidget.DETECTOR_TITLES["name"]) & set(shown) and "Channels" in shown
     ), "the shared editor's detector table is not drawn"
     editor = app.editor
-    rec = next(r for r in editor.detector_rows() if r["name"] == "green")
+    rec = next(r for r in editor.detector_rows() if r["name"] == "G|G")
     editor.edit_detector(rec, "chs", "0, 1")
-    assert app.model.setup["detectors"]["green"]["chs"] == [0, 1]
-    assert app.model._stream("green").channels == [0, 1]
+    assert app.model.setup["detectors"]["G|G"]["chs"] == [0, 1]
+    assert app.model._stream("G|G").channels == [0, 1]
     editor.add_detector()
     assert len(app.model.detector_names()) == 3 and app.model.aex_options()[0] == "(none)"
 
@@ -577,9 +577,9 @@ def test_apply_workflow_context_sets_the_folder_and_the_detectors(sample):
     model = H2mmViewModel()
     model.apply_workflow_context({"burst_folder": str(sample), "channel_settings": BH_SETUP})
     assert model.data_folder == str(sample)
-    assert model.detector_names() == ["green", "red"] and model.file_type == "SPC-130"
-    assert (model.donor, model.acceptor) == ("green", "red")
-    assert model._stream("red").channels == [8, 9]
+    assert model.detector_names() == ["G|G", "R|G"] and model.file_type == "SPC-130"
+    assert (model.donor, model.acceptor) == ("G|G", "R|G")
+    assert model._stream("R|G").channels == [8, 9]
     other = H2mmViewModel()
     other.apply_workflow_context(
         {

@@ -39,14 +39,14 @@ BH_SPC_FILE = DATA_DIR / "m000.spc"
 BIGS_SETUP: dict[str, Any] = {
     "setup_name": "BigS",
     "detectors": {
-        "Green": {
+        "G|G": {
             "chs": [0, 8],
             "g_factor": 1.0,
             "l1": 0.0,
             "l2": 0.0,
             "micro_time_ranges": [[0, 4096]],
         },
-        "Red": {
+        "R|G": {
             "chs": [1, 9],
             "g_factor": 1.0,
             "l1": 0.0,
@@ -91,8 +91,8 @@ def test_synthetic_bigs_table_computes_proximity_ratio() -> None:
     ui_df = make_ui_dataframe(df)
     assert "Proximity Ratio" in column_names(ui_df)
     assert np.allclose(numeric_column(ui_df, "Proximity Ratio"), [0.3, 0.75])
-    assert np.allclose(numeric_column(ui_df, "Number of Photons (red)"), [3.0, 15.0])
-    assert np.allclose(numeric_column(ui_df, "Number of Photons (green)"), [7.0, 5.0])
+    assert np.allclose(numeric_column(ui_df, "Number of Photons (R|G)"), [3.0, 15.0])
+    assert np.allclose(numeric_column(ui_df, "Number of Photons (G|G)"), [7.0, 5.0])
     assert "Number of Photons (Red)" in column_names(ui_df)
     assert "Number of Photons (Green)" in column_names(ui_df)
 
@@ -202,12 +202,12 @@ def test_bigs_driver_end_to_end() -> None:
             x, y = sc
             assert len(np.unique(x)) > 20
 
-            # Summary check: Mean photons for Green and Red detectors
+            # Summary check: Mean photons for the G|G and R|G detectors
             summary = {r["key"]: r["value"] for r in app.model.summary_rows()}
-            assert "Mean photons (Green)" in summary
-            assert "Mean photons (Red)" in summary
-            assert float(summary["Mean photons (Green)"]) > 0
-            assert float(summary["Mean photons (Red)"]) > 0
+            assert "Mean photons (G|G)" in summary
+            assert "Mean photons (R|G)" in summary
+            assert float(summary["Mean photons (G|G)"]) > 0
+            assert float(summary["Mean photons (R|G)"]) > 0
 
             app.close()
         finally:

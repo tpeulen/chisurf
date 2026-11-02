@@ -24,8 +24,8 @@ class MicroTimeViewModel(ImagingMapViewModel):
     #: has never carried the unit and every consumer assumed nanoseconds.
     COLUMN_UNITS = {
         "Mean Micro Time": "nanoseconds",
-        "Mean Micro Time (green)": "nanoseconds",
-        "Mean Micro Time (red)": "nanoseconds",
+        "Mean Micro Time (G|G)": "nanoseconds",
+        "Mean Micro Time (R|G)": "nanoseconds",
     }
 
     def __init__(self) -> None:

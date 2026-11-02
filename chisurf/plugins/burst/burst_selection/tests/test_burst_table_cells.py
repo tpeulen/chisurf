@@ -15,8 +15,8 @@ import numpy as np
 DATA = Path(__file__).parent / "data" / "bh_spc132_sm_dna"
 SETUP = {
     "detectors": {
-        "green": {"chs": [0, 8], "micro_time_ranges": []},
-        "red": {"chs": [1, 9], "micro_time_ranges": []},
+        "G|G": {"chs": [0, 8], "micro_time_ranges": []},
+        "R|G": {"chs": [1, 9], "micro_time_ranges": []},
     },
     "windows": {},
     "tttr_reading": {"file_type": "SPC-130"},

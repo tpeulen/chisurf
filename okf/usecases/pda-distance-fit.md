@@ -21,7 +21,7 @@ plus the burst tables a previous burst search wrote next to them in
 `burstwise_All 0.1000#15/bi4_bur/*.bur`. This run dropped `m000.bur`, `m001.bur`,
 `m002.bur`; the reader resolved them back to `m000.spc … m002.spc` and applied
 **827 burst slices** (63 677 photons of the 533 699 in those files). Routing
-channels 0/8 (green) and 1/9 (red), container `SPC-130`.
+channels 0/8 (`G|G`) and 1/9 (`R|G`), container `SPC-130`.
 
 **Experiment:** `PDA` / setup `PTU/HT3/SPC`
 (`chisurf.core.experiments.pda2c.Pda2cReader`; the panel binds

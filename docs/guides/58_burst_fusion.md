@@ -57,7 +57,7 @@ burst runs of the Datasets workspace), or use *Open in…* on a run in the Datas
 view.
 
 The detector definition matters: the fused burst table is regenerated from the
-photons, which needs to know which routing channels are "green" and "red". A
+photons, which needs to know which routing channels are `G|G` and `R|G`. A
 run records no detector definition beside it: in Burst Analysis the workflow's
 channel page supplies it, and standalone you fill **Detector definitions**
 (**Load example** sets the demo's). A legacy folder written by the current burst

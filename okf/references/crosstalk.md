@@ -79,7 +79,7 @@ dark element, not a broken one.
 
 - **NOT a standalone `img_pixel_rfret` plugin — that is redundant with ndxplorer.**
   ChiSurf already exports all three PIE channels per pixel (IDD/IDA/IAA as
-  `S prompt green/red (kHz)` + `S delayed yellow (kHz)`, `pixel_maps.py:443` →
+  `S prompt G|G/R|G (kHz)` + `S delayed R|R (kHz)`, `pixel_maps.py:443` →
   `img_pixel_intensity`), and ndx's derived-column engine
   (`modules/ndxplorer/.../data_source.py::compute_values`, `mfd.equations.yaml`)
   already computes corrected `FRET efficiency(PIE)`, `R_FRET`, stoichiometry and

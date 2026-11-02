@@ -2,8 +2,8 @@
 
 The burst table has one row per burst and every companion is merged onto it by
 position, so a variable number of dwells cannot become a variable number of
-rows. Splitting the fit by H2MM state therefore widens the row: `Tau S0 (green)`
-beside `Tau (green)`. These pin that, and the reason it is worth doing — the
+rows. Splitting the fit by H2MM state therefore widens the row: `Tau S0 (G|G)`
+beside `Tau (G|G)`. These pin that, and the reason it is worth doing — the
 all-photon fit of a dynamic burst is a blend that belongs to neither state.
 """
 
@@ -106,8 +106,8 @@ def _run(taus=(3.6, 1.0), n_bursts=40, per_state=300, seed=0, cfg=None, **cfg_kw
             mt_sh.name,
             mt.shape,
             str(mt.dtype),
-            ["green"],
-            {"green": cfg if cfg is not None else _cfg(**cfg_kw)},
+            ["G|G"],
+            {"G|G": cfg if cfg is not None else _cfg(**cfg_kw)},
             0,
             (st_sh.name, st.shape, str(st.dtype), len(taus)),
         )
@@ -124,16 +124,16 @@ def _run(taus=(3.6, 1.0), n_bursts=40, per_state=300, seed=0, cfg=None, **cfg_kw
 def test_each_state_gets_its_own_lifetime_column():
     df, n = _run()
     assert len(df) == 40 == n, "still one row per burst — the grain is the burst"
-    assert {"Tau (green)", "Tau S0 (green)", "Tau S1 (green)"} <= set(df.columns)
+    assert {"Tau (G|G)", "Tau S0 (G|G)", "Tau S1 (G|G)"} <= set(df.columns)
 
-    tau0 = df["Tau S0 (green)"].median()
-    tau1 = df["Tau S1 (green)"].median()
+    tau0 = df["Tau S0 (G|G)"].median()
+    tau1 = df["Tau S1 (G|G)"].median()
     assert 2.8 < tau0 < 4.6, tau0
     assert 0.6 < tau1 < 1.5, tau1
 
     # …and the reason the split exists: the all-photon fit of a dynamic burst
     # lands between the two states and belongs to neither.
-    blended = df["Tau (green)"].median()
+    blended = df["Tau (G|G)"].median()
     assert tau1 < blended < tau0, (tau1, blended, tau0)
 
 
@@ -151,7 +151,7 @@ def test_a_state_too_thin_to_fit_is_reported_not_dropped():
     """The row must survive: a missing row shifts every later burst."""
     df, _ = _run(per_state=5, n_bursts=6, state_min_photons=1000, min_photons=1)
     assert len(df) == 6
-    assert df["Tau S0 (green)"].isna().all()
+    assert df["Tau S0 (G|G)"].isna().all()
     assert (df["Ng-p S0"] + df["Ng-s S0"] > 0).all(), "counts are still reported"
 
 
@@ -180,8 +180,8 @@ def test_without_state_info_the_worker_behaves_exactly_as_before():
             mt_sh.name,
             mt.shape,
             str(mt.dtype),
-            ["green"],
-            {"green": _cfg()},
+            ["G|G"],
+            {"G|G": _cfg()},
             0,
             None,
         )
@@ -193,7 +193,7 @@ def test_without_state_info_the_worker_behaves_exactly_as_before():
 
     assert len(out) == 1
     assert not [c for c in out[0] if " S0" in c or " S1" in c]
-    assert "Tau (green)" in out[0]
+    assert "Tau (G|G)" in out[0]
 
 
 def _pool(taus=(3.6, 1.0), n_bursts=40, per_state=300, seed=0, **cfg_kw):
@@ -212,8 +212,8 @@ def _pool(taus=(3.6, 1.0), n_bursts=40, per_state=300, seed=0, **cfg_kw):
             mt_sh.name,
             mt.shape,
             str(mt.dtype),
-            ["green"],
-            {"green": _cfg(**cfg_kw)},
+            ["G|G"],
+            {"G|G": _cfg(**cfg_kw)},
             (st_sh.name, st.shape, str(st.dtype), len(taus)),
         )
         return pool_states_worker(args)
@@ -227,7 +227,7 @@ def test_the_pooled_decay_holds_every_burst_photon_of_its_state():
     """The pooled decay is the measurement's photons of a state, not a sample."""
     n_bursts, per_state = 40, 300
     pooled = _pool(n_bursts=n_bursts, per_state=per_state)
-    green = pooled["green"]
+    green = pooled["G|G"]
     assert green.shape == (2, 2, N_BINS)  # (state, P/S, bin)
     for state in (0, 1):
         assert int(green[state].sum()) == n_bursts * per_state, (
@@ -238,7 +238,7 @@ def test_the_pooled_decay_holds_every_burst_photon_of_its_state():
 def test_the_pooled_fit_is_the_state_lifetime_and_beats_a_single_burst():
     """Pooling is what makes the per-state lifetime a number worth quoting."""
     pooled = _pool()
-    fits = state_split.fit_pooled_state_decays(pooled, ["green"], {"green": _cfg()}, 0)
+    fits = state_split.fit_pooled_state_decays(pooled, ["G|G"], {"G|G": _cfg()}, 0)
     rows = state_split.state_lifetime_rows(fits, "fit23", ["tau", "gamma", "r0", "rho"])
 
     by_state = {r["State"]: r for r in rows}
@@ -246,12 +246,12 @@ def test_the_pooled_fit_is_the_state_lifetime_and_beats_a_single_burst():
     assert abs(by_state[0]["Tau"] - 3.6) < 0.25, by_state[0]["Tau"]
     assert abs(by_state[1]["Tau"] - 1.0) < 0.25, by_state[1]["Tau"]
     assert by_state[0]["Photons"] == 40 * 300
-    assert by_state[0]["Colour"] == "green"
+    assert by_state[0]["Colour"] == "G|G"
 
     # Tighter than the per-burst fits it seeds, which is the whole point: one
     # burst's state is tens of photons, the pooled state is all of them.
     df, _ = _run()
-    per_burst_spread = float(df["Tau S0 (green)"].std())
+    per_burst_spread = float(df["Tau S0 (G|G)"].std())
     pooled_error = abs(by_state[0]["Tau"] - 3.6)
     assert pooled_error < per_burst_spread / 2, (pooled_error, per_burst_spread)
 
@@ -268,10 +268,10 @@ def test_a_states_burst_fits_start_from_that_states_pooled_lifetime():
     cfg["state_x0"] = {0: np.array([7.0, 0.0, 0.38, 1.22]), 1: np.array([0.5, 0.0, 0.38, 1.22])}
 
     df, _ = _run(n_bursts=3, per_state=200, seed=3, cfg=cfg)
-    assert (df["Tau S0 (green)"] == 7.0).all(), df["Tau S0 (green)"].tolist()
-    assert (df["Tau S1 (green)"] == 0.5).all(), df["Tau S1 (green)"].tolist()
+    assert (df["Tau S0 (G|G)"] == 7.0).all(), df["Tau S0 (G|G)"].tolist()
+    assert (df["Tau S1 (G|G)"] == 0.5).all(), df["Tau S1 (G|G)"].tolist()
     # The all-photon fit keeps the panel's own start value, not a state's.
-    assert (df["Tau (green)"] == 2.0).all(), df["Tau (green)"].tolist()
+    assert (df["Tau (G|G)"] == 2.0).all(), df["Tau (G|G)"].tolist()
 
 
 def test_the_pooled_step_fits_writes_and_seeds_in_one_go(tmp_path):
@@ -300,14 +300,14 @@ def test_the_pooled_step_fits_writes_and_seeds_in_one_go(tmp_path):
                 mt_sh.name,
                 mt.shape,
                 str(mt.dtype),
-                ["green"],
-                {"green": cfg},
+                ["G|G"],
+                {"G|G": cfg},
                 0,
                 (st_sh.name, st.shape, str(st.dtype), 2),
             )
         ]
         rows, seeded, message = state_split.pooled_state_fits(
-            jobs, ["green"], mp.get_context("spawn"), 2, "fit23", ["tau", "gamma", "r0", "rho"], 0
+            jobs, ["G|G"], mp.get_context("spawn"), 2, "fit23", ["tau", "gamma", "r0", "rho"], 0
         )
     finally:
         for sh in blocks:
@@ -323,7 +323,7 @@ def test_the_pooled_step_fits_writes_and_seeds_in_one_go(tmp_path):
     # The files it wrote come back, so a reuse gate can cover them.
     assert written == [table]
 
-    seeds = jobs[0][9]["green"]["state_x0"]
+    seeds = jobs[0][9]["G|G"]["state_x0"]
     assert set(seeds) == {0, 1}
     assert seeds[0][0] == rows[0]["Tau"], "the seed is the pooled lifetime itself"
     # ...and only the lifetime is seeded; the rest of the start vector stands.
@@ -347,7 +347,7 @@ def test_a_file_without_raw_data_does_not_cost_the_pooled_fit():
         cfg = _cfg()
         # First: a file whose raw measurement could not be read (this is exactly what the batch appends for it --
         # no shm names, no config).
-        broken = ("missing.spc", bursts, None, None, None, None, None, None, ["green"], {}, 0, None)
+        broken = ("missing.spc", bursts, None, None, None, None, None, None, ["G|G"], {}, 0, None)
         real = (
             "m000.spc",
             bursts,
@@ -357,14 +357,14 @@ def test_a_file_without_raw_data_does_not_cost_the_pooled_fit():
             mt_sh.name,
             mt.shape,
             str(mt.dtype),
-            ["green"],
-            {"green": cfg},
+            ["G|G"],
+            {"G|G": cfg},
             0,
             (st_sh.name, st.shape, str(st.dtype), 2),
         )
         jobs = [broken, real]
         rows, seeded, _message = state_split.pooled_state_fits(
-            jobs, ["green"], mp.get_context("spawn"), 2, "fit23", ["tau", "gamma", "r0", "rho"], 0
+            jobs, ["G|G"], mp.get_context("spawn"), 2, "fit23", ["tau", "gamma", "r0", "rho"], 0
         )
     finally:
         for sh in blocks:
@@ -373,7 +373,7 @@ def test_a_file_without_raw_data_does_not_cost_the_pooled_fit():
 
     assert [r["State"] for r in rows] == [0, 1], "the good file still describes the states"
     assert seeded == 2
-    assert set(real[9]["green"]["state_x0"]) == {0, 1}, "and the real job is seeded"
+    assert set(real[9]["G|G"]["state_x0"]) == {0, 1}, "and the real job is seeded"
 
 
 def test_state_lifetimes_are_written_beside_the_analysis_not_as_a_companion(tmp_path):
@@ -386,8 +386,8 @@ def test_state_lifetimes_are_written_beside_the_analysis_not_as_a_companion(tmp_
     (analysis / "bi4_bur").mkdir(parents=True)
     rows = [
         {
-            "Detector": "green",
-            "Colour": "green",
+            "Detector": "G|G",
+            "Colour": "G|G",
             "State": 0,
             "Photons (parallel)": 10,
             "Photons (perpendicular)": 8,
@@ -396,8 +396,8 @@ def test_state_lifetimes_are_written_beside_the_analysis_not_as_a_companion(tmp_
             "2I*": 1.0,
         },
         {
-            "Detector": "green",
-            "Colour": "green",
+            "Detector": "G|G",
+            "Colour": "G|G",
             "State": 1,
             "Photons (parallel)": 5,
             "Photons (perpendicular)": 4,

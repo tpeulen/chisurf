@@ -255,19 +255,19 @@ _MAPS_CACHE: dict[tuple, bool] = {}
 def fret_detectors(settings: dict | None) -> dict[str, dict]:
     """The donor and acceptor detectors of a detector definition, by name.
 
-    A detector whose name contains ``green`` or ``donor`` is the donor, ``red`` or ``acceptor`` the acceptor (the
-    last match wins, as the burst tools always read it). Returns ``{"donor": {...}, "acceptor": {...}}`` with the
+    ``G|G`` is the donor and ``R|G`` the (FRET-sensitised) acceptor
+    (:func:`chisurf.core.fluorescence.detector_names.role`; a custom name with ``donor`` /
+    ``acceptor`` in it also counts). Returns ``{"donor": {...}, "acceptor": {...}}`` with the
     detectors found (``chs``, ``micro_time_ranges``); a role without a matching detector is absent.
     """
+    from chisurf.core.fluorescence.detector_names import role
+
     found: dict[str, dict] = {}
     for name, detector in ((settings or {}).get("detectors") or {}).items():
-        lowered = str(name).lower()
-        if "green" in lowered or "donor" in lowered:
-            found["donor"] = dict(detector or {})
-        elif "red" in lowered or "acceptor" in lowered:
-            found["acceptor"] = dict(detector or {})
+        part = role(name)
+        if part in ("donor", "acceptor") and part not in found:
+            found[part] = dict(detector or {})
     return found
-
 
 def maps_fret_channels(path, extra_hints: dict | None = None) -> bool:
     """Whether a burst table carries the columns a FRET analysis needs.

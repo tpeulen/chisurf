@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from chisurf.core.fluorescence.detector_names import ACCEPTOR, DONOR
+
 
 @dataclass
 class StreamSettings:
@@ -108,8 +110,8 @@ class H2mmSettings:
 
     streams: list[StreamSettings] = field(
         default_factory=lambda: [
-            StreamSettings("green", [0, 8], []),
-            StreamSettings("red", [1, 9], []),
+            StreamSettings(DONOR, [0, 8], []),
+            StreamSettings(ACCEPTOR, [1, 9], []),
         ]
     )
     min_states: int = 1

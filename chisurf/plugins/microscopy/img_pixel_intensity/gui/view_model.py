@@ -7,7 +7,7 @@ pixel-MLE used to emit (so nothing was lost when the MLE became fit-only):
 - ``N{c}-p-all`` / ``N{c}-s-all`` / ``N{c}-all`` — parallel / perpendicular /
   total photon counts (``c`` = detector initial),
 - ``<detector> Count Rate (KHz)`` and the ndxplorer-MFD name (e.g.
-  ``S prompt green (kHz)``) — per-pixel count rate,
+  ``S prompt G|G (kHz)``) — per-pixel count rate,
 - a global ``Number of Photons`` (sum over windows),
 
 plus a back-reference to the source photon data. N&B / phasor / MLE then enrich

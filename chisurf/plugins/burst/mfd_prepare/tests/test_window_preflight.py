@@ -57,7 +57,7 @@ def _manifest(folder: Path, windows: dict) -> None:
 
 def test_gates_of_another_instrument_are_reported(demo, tmp_path):
     _manifest(tmp_path, WRONG)
-    streams = [StreamDef("green", [0], [(2048, 4094)]), StreamDef("red", [1], [(0, 2047)])]
+    streams = [StreamDef("G|G", [0], [(2048, 4094)]), StreamDef("R|G", [1], [(0, 2047)])]
     warnings = window_warnings(_prep(demo, streams, tmp_path))
     assert len(warnings) == 1 and "do not match the data" in warnings[0], warnings
     assert "1613" in warnings[0]  # the detected windows are named
@@ -65,28 +65,28 @@ def test_gates_of_another_instrument_are_reported(demo, tmp_path):
 
 def test_gates_that_hold_the_pulses_say_nothing(demo, tmp_path):
     _manifest(tmp_path, PROMPT_DELAYED)
-    streams = [StreamDef("green", [0], [(0, 1612)]), StreamDef("red", [1], [])]
+    streams = [StreamDef("G|G", [0], [(0, 1612)]), StreamDef("R|G", [1], [])]
     assert window_warnings(_prep(demo, streams, tmp_path)) == []
 
 
 def test_the_canonical_pie_split_of_the_acceptor_says_nothing(demo, tmp_path):
     _manifest(tmp_path, PROMPT_DELAYED)
     streams = [
-        StreamDef("green", [0], [(0, 1612)]),
-        StreamDef("red", [1], [(0, 1612)]),
-        StreamDef("yellow", [1], [(1613, 3124)]),
+        StreamDef("G|G", [0], [(0, 1612)]),
+        StreamDef("R|G", [1], [(0, 1612)]),
+        StreamDef("R|R", [1], [(1613, 3124)]),
     ]
     assert window_warnings(_prep(demo, streams, tmp_path)) == []
 
 
 def test_ungated_detectors_are_not_checked(demo, tmp_path):
-    streams = [StreamDef("green", [0], []), StreamDef("red", [1], [])]
+    streams = [StreamDef("G|G", [0], []), StreamDef("R|G", [1], [])]
     assert window_warnings(_prep(demo, streams, tmp_path)) == []
 
 
 def test_a_donor_only_measurement_gives_the_note(donor_only, tmp_path):
     _manifest(tmp_path, WRONG)
-    streams = [StreamDef("green", [0], [(0, 1612)]), StreamDef("red", [1], [])]
+    streams = [StreamDef("G|G", [0], [(0, 1612)]), StreamDef("R|G", [1], [])]
     warnings = window_warnings(_prep(donor_only, streams, tmp_path))
     assert len(warnings) == 1 and "One excitation pulse" in warnings[0], warnings
 
@@ -96,13 +96,13 @@ def test_the_window_shows_the_warning_and_offers_no_replacement(demo, tmp_path):
     from chisurf.plugins.burst.mfd_prepare.gui.model import MfdPrepareModel
 
     _manifest(tmp_path, WRONG)
-    streams = [StreamDef("green", [0], [(2048, 4094)]), StreamDef("red", [1], [(0, 2047)])]
+    streams = [StreamDef("G|G", [0], [(2048, 4094)]), StreamDef("R|G", [1], [(0, 2047)])]
     warning = window_warnings(_prep(demo, streams, tmp_path))[0]
 
     class Rpc:
         def call(self, method, params):
-            return {"ok": True, "result": {"report": "prepared", "n_bursts": 3, "channels": ["green"],
-                                           "verified_channels": ["green"], "summary": {},
+            return {"ok": True, "result": {"report": "prepared", "n_bursts": 3, "channels": ["G|G"],
+                                           "verified_channels": ["G|G"], "summary": {},
                                            "warnings": [warning]}}
 
     model = MfdPrepareModel(client=MfdPrepareClient(rpc_client=Rpc()))

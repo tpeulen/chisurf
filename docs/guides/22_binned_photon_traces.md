@@ -86,7 +86,7 @@ The buttons under the folder row act on the selected files (click a row, or
 :width: 100%
 
 Trace Browser on the ten BH SPC-132 smFRET files of the burst-selection test
-folder (green 0/8, red 1/9, SPC-130), `m000.spc` selected, 10 ms bins (the
+folder (`G|G` 0/8, `R|G` 1/9, SPC-130), `m000.spc` selected, 10 ms bins (the
 default). The coincident green/red spikes are FRET bursts; the right column is
 the count histogram of each trace. HMM, TW and NDX are greyed because this
 Trace Browser runs on its own; inside the ChiSurf window they hand the file on

@@ -159,7 +159,7 @@ That tool and **TTTR: Generate Decay** are walked through in
 
 ## Result
 
-Micro-time (TCSPC) histograms of a green and a red detector read from a TTTR
+Micro-time (TCSPC) histograms of a donor (`G|G`) and an acceptor (`R|G`) detector read from a TTTR
 file — the raw material for lifetime analysis, after the burst search, or for
 filtered FCS.
 

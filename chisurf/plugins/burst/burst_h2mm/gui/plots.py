@@ -34,6 +34,16 @@ COLOUR_RGB = {
     "yellow": "#e8b400",
     "aex": "#e8b400",
 }
+_ROLE_COLOUR = {"donor": "donor", "acceptor": "acceptor", "acceptor_direct": "aex"}
+
+
+def colour_of(detector: str) -> str:
+    """The line colour of *detector*: by its FRET role (``G|G`` donor, ``R|G`` acceptor, ``R|R``
+    acceptor excitation), else by a colour word in its name."""
+    from chisurf.core.fluorescence.detector_names import role
+
+    key = _ROLE_COLOUR.get(role(str(detector)), str(detector).lower())
+    return COLOUR_RGB.get(key, "#999999")
 
 
 def rgba(colour: str, alpha: int = 255) -> tuple[int, int, int, int]:
@@ -264,7 +274,7 @@ class ResultPlots:
                     keep = y > 0
                     if keep.any():
                         implot.set_next_line_style(
-                            rgba(COLOUR_RGB.get(str(colour).lower(), "#999999")),
+                            rgba(colour_of(colour)),
                             2.0,
                             dash=state_dash(state),
                         )

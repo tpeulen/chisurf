@@ -45,7 +45,7 @@ def test_physical_preview_and_worker_match_actual_facade(name, physical_model):
     model.refit()
     session = model.session
     x0, fixed = session.parameter_vector()
-    cfg = session.batch_config("green")
+    cfg = session.batch_config("G|G")
     direct = _build_fitter(cfg).fit(session.decay, x0, fixed, include_model=True)
     np.testing.assert_array_equal(session.outcome.x, direct.x)
     np.testing.assert_array_equal(session.outcome.model, direct.model_curve)
@@ -71,7 +71,7 @@ def test_physical_preview_and_worker_match_actual_facade(name, physical_model):
     assert written
     settings_file = written[0].parent / "channel_settings.json"
     payload = json.loads(settings_file.read_text())
-    assert payload["green"]["model"] == name
+    assert payload["G|G"]["model"] == name
 
 
 def test_fit23_matches_frozen_physical_preview_and_finite_exports(physical_model):
@@ -96,8 +96,9 @@ def test_fit23_matches_frozen_physical_preview_and_finite_exports(physical_model
     written = session.export_results()
     hashes = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in written}
     assert hashes == {
-        "m000.bg4": "246beac976f870427018c1e782d132d3cd0332557311af3886821ab5dc3d90bd",
-        "m000.br4": "62e1793e7275bbdd9ca497e7fa9d3b501a2c046721b1f8f227a2b505bbb103dd",
+        # the detector names G|G / R|G in the header: the rows are those of the green/red export
+        "m000.bg4": "62812f9c2c9aef2d754b447e48dc4e4958fadfd7abe0dc9478085f5fa966656d",
+        "m000.br4": "84b687af8e305f4c4cc3f4b0191e8811c98e108351cb9ca798d731bbda95fa3b",
     }
 
 
@@ -126,7 +127,7 @@ def test_registered_vectors_and_per_model_edits_survive_settings(name, tmp_path)
     restored.load_settings(path)
     assert restored.fit_model == name
     assert restored.parameter_records() == model.parameter_records()
-    other = restored.session.settings_of("red")
+    other = restored.session.settings_of("R|G")
     assert other.model_values is not restored.session.settings.model_values
 
 
@@ -195,13 +196,13 @@ def test_actual_container_stores_registry_parameter_units(name, tmp_path):
 
     source = tmp_path / "measurement.ptu"
     source.write_bytes(b"")
-    columns = {f"{p} (green)": np.array([1.0, 2.0]) for p in parameter_names_of(name)}
+    columns = {f"{p} (G|G)": np.array([1.0, 2.0]) for p in parameter_names_of(name)}
     path = write_mle_container(
-        source, {"green": store_from_arrays(columns)}, parameters={"model": name}
+        source, {"G|G": store_from_arrays(columns)}, parameters={"model": name}
     )
     with Measurement.open(path, writable=False) as measurement:
         obj = next(
-            o for o in measurement.artifacts() if o.name.endswith("/mle green")
+            o for o in measurement.artifacts() if o.name.endswith("/mle G|G")
         )  # in its own run
         import tttrlib
 
@@ -225,7 +226,7 @@ def test_fit25_state_seed_preserves_candidates_and_mixed_state_schema():
         "param_names": list(parameter_names_of("fit24")),
         "x0": np.array([1.0, 0.0, 4.0, 0.5, 0.0]),
     }
-    cfgs = {"green": cfg25, "red": cfg24}
+    cfgs = {"G|G": cfg25, "R|G": cfg24}
     fits = {
         det: {
             0: {
@@ -335,7 +336,7 @@ def test_already_open_detector_json_cannot_publish_during_job(monkeypatch, physi
     driver = Driver(app, (1280, 900))
     original = copy.deepcopy(app.editor.model.get_settings())
     draft = copy.deepcopy(original)
-    draft["detectors"]["green"]["g_factor"] = 1.9
+    draft["detectors"]["G|G"]["g_factor"] = 1.9
     app.editor.edit_json()
     app.editor.json_text = json.dumps(draft)
     try:
@@ -351,8 +352,8 @@ def test_already_open_detector_json_cannot_publish_during_job(monkeypatch, physi
         driver.frame(3)
         assert app.editor.read_only is False
         driver.click(app.editor.item_rects["apply_json"])
-        assert app.editor.model.data["detectors"]["green"]["g_factor"] == 1.9
-        assert app.model.session.detectors["green"]["g_factor"] == 1.9
+        assert app.editor.model.data["detectors"]["G|G"]["g_factor"] == 1.9
+        assert app.model.session.detectors["G|G"]["g_factor"] == 1.9
     finally:
         release.set()
         app.job.thread.join(3)
@@ -504,7 +505,7 @@ def test_explicit_saved_timing_override_reaches_real_fit_and_settings(physical_m
     tttr = model.session.current_tttr()
     physical = engine.header_time_ns(tttr, model.binning)
     model.set_setup(setup)
-    cfg = model.session.batch_config("green")
+    cfg = model.session.batch_config("G|G")
     assert cfg["dt"] == 0.025 * model.binning
     assert cfg["period"] == 102.4
     assert engine.header_time_ns(model.session.current_tttr(), model.binning) == physical

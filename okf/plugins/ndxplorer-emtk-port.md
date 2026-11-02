@@ -108,7 +108,7 @@ opens on, called from `ExplorerModel._apply_default_axes` (ndxplorer 7686fd8,
      bursts.
   3. The first varying, non-index columns.
 - **Matching:** presets match exact names, ignoring case. A substring match
-  is a trap: `s (green)` is inside `Number of Photons (green)`.
+  is a trap: `s (G|G)` is inside `Number of Photons (G|G)`.
 - **Images:** for a pixel table with geometry, the io feature's image mode
   then puts x pixel / y pixel on x/y and keeps z (Tau). That is deliberate
   and not overridden.
@@ -237,7 +237,7 @@ the corrected ones. **tttrlib's approach** (the form copied, nothing invented):
   IRF file when one is given.
 
 ndX now: constants `g_irf`, `s_irf` (1, 0) and `n_bg` (0) per channel (plain,
-`(green)`, `(red)`), `g_bg`, `s_bg` (0, 0); equations `f_bg = n_bg / Number of
+`(G|G)`, `(R|G)`), `g_bg`, `s_bg` (0, 0); equations `f_bg = n_bg / Number of
 Photons`, `g corr`, `s corr` = ((z - f_bg z_bg) / ((1 - f_bg) z_irf)); tau_phi
 and tau_m read g corr / s corr (the raw-phase lifetime is dropped: it carries
 the instrument's phase). Axis patterns `re:g corr…`, `re:s corr…`, `re:f_bg…`;
@@ -255,7 +255,7 @@ decays: raw off the circle, corrected on it, tau_phi/tau_m within 3 % for
 Measurement (re-derive with the script in the log bullet; the table is
 `parity/.cache/data/image_test.h5`, 10 frames of `pq_ht3_clsm.ht3`, f_rep 32):
 IRF `crn_clv_mirror.ht3` channels 0 1 -> g_irf 0.981, s_irf 0.181 (3.6 % dark
-counts removed), measurement background 4.6 % -> n_bg (green) 0.20; median
+counts removed), measurement background 4.6 % -> n_bg (G|G) 0.20; median
 pixel (0.69, 0.47) outside -> (0.79, 0.33) inside, 15 % -> 34 % of the rows
 inside (the rest is shot noise of 3-30-photon pixels).
 
@@ -316,7 +316,7 @@ FRET trajectory (x_DOnly, bg, g_bg/s_bg), FRET trajectory (distance) /
 (Gaussian distance), Two-component mixing line, Iso-phase line, Iso-modulation
 arc; `f`/`harmonic` link to the new constants `f_rep`/`harmonic`, `tau0` to
 `tauD0`, `R0` to `forster_radius`. `mfd.equations.yaml`: `tau_phi`, `tau_m`
-(plain, `(green)`, `(red)`), skipped where g/s are missing; the names are in
+(plain, `(G|G)`, `(R|G)`), skipped where g/s are missing; the names are in
 mmfdb `mmfdb_workflow_ext.dic` (mmfdb 98ee49a). ChiSurf's in-process client no
 longer registers img_pixel_phasor / fret_line (their endpoints stay: the
 standalone Qt window uses them over `--chisurf-rpc`). Qt `curve_overlay.py`

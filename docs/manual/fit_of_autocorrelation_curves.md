@@ -1,13 +1,13 @@
 ---
 type: Manual Page
 title: Fit of autocorrelation curves
-description: Open the autocorrelation of the green channels from the prompt time window from the β2AR-eGFP-IL3 measurements and the autocorrelation of the red channels in the delay time window from the CT-SNAP-β2AR measurements in ChiSurf.
+description: Open the autocorrelation of the green channels from the prompt time window (detector `G|G`) from the β2AR-eGFP-IL3 measurements and the autocorrelation of the red channels in the delay time window (detector `R|R`) from the CT-SNAP-β2AR measurements in ChiSurf.
 tags: [manual, fitting, autocorrelation, curves]
 ---
 
 # Fit of autocorrelation curves
 
-Open the autocorrelation of the green channels from the prompt time window from the β2AR-eGFP-IL3 measurements and the autocorrelation of the red channels in the delay time window from the CT-SNAP-β2AR measurements in ChiSurf.
+Open the autocorrelation of the green channels from the prompt time window (detector `G|G`) from the β2AR-eGFP-IL3 measurements and the autocorrelation of the red channels in the delay time window (detector `R|R`) from the CT-SNAP-β2AR measurements in ChiSurf.
 
 Select the bimodal membrane diffusion model for autocorrelation curves, which we have just added to ChiSurf and fit the data:
 

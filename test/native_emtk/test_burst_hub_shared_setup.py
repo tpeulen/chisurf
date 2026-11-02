@@ -6,8 +6,8 @@ import pytest
 
 SETUP = {
     "detectors": {
-        "green": {"chs": [0, 1], "micro_time_ranges": [], "g_factor": 1.0},
-        "red": {"chs": [8, 9], "micro_time_ranges": [], "g_factor": 1.0},
+        "G|G": {"chs": [0, 1], "micro_time_ranges": [], "g_factor": 1.0},
+        "R|G": {"chs": [8, 9], "micro_time_ranges": [], "g_factor": 1.0},
     },
     "windows": {},
     "tttr_reading": {"file_type": "SPC-130", "micro_time_binning": 1},
@@ -61,11 +61,11 @@ def test_actual_burst_children_share_the_setup_and_keep_context():
             assert editor_of(child).model is hub.setup_model, role
         assert hub.context.channel_settings["future_metadata"] == SETUP["future_metadata"]
         assert hub.context.setup_name == "shared"
-        hub.setup_model.data["detectors"]["green"]["chs"] = [2, 3]
+        hub.setup_model.data["detectors"]["G|G"]["chs"] = [2, 3]
         hub.setup_model.changed()
         fcs = hub.children["burst_fcs"].controller
         assert fcs._pair_presets[0]["chs_a"] == [2, 3]
-        assert hub.children["mle"].model.session.detectors["green"]["chs"] == [2, 3]
+        assert hub.children["mle"].model.session.detectors["G|G"]["chs"] == [2, 3]
     finally:
         hub.close()
 
@@ -82,11 +82,11 @@ def test_child_restore_cannot_replace_hub_authority_in_place():
         step.page.load_definition(deepcopy(SETUP))
         child = hub.select("accurate_fret")
         state = hub.export_settings()
-        state["children"]["accurate_fret"]["channel_definition"]["detectors"]["green"]["chs"] = [12]
+        state["children"]["accurate_fret"]["channel_definition"]["detectors"]["G|G"]["chs"] = [12]
         hub.restore_settings(state)
         assert editor_of(child).model is hub.setup_model
-        assert hub.setup_model.data["detectors"]["green"]["chs"] == [0, 1]
-        assert hub.context.channel_settings["detectors"]["green"]["chs"] == [0, 1]
+        assert hub.setup_model.data["detectors"]["G|G"]["chs"] == [0, 1]
+        assert hub.context.channel_settings["detectors"]["G|G"]["chs"] == [0, 1]
     finally:
         hub.close()
 
@@ -103,7 +103,7 @@ def test_fcs_same_name_definition_change_adopts_pairs_once(monkeypatch):
     try:
         app.setup.load_definition(deepcopy(SETUP))
         assert len(calls) == 1
-        app.setup.model.data["detectors"]["green"]["chs"] = [2, 3]
+        app.setup.model.data["detectors"]["G|G"]["chs"] = [2, 3]
         app.setup.model.changed()
         assert len(calls) == 2
         assert app.controller._pair_presets[0]["chs_a"] == [2, 3]
@@ -158,7 +158,7 @@ def test_context_patterns_sources_and_fusion_survive_restore(tmp_path):
         hub.context.bur_files = [tmp_path / "analysis" / "bur4" / "measurement.bur"]
         hub.context.mmfdb_artifacts = {"operation": "op"}
         hub.context.raw_mmfdb_artifacts = {"measurement": "raw"}
-        hub.context.irf_background_patterns = {"green": {"irf": np.arange(8.0), "bg": np.ones(8)}}
+        hub.context.irf_background_patterns = {"G|G": {"irf": np.arange(8.0), "bg": np.ones(8)}}
         hub._fusion_source = tmp_path / "original"
         hub._fused_folder = tmp_path / "analysis"
         state = hub.export_settings()
@@ -169,7 +169,7 @@ def test_context_patterns_sources_and_fusion_survive_restore(tmp_path):
         assert again.context.mmfdb_artifacts == hub.context.mmfdb_artifacts
         assert again.context.raw_mmfdb_artifacts == hub.context.raw_mmfdb_artifacts
         np.testing.assert_array_equal(
-            again.context.irf_background_patterns["green"]["irf"], np.arange(8.0)
+            again.context.irf_background_patterns["G|G"]["irf"], np.arange(8.0)
         )
         assert again._fusion_source == hub._fusion_source
         assert again._fused_folder == hub._fused_folder

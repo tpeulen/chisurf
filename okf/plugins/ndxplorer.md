@@ -203,7 +203,7 @@ restore: a file already on disk cannot be asked to follow a newer schema.
 **The background comes back with it.** A measurement usually has its background
 measured long before its factors are determined, and ndX's `Bg` / `Br` / `By`
 are *rates*: `Fg(PIE) = Sg(PIE) − Bg` where `Sg(PIE)` is
-`S prompt green (kHz)`. So the container's per-detector rates go in as they
+`S prompt G|G (kHz)`. So the container's per-detector rates go in as they
 stand — no duration, no conversion — and a measurement carrying only a
 background still restores something, which is the part the equations use most
 directly. They travel on the calibration object, because

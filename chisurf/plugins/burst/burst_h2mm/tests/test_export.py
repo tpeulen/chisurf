@@ -60,7 +60,7 @@ def _dataset_via_tttrlib(n_bursts=60, burst_len=50, seed=3):
     tttr.append_events(macro, micro, chan, et, False, 0)
 
     df = pd.DataFrame(rows, columns=["First File", "First Photon", "Last Photon"])
-    defs = [StreamDef("green", [0]), StreamDef("red", [1])]
+    defs = [StreamDef("G|G", [0]), StreamDef("R|G", [1])]
     return bursts_from_dataframe(df, {"sim.spc": tttr}, defs, min_photons=1, return_meta=True)
 
 
@@ -94,7 +94,7 @@ def test_build_tables_schema_and_lengths():
         fret,
         base_time_s=1e-6,
         micro_time_ns=0.032,
-        stream_groups=[("green", (0,)), ("red", (1,))],
+        stream_groups=[("G|G", (0,)), ("R|G", (1,))],
     )
     ph, bu = tables.photons, tables.bursts
 
@@ -104,8 +104,8 @@ def test_build_tables_schema_and_lengths():
         assert col in column_names(ph)
     # ndX FRET-line plot columns (its default Y axis + the per-colour mean micro time).
     for col in (
-        "Mean Microtime (green)",
-        "Mean Microtime (red)",
+        "Mean Microtime (G|G)",
+        "Mean Microtime (R|G)",
         "Proximity ratio",
         "FRET efficiency",
     ):
@@ -113,7 +113,7 @@ def test_build_tables_schema_and_lengths():
     # Measured proximity ratio is a finite fraction; mean micro time is finite (ns).
     pr = numeric_column(bu, "Proximity ratio")
     assert np.all((pr[np.isfinite(pr)] >= 0) & (pr[np.isfinite(pr)] <= 1))
-    assert np.isfinite(numeric_column(bu, "Mean Microtime (green)")).any()
+    assert np.isfinite(numeric_column(bu, "Mean Microtime (G|G)")).any()
     # Every column ndX imports must be numeric (else it drops them).
     for table in (ph, bu):
         for i in range(len(column_names(table))):
@@ -154,7 +154,7 @@ def test_build_dwell_table_per_dwell_rows_and_edge_flag():
         meta,
         ana.dwells,
         ana.base_time_s,
-        stream_groups=[("green", (0,)), ("red", (1,))],
+        stream_groups=[("G|G", (0,)), ("R|G", (1,))],
         micro_time_ns=0.032,
     )
     # One row per analysis dwell.
@@ -165,7 +165,7 @@ def test_build_dwell_table_per_dwell_rows_and_edge_flag():
         "State",
         "Number of Photons",
         "Dwell Time (ms)",
-        "Mean Microtime (green)",
+        "Mean Microtime (G|G)",
         "FRET efficiency",
         "Is Edge",
     ):
@@ -202,14 +202,14 @@ def test_write_result_tables_emits_ndx_fret_line_columns(tmp_path):
     assert csv is not None
     df = pd.read_csv(csv)
     for col in (
-        "Mean Microtime (green)",
+        "Mean Microtime (G|G)",
         "Proximity ratio",
         "FRET efficiency",
         "Mean Macro Time (s)",
         "Dominant State",
     ):
         assert col in df.columns
-    assert np.isfinite(df["Mean Microtime (green)"].to_numpy()).any()
+    assert np.isfinite(df["Mean Microtime (G|G)"].to_numpy()).any()
 
     # A per-dwell table is also written for dwell-level filtering in ndX.
     dwells_csv = result.output_paths.get("dwells_csv")
@@ -220,6 +220,6 @@ def test_write_result_tables_emits_ndx_fret_line_columns(tmp_path):
         "Number of Photons",
         "Dwell Time (ms)",
         "Is Edge",
-        "Mean Microtime (green)",
+        "Mean Microtime (G|G)",
     ):
         assert col in ddf.columns

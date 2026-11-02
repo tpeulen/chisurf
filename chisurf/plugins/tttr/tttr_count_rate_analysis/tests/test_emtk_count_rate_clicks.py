@@ -278,7 +278,7 @@ def test_the_detector_setup_combo_lists_the_setups_and_a_pick_selects_it(ui):
     editor = ui.app.tool.channel_editor
     editor.model.setups = {
         "Leica": {
-            "detectors": {"green": {"chs": [0], "micro_time_ranges": [[0, 4095]]}},
+            "detectors": {"G|G": {"chs": [0], "micro_time_ranges": [[0, 4095]]}},
             "windows": {"all": [0, 4095]},
         }
     }

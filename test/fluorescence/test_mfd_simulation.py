@@ -141,7 +141,7 @@ def test_the_written_folder_reads_back_through_the_ordinary_path(tmp_path):
     assert len(preparation) > 50
     assert preparation.convention.inclusive is True
     assert preparation.convention.agreement == pytest.approx(1.0)
-    assert set(preparation.verified_channels) >= {"green", "red"}
+    assert set(preparation.verified_channels) >= {"G|G", "R|G"}
     # Sources come from the manifest the simulator wrote, not from a guess.
     assert set(preparation.sources.origin.values()) == {"manifest"}
     # And the mean micro time is the writer's column, not the photon fallback.
@@ -154,8 +154,8 @@ def test_the_burst_tables_reproduce_the_generated_photons(tmp_path):
     data = load_mfd_data(folder, axes=AXES, min_green_photons=20)
     preparation = data.preparation
 
-    green = preparation.channel_index("green")
-    red = preparation.channel_index("red")
+    green = preparation.channel_index("G|G")
+    red = preparation.channel_index("R|G")
     stream = np.asarray(simulated.stream)
     for row, (first, last) in enumerate(simulated.true_bursts(min_photons=20)):
         emitted = stream[first : last + 1]
@@ -183,8 +183,8 @@ def test_the_response_estimated_from_non_burst_photons_recovers_the_declared_one
     that the true answer is known here, so the residual is a number.
     """
     simulated, folder = _folder(tmp_path, "static", n_bursts=1200)
-    declared = simulated.true_responses()["green"]
-    estimated = load_mfd_data(folder, axes=AXES).responses["green"]
+    declared = simulated.true_responses()["G|G"]
+    estimated = load_mfd_data(folder, axes=AXES).responses["G|G"]
 
     declared_mean, _ = pattern_moments(declared.irf, declared.dt)
     estimated_mean, _ = pattern_moments(estimated.irf, estimated.dt)
@@ -563,7 +563,7 @@ def test_pooled_decays_pool_on_the_ratio_only(tmp_path):
     assert decays.sum() > 0
     # Every photon in the pooled decays is a donor photon of a burst that survived
     # the cut, so the total cannot exceed what those bursts hold.
-    green = data.preparation.channel_index("green")
+    green = data.preparation.channel_index("G|G")
     assert decays.sum() <= data.preparation.counts[:, green].sum()
 
 
@@ -617,7 +617,7 @@ def test_the_anisotropy_axis_recovers_the_simulated_rotational_time(tmp_path):
     # What the model predicts for the same state, from r(t) alone.
     from chisurf.core.fluorescence.mfd.patterns import polarized_patterns
 
-    response = simulated.true_responses()["green"]
+    response = simulated.true_responses()["G|G"]
     amplitudes = np.array([1.0])
     lifetimes = np.array([optics.tau_d0 * (1.0 - efficiency)])
     _, _, predicted = polarized_patterns(response, amplitudes, lifetimes, rho, optics)
@@ -680,10 +680,10 @@ def test_one_polarized_folder_serves_both_mfd_axes(tmp_path):
     # the photons vanish without anything complaining — the columns would simply be
     # half as large and the proximity ratio would still look reasonable.
     fret = load_mfd_data(folder, axes=AXES, min_green_photons=20)
-    assert set(fret.preparation.verified_channels) >= {"green", "red"}
+    assert set(fret.preparation.verified_channels) >= {"G|G", "R|G"}
     assert fret.observed.n_used > 0
-    green = fret.preparation.channel_index("green")
-    red = fret.preparation.channel_index("red")
+    green = fret.preparation.channel_index("G|G")
+    red = fret.preparation.channel_index("R|G")
     counted = int(fret.preparation.counts[:, [green, red]].sum())
     stream = np.asarray(simulated.stream)
     in_burst = np.zeros(stream.size, dtype=bool)
@@ -700,7 +700,7 @@ def test_one_polarized_folder_serves_both_mfd_axes(tmp_path):
         green="green_par",
         red="green_perp",
         min_green_photons=20,
-        responses={"green_par": responses["green"], "green_perp": responses["green"]},
+        responses={"green_par": responses["G|G"], "green_perp": responses["G|G"]},
     )
     model = MfdModel(
         optics=optics,

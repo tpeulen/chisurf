@@ -51,10 +51,9 @@ __all__ = [
 #: *unknown* — not dimensionless. Those are different claims and only one is
 #: safe to make by default.
 BURST_COLUMN_UNITS: dict[str, str] = {
+    # `Tau (G|G)` / `Tau (green)` and every other per-detector column are found
+    # through their unqualified name (`Tau`), see `units_for`.
     "Tau": "nanoseconds",
-    "Tau (green)": "nanoseconds",
-    "Tau (red)": "nanoseconds",
-    "Tau (yellow)": "nanoseconds",
     "Lifetime": "nanoseconds",
     "Number of Photons": "photons",
     "Fused Gap Photons": "photons",
@@ -98,7 +97,7 @@ def as_table(table):
     return store_from_arrays({str(name): table[name].to_numpy() for name in table.columns})
 
 
-#: ``Number of Photons (green)`` -> ``Number of Photons``. Only a *trailing*
+#: ``Number of Photons (G|G)`` -> ``Number of Photons``. Only a *trailing*
 #: bracket, and only when what is inside it is not itself a unit — by the time
 #: this runs :func:`~chisurf.core.support.units.split_label` has already claimed the
 #: labels whose bracket is a unit, so anything left is a detector or a window.
@@ -141,7 +140,7 @@ def units_for(df, extra: Mapping[str, str] | None = None) -> dict[str, str]:
         if not code:
             # A per-detector column is the same quantity as the one it
             # qualifies, and the table above keys on the exact name — so
-            # `Number of Photons` was photons and `Number of Photons (green)`,
+            # `Number of Photons` was photons and `Number of Photons (G|G)`,
             # in the same row, was unitless. The qualifier is dropped and the
             # table asked again, which is also what stops this table needing one
             # row per detector name it has never heard of.

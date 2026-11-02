@@ -27,8 +27,8 @@ GUI = PLUGIN / "gui"
 PIE = PLUGIN.parent / "burst_selection" / "tests" / "data" / "bh_spc132_sm_dna"
 PROBE = {
     "detectors": {
-        "green": {"chs": [0, 1], "micro_time_ranges": []},
-        "red": {"chs": [8, 9], "micro_time_ranges": []},
+        "G|G": {"chs": [0, 1], "micro_time_ranges": []},
+        "R|G": {"chs": [8, 9], "micro_time_ranges": []},
     },
     "windows": {},
     "tttr_reading": {"file_type": "SPC-130"},
@@ -155,7 +155,7 @@ def test_next_alone_takes_the_demo_from_files_to_an_es_histogram(hub, settings):
     selection = hub.children["selection"]
     assert [p.name for p in selection.model.files] == ["alex_demo_alex.pto"]
     assert selection.model.setup_name == "ALEX Suite (auto)"
-    assert list(selection.model.detectors) == ["green", "red", "yellow"]
+    assert list(selection.model.detectors) == ["G|G", "R|G", "R|R"]
 
     press_next(drv)  # Next runs the search, waits, then opens 5. Background
     assert selection.model.n_bursts > 300, selection.model.status_text
@@ -171,8 +171,8 @@ def test_next_alone_takes_the_demo_from_files_to_an_es_histogram(hub, settings):
     fret = hub.children["accurate_fret"]
     wait_for(drv, lambda: not fret.controller.running)
     assert "sliding_window" in fret.model.filename
-    assert fret.model.column_i_dd.startswith("S prompt green")
-    assert fret.model.column_i_aa.startswith("S delayed yellow")
+    assert fret.model.column_i_dd.startswith("S prompt G|G")
+    assert fret.model.column_i_aa.startswith("S delayed R|R")
 
     press_next(drv)  # Next calibrates, then opens 7. E–S histogram
     assert fret.model.result is not None, fret.controller.status

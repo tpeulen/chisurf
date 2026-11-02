@@ -46,8 +46,8 @@ def test_all_zero_detector_counts_give_nan():
         **{
             "Number of Photons": [100.0, 200.0],
             "Duration (ms)": [1.0, 2.0],
-            "Number of Photons (green)": [0.0, 0.0],
-            "Number of Photons (red)": [0.0, 0.0],
+            "Number of Photons (G|G)": [0.0, 0.0],
+            "Number of Photons (R|G)": [0.0, 0.0],
         }
     )
     assert np.all(np.isnan(np.asarray(proximity_ratio(frame), dtype=float)))
@@ -60,8 +60,8 @@ def test_a_real_ratio_is_still_computed():
         **{
             "Number of Photons": [100.0, 200.0],
             "Duration (ms)": [1.0, 2.0],
-            "Number of Photons (green)": [75.0, 50.0],
-            "Number of Photons (red)": [25.0, 150.0],
+            "Number of Photons (G|G)": [75.0, 50.0],
+            "Number of Photons (R|G)": [25.0, 150.0],
         }
     )
     np.testing.assert_allclose(np.asarray(proximity_ratio(frame), dtype=float), [0.25, 0.75])

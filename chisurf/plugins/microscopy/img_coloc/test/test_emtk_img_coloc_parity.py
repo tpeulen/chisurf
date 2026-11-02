@@ -649,8 +649,9 @@ def test_the_view_list_brings_a_tab_forward_and_follows_a_clicked_tab(app, drv, 
 def test_the_detectors_window_edits_the_windows_of_a_photon_stream(app, drv):
     app.docks.focus("Detectors")
     drv.draw(3)
-    drv.click_text("Add")
-    drv.draw(2)
+    from chisurf.plugins.microscopy.imaging_emtk.pixel_checks import add_custom_detector
+
+    add_custom_detector(drv)
     assert "New Detector" in app.model.detectors and app.model.channel_names()[0] == "New Detector"
 
 

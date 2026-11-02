@@ -381,7 +381,7 @@
           "type": "toggle",
           "attr": "split_by_state",
           "label": "Split by H2MM state",
-          "description": "Fit each burst once more per H2MM state (Tau S0 (green) ... beside Tau (green)), after a fit of each state's decay pooled over the measurement, whose lifetime also starts the per-burst fits. Needs an H2MM run of this burst folder."
+          "description": "Fit each burst once more per H2MM state (Tau S0 (G|G) ... beside Tau (G|G)), after a fit of each state's decay pooled over the measurement, whose lifetime also starts the per-burst fits. Needs an H2MM run of this burst folder."
         },
         {
           "type": "value",

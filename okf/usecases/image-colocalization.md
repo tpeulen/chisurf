@@ -127,11 +127,11 @@ painted ROI — with every result tab screenshotted and inspected.
   channel maps still showed the old pair — while the form said `ch0` / `ch4`.
   Only **▶ Run** brought it to 0.9721. Nothing marks the result stale. → RF-336.
 - **A detector setup nobody picked was already applied.** The window opened with
-  **Setup = BS** (a Becker & Hickl SPC-130 definition: `green` = ch 8,0,3 gated
-  to raw micro-time 0–4095; `red` = ch 9,1,2 gated 0–2048). On the HT3 that
-  makes "green" a micro-time-truncated `ch0` and **"red" a micro-time-truncated
+  **Setup = BS** (a Becker & Hickl SPC-130 definition: `G|G` = ch 8,0,3 gated
+  to raw micro-time 0–4095; `R|G` = ch 9,1,2 gated 0–2048). On the HT3 that
+  makes `G|G` a micro-time-truncated `ch0` and **`R|G` a micro-time-truncated
   `ch1`** — the *other green* detector — and the tool reports
-  `green vs red · PCC = 0.992`, a plausible number under the wrong label, while
+  `G|G vs R|G · PCC = 0.992`, a plausible number under the wrong label, while
   the file's actual red detectors (ch4, ch5) are never touched. Nothing in the
   window shows what a window means; the summary line under the combo says only
   "green, red, yellow". → RF-337.

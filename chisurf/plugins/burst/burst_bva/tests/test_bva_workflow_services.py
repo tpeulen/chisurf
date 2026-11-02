@@ -14,8 +14,8 @@ def test_prepare_workflow_uses_context_folder_and_channels(tmp_path) -> None:
             "burst_folder": str(burst_folder),
             "channel_settings": {
                 "detectors": {
-                    "green": {"chs": [8, 0], "micro_time_ranges": [[0, 100]]},
-                    "red": {"chs": [9, 1], "micro_time_ranges": [[100, 200]]},
+                    "G|G": {"chs": [8, 0], "micro_time_ranges": [[0, 100]]},
+                    "R|G": {"chs": [9, 1], "micro_time_ranges": [[100, 200]]},
                 },
                 "tttr_reading": {"file_type": "SPC-130"},
             },

@@ -11,10 +11,10 @@ from .test_accurate_fret_plugin import ALPHA, BETA, DELTA, GAMMA, TAU_D0, _simul
 def columns():
     dd, da, aa, tau = _simulate(n=100)
     return {
-        "Green Count Rate (KHz)": dd,
-        "Red Count Rate (KHz)": da,
-        "S delayed yellow (kHz)": aa,
-        "Tau (green)": tau,
+        "G|G Count Rate (KHz)": dd,
+        "R|G Count Rate (KHz)": da,
+        "S delayed R|R (kHz)": aa,
+        "Tau (G|G)": tau,
     }
 
 
@@ -69,7 +69,7 @@ def test_native_setup_store_and_reopen_preserves_calibration(tmp_path):
 
     setup = ChannelDefinition(
         {
-            "detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}, "yellow": {"chs": [2]}},
+            "detectors": {"G|G": {"chs": [0]}, "R|G": {"chs": [1]}, "R|R": {"chs": [2]}},
             "windows": {},
         },
         file_path=tmp_path / "setups.json",
@@ -96,7 +96,7 @@ def test_native_setup_store_and_reopen_preserves_calibration(tmp_path):
         reopened.select_setup("Instrument")
         stored = reopened.data[SETUP_CALIBRATION_FIELD]
         assert np.isclose(stored["values"]["gamma"], app.model.result.factors["gamma"])
-        assert reopened.data["detectors"]["green"]["chs"] == [0]
+        assert reopened.data["detectors"]["G|G"]["chs"] == [0]
     finally:
         app.close()
 

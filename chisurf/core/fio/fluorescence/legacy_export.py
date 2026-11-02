@@ -39,6 +39,7 @@ from typing import Any
 import numpy as np
 
 from chisurf.core.fio.fluorescence.burst_companion import CompanionError, write_companion
+from chisurf.core.fluorescence import detector_names
 
 __all__ = [
     "COMPANIONS",
@@ -51,13 +52,17 @@ logger = logging.getLogger(__name__)
 
 #: ``operation_type`` of a run -> the companion directory/extension its per-burst
 #: tables are exported as. A mapping is keyed by the detector in the artifact's
-#: name (``mle green`` -> ``bg4``). Every ending ends in ``4``: that is how a
+#: name (``mle G|G`` -> ``bg4``). Every ending ends in ``4``: that is how a
 #: folder reader discovers it.
 COMPANIONS: dict[str, str | dict[str, str]] = {
     "kde_cde": "2c4",
     "burst_2cde": "2c4",
     "burst_variance_analysis": "bv4",
-    "burst_lifetime_fitting": {"green": "bg4", "red": "br4", "yellow": "by4"},
+    "burst_lifetime_fitting": {
+        detector_names.DONOR: "bg4",
+        detector_names.ACCEPTOR: "br4",
+        detector_names.ACCEPTOR_DIRECT: "by4",
+    },
     "photon_hmm": "bh4",
     "burst_correlation": "td4",
     "time_delay": "td4",
@@ -82,6 +87,9 @@ _BURST_TABLE_NAMES = frozenset({"bursts", "fused bursts"})
 #: Operations that produce the burst table (or something that is not a per-burst
 #: result at all) and therefore have no companion.
 _NOT_COMPANIONS = frozenset({"burst_selection", "import", "calibration", "background_correction"})
+
+#: A detector named in an artifact name (``mle G|G``).
+_DETECTOR_IN_NAME = re.compile(r"(?<![A-Za-z0-9])[BGYR]\|[BGYR](?![A-Za-z0-9])", re.IGNORECASE)
 
 _OPERATION = "_mmfdb_operation.operation_type"
 _GRAIN = "_mmfdb_artifact.row_grain"
@@ -113,8 +121,9 @@ def _ending_for(operation: str, name: str) -> str:
     entry = COMPANIONS[operation]
     if isinstance(entry, str):
         return entry
-    for detector, ending in entry.items():
-        if re.search(rf"\b{re.escape(detector)}\b", name, flags=re.IGNORECASE):
+    for found in _DETECTOR_IN_NAME.findall(name):
+        ending = entry.get(found.upper())
+        if ending is not None:
             return ending
     raise CompanionError(
         f"cannot tell which detector {name!r} belongs to (expected one of "

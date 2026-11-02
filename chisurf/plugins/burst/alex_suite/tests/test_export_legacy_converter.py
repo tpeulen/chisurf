@@ -20,9 +20,9 @@ def _columns(n=120, e_true=0.45, seed=7, *, first_file=False):
     green = total * 0.5
     i_da = rng.binomial(green.astype(int), e_true).astype(float)
     cols = {
-        "Number of Photons (green)": green - i_da,
-        "Number of Photons (red)": i_da,
-        "Number of Photons (yellow)": total - green,
+        "Number of Photons (G|G)": green - i_da,
+        "Number of Photons (R|G)": i_da,
+        "Number of Photons (R|R)": total - green,
         "Duration (ms)": np.full(n, 1.0),
     }
     if first_file:

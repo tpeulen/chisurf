@@ -186,6 +186,13 @@ def convert(value: float, frm: str, to: str) -> float:
 #: ``Name (unit)`` and ``Name | unit`` — the two in-band conventions this
 #: replaces. Matched only to *read* files and headers already written that way.
 _SUFFIX = re.compile(r"^(?P<name>.*?)\s*[(\[]\s*(?P<unit>[^)\]]+?)\s*[)\]]\s*$")
+#: A detector name (``G|G``, ``R|G``): its bar is part of the name, not the ``Name | unit`` bar.
+_DETECTOR = re.compile(r"(?<![A-Za-z0-9])[BGYR]\|[BGYR](?![A-Za-z0-9])")
+
+
+def _unit_bar(label: str) -> int:
+    """The index of the ``Name | unit`` bar of *label*, skipping detector names; ``-1``."""
+    return _DETECTOR.sub(lambda m: "#" * len(m.group()), label).find("|")
 
 
 def split_label(label: str) -> tuple[str, str]:
@@ -201,7 +208,7 @@ def split_label(label: str) -> tuple[str, str]:
     label : str
 
     A label may carry both conventions at once, and one in this tree does: a
-    burst table's window rate is ``"S prompt green (kHz) | 0-2048"``, where the
+    burst table's window rate is ``"S prompt G|G (kHz) | 0-2048"``, where the
     bar separates a *range* rather than a unit and the unit is in the brackets
     before it. So a bar whose right-hand side is not a unit falls through to the
     bracket on its left-hand side, instead of ending the search. Reading the
@@ -213,10 +220,12 @@ def split_label(label: str) -> tuple[str, str]:
     tuple of (str, str)
         The name, and the unit code (``""`` when the label carries none). The
         name comes back unchanged when no unit was recognised, so a bracketed
-        qualifier that is not a unit — ``"Tau (green)"`` — is left alone.
+        qualifier that is not a unit — ``"Tau (G|G)"`` — is left alone; the
+        bar of a detector name (``G|G``) is never read as the unit bar.
     """
-    if "|" in label:
-        name, _, rest = label.partition("|")
+    bar = _unit_bar(label)
+    if bar >= 0:
+        name, rest = label[:bar], label[bar + 1 :]
         code = canonical(rest)
         if code:
             return name.strip(), code

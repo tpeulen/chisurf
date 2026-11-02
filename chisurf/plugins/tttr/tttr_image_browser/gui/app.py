@@ -68,12 +68,13 @@ def _window_flags() -> int:
 
 
 def fit_label(text: str, room: float) -> str:
-    """The longest form of a tile label ("green  |  mt: 0-4095  |  ch: 0,1") that fits *room* pixels.
+    """The longest form of a tile label ("G|G  |  mt: 0-4095  |  ch: 0,1") that fits *room* pixels.
 
     Full text, then the detector and its routing channels, then the detector name; a tile narrower than its own
     name keeps the name (zoom in to see it whole).
     """
-    parts = [part.strip() for part in text.split("|")]
+    # the fields are joined by "  |  "; a bare "|" belongs to a detector name (G|G)
+    parts = [part.strip() for part in text.split("  |  ")]
     for candidate in (
         " | ".join(parts),
         f"{parts[0]} | {parts[-1]}" if len(parts) > 2 else "",

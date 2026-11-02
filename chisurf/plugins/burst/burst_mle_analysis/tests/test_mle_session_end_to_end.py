@@ -41,7 +41,7 @@ def fitted(sample_copy):
     s = engine.MleSession()
     s.set_detectors(CHANNEL_SETTINGS["detectors"], CHANNEL_SETTINGS["file_type"])
     s.add_burst_files([sample_copy / BURST_TABLE])
-    s.current_detector = "green"
+    s.current_detector = "G|G"
     s.auto_extract()
     return s
 
@@ -93,7 +93,7 @@ def test_auto_extract_restricts_the_fit_window_to_the_filled_region(fitted):
 def test_auto_extract_gives_a_physical_lifetime_for_every_colour(fitted):
     # Both the green (donor) and red (acceptor) decays must recover a physical single-molecule lifetime through
     # the one-click path -- no railing.
-    for det in ("green", "red"):
+    for det in ("G|G", "R|G"):
         fitted.current_detector = det
         fitted.auto_extract()
         tau = float(fitted.outcome.x[0])
@@ -110,7 +110,7 @@ def test_the_one_click_values_are_the_wizards(fitted, qt_reference):
     assert fitted.settings.micro_time_binning == ref["auto_optimize"]["binning"]
     assert list(fitted.micro_time_range) == ref["auto_optimize"]["range"]
     assert float(fitted.outcome.x[0]) == pytest.approx(ref["auto_optimize"]["tau"], abs=6e-4)
-    fitted.current_detector = "red"
+    fitted.current_detector = "R|G"
     fitted.auto_extract()
     assert float(fitted.outcome.x[0]) == pytest.approx(ref["red_tau"], abs=6e-4)
 
@@ -135,7 +135,7 @@ def test_auto_extract_lifetime_matches_model_free_estimate(fitted):
     # (dim/passing molecules), and convolving with it biased the fitted lifetime ~2x short (a ~2.2 ns decay fit as
     # ~1.1 ns). The extraction models the IRF as a tail-free Gaussian at the prompt, so the fitted tau must track
     # the model-free mean-arrival-time lifetime (a robust, IRF-tail-immune reference) to within ~30%.
-    for det, chs in (("green", [0, 1]), ("red", [8, 9])):
+    for det, chs in (("G|G", [0, 1]), ("R|G", [8, 9])):
         fitted.current_detector = det
         fitted.auto_extract()
         tau = float(fitted.outcome.x[0])
@@ -179,20 +179,20 @@ def test_burst_result_columns_are_model_specific():
     every model so downstream burst plots key on it uniformly.
     """
     col = engine.burst_result_columns
-    c23 = col("green", "fit23", ["tau", "gamma", "r0", "rho"])
-    assert "Tau (green)" in c23
-    assert "r0 (green)" in c23 and "rho (green)" in c23
-    assert "r Scatter (green)" in c23 and "r Experimental (green)" in c23
+    c23 = col("G|G", "fit23", ["tau", "gamma", "r0", "rho"])
+    assert "Tau (G|G)" in c23
+    assert "r0 (G|G)" in c23 and "rho (G|G)" in c23
+    assert "r Scatter (G|G)" in c23 and "r Experimental (G|G)" in c23
 
-    c24 = col("green", "fit24", ["tau1", "gamma", "tau2", "A2", "offset"])
-    assert "Tau (green)" in c24
-    assert {"tau1 (green)", "tau2 (green)", "A2 (green)", "offset (green)"} <= set(c24)
+    c24 = col("G|G", "fit24", ["tau1", "gamma", "tau2", "A2", "offset"])
+    assert "Tau (G|G)" in c24
+    assert {"tau1 (G|G)", "tau2 (G|G)", "A2 (G|G)", "offset (G|G)"} <= set(c24)
     # anisotropy columns are fit23-only
-    assert "r Scatter (green)" not in c24 and "r0 (green)" not in c24
+    assert "r Scatter (G|G)" not in c24 and "r0 (G|G)" not in c24
 
-    c25 = col("green", "fit25", ["tau1", "tau2", "tau3", "tau4", "gamma", "r0"])
-    assert {"tau1 (green)", "tau4 (green)", "gamma (green)"} <= set(c25)
-    assert "r Experimental (green)" not in c25
+    c25 = col("G|G", "fit25", ["tau1", "tau2", "tau3", "tau4", "gamma", "r0"])
+    assert {"tau1 (G|G)", "tau4 (G|G)", "gamma (G|G)"} <= set(c25)
+    assert "r Experimental (G|G)" not in c25
 
 
 def _synthetic_worker_job(model, method, param_names, x0, fixed, *, n=64, tau_true=2.0, dt=0.05):
@@ -253,8 +253,8 @@ def _synthetic_worker_job(model, method, param_names, x0, fixed, *, n=64, tau_tr
         mt_shm.name,
         mt.shape,
         str(mt.dtype),
-        ["green"],
-        {"green": cfg},
+        ["G|G"],
+        {"G|G": cfg},
         0,
         None,
     )
@@ -305,18 +305,18 @@ def test_batch_worker_fits_non_fit23_models(model, method, names, x0, fixed):
     assert n_bursts == 1
     assert len(records) == 1
     rec = records[0]
-    assert rec["Detector"] == "green"
+    assert rec["Detector"] == "G|G"
     # a lifetime came back and the fit-quality column is present (its value is
     # whatever tttrlib returns for the model — it can be NaN for some fixed
     # configs, which the worker passes through unchanged).
-    assert np.isfinite(rec["Tau (green)"]) and rec["Tau (green)"] > 0
-    assert "2I*  (green)" in rec
+    assert np.isfinite(rec["Tau (G|G)"]) and rec["Tau (G|G)"] > 0
+    assert "2I*  (G|G)" in rec
     # the model's own free-parameter columns are present ...
     for nm in names:
-        assert f"{nm} (green)" in rec
+        assert f"{nm} (G|G)" in rec
     # ... and the fit23-only anisotropy columns are not.
-    assert "r Scatter (green)" not in rec
-    assert "r Experimental (green)" not in rec
+    assert "r Scatter (G|G)" not in rec
+    assert "r Experimental (G|G)" not in rec
 
 
 def test_fit_dt_and_period_come_from_the_file_header():
@@ -363,12 +363,12 @@ def test_irf_is_not_corrupted_by_detector_switching(fitted):
     # applied) and restore it as raw, so repeated A->B->A switches steadily corrupted the pattern. irf_np is the
     # sole store and must be byte-for-byte stable across switches.
     fitted.settings.shift = 5  # a non-trivial shift so any re-processing would change the array
-    green0 = np.array(fitted.irf_np["green"], copy=True)
+    green0 = np.array(fitted.irf_np["G|G"], copy=True)
     for _ in range(3):
         for det in fitted.detectors:
             fitted.current_detector = det
             fitted.build_decay()
-    assert np.array_equal(np.asarray(fitted.irf_np["green"]), green0), (
+    assert np.array_equal(np.asarray(fitted.irf_np["G|G"]), green0), (
         "IRF was mutated by detector switching"
     )
 
@@ -397,23 +397,23 @@ def test_the_panel_displays_each_detectors_g_factor_l1_l2_and_switching_does_not
     from chisurf.plugins.burst.burst_mle_analysis.gui.model import MleViewModel
 
     channels = {
-        "green": {
+        "G|G": {
             "chs": [0, 1],
             "micro_time_ranges": [],
             "g_factor": 1.15,
             "l1": 0.0308,
             "l2": 0.0368,
         },
-        "red": {"chs": [8, 9], "micro_time_ranges": [], "g_factor": 0.92, "l1": 0.05, "l2": 0.06},
+        "R|G": {"chs": [8, 9], "micro_time_ranges": [], "g_factor": 0.92, "l1": 0.05, "l2": 0.06},
     }
     model = MleViewModel()
     model.session.set_detectors(channels, "SPC-130")
-    model.session.current_detector = "green"
+    model.session.current_detector = "G|G"
     for _ in range(3):
-        model.current_detector = "green"
+        model.current_detector = "G|G"
         assert model.calibration_text().startswith("G 1.1500, l1 0.0308, l2 0.0368")
-        model.current_detector = "red"
+        model.current_detector = "R|G"
         assert model.calibration_text().startswith("G 0.9200, l1 0.0500, l2 0.0600")
     dets = model.session.detectors
-    assert (dets["green"]["l1"], dets["green"]["l2"]) == (0.0308, 0.0368)
-    assert (dets["red"]["l1"], dets["red"]["l2"]) == (0.05, 0.06)
+    assert (dets["G|G"]["l1"], dets["G|G"]["l2"]) == (0.0308, 0.0368)
+    assert (dets["R|G"]["l1"], dets["R|G"]["l2"]) == (0.05, 0.06)

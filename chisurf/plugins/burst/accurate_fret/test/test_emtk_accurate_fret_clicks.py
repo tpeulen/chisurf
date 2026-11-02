@@ -135,7 +135,7 @@ def test_open_burst_table_dialog_loads_the_file_the_user_clicks(app, bursts):
         app.model.column_i_da,
         app.model.column_i_aa,
         app.model.column_tau_f,
-    ) == ("Green Count Rate (KHz)", "Red Count Rate (KHz)", "S delayed yellow (kHz)", "Tau (green)")
+    ) == ("G|G Count Rate (KHz)", "R|G Count Rate (KHz)", "S delayed R|R (kHz)", "Tau (G|G)")
     assert str(bursts) in " ".join(draw(app).strings).replace(" ", "") or bursts.name in " ".join(
         draw(app).strings
     )
@@ -189,19 +189,19 @@ def test_each_channel_list_opens_and_a_click_on_a_column_maps_it(app, bursts, na
         for t in painter.texts
         if t[5]
         in (
-            "Green Count Rate (KHz)",
-            "Red Count Rate (KHz)",
-            "S delayed yellow (kHz)",
-            "Tau (green)",
+            "G|G Count Rate (KHz)",
+            "R|G Count Rate (KHz)",
+            "S delayed R|R (kHz)",
+            "Tau (G|G)",
         )
     ]
     # every column of the file is offered: the open list repeats all four names
     # beside the four closed channel fields that show one each
     assert len(set(entries)) == 4 and len(entries) >= 8
     other = (
-        "Red Count Rate (KHz)"
-        if getattr(app.model, name) != "Red Count Rate (KHz)"
-        else "Green Count Rate (KHz)"
+        "R|G Count Rate (KHz)"
+        if getattr(app.model, name) != "R|G Count Rate (KHz)"
+        else "G|G Count Rate (KHz)"
     )
     click(app, text_rect(painter, other))
     assert getattr(app.model, name) == other

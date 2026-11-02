@@ -258,9 +258,12 @@ class BurstBvaGui:
 
     @staticmethod
     def _default_pair(names: list[str]) -> tuple[str, str]:
-        """The donor and acceptor among *names*: by green/red naming, else the first two."""
-        donor = next((n for n in names if "green" in n.lower() or "donor" in n.lower()), "")
-        acceptor = next((n for n in names if "red" in n.lower() or "acceptor" in n.lower()), "")
+        """The donor and acceptor among *names*: by their role (G|G, R|G or a donor/acceptor name),
+        else the first two."""
+        from chisurf.core.fluorescence.detector_names import detector_of_role
+
+        donor = detector_of_role(names, "donor") or ""
+        acceptor = detector_of_role(names, "acceptor") or ""
         donor = donor or (names[0] if names else "")
         acceptor = acceptor or next((n for n in names if n != donor), donor)
         return donor, acceptor

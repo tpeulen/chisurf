@@ -143,12 +143,12 @@ bursts = load_bur_dataframe(["burstwise_All 0.1000#15/bi4_bur/m000.bur"])
 write_csv_table("bursts.csv", bursts, delimiter=",")
 
 # per-burst H2MM export: a per-photon HDF5 + a per-burst CSV with the ndX
-# FRET-line columns ("Mean Microtime (green)", "Proximity ratio", ...), from the
+# FRET-line columns ("Mean Microtime (G|G)", "Proximity ratio", ...), from the
 # engine's photon data, its Viterbi path and the state efficiencies
 # (`data, meta, path, fret` as in burst_h2mm/examples/H2MM_01_Simulated_smFRET.ipynb)
 from chisurf.plugins.burst.burst_h2mm.core import export
 tables = export.build_tables(data, meta, path, fret, base_time_s=1e-6,
-                             stream_groups=[("green", (0, 8)), ("red", (1, 9))])
+                             stream_groups=[("G|G", (0, 8)), ("R|G", (1, 9))])
 export.write_hdf5(tables.photons, "h2mm/h2mm_photons.h5")
 export.write_csv(tables.bursts, "h2mm/h2mm_bursts.csv")
 
@@ -184,7 +184,7 @@ scatter by `State` in ndX gives the recovered state trajectory directly.
 The per-burst table as `build_tables` writes it, opened in ChiSurf's table
 widget. Every column above is numeric — ndX silently drops any that is not —
 and the names are the contract: `Mean Macro Time (s)` is the time axis ndX
-auto-selects, `Mean Microtime (green)`/`(red)` are its FRET-line X axis in
+auto-selects, `Mean Microtime (G|G)`/`(R|G)` are its FRET-line X axis in
 nanoseconds, and `Proximity ratio` its Y axis.
 
 The rows are a check as much as an illustration. This export was made from a

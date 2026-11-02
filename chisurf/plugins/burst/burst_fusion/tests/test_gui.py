@@ -22,8 +22,8 @@ DATA = (
 )
 ANALYSIS = "burstwise_All 0.1000#15"
 DETECTORS = {
-    "green": {"chs": [0, 8], "micro_time_ranges": [[0, 2048]]},
-    "red": {"chs": [1, 9], "micro_time_ranges": [[0, 2048]]},
+    "G|G": {"chs": [0, 8], "micro_time_ranges": [[0, 2048]]},
+    "R|G": {"chs": [1, 9], "micro_time_ranges": [[0, 2048]]},
 }
 
 

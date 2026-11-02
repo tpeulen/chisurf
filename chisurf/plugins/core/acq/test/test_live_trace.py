@@ -65,15 +65,15 @@ def test_the_trace_is_the_last_window_binned_and_mirrored():
 
 
 def test_two_colour_and_single_colour_traces():
-    two = trace_streams({"detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}}}, "two_color")
+    two = trace_streams({"detectors": {"G|G": {"chs": [0]}, "R|G": {"chs": [1]}}}, "two_color")
     assert [(s.sign, s.channels) for s in two] == [(1, (0,)), (-1, (1,))]
-    one = trace_streams({"detectors": {"green": {"chs": [0]}}}, "single_color")
+    one = trace_streams({"detectors": {"G|G": {"chs": [0]}}}, "single_color")
     assert len(one) == 1 and one[0].sign == 1
 
 
 def test_a_reconfigured_trace_starts_over_and_bins_are_cheap():
     streams = trace_streams(
-        {"detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}}}, "two_color"
+        {"detectors": {"G|G": {"chs": [0]}, "R|G": {"chs": [1]}}}, "two_color"
     )
     trace = LiveTrace(streams, macro_clock_s=1e-8, window_s=1.0, bin_s=1e-3)
     macro = np.arange(0, 3e8, 1000, dtype=np.int64)  # 3 s, one photon per 10 us

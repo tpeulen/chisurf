@@ -1,9 +1,9 @@
 {
  "_note": "Recorded from the retired Qt BurstBackgroundEstimator on the demo measurement.",
  "rates": {
-  "green": 2.085551358187174,
-  "red": 1.0636704211037797,
-  "yellow": 0.0
+  "G|G": 2.085551358187174,
+  "R|G": 1.0636704211037797,
+  "R|R": 0.0
  },
  "window": [
   1.9565625000000004,

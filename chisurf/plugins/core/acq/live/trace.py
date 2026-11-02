@@ -18,6 +18,8 @@ from typing import Any
 import numpy as np
 from tttrlib import micro_time_mask
 
+from chisurf.core.fluorescence import detector_names as dn
+
 __all__ = ["LiveTrace", "TraceStream", "trace_streams"]
 
 #: The trace's default span and bin width.
@@ -51,7 +53,8 @@ def _chs(setup: dict, name: str) -> tuple:
 
 
 def trace_streams(
-    setup: dict, preset: str, *, donor="green", acceptor="red", prompt="prompt", delay="delayed"
+    setup: dict, preset: str, *, donor=dn.DONOR, acceptor=dn.ACCEPTOR, prompt="prompt",
+    delay="delayed",
 ) -> list[TraceStream]:
     """The curves a preset's trace draws.
 

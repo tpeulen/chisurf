@@ -41,6 +41,7 @@ from chisurf.core.experiments.core.reader import ExperimentReader
 from .index_map import build_idx_map
 from .inputs import (
     BURST_EXTENSIONS,
+    COLOUR_DEFAULTS,
     ResolvedInputs,
     resolve_inputs,
     split_filenames,
@@ -364,8 +365,8 @@ class Pda2cReader(ExperimentReader):
         windows = dict(zip(names, ranges_from_inclusive(
             (self._micro_time_range(0), self._micro_time_range(1)))))
         detectors = {
-            colour: {"chs": [int(c) for c in chs]}
-            for colour, chs in zip(("blue", "green", "red"), list(self.channels)[:3])
+            detector: {"chs": [int(c) for c in chs]}
+            for detector, chs in zip(COLOUR_DEFAULTS[3], list(self.channels)[:3])
             if chs
         }
         return {"windows": windows, "detectors": detectors}

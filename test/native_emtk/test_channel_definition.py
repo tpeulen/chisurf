@@ -18,7 +18,7 @@ def definition(file_path=None, db=None):
     return ChannelDefinition(
         {
             "detectors": {
-                "green": {
+                "G|G": {
                     "chs": [0, 1],
                     "micro_time_ranges": [[0, 32]],
                     "g_factor": 1.0,
@@ -50,11 +50,11 @@ def test_setup_crud_public_and_calibration_snapshot(tmp_path):
         assert other.refresh_setups() == ["Instrument"]
         other.select_setup("Instrument")
         assert other.get_settings()["tttr_reading"]["effective_micro_time_resolution"] == 100
-        assert other.get_settings()["channels"]["prompt_green"][0]["window_range"] == [0, 32]
+        assert other.get_settings()["channels"]["prompt_G|G"][0]["window_range"] == [0, 32]
         other.rename_setup("Renamed")
         assert list(json.loads(file.read_text())["setups"]) == ["Renamed"]
-        assert other.data["detectors"]["green"]["mle_settings"] == {"keep": True}
-        other.rename_detector("green", "donor")
+        assert other.data["detectors"]["G|G"]["mle_settings"] == {"keep": True}
+        other.rename_detector("G|G", "donor")
         other.rename_window("prompt", "excitation")
         assert other.data["detectors"]["donor"]["mle_settings"] == {"keep": True}
         assert "excitation_donor" in other.get_settings()["channels"]
@@ -67,13 +67,13 @@ def test_setup_crud_public_and_calibration_snapshot(tmp_path):
 
             def get_setup_calibration(self, key, calibrated_at=None):
                 assert calibrated_at == "2026-09-01"
-                return [{"channel_name": "green", "g_factor": 1.7, "l1": 0.1, "l2": 0.2}]
+                return [{"channel_name": "G|G", "g_factor": 1.7, "l1": 0.1, "l2": 0.2}]
 
         model = definition(db=Database())
         model.current_name = "Instrument"
         assert model.calibration_dates() == ["2026-09-01"]
         assert model.apply_calibration("2026-09-01") == 1
-        assert model.data["detectors"]["green"]["g_factor"] == 1.7
+        assert model.data["detectors"]["G|G"]["g_factor"] == 1.7
     finally:
         clear_active_setup_lut()
 
@@ -82,7 +82,7 @@ def test_numerical_g_lut_and_timing_override(tmp_path):
     model = definition()
     try:
         model.preview = {0: np.full(32, 20.0), 1: np.full(32, 10.0)}
-        assert model.calculate_g("green", bounds=[0, 31])["g_factor"] == 2
+        assert model.calculate_g("G|G", bounds=[0, 31])["g_factor"] == 2
         table = model.compute_lut(0, 0, 31)
         assert np.isfinite(table["NTAC_fract"]).all()
         model.data["channel_shifts"]["0"] = 2
@@ -117,7 +117,7 @@ def test_optical_graph_extraction_matches_roundtrip(tmp_path):
 
     config = {
         "lasers": "488:1.0",
-        "detectors": [{"name": "green", "bandpass_probe_id": 10, "qe_probe_id": 20}],
+        "detectors": [{"name": "G|G", "bandpass_probe_id": 10, "qe_probe_id": 20}],
         "dyes": {"1": {"qy": 0.8, "ec": 10000}},
         "kappa2": 0.6,
         "n": 1.4,
@@ -126,7 +126,7 @@ def test_optical_graph_extraction_matches_roundtrip(tmp_path):
     assert graph["nodes"] and graph["edges"]
     restored = _graph_to_config(graph)
     assert restored["lasers"] == "488:1.0"
-    assert restored["detectors"][0]["name"] == "green"
+    assert restored["detectors"][0]["name"] == "G|G"
     widget = OpticalConfigurationWidget(config)
     path = tmp_path / "optical.json"
     widget.save(path)
@@ -148,7 +148,7 @@ class Painter:
 from emtk import frame,im
 from chisurf.core.setup_channel_definition import ChannelDefinition
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
-m=ChannelDefinition({'detectors':{'green':{'chs':[0,1],'micro_time_ranges':[[0,32]]}},'windows':{'prompt':[0,32]},'tttr_reading':{'file_type':'auto','macro_time_resolution':25,'micro_time_resolution':50,'micro_time_binning':1}})
+m=ChannelDefinition({'detectors':{'G|G':{'chs':[0,1],'micro_time_ranges':[[0,32]]}},'windows':{'prompt':[0,32]},'tttr_reading':{'file_type':'auto','macro_time_resolution':25,'micro_time_resolution':50,'micro_time_binning':1}})
 m.preview={0:np.full(32,20.),1:np.full(32,10.)}
 w=ChannelDefinitionWidget(model=m)
 for opened in (False,True):
@@ -184,7 +184,7 @@ def test_named_setups_use_real_mmfdb_public_store(tmp_path):
         assert loaded.refresh_setups() == ["Shared instrument"]
         loaded.select_setup("Shared instrument")
         assert loaded.data["_is_public"] is True
-        assert loaded.data["detectors"]["green"]["g_factor"] == 1
+        assert loaded.data["detectors"]["G|G"]["g_factor"] == 1
         loaded.rename_setup("Renamed instrument")
         assert loaded.refresh_setups() == ["Renamed instrument"]
         loaded.delete_setup()
@@ -207,12 +207,12 @@ def test_g_factor_archive_registers_real_reference_provenance(tmp_path, monkeypa
     model = definition()
     model.preview = {0: np.full(64, 20.0), 1: np.full(64, 10.0)}
     try:
-        model.calculate_g("green")
-        archived = model.archive_g("green")
+        model.calculate_g("G|G")
+        archived = model.archive_g("G|G")
         assert archived["ok"] and archived["calibration_id"]
         assert archived["reference_decay_id"]
         assert (
-            model.data["detectors"]["green"]["g_factor_calibration_id"]
+            model.data["detectors"]["G|G"]["g_factor_calibration_id"]
             == archived["calibration_id"]
         )
     finally:
@@ -232,7 +232,7 @@ def test_optical_simulation_action_uses_original_backend(monkeypatch):
 
     monkeypatch.setattr(workflow, "simulate_lightpath", simulate)
     saved = []
-    widget = OpticalConfigurationWidget(detector_names=["green", "red"], on_changed=saved.append)
+    widget = OpticalConfigurationWidget(detector_names=["G|G", "R|G"], on_changed=saved.append)
     result = widget.simulate()
     assert calls and result["crosstalk_matrices"]["detected"] == [[1.0, 0.0], [0.0, 1.0]]
     assert saved[-1]["_cached_results"]["crosstalk_matrices"] == result["crosstalk_matrices"]
@@ -308,7 +308,7 @@ def test_calibration_revision_survives_setup_save_and_reopen(tmp_path):
         revision = "2026-09-01T12:00:00+00:00"
         db.add_setup_calibration(
             key,
-            "green",
+            "G|G",
             g_factor=1.9,
             l1=-0.01,
             l2=0.02,
@@ -321,9 +321,9 @@ def test_calibration_revision_survives_setup_save_and_reopen(tmp_path):
         reopened = definition(db=db)
         reopened.refresh_setups()
         reopened.select_setup("Instrument")
-        assert reopened.data["detectors"]["green"]["g_factor"] == 1.9
-        assert reopened.data["detectors"]["green"]["l1"] == -0.01
-        assert reopened.data["detectors"]["green"]["l2"] == 0.02
+        assert reopened.data["detectors"]["G|G"]["g_factor"] == 1.9
+        assert reopened.data["detectors"]["G|G"]["l1"] == -0.01
+        assert reopened.data["detectors"]["G|G"]["l2"] == 0.02
     clear_active_setup_lut()
 
 
@@ -333,7 +333,7 @@ def test_advanced_optical_handoff_keeps_custom_graph_and_unknown_metadata(tmp_pa
 
     from chisurf.emtk.optical_configuration import OpticalConfigurationWidget
 
-    widget = OpticalConfigurationWidget(detector_names=["green", "red"])
+    widget = OpticalConfigurationWidget(detector_names=["G|G", "R|G"])
     widget.open_advanced()
     try:
         controller = widget.advanced_app.controller
@@ -388,7 +388,7 @@ def test_standalone_channel_editor_hover_help_and_populated_narrow_frame(tmp_pat
         restored = create_app()
         try:
             restored.restore_settings(preferences)
-            assert restored.get_settings()["detectors"]["green"]["mle_settings"] == {"keep": True}
+            assert restored.get_settings()["detectors"]["G|G"]["mle_settings"] == {"keep": True}
         finally:
             restored.close()
     finally:

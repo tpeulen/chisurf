@@ -77,7 +77,7 @@ Selection**.
 :width: 100%
 
 The same 198-burst workflow on **6. Burst MLE** after **Auto IRF/background**: the
-pooled single-lifetime-plus-anisotropy fit (Fit23) of the green detector gives a
+pooled single-lifetime-plus-anisotropy fit (Fit23) of the donor detector `G|G` gives a
 primary lifetime of 2.049 ns (2I* 2.54) in the window 15–116 at binning 32. The
 MLE controls and plot stay in the step; the detector setup is shared through
 step 0.
@@ -133,21 +133,21 @@ h = wf.register("m000.spc")                       # store the measurement, get i
 
 # PIE on a BH SPC-130: donor- and acceptor-excitation windows split the micro time
 setup = Setup([
-    Detector("green", (0, 8)),
-    Detector("red", (1, 9), ((0, 2048),)),        # acceptor emission after donor excitation
-    Detector("yellow", (1, 9), ((2048, 4095),)),  # acceptor emission after acceptor excitation
+    Detector("G|G", (0, 8)),
+    Detector("R|G", (1, 9), ((0, 2048),)),        # acceptor emission after donor excitation
+    Detector("R|R", (1, 9), ((2048, 4095),)),     # acceptor emission after acceptor excitation
 ], file_type="SPC-130")
 bursts = wf.select_bursts(h, setup=setup, method="burst", min_photons=20)
 
 # derived observables + downstream analyses, each a one-liner:
-bursts.two_cde("green", "red")                   # dynamics filter  (tutorial 1)
-bursts.bva("green", "red")                       # variance analysis (tutorial 8)
+bursts.two_cde("G|G", "R|G")                     # dynamics filter  (tutorial 1)
+bursts.bva("G|G", "R|G")                         # variance analysis (tutorial 8)
 wf.close()
 ```
 
 Run on `m000.spc` of that dataset this finds 114 bursts, a mean FRET-2CDE of
 12.0 and a BVA dynamic fraction of 0.37. The burst table carries the photon
-count of every detector of the setup (`Number of Photons (green)`, …), so
+count of every detector of the setup (`Number of Photons (G|G)`, …), so
 `bursts.recurrence()` reads the proximity ratio from it. The search itself runs on every photon of the
 setup's routing channels: a detector's micro-time windows gate its counts (and
 BVA, 2CDE and H2MM), not the search. `Setup.from_channels(green=(0, 8),

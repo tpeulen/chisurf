@@ -113,7 +113,7 @@ The `.bst` is written half-open (`compute_bids_from_tttr` documents
 
 And the total count rate is off by a factor of 1000: window 1 has 664 photons
 over 100.035567 ms = **6.6376 kHz**, written as `0.006637639190868984` — while
-the *per-detector* `Green Count Rate (KHz)` on the same row (594 photons over
+the *per-detector* `G|G Count Rate (KHz)` on the same row (594 photons over
 99.5528 ms → `5.96668177774029`) is correct. The two columns of the same file
 disagree by 1000×.
 

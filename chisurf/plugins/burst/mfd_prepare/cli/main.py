@@ -68,15 +68,13 @@ def prepare(folder: str, no_photons: bool, report_only: bool):
 )
 @click.option(
     "--green",
-    default="green",
-    show_default=True,
-    help="Green detector channel name.",
+    default="",
+    help="Donor detector name; empty takes the detector whose role is donor (G|G).",
 )
 @click.option(
     "--red",
-    default="red",
-    show_default=True,
-    help="Red detector channel name.",
+    default="",
+    help="FRET acceptor detector name; empty takes the detector whose role is acceptor (R|G).",
 )
 @click.option(
     "--n-ratio-bins",

@@ -69,14 +69,14 @@ BURST_TABLE = Path("burstwise_All 0.1000#15") / "bi4_bur" / "m000.bur"
 #: BH SPC-132 dual-colour polarisation routing: green 0/1, red 8/9 (the detector page's definition).
 CHANNEL_SETTINGS = {
     "detectors": {
-        "green": {
+        "G|G": {
             "chs": [0, 1],
             "micro_time_ranges": [],
             "g_factor": 1.0,
             "l1": 0.0308,
             "l2": 0.0368,
         },
-        "red": {
+        "R|G": {
             "chs": [8, 9],
             "micro_time_ranges": [],
             "g_factor": 1.0,

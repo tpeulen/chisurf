@@ -10,6 +10,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
+from chisurf.core.fluorescence import detector_names as dn
 from chisurf.core.fluorescence.decay import (
     afterpulse_decay_pattern,
     sample_decay_shot_noise,
@@ -31,9 +32,22 @@ class Component:
 
 class Detectors:
     def __init__(self):
-        self.names = ["green"]
-        self.selected = ["green"]
+        self.names = [dn.DONOR]
+        self.selected = [dn.DONOR]
         self.values = {key: {} for key in ("irf", "width", "skew", "shift")}
+
+    @staticmethod
+    def key(detector, role=""):
+        """The ``values`` key of *detector*'s *role* (``""``, ``"par"``, ``"perp"``):
+        ``"G|G|par"``. A detector name may hold ``|`` (``G|G``), a role never does."""
+        return f"{detector}|{role}"
+
+    @staticmethod
+    def split_key(key):
+        """``(detector, role)`` of a :meth:`key`: split at the *last* ``|`` (``G|G|`` ->
+        ``("G|G", "")``)."""
+        detector, _, role = str(key).rpartition("|")
+        return detector, role
 
     def _get(self, field, detector, role="", default=0):
         return self.values[field].get(f"{detector}|{role}", default)
@@ -84,7 +98,7 @@ class FilterModel(ScientificOperations):
         self._total_vectors_by_detector = {}
         self._data_dt_ns = 0.05
         self._micro_time_binning = 1
-        self._detector_settings = {"detectors": {"green": {"chs": [0, 1]}}}
+        self._detector_settings = {"detectors": {dn.DONOR: {"chs": [0, 1]}}}
         self._detector_fit_ranges = {}
         self._auto_fit_settings = {
             "kind": "lifetime",
@@ -164,7 +178,7 @@ class FilterModel(ScientificOperations):
             ),
         ]
         time = np.arange(256) * 0.05
-        for i, detector in enumerate(self.detectors.selected or ["green"]):
+        for i, detector in enumerate(self.detectors.selected or [dn.DONOR]):
             irf = synthetic_irf(
                 time, center_ns=0.35 + 0.06 * i, fwhm_ns=0.16 + 0.035 * i, shape=0.35 * i
             )
@@ -228,7 +242,7 @@ class FilterModel(ScientificOperations):
         checked = [c for c in self.components if c.enabled]
         if not checked:
             raise ValueError("Select at least one component.")
-        names = self.detectors.selected or ["green"]
+        names = self.detectors.selected or [dn.DONOR]
         self._irf_by_detector = {}
         self._result = self._result_anisotropy = None
         self._result_multi_detector = self._result_multi_anisotropy = None

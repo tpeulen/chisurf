@@ -67,8 +67,8 @@ Per burst (`Bursts.columns`, ChiSurf/Seidel `.bur` names, so ndX and ChiSurf rea
 | Proximity ratio $E$ | $I_{DA} / (I_{DD} + I_{DA})$ |
 | Stoichiometry $S$ (ALEX/PIE) | $(I_{DD} + I_{DA}) / (I_{DD} + I_{DA} + I_{AA})$ ([10.1073/pnas.0401787101](https://doi.org/10.1073/pnas.0401787101), [10.1529/biophysj.105.064766](https://doi.org/10.1529/biophysj.105.064766)) |
 | FRET-2CDE, ALEX-2CDE | tttrlib `TwoCDE`, Laplace kernel of width `cde_tau` (default 100 µs) ([10.1016/j.bpj.2012.01.012](https://doi.org/10.1016/j.bpj.2012.01.012)) |
-| `Tau (green)`, `Tau (yellow)` | mean micro time of the burst's DD (AA) photons after the half-rise of that stream's whole decay — model-free, no IRF; TCSPC micro time only, not µsALEX |
-| `r Experimental (green/red)` | $(I_\parallel - G I_\perp)/(I_\parallel + 2 G I_\perp)$ with $G = 1$, no $l_1/l_2$ or background correction (polarization only) |
+| `Tau (G\|G)`, `Tau (R\|R)` | mean micro time of the burst's DD (AA) photons after the half-rise of that stream's whole decay — model-free, no IRF; TCSPC micro time only, not µsALEX |
+| `r Experimental (G\|G)`, `r Experimental (R\|G)` | $(I_\parallel - G I_\perp)/(I_\parallel + 2 G I_\perp)$ with $G = 1$, no $l_1/l_2$ or background correction (polarization only) |
 | `TGX-TRR` | mean macro time of donor-excited minus acceptor-excited photons, ms (ALEX/PIE) |
 
 These are the apparent values, from the raw counts; the background comes off in the corrected ones (section 3).

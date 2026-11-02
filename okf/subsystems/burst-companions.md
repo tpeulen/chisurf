@@ -114,7 +114,7 @@ an unregistered operation raises).
    rows. Historical, and load-bearing — readers drop every second row.
 5. **Tab-separated, trailing tab on the header line.**
 6. **Every column numeric**, and namespaced so it cannot collide with another
-   companion's (`H2MM State`, `Tau (green)`). Companions merge into one frame,
+   companion's (`H2MM State`, `Tau (G|G)`). Companions merge into one frame,
    and a duplicate column name is dropped, taking its data with it.
 
 `write_companion(analysis_dir, ending, stem, columns, rows)` enforces all six and
@@ -135,15 +135,15 @@ Two real failures, both silent:
 * **A per-state MLE** first wrote `bg4_s0/`, `bg4_s1/` — which reads naturally
   and **does not end in `4`**, so a folder reader would never have merged it.
   Renaming to `s0_bg4` fixed the discovery and exposed the deeper fault: each
-  folder emitted `Tau (green)`, *the same column name* the real `bg4`
+  folder emitted `Tau (G|G)`, *the same column name* the real `bg4`
   contributes. Both mergers drop a duplicate (ndX `~columns.duplicated()`, first
   wins; chisurf `if col not in df.columns`), so the per-state numbers were
   written and then silently discarded by the browser and by ndX alike — rule 6,
   learned the hard way.
 
   The resolution was not a better folder name. **A sub-population is a column,
-  not a companion**: the split-by-state fit now writes `Tau S0 (green)` beside
-  `Tau (green)` in the *existing* `bg4`, keeping one row per burst and one
+  not a companion**: the split-by-state fit now writes `Tau S0 (G|G)` beside
+  `Tau (G|G)` in the *existing* `bg4`, keeping one row per burst and one
   unambiguous name per quantity. The separate plugin was retired.
 
 # The read side of rule 4

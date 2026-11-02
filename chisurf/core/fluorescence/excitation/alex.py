@@ -318,7 +318,7 @@ def auto_alex_windows(
     routing_channels : array_like
         Detector routing channel per photon.
     donor_channels, acceptor_channels : sequence of int
-        Routing channels of the donor ("green") and acceptor ("red") detectors.
+        Routing channels of the donor (``G|G``) and acceptor (``R|G``) detectors.
     alex_period : int
         Alternation period in macro-time units (the folding period).
     n_bins : int

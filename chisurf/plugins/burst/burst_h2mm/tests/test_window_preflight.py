@@ -25,11 +25,11 @@ from chisurf.plugins.burst.burst_h2mm.backend.services import run_analysis  # no
 from chisurf.plugins.burst.burst_h2mm.core.photons import StreamDef  # noqa: E402
 
 PIE = [
-    StreamDef("green", [0], [(0, 1612)]),
-    StreamDef("red", [1], [(0, 1612)]),
-    StreamDef("yellow", [1], [(1613, 3124)]),
+    StreamDef("G|G", [0], [(0, 1612)]),
+    StreamDef("R|G", [1], [(0, 1612)]),
+    StreamDef("R|R", [1], [(1613, 3124)]),
 ]
-WRONG = [StreamDef("green", [0], [(2048, 4094)]), StreamDef("red", [1], [(0, 2047)])]
+WRONG = [StreamDef("G|G", [0], [(2048, 4094)]), StreamDef("R|G", [1], [(0, 2047)])]
 
 
 def stream_window_warnings(tttrs, stream_defs):
@@ -100,23 +100,23 @@ def _model(setup_gates):
         for name, (chs, gates) in setup_gates.items()
     }
     model.set_setup(setup)
-    model.donor, model.acceptor = "green", "red"
+    model.donor, model.acceptor = "G|G", "R|G"
     return model
 
 
 def test_the_window_offers_and_takes_the_detected_gates(demo):
-    model = _model({"green": ([0], [[2048, 4095]]), "red": ([1], [[0, 2048]])})
+    model = _model({"G|G": ([0], [[2048, 4095]]), "R|G": ([1], [[0, 2048]])})
     assert "do not match the data" in (model.check_windows(demo) or "")
     assert not model.windows_check_quiet and model.windows_check_offer
     assert model.use_detected_windows()
-    assert model.setup["detectors"]["green"]["micro_time_ranges"] == [[0, 3125]]
+    assert model.setup["detectors"]["G|G"]["micro_time_ranges"] == [[0, 3125]]
     assert model.check_windows(demo) is None
     assert model.windows_check_quiet and not model.windows_check_offer
 
 
 def test_the_window_says_nothing_on_the_pie_split(demo):
-    model = _model({"green": ([0], [[0, 1613]]), "red": ([1], [[0, 1613]]),
-                    "yellow": ([1], [[1613, 3125]])})
+    model = _model({"G|G": ([0], [[0, 1613]]), "R|G": ([1], [[0, 1613]]),
+                    "R|R": ([1], [[1613, 3125]])})
     assert model.check_windows(demo) is None and model.windows_check_quiet
 
 
@@ -127,7 +127,7 @@ def test_the_window_draws_the_check(demo, tmp_path, monkeypatch):
 
     from chisurf.plugins.burst.burst_h2mm.gui.native import H2mmNativeApp
 
-    app = H2mmNativeApp(_model({"green": ([0], [[2048, 4095]]), "red": ([1], [[0, 2048]])}))
+    app = H2mmNativeApp(_model({"G|G": ([0], [[2048, 4095]]), "R|G": ([1], [[0, 2048]])}))
     try:
         app.model.check_windows(demo)
         driver = Driver(app, size=(1100, 720))
@@ -135,7 +135,7 @@ def test_the_window_draws_the_check(demo, tmp_path, monkeypatch):
         assert app.model.windows_check_offer
         app.model.use_detected_windows()
         driver.draw(2)
-        gates = app.editor.model.data["detectors"]["green"]["micro_time_ranges"]
+        gates = app.editor.model.data["detectors"]["G|G"]["micro_time_ranges"]
         assert gates == [[0, 3125]]
     finally:
         app.close()

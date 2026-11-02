@@ -144,8 +144,11 @@ def load_channels(
     ValueError
         If the donor or the FRET channel cannot be identified.
     """
+    from chisurf.plugins.burst.accurate_fret.core import guess_columns
+
     columns = dict(source) if isinstance(source, dict) else read_burst_table(source)
-    mapping = tttrlib.guess_burst_columns(list(columns.keys()), hints)
+    # tttrlib's conventions plus the detector names (G|G, R|G, R|R)
+    mapping = guess_columns(list(columns.keys()), hints)
     missing = [role for role in ("i_dd", "i_da") if role not in mapping]
     if missing:
         raise ValueError(
@@ -158,7 +161,7 @@ def load_channels(
         if role in ("i_dd", "i_da", "i_aa")
     }
     # The whole-burst duration, never a per-detector one: the background is a
-    # rate over the burst, and "Duration (green) (ms)" would charge each burst
+    # rate over the burst, and "Duration (G|G) (ms)" would charge each burst
     # the donor channel's span instead.
     lowered = {str(name).strip().lower(): name for name in columns}
     duration = next(

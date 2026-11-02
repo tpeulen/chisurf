@@ -143,14 +143,14 @@ def test_analyze_mmfdb_registers_raw_sample_and_group(tmp_path: Path) -> None:
     det_json.write_text(
         json.dumps(
             {
-                "green": {
+                "G|G": {
                     "chs": [0, 8],
                     "micro_time_ranges": [[0, 4095]],
                     "g_factor": 1,
                     "l1": 0,
                     "l2": 0,
                 },
-                "red": {
+                "R|G": {
                     "chs": [1, 9],
                     "micro_time_ranges": [[0, 4095]],
                     "g_factor": 1,

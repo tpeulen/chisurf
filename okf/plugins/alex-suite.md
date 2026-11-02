@@ -252,7 +252,7 @@ burst files loaded, and Accurate FRET fell back to the un-gated detector totals.
 
 A related trap: the burst writer intersects the window with each detector's
 **own** micro-time range, so the cross product still writes an all-zero
-`S delayed red`. Reading I_AA from it is not a missing column — it is every burst
+`S delayed R|G`. Reading I_AA from it is not a missing column — it is every burst
 at S = 1. `gated_stream_columns` prefers a *second* acceptor detector for the
 acceptor window for exactly this reason.
 

@@ -64,9 +64,15 @@ The general convention is $I_{ij}$ = photons from chromophore $j$ while
 chromophore $i$ is excited. For a two-colour donor/acceptor pair, three counts
 matter:
 
-- $I_{dd}$ ("green") — donor emission under donor excitation,
-- $I_{da}$ ("red") — acceptor emission under donor excitation (the FRET signal),
-- $I_{aa}$ ("yellow") — acceptor emission under acceptor excitation.
+- $I_{dd}$ (detector `G|G`) — donor emission under donor excitation,
+- $I_{da}$ (detector `R|G`) — acceptor emission under donor excitation (the FRET signal),
+- $I_{aa}$ (detector `R|R`) — acceptor emission under acceptor excitation.
+
+ChiSurf names a detector `E|X`, emission colour | excitation colour (B, G, Y, R): `G|G` is
+green emission under green excitation, `R|G` red emission under green excitation, `R|R` red
+emission under red excitation. The burst-table columns carry these names, e.g.
+`Number of Photons (G|G)`, `Tau (G|G)`, `S prompt R|G (kHz)`, `S delayed R|R (kHz)`; see
+[Channel definition](../guides/87_channel_definition.md).
 
 Single-laser FRET has only $I_{dd}$ and $I_{da}$. The third channel needs
 **alternating excitation** — µs-ALEX (acceptor laser switched on a microsecond

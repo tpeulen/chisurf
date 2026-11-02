@@ -179,55 +179,55 @@ def test_setup_built_from_the_gates_uses_the_names_every_reader_knows():
 
     setup = build_setup({"green": (300.0, 3700.0), "red": (4300.0, 7700.0)}, [0], [1], PERIOD)
     assert setup["windows"] == {"prompt": [300, 3700], "delayed": [4300, 7700]}
-    assert list(setup["detectors"]) == ["green", "red", "yellow"]
-    assert setup["detectors"]["green"]["chs"] == [0]
-    # red and yellow are the SAME physical detector, entered once per window.
-    assert setup["detectors"]["red"]["chs"] == [1]
-    assert setup["detectors"]["yellow"]["chs"] == [1]
-    assert setup["detectors"]["red"]["micro_time_ranges"] == [[300, 3700]]
-    assert setup["detectors"]["yellow"]["micro_time_ranges"] == [[4300, 7700]]
+    assert list(setup["detectors"]) == ["G|G", "R|G", "R|R"]
+    assert setup["detectors"]["G|G"]["chs"] == [0]
+    # R|G and R|R are the SAME physical detector, entered once per window.
+    assert setup["detectors"]["R|G"]["chs"] == [1]
+    assert setup["detectors"]["R|R"]["chs"] == [1]
+    assert setup["detectors"]["R|G"]["micro_time_ranges"] == [[300, 3700]]
+    assert setup["detectors"]["R|R"]["micro_time_ranges"] == [[4300, 7700]]
 
 
 def test_the_streams_of_that_setup_map_onto_the_alex_channels():
     """A burst table written from the setup resolves to DD / DA / AA.
 
     The writer intersects the window with each detector's *own* micro-time
-    range, so the cross product also writes an all-zero ``S delayed red``.
+    range, so the cross product also writes an all-zero ``S delayed R|G``.
     Picking that as I_AA is not a missing column -- it is every burst at S = 1.
     """
-    from tttrlib import guess_burst_columns as guess_columns
+    from chisurf.plugins.burst.accurate_fret.core import guess_columns
 
-    columns = ["Number of Photons (green)", "Number of Photons (red)", "Number of Photons (yellow)"]
+    columns = ["Number of Photons (G|G)", "Number of Photons (R|G)", "Number of Photons (R|R)"]
     for window, (lo, hi) in (("prompt", (300, 3700)), ("delayed", (4300, 7700))):
-        for detector in ("green", "red", "yellow"):
+        for detector in ("G|G", "R|G", "R|R"):
             columns.append(f"S {window} {detector} (photons) | {lo}-{hi}")
     mapping = guess_columns(columns)
-    assert mapping["i_dd"] == "S prompt green (photons) | 300-3700"
-    assert mapping["i_da"] == "S prompt red (photons) | 300-3700"
-    assert mapping["i_aa"] == "S delayed yellow (photons) | 4300-7700"
+    assert mapping["i_dd"] == "S prompt G|G (photons) | 300-3700"
+    assert mapping["i_da"] == "S prompt R|G (photons) | 300-3700"
+    assert mapping["i_aa"] == "S delayed R|R (photons) | 4300-7700"
 
 
 def test_a_two_detector_pie_table_still_resolves():
     """Without a second acceptor entry the acceptor window uses the only one."""
-    from tttrlib import guess_burst_columns as guess_columns
+    from chisurf.plugins.burst.accurate_fret.core import guess_columns
 
-    columns = ["Number of Photons (green)", "Number of Photons (red)"]
+    columns = ["Number of Photons (G|G)", "Number of Photons (R|G)"]
     for window, (lo, hi) in (("prompt", (300, 3700)), ("delayed", (4300, 7700))):
-        for detector in ("green", "red"):
+        for detector in ("G|G", "R|G"):
             columns.append(f"S {window} {detector} (photons) | {lo}-{hi}")
     mapping = guess_columns(columns)
-    assert mapping["i_dd"] == "S prompt green (photons) | 300-3700"
-    assert mapping["i_da"] == "S prompt red (photons) | 300-3700"
-    assert mapping["i_aa"] == "S delayed red (photons) | 4300-7700"
+    assert mapping["i_dd"] == "S prompt G|G (photons) | 300-3700"
+    assert mapping["i_da"] == "S prompt R|G (photons) | 300-3700"
+    assert mapping["i_aa"] == "S delayed R|G (photons) | 4300-7700"
 
 
 def test_photon_counts_win_over_the_rates_beside_them():
     """E and S are ratios of counts; the rates have per-stream denominators."""
-    from tttrlib import guess_burst_columns as guess_columns
+    from chisurf.plugins.burst.accurate_fret.core import guess_columns
 
-    columns = ["Number of Photons (green)", "Number of Photons (red)"]
+    columns = ["Number of Photons (G|G)", "Number of Photons (R|G)"]
     for window, (lo, hi) in (("prompt", (300, 3700)), ("delayed", (4300, 7700))):
-        for detector in ("green", "red"):
+        for detector in ("G|G", "R|G"):
             columns.append(f"S {window} {detector} (kHz) | {lo}-{hi}")
             columns.append(f"S {window} {detector} (photons) | {lo}-{hi}")
     assert "photons" in guess_columns(columns)["i_dd"]

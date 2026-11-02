@@ -173,7 +173,7 @@ def test_ndx_gets_the_burst_table(app):
     grab(app, (1300, 860), frames=3)
     assert app.ndx.app is not None, app.ndx.error
     assert len(app.ndx.app.model.source) == app.session.bursts.n
-    assert "Tau (green)" in app.ndx.app.model.parameter_names
+    assert "Tau (G|G)" in app.ndx.app.model.parameter_names
     app.session.mode = "simple"
 
 

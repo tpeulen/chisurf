@@ -68,7 +68,7 @@ def test_an_estimate_gives_the_qt_widgets_rates_and_the_known_background(qt, mea
     app = create_app()
     try:
         rates = _estimated(app, measurement)
-        for detector in ("green", "red"):
+        for detector in ("G|G", "R|G"):
             # A Poisson-MLE fit of the inter-photon tail (L-BFGS-B, forward differences): it
             # stops at the optimiser's tolerance, so the last digits differ between compilers
             # (a few 1e-6 relative, x86 Linux vs arm64 macOS); the statistical error is ~0.5 %.
@@ -119,7 +119,7 @@ def test_pick_from_the_workspace_and_estimate_by_presses_and_frames(measurement,
             _frames_until(
                 app, lambda: not app.controller.running and app.model.backgrounds, size=size
             )
-            assert set(next(iter(app.model.backgrounds.values()))) >= {"green", "red"}
+            assert set(next(iter(app.model.backgrounds.values()))) >= {"G|G", "R|G"}
         finally:
             app.close()
 
@@ -197,7 +197,7 @@ def test_stop_remove_clear_and_reasons(measurement, tmp_path):
         app.controller.add_files([measurement])
         app.controller.remove_file(str(measurement))
         assert app.model.files == []
-        assert not app.controller.apply_detectors('{"green": {"chs": []}}')
+        assert not app.controller.apply_detectors('{"G|G": {"chs": []}}')
         assert "nonempty chs" in app.controller.status
         setup = tmp_path / "detectors.json"
         app.controller.save_setup(setup)
@@ -258,7 +258,7 @@ def test_draws_empty_and_populated(measurement, size, monkeypatch):
         strings = _draw(app, size).strings
         assert "Series" not in strings  # a fitted tail is not a legend entry
         assert [s for s in strings if s.startswith("Fit ") and "–" in s] == ["Fit 1.96–3.31 ms"]
-        assert ["green", "red"] in ticks  # the bars are named
+        assert ["G|G", "R|G"] in ticks  # the bars are named
         status = app.model.status
         assert " ".join(strings).count(status.split(";")[0]) == 1  # the status once, not twice
     finally:

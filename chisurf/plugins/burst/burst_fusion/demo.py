@@ -300,8 +300,8 @@ def _run_burst_search(source: pathlib.Path, settings: dict, search: dict) -> pat
 def demo_detectors() -> dict[str, Any]:
     """Return the detector definition the demo is written with."""
     return {
-        "green": {"chs": [GREEN_CHANNEL], "micro_time_ranges": []},
-        "red": {"chs": [RED_CHANNEL], "micro_time_ranges": []},
+        "G|G": {"chs": [GREEN_CHANNEL], "micro_time_ranges": []},
+        "R|G": {"chs": [RED_CHANNEL], "micro_time_ranges": []},
     }
 
 

@@ -51,6 +51,7 @@ from chisurf.core.fluorescence.mfd.patterns import (
 from chisurf.core.fluorescence.mfd.prepare import (
     BurstPreparation,
     NuisanceMeasure,
+    fret_channels,
     nuisance_measure,
     prepare_burst_folder,
 )
@@ -106,7 +107,7 @@ def non_burst_masks(preparation: BurstPreparation) -> dict[str, np.ndarray]:
 def estimate_responses(
     preparation: BurstPreparation,
     *,
-    channels: Sequence[str] = ("green", "red"),
+    channels: Sequence[str] | None = None,
 ) -> dict[str, ChannelResponse]:
     """Estimate each channel's response and background from the non-burst photons.
 
@@ -126,8 +127,9 @@ def estimate_responses(
     ----------
     preparation : BurstPreparation
         Must carry its photons (``with_photons=True``).
-    channels : sequence of str
-        Detector names to build responses for.
+    channels : sequence of str, optional
+        Detector names to build responses for; default the donor and acceptor
+        detectors (:func:`~chisurf.core.fluorescence.mfd.prepare.fret_channels`).
 
     Returns
     -------
@@ -151,6 +153,7 @@ def estimate_responses(
         raise ValueError(
             "responses come from the photon streams; prepare the folder with with_photons=True"
         )
+    channels = tuple(channels) if channels else fret_channels(preparation)
     preparation.require_verified(channels)
 
     by_name = {s.name: s for s in preparation.streams}
@@ -553,8 +556,8 @@ class MfdData:
 def load_mfd_data(
     folder: pathlib.Path | str,
     *,
-    green: str = "green",
-    red: str = "red",
+    green: str | None = None,
+    red: str | None = None,
     axes: HistogramAxes | None = None,
     min_green_photons: int = DEFAULT_MIN_GREEN_PHOTONS,
     streams=None,
@@ -569,8 +572,9 @@ def load_mfd_data(
     ----------
     folder : path-like
         A burst-analysis folder.
-    green, red : str
-        Detector names.
+    green, red : str, optional
+        Detector names; default the donor and acceptor detectors
+        (:func:`~chisurf.core.fluorescence.mfd.prepare.fret_channels`).
     axes : HistogramAxes, optional
         Histogram bin edges.
     min_green_photons : int
@@ -593,6 +597,7 @@ def load_mfd_data(
     MfdData
     """
     preparation = prepare_burst_folder(folder, streams=streams, with_photons=True)
+    green, red = fret_channels(preparation, green, red)
     measure = nuisance_measure(preparation, channels=(green, red))
     return MfdData(
         preparation=preparation,

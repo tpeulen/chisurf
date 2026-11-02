@@ -21,17 +21,17 @@ from chisurf.plugins.tttr.trace_browser.core.trace import load_trace  # noqa: E4
 
 WRONG = {
     "detectors": {
-        "green": {"chs": [0], "micro_time_ranges": [[2048, 4095]]},
-        "red": {"chs": [1], "micro_time_ranges": [[0, 2047]]},
+        "G|G": {"chs": [0], "micro_time_ranges": [[2048, 4095]]},
+        "R|G": {"chs": [1], "micro_time_ranges": [[0, 2047]]},
     }
 }
 MATCHING = {
     "detectors": {
-        "green": {"chs": [0], "micro_time_ranges": [[0, 1612]]},
-        "red": {"chs": [1], "micro_time_ranges": [[0, 3124]]},
+        "G|G": {"chs": [0], "micro_time_ranges": [[0, 1612]]},
+        "R|G": {"chs": [1], "micro_time_ranges": [[0, 3124]]},
     }
 }
-UNGATED = {"detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}}}
+UNGATED = {"detectors": {"G|G": {"chs": [0]}, "R|G": {"chs": [1]}}}
 
 
 @pytest.fixture(scope="module")
@@ -52,7 +52,7 @@ def donor_only(tmp_path_factory):
 
 def test_gates_of_another_instrument_are_in_the_result(pie, tmp_path):
     data = load_trace(str(pie), 10.0, setup_settings=WRONG, cache_folder=str(tmp_path))
-    assert data["labels"] == ["green", "red"]
+    assert data["labels"] == ["G|G", "R|G"]
     assert len(data["warnings"]) == 1 and "do not match the data" in data["warnings"][0]
     # A cached trace still carries the check.
     again = load_trace(str(pie), 10.0, setup_settings=WRONG, cache_folder=str(tmp_path))
@@ -97,7 +97,7 @@ def test_the_browser_offers_the_detected_gates_and_takes_them(pie, tmp_path):
     assert "Detector gates do not match the data" in model.status_line
     before = np.asarray(model.trace["counts"]).sum()
     assert model.use_detected_windows()
-    green = model.setup_settings["detectors"]["green"]["micro_time_ranges"]
+    green = model.setup_settings["detectors"]["G|G"]["micro_time_ranges"]
     assert any(lo <= 2e-9 / 32e-12 < hi for lo, hi in green), green
     assert model.trace is None and model.setup_taken
     assert model.show_file(pie)
@@ -114,7 +114,7 @@ def test_the_setup_page_shows_the_taken_gates(pie, tmp_path):
     model.current_folder = tmp_path
     assert model.show_file(pie) and model.use_detected_windows()
     app._take_setup()
-    shown = app.editor.model.get_settings()["detectors"]["green"]["micro_time_ranges"]
+    shown = app.editor.model.get_settings()["detectors"]["G|G"]["micro_time_ranges"]
     assert any(lo <= 2e-9 / 32e-12 < hi for lo, hi in shown), shown
     assert not model.setup_taken
     app.close()

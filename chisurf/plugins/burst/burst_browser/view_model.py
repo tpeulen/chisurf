@@ -121,7 +121,7 @@ class BurstBrowserViewModel:
             for s in column_names(self.table):
                 if s.startswith("Number of Photons (") and ")" in s:
                     name = s.split("Number of Photons (", 1)[1].split(")", 1)[0]
-                    # "Number of Photons (fit window) (green)" yields "fit window",
+                    # "Number of Photons (fit window) (G|G)" yields "fit window",
                     # which is not a detector — skip it.
                     if name and name != "fit window":
                         dets.add(name)
@@ -251,12 +251,14 @@ class BurstBrowserViewModel:
         # Which columns are the FRET channels is a question the shared burst-table
         # conventions answer -- including the case that matters here: on a
         # PIE/ALEX table the *gated* streams are the channels, and the
-        # whole-detector "Number of Photons (red)" beside them sums the acceptor
+        # whole-detector "Number of Photons (R|G)" beside them sums the acceptor
         # over BOTH excitation periods. Deriving E from those un-gated columns
         # gave (DA + AA) / (DD + DA + AA + AD), which is not a proximity ratio
         # and put the populations of a two-state sample at the wrong efficiency.
         from tttrlib import apparent_es
-        from tttrlib import guess_burst_columns as guess_columns
+
+        # tttrlib's conventions plus the detector names (G|G, R|G, R|R)
+        from chisurf.plugins.burst.accurate_fret.core import guess_columns
 
         mapping = guess_columns(names)
         green_col, red_col = mapping.get("i_dd"), mapping.get("i_da")

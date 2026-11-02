@@ -18,8 +18,8 @@ same burst set, without re-selecting files or re-defining detectors in each tool
 — ten Becker & Hickl SPC-132 files (`m000.spc` … `m009.spc`, 1.2 MB each) of a
 freely diffusing doubly-labelled dsDNA sample. `m000.spc` holds 174 438 photons
 over 69.24 s; macro-time resolution 13.5 ns, micro-time resolution 3.296 ps.
-This run used `m000`–`m002` (533 699 photons). Routing channels are 0/8 (green)
-and 1/9 (red).
+This run used `m000`–`m002` (533 699 photons). Routing channels are 0/8 (`G|G`)
+and 1/9 (`R|G`).
 
 **Tool:** Burst Analysis (`chisurf/plugins/burst/burst_analysis`, display name
 *Spectroscopy:Burst Analysis*, `BurstAnalysisTool`) — a navigation-panel window
@@ -134,7 +134,7 @@ at all, which is the whole point of the aggregator. Nothing raised a dialog.
 **But the burst count rate is written in the wrong unit.** For the first burst
 of `m000` (21 photons in 0.898 ms) the *Bursts* table, and the `.bur` file
 behind it, report `Count Rate (KHz) = 0.023383`; the true rate is 23.383 kHz.
-The same row's `Green Count Rate (KHz) = 20.817` *is* in kHz — so one row
+The same row's `G|G Count Rate (KHz) = 20.817` *is* in kHz — so one row
 carries two columns with the same unit label on scales 1000 apart, and the
 burst's total rate reads *smaller* than its own green sub-rate. The cause is a
 unit mismatch inside one expression (`crate = (npix/dur)/1e3` where `dur` is
@@ -178,7 +178,7 @@ blaming the data first — on a perfectly good 620-burst histogram (RF-056).
 Also seen, not filed: the MMFDB import in step 2 failed for every file with
 *"Authentication required"* in this unauthenticated harness and was reported
 only as `0 imported to MMFDB` in the status line; the MLE panel logged *"MLE fit
-skipped: no IRF for detector 'green'"* ~20 times in 300 ms to the root logger,
+skipped: no IRF for detector 'G|G'"* ~20 times in 300 ms to the root logger,
 where the window's status bar (scoped to `chisurf.plugins.burst`) cannot show
 it; and each run creates a new numbered output folder next to the raw data
 (`… #60`, `… #60_0`) without ever asking where to write.

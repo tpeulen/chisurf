@@ -94,21 +94,21 @@ exists), screenshots read at every dock.
 **The numbers are plausible and fast.** Background estimate 1.6–2.7 s for three
 files; IRF/background compute 2.2–2.7 s. Rates per file:
 
-| file | green | red | yellow |
+| file | G\|G | R\|G | R\|R |
 |---|---|---|---|
 | m000.spc | 1.327 kHz | 0.398 kHz | 0.184 kHz |
 | m001.spc | 1.381 kHz | 0.580 kHz | 1.060 kHz |
 | m002.spc | 1.334 kHz | 0.337 kHz | 0.181 kHz |
 
-Green is stable to 2 % across the three repeats; the `m001` red/yellow values
+`G|G` is stable to 2 % across the three repeats; the `m001` `R|G`/`R|R` values
 are 1.5–6× the other two files, which is the kind of outlier this panel exists
 to show. The IRF panel's own (non-burst counting) rates are lower —
-green 0.693, red 0.338, yellow 0.177 kHz — because the two panels measure
+`G|G` 0.693, `R|G` 0.338, `R|R` 0.177 kHz — because the two panels measure
 different things (interphoton-time tail vs non-burst photons per acquisition
 time); nothing in either panel says so.
 
-**The IRF itself looks right.** The scatter prompt rises at 2.50 ns (green) /
-2.29 ns (red, yellow) and the log-y plot shows a clean prompt followed by the
+**The IRF itself looks right.** The scatter prompt rises at 2.50 ns (`G|G`) /
+2.29 ns (`R|G`, `R|R`) and the log-y plot shows a clean prompt followed by the
 fluorescence tail the non-burst periods still carry.
 
 **What is wrong:**
@@ -180,7 +180,7 @@ harness, not of the panel. The silent *0* is still poor feedback (see below).
 - **Default `Micro-time binning` to the MLE's binning** instead of 1, and label
   it with the target ("Micro-time binning (MLE uses 32)").
 - **Aggregate the background table.** Nine rows of file × detector with no mean,
-  spread or outlier marking makes `m001`'s 6× red/yellow excursion something the
+  spread or outlier marking makes `m001`'s 6× `R|G`/`R|R` excursion something the
   user has to spot by eye; a per-detector mean ± sd row (the bar chart already
   computes the mean) would carry the judgement.
 - **Add units to the IRF results table** — *Non-burst* and *Burst* are photon

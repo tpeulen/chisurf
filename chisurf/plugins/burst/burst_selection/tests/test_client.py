@@ -31,7 +31,7 @@ def test_client_analyze_files_passes_detector_setup_context() -> None:
         [Path("example.spc")],
         settings={"photon_filter": {"channels": [0, 8]}},
         windows={"prompt": [0, 2048]},
-        detectors={"green": {"chs": [0, 8]}},
+        detectors={"G|G": {"chs": [0, 8]}},
         filetype="SPC-130",
         output_dir=Path("burstwise_All 0.2000#60") / "bi4_bur",
         legacy_output=True,
@@ -48,7 +48,7 @@ def test_client_analyze_files_passes_detector_setup_context() -> None:
     assert fake.calls[0][0] == "burst_selection.jobs.analyze_files"
     assert fake.calls[0][1]["filetype"] == "SPC-130"
     assert fake.calls[0][1]["windows"] == {"prompt": [0, 2048]}
-    assert fake.calls[0][1]["detectors"] == {"green": {"chs": [0, 8]}}
+    assert fake.calls[0][1]["detectors"] == {"G|G": {"chs": [0, 8]}}
     assert fake.calls[0][1]["output_dir"] == "burstwise_All 0.2000#60/bi4_bur"
     assert fake.calls[0][1]["legacy_output"] is True
     assert fake.calls[0][1]["legacy_output_folder_name"] == "burstwise_All 0.2000#60"

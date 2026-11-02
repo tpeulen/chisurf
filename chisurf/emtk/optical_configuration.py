@@ -7,6 +7,7 @@ from pathlib import Path
 
 from emtk.i18n import tr
 
+from chisurf.core.fluorescence.detector_names import ACCEPTOR, DONOR
 from chisurf.core.optical_configuration import (
     _graph_to_config,
     apply_easy_graph_parameters,
@@ -32,7 +33,7 @@ class OpticalConfigurationWidget:
             or {
                 "lasers": "488:1.0, 640:1.0",
                 "dyes": {},
-                "detectors": [{"name": name} for name in (detector_names or ["green", "red"])],
+                "detectors": [{"name": name} for name in (detector_names or [DONOR, ACCEPTOR])],
                 "emission_splitters": [],
                 # A new form starts from the user's FRET settings, which every κ² / n edit updates.
                 "kappa2": fret_setting("kappa2"),

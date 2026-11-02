@@ -431,6 +431,9 @@ def test_the_emtk_app_exports_the_csv_the_qt_widget_wrote(work, tmp_path):
     data = (app_out / QT_CSV["name"]).read_bytes()
     # Byte-identical to the Qt tool's file except the header, which now names the unit the values are in.
     data = data.replace(b"time_s,", b"time_ms,", 1)
+    # ... and the detectors under their names (G|G, R|G, R|R), where the Qt tool's setup said
+    # green, red, yellow.
+    data = data.replace(b"time_ms,G|G,R|G,R|R", b"time_ms,green,red,yellow", 1)
     assert len(data) == QT_CSV["size"]
     assert hashlib.sha256(data).hexdigest() == QT_CSV["sha256"]
     assert len(rows_of(app_out / QT_CSV["name"])) - 1 == BINS_10MS

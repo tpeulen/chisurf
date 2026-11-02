@@ -12,7 +12,7 @@ step is genuinely shared and the alternative — each plugin re-deriving the sam
 index arithmetic — is how the channel and micro-time conventions drift apart.
 What stays in a plugin is only the packing into that engine's own layout.
 
-A *stream* is a detector category (green, red, an ALEX excitation window, a
+A *stream* is a detector category (``G|G``, ``R|G``, an ALEX excitation window, a
 nanotime slice), defined by :class:`StreamDef`. Photons matching no stream are
 dropped, which is how acceptor-after-acceptor-excitation photons are excluded
 from a two-colour kinetic fit.
@@ -25,6 +25,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 import numpy as np
+
+from chisurf.core.fluorescence.detector_names import ACCEPTOR, DONOR
 import tttrlib
 from tttrlib import micro_time_mask
 
@@ -56,7 +58,7 @@ class StreamDef:
     Attributes
     ----------
     name : str
-        Human-readable stream name (e.g. ``"green"``, ``"red"``).
+        Human-readable stream name, usually a detector name (``"G|G"``, ``"R|G"``).
     channels : list of int
         TCSPC routing channel numbers assigned to this stream.
     micro_time_ranges : list of tuple[int, int]
@@ -73,8 +75,8 @@ class StreamDef:
 def default_streams() -> list[StreamDef]:
     """Return the canonical 2-colour donor/acceptor stream definition."""
     return [
-        StreamDef("green", [0, 8], []),
-        StreamDef("red", [1, 9], []),
+        StreamDef(DONOR, [0, 8], []),
+        StreamDef(ACCEPTOR, [1, 9], []),
     ]
 
 

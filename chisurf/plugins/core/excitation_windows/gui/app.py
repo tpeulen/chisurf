@@ -75,13 +75,15 @@ class ExcitationWindowsApp(ImApp):
 
         setup = self.review.setup or {}
         if not setup.get("detectors"):
-            groups = {"green": [0], "red": [1]}
+            from chisurf.core.fluorescence import detector_names as dn
+
+            groups = {dn.DONOR: [0], dn.ACCEPTOR: [1]}
             if detection.donor_detectors and detection.acceptor_detectors:
                 def chs(names):
                     return sorted({int(n.split()[-1]) for n in names if n.startswith("ch ")})
 
-                groups = {"green": chs(detection.donor_detectors),
-                          "red": chs(detection.acceptor_detectors)}
+                groups = {dn.DONOR: chs(detection.donor_detectors),
+                          dn.ACCEPTOR: chs(detection.acceptor_detectors)}
             setup = {**setup, "detectors": {k: {"chs": v} for k, v in groups.items() if v}}
         fixed = apply_to_setup(setup, {
             "proposal": windows, "detection": detection.to_dict(),

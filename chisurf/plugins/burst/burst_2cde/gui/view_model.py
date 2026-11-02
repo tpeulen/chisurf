@@ -92,7 +92,7 @@ class TwoCdeViewModel:
             return []
 
     def apply_channel_settings(self, settings: dict) -> None:
-        """Take a workflow's detector definition: the donor (green) and acceptor (red) routing channels and the
+        """Take a workflow's detector definition: the donor (G|G) and acceptor (R|G) routing channels and the
         file type (the burst workflow hands its setup over this way)."""
         from chisurf.core.fluorescence.burst.table import fret_detectors
 

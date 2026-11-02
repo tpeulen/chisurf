@@ -76,7 +76,7 @@ def app_of(ui):
     return ui.app
 
 
-def det(ui, name="green"):
+def det(ui, name="G|G"):
     return ui.app.model.data["detectors"][name]
 
 
@@ -139,12 +139,12 @@ def test_setup_combo_lists_the_saved_setups_and_choosing_one_loads_it(make):
     app, ui = make()
     app.toolbar.save("Lab A")
     app.toolbar.select("")
-    app.model.data["detectors"].pop("red")
+    app.model.data["detectors"].pop("R|G")
     ui.frame(2)
     ui.click("Unsaved")  # the list has the blank entry and the saved setup
     assert ui.drawn("Lab A")
     ui.click("Lab A", nth=-1)
-    assert app.toolbar.selected == "Lab A" and set(app.model.data["detectors"]) == {"green", "red"}
+    assert app.toolbar.selected == "Lab A" and set(app.model.data["detectors"]) == {"G|G", "R|G"}
     assert json.loads(Path(app.model.file_path).read_text())["last_used"] == "Lab A"
 
 
@@ -374,7 +374,7 @@ def test_plot_button_opens_the_decay_preview_and_dragging_a_gate_moves_the_range
     ui.click("Plot")
     window = app.page.preview_window
     assert window.open and ui.drawn("Micro-time Decay Preview") and ui.drawn("Routing 9")
-    assert det(ui, "red")["micro_time_ranges"] == [[0, 2048]]
+    assert det(ui, "R|G")["micro_time_ranges"] == [[0, 2048]]
     # drag the PIE window "delayed" start line (x = 2048, a vertical line through the plot)
     bx, by, bw, bh = window.box
     inside = [t for t in ui.painter.texts if bx <= t[0] <= bx + bw and by <= t[1] <= by + bh]
@@ -386,7 +386,7 @@ def test_plot_button_opens_the_decay_preview_and_dragging_a_gate_moves_the_range
     x_of = lambda v: x0 + (x4000 - x0) * v / 4000.0  # noqa: E731
     ax_y = left[1] - 120  # inside the plot, above the tick labels
     ui.drag((x_of(2048), ax_y), (x_of(1500), ax_y))
-    low, high = det(ui, "red")["micro_time_ranges"][
+    low, high = det(ui, "R|G")["micro_time_ranges"][
         0
     ]  # the line grabbed at 2048 is the end of the red gate (and the PIE windows' edge)
     assert low == 0 and 1400 < high < 1600, (low, high)
@@ -431,17 +431,21 @@ def test_polarization_resolved_checkbox_toggles_the_flag(make):
 
 def test_add_button_appends_a_detector_with_the_qt_defaults_and_names_stay_unique(make):
     app, ui = make()
-    ui.click("Add", nth=0)
-    assert app.model.data["detectors"]["New Detector"] == {
+    # Add is a list: the unused default names (emission|excitation), then a custom name
+    ui.click("Add detector ...", nth=0)
+    ui.click("R|R", nth=-1)
+    assert app.model.data["detectors"]["R|R"] == {
         "chs": [0, 1],
         "micro_time_ranges": [[0, 2048]],
         "g_factor": 1.0,
         "l1": 0.0,
         "l2": 0.0,
     }
-    ui.click("Add", nth=0)
-    assert "New Detector 1" in app.model.data["detectors"]
-    assert "prompt_New Detector" in app.model.get_settings()["channels"]
+    for _ in range(2):
+        ui.click("Add detector ...", nth=0)
+        ui.click("Custom name", nth=-1)
+    assert {"New Detector", "New Detector 1"} <= set(app.model.data["detectors"])
+    assert "prompt_R|R" in app.model.get_settings()["channels"]
 
 
 @pytest.mark.parametrize(
@@ -458,14 +462,14 @@ def test_add_button_appends_a_detector_with_the_qt_defaults_and_names_stay_uniqu
 )
 def test_micro_time_range_cell_is_typed_and_read_with_the_qt_rules(make, typed, expected):
     app, ui = make()
-    edit(ui, "detectors", "green", "ranges", typed)
+    edit(ui, "detectors", "G|G", "ranges", typed)
     assert det(ui)["micro_time_ranges"] == expected
 
 
 def test_every_detector_cell_is_edited_by_typing_with_enter_or_click_away(make):
     app, ui = make()
-    edit(ui, "detectors", "green", "name", "donor")
-    assert list(app.model.data["detectors"]) == ["donor", "red"]
+    edit(ui, "detectors", "G|G", "name", "donor")
+    assert list(app.model.data["detectors"]) == ["donor", "R|G"]
     edit(ui, "detectors", "donor", "chs", "4; 5", finish="away")
     assert det(ui, "donor")["chs"] == [4, 5]
     edit(ui, "detectors", "donor", "g", "2.5")
@@ -484,18 +488,18 @@ def test_every_detector_cell_is_edited_by_typing_with_enter_or_click_away(make):
 
 def test_an_empty_g_factor_is_one_and_a_typo_reverts_like_qt(make):
     app, ui = make()
-    edit(ui, "detectors", "red", "g", "")
-    assert det(ui, "red")["g_factor"] == 1.0 and ui.drawn("1.000")
-    edit(ui, "detectors", "red", "g", "oops")
-    assert det(ui, "red")["g_factor"] == 1.0 and app.page.status.startswith("Error:")
-    edit(ui, "detectors", "red", "l1", "x")
-    assert det(ui, "red")["l1"] == 0.01 and app.page.status.startswith("Error:")
+    edit(ui, "detectors", "R|G", "g", "")
+    assert det(ui, "R|G")["g_factor"] == 1.0 and ui.drawn("1.000")
+    edit(ui, "detectors", "R|G", "g", "oops")
+    assert det(ui, "R|G")["g_factor"] == 1.0 and app.page.status.startswith("Error:")
+    edit(ui, "detectors", "R|G", "l1", "x")
+    assert det(ui, "R|G")["l1"] == 0.01 and app.page.status.startswith("Error:")
 
 
 def test_a_detector_name_that_exists_is_refused(make):
     app, ui = make()
-    edit(ui, "detectors", "green", "name", "red")
-    assert list(app.model.data["detectors"]) == ["green", "red"] and app.page.status.startswith(
+    edit(ui, "detectors", "G|G", "name", "R|G")
+    assert list(app.model.data["detectors"]) == ["G|G", "R|G"] and app.page.status.startswith(
         "Error:"
     )
 
@@ -506,22 +510,22 @@ def test_selected_preview_g_and_delete_buttons_preserve_their_detector_scope(mak
     ui.click("Preview G")  # disabled until a preview is read
     assert app.model.get_settings() == before and app.page.dialog is None
     read_sample(ui)
-    app.model.data["detectors"]["green"]["g_factor_channels"] = [1000, 3000]
+    app.model.data["detectors"]["G|G"]["g_factor_channels"] = [1000, 3000]
     app.page._refresh_rows()
     ui.frame(2)
-    ui.click(cell_point(ui, "detectors", "green", "name"))
+    ui.click(cell_point(ui, "detectors", "G|G", "name"))
     ui.click("Preview G")
     assert (
         app.page.status == "Settings updated."
         and det(ui)["g_factor"] != 1.0
-        and det(ui, "red")["g_factor"] == 1.25
+        and det(ui, "R|G")["g_factor"] == 1.25
     )
-    press_button(ui, "detectors", "red", "delete")
-    assert list(app.model.data["detectors"]) == ["green"]
-    press_button(ui, "detectors", "green", "delete")
+    press_button(ui, "detectors", "R|G", "delete")
+    assert list(app.model.data["detectors"]) == ["G|G"]
+    press_button(ui, "detectors", "G|G", "delete")
     assert (
         app.model.data["detectors"] == {}
-        and "prompt_green" not in app.model.get_settings()["channels"]
+        and "prompt_G|G" not in app.model.get_settings()["channels"]
     )
 
 
@@ -537,11 +541,11 @@ def test_the_wheel_scrolls_a_long_detector_table(make):
         }
     app.page._refresh_rows()
     ui.frame(3)
-    assert ui.drawn("green") and not ui.drawn("d11")
-    ui.wheel("green", -6)
-    assert not ui.drawn("green") or ui.drawn("d5")
+    assert ui.drawn("G|G") and not ui.drawn("d11")
+    ui.wheel("G|G", -6)
+    assert not ui.drawn("G|G") or ui.drawn("d5")
     ui.wheel("d5", 20)
-    assert ui.drawn("green")
+    assert ui.drawn("G|G")
 
 
 # ============================================================================================ 5. LUT handling
@@ -833,7 +837,7 @@ def test_the_page_fits_the_width_and_the_setup_row_wraps_instead_of_clipping(mak
 @pytest.fixture
 def legacy_reference():
     """Read immutable original Qt outputs, not a native implementation as its own oracle."""
-    return json.loads((HERE / "fixtures/detector_page_legacy.json").read_text())
+    return driver.new_names(json.loads((HERE / "fixtures/detector_page_legacy.json").read_text()))
 
 
 def _legacy_detector(expected):
@@ -965,7 +969,7 @@ def test_the_last_used_setup_is_remembered_in_the_mmfdb_too(tmp_path):
     assert (
         other.last_used == "One" and other.open_last_used() == "One" and other.current_name == "One"
     )
-    assert other.data["detectors"]["red"]["g_factor"] == 1.25
+    assert other.data["detectors"]["R|G"]["g_factor"] == 1.25
 
 
 def test_which_sections_are_open_survives_a_restart_of_the_tool(make):
@@ -1093,5 +1097,5 @@ def test_the_detector_table_buttons_never_overlap_or_clip_in_a_narrow_host(make,
     if width >= 1200:
         assert not hidden
     if width >= 470:  # the delete button of the second row still works at the narrow end
-        press_button(ui, "detectors", "red", "delete")
-        assert list(app.model.data["detectors"]) == ["green"]
+        press_button(ui, "detectors", "R|G", "delete")
+        assert list(app.model.data["detectors"]) == ["G|G"]

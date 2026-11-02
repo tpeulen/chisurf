@@ -34,11 +34,11 @@ of chromophore $i$, with chromophores numbered in order (donor $1$, acceptor $2$
 second acceptor $3$, …). For the common two-colour donor/acceptor case the
 friendly aliases are
 
-* $I_{11} \equiv$ `i_dd` — donor emission under donor excitation ("green"),
-* $I_{12} \equiv$ `i_da` — acceptor emission under donor excitation ("red", the
+* $I_{11} \equiv$ `i_dd` — donor emission under donor excitation (detector `G|G`),
+* $I_{12} \equiv$ `i_da` — acceptor emission under donor excitation (detector `R|G`, the
   FRET channel),
 * $I_{22} \equiv$ `i_aa` — acceptor emission under acceptor excitation
-  ("yellow", ALEX/PIE).
+  (detector `R|R`, ALEX/PIE).
 
 Four correction factors (Greek-letter convention):
 
@@ -116,14 +116,14 @@ from chisurf.core.fluorescence.fret.calibration import (
 calib = CalibrationParameters()
 # matrices = light_path.get_crosstalk_matrices()
 set_priors_from_lightpath(calib, matrices, donor="Alexa488", acceptor="Alexa647",
-                          green_detector="green", red_detector="red", r0=52.0)
+                          green_detector="G|G", red_detector="R|G", r0=52.0)
 
 # optimize against burst E-S data (labels = population index per burst)
 post = refine_calibration(calib, i_dd, i_da, i_aa, labels)
 ```
 
 The light-path priors use the same conventions as the data estimators above:
-$\alpha$ is referenced to the green channel alone and $\delta$ to the
+$\alpha$ is referenced to the donor detector `G|G` alone and $\delta$ to the
 acceptor-excitation channel, i.e. $\delta = \mathrm{ex}[\text{green}, A] /
 \mathrm{ex}[\text{red}, A]$. The donor-excitation and acceptor-excitation lasers
 default to the first and second excitation rows of the payload; name them with
@@ -188,8 +188,8 @@ from chisurf.core.fluorescence.fret.accurate import auto_calibrate
 result = auto_calibrate(i_dd, i_da, i_aa, tau_f=tau_f, line=line,
                         lightpath={"matrices": matrices, "donor": "Alexa488",
                                    "acceptor": "Alexa647",
-                                   "green_detector": "green",
-                                   "red_detector": "red"},
+                                   "green_detector": "G|G",
+                                   "red_detector": "R|G"},
                         n_bootstrap=100)
 print(result.report())
 ```
@@ -307,7 +307,7 @@ from chisurf.plugins.ndxplorer.calibration_bridge import push_unmixed_columns_to
 push_unmixed_columns_to_ndx(
     ndx_window,
     emission=emission,                       # light-path emission matrix
-    channel_columns=["Number of Photons (green)", "Number of Photons (red)"],
+    channel_columns=["Number of Photons (G|G)", "Number of Photons (R|G)"],
     source_labels=["donor", "acceptor"],
     unmix="shuffle", seed=0)                  # or unmix="stable"
 ```

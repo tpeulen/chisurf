@@ -2,6 +2,24 @@ from multiprocessing import shared_memory as _shm
 
 import numpy as np
 
+from chisurf.core.fluorescence.detector_names import canonical, is_default, role
+
+#: The legacy ``b?4`` folder letter of each FRET role (``bg4`` / ``br4`` / ``by4``).
+_ROLE_LETTER = {"donor": "g", "acceptor": "r", "acceptor_direct": "y"}
+
+
+def colour_of(det: str) -> str:
+    """How detector *det* names its result columns (``Tau (G|G)``): a detector name as it is,
+    any other name lower-cased, as before."""
+    name = canonical(det)
+    return name if is_default(name) else str(det).lower()
+
+
+def letter_of(det: str) -> str:
+    """The ``b?4`` table letter of *det*: by its role (``G|G`` g, ``R|G`` r, ``R|R`` y), else its first
+    character -- ``R|G`` and ``R|R`` share their first letter."""
+    return _ROLE_LETTER.get(role(det)) or colour_of(det)[0]
+
 
 def _hist2_split_core_classlut(
     mt_bins: np.ndarray, rc_slice: np.ndarray, class_lut: np.ndarray, half_len: int
@@ -147,7 +165,7 @@ def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None, ex
     Reading them positionally would silently write NaN into two columns of the
     ``.b?4`` export.
 
-    With ``state`` set, every measured column is suffixed (``Tau S0 (green)``)
+    With ``state`` set, every measured column is suffixed (``Tau S0 (G|G)``)
     and the identity columns are omitted: a sub-population of a burst is a
     *column* of that burst's row, not a row of its own — the burst is still the
     unit of observation, and a burst table has one row per burst. The suffixed
@@ -330,7 +348,7 @@ def process_one_file_worker(args):
         for _first, _last in bursts:
             for det in det_order:
                 cfg = perdet_cfg.get(det, {})
-                out.append(_record(fname, det, det.lower(), cfg, None, float("nan"), -1, -1))
+                out.append(_record(fname, det, colour_of(det), cfg, None, float("nan"), -1, -1))
         return out, len(bursts)
 
     # Attach shared memory
@@ -372,7 +390,7 @@ def process_one_file_worker(args):
             for det in det_order:
                 cfg = perdet_cfg[det]
                 n = half_len[det]
-                color = det.lower()
+                color = colour_of(det)
 
                 # All the burst's photons, then one pass per state. Each pass
                 # contributes columns to the *same* row: a sub-population is a

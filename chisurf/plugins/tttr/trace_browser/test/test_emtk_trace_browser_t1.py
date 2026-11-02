@@ -128,7 +128,7 @@ def test_setup_page_draws_empty_and_with_a_setup(size, setups_file, tmp_path):
         assert app.editor.model.current_name == "ALEX Suite (auto)"
         assert text.count("ALEX Suite (auto)") >= 1  # the Setup drop-down shows it
         assert "Continue" in text
-        assert app.editor.model.get_settings()["detectors"]["green"]["chs"] == [1]
+        assert app.editor.model.get_settings()["detectors"]["G|G"]["chs"] == [1]
     finally:
         app.close()
 
@@ -145,7 +145,7 @@ def test_continue_applies_the_setup_and_back_returns(setups_file, monkeypatch):
         assert model.page == "browser"
         assert model.selected_channels == [0, 1]
         assert model.setup_filetype == "PTO"
-        assert model.setup_settings["detectors"]["red"]["chs"] == [0]
+        assert model.setup_settings["detectors"]["R|G"]["chs"] == [0]
         assert model.setup_settings["setup_name"] == "ALEX Suite (auto)"
         browser = " | ".join(frames(app))
         assert (
@@ -184,19 +184,19 @@ QT_DERIVED = {
         "setup": ALEX,
         "selected": [0, 1],
         "filetype": "PTO",
-        "labels": ["red, 616-3784 + yellow, 4278-7762", "green, 616-3784", "5"],
+        "labels": ["R|G, 616-3784 + R|R, 4278-7762", "G|G, 616-3784", "5"],
     },
     "Overlap": {
         "setup": OVERLAP,
         "selected": [0, 1, 2, 3, 8, 9],
         "filetype": None,
         "labels": [
-            "green, 0-4095",
-            "red, 0-2048 + yellow, 2048-4095",
-            "red, 0-2048 + yellow, 2048-4095",
-            "green, 0-4095",
-            "green, 0-4095",
-            "red, 0-2048 + yellow, 2048-4095",
+            "G|G, 0-4095",
+            "R|G, 0-2048 + R|R, 2048-4095",
+            "R|G, 0-2048 + R|R, 2048-4095",
+            "G|G, 0-4095",
+            "G|G, 0-4095",
+            "R|G, 0-2048 + R|R, 2048-4095",
             "5",
         ],
     },
@@ -279,7 +279,7 @@ def test_settings_round_trip(setups_file, tmp_path):
     app = make(setups_file)
     try:
         app.editor.select_setup("Overlap")
-        app.editor.model.data["detectors"]["red"]["chs"] = [9, 1]  # an edit of the working setup
+        app.editor.model.data["detectors"]["R|G"]["chs"] = [9, 1]  # an edit of the working setup
         saved = app.export_settings()
     finally:
         app.close()
@@ -292,11 +292,11 @@ def test_settings_round_trip(setups_file, tmp_path):
         other.restore_settings(saved)
         assert other.setups_file == str(setups_file)
         assert other.editor.model.current_name == "Overlap"
-        assert other.editor.model.get_settings()["detectors"]["red"]["chs"] == [9, 1]
+        assert other.editor.model.get_settings()["detectors"]["R|G"]["chs"] == [9, 1]
         assert sorted(other.editor.model.setups) == ["ALEX Suite (auto)", "Overlap"]
         other.continue_to_browser()
         assert other.model.selected_channels == [0, 1, 2, 3, 8, 9]
-        assert other.export_settings()["setup"]["detectors"]["red"]["chs"] == [9, 1]
+        assert other.export_settings()["setup"]["detectors"]["R|G"]["chs"] == [9, 1]
     finally:
         other.close()
 

@@ -76,7 +76,7 @@ def make_demo(
         rows.append(np.column_stack([e, s, photons, duration, tau]))
     table = np.vstack(rows)
     table = table[rng.permutation(len(table))]
-    header = "FRET Efficiency,Stoichiometry,Number of Photons,Duration (ms),Tau (green)"
+    header = "FRET Efficiency,Stoichiometry,Number of Photons,Duration (ms),Tau (G|G)"
     np.savetxt(path, table, delimiter=",", header=header, comments="", fmt="%.6g")
     record(folder, [DEMO_NAME], config)
     return path

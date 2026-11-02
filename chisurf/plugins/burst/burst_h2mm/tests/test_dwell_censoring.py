@@ -176,7 +176,7 @@ def test_the_dwell_table_has_a_one_click_route_out_of_the_window():
     data = bursts_from_dataframe(
         df,
         {"f.spc": tttr},
-        [StreamDef("green", [0]), StreamDef("red", [1])],
+        [StreamDef("G|G", [0]), StreamDef("R|G", [1])],
         min_photons=5,
     )
     ana = analyze(data, state_counts=(2,), base_time_s=1e-6, n_restarts=1, max_iter=150)

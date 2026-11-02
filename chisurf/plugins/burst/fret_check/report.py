@@ -294,8 +294,8 @@ def build_pdf_report(session) -> bytes:
 
     extra = bursts.extra if bursts is not None else {}
     tg = extra.get("TGX-TRR")
-    tau_g = extra.get("Tau (green)")
-    r_g = extra.get("r Experimental (green)")
+    tau_g = extra.get("Tau (G|G)")
+    r_g = extra.get("r Experimental (G|G)")
     e = bursts.E if bursts is not None else np.zeros(0)
     has_trace = bool(getattr(session, "trace_rates", None))
     has_bursts = bursts is not None and n_bursts

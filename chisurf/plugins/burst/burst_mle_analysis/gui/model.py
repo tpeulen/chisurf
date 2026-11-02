@@ -19,6 +19,7 @@ from typing import Any, Callable
 
 import numpy as np
 
+from chisurf.core.fluorescence.detector_names import ACCEPTOR, DONOR
 from chisurf.core.support.i18n import tr
 from chisurf.plugins.core.pto_inspector.core import RunPickerMixin
 
@@ -119,14 +120,14 @@ class MleViewModel(RunPickerMixin):
         if not self.session.detectors:
             self.session.set_detectors(
                 {
-                    "green": {
+                    DONOR: {
                         "chs": [0, 1],
                         "micro_time_ranges": [],
                         "g_factor": 1.0,
                         "l1": 0.0,
                         "l2": 0.0,
                     },
-                    "red": {
+                    ACCEPTOR: {
                         "chs": [8, 9],
                         "micro_time_ranges": [],
                         "g_factor": 1.0,

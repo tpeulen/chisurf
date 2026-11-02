@@ -105,7 +105,7 @@ window — it computed `96 774 / 183 657 photons kept (52.7 %)` and drew a
 delta-macro-time scatter and a count-rate trace without prompting.
 
 **Step 1 is disconnected from step 4 — the headline problem.** With setup `BS`
-selected and its view-model reporting channels `['green', 'red', 'yellow']`,
+selected and its view-model reporting channels `['G|G', 'R|G', 'R|R']`,
 `FcsCorrelatorTool._channel_def_context()` returns `('', {}, {})`: it still reads
 `widget.setup_combo`, `widget._detector_setups` and `widget._channels_for_setup`,
 none of which exist on the AutoForm-ported `FCSChannelWidget` (the data moved to

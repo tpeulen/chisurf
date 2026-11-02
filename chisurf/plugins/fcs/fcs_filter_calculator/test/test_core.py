@@ -397,7 +397,7 @@ def test_central_decay_adapter_uses_all_fit_group_detector_models():
     red_model = DetectorModel(0.4)
     grouped_fit = SimpleNamespace(
         grouped_fits=[
-            SimpleNamespace(model=green_model, data=SimpleNamespace(name="green data")),
+            SimpleNamespace(model=green_model, data=SimpleNamespace(name="G|G data")),
             SimpleNamespace(model=red_model, data=SimpleNamespace(name="red data")),
         ]
     )
@@ -405,10 +405,10 @@ def test_central_decay_adapter_uses_all_fit_group_detector_models():
     patterns = compute_detector_patterns_from_fit(
         grouped_fit,
         [0.25, 1.0, 0.75, 4.0],
-        detector_names=["green", "red"],
+        detector_names=["G|G", "R|G"],
     )
 
-    assert set(("green", "red", "__default__")) <= set(patterns)
-    assert np.allclose(patterns["red"], 0.4 * patterns["green"])
+    assert set(("G|G", "R|G", "__default__")) <= set(patterns)
+    assert np.allclose(patterns["R|G"], 0.4 * patterns["G|G"])
     assert np.all(green_model.y == 99.0)
     assert np.all(red_model.y == 99.0)

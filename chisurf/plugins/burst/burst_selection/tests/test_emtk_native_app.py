@@ -21,8 +21,8 @@ DATA = Path(__file__).parent / "data" / "bh_spc132_sm_dna"
 GUI = Path(__file__).parents[1] / "gui"
 SETUP = {
     "detectors": {
-        "green": {"chs": [0, 1], "micro_time_ranges": []},
-        "red": {"chs": [8, 9], "micro_time_ranges": []},
+        "G|G": {"chs": [0, 1], "micro_time_ranges": []},
+        "R|G": {"chs": [8, 9], "micro_time_ranges": []},
     },
     "windows": {},
     "tttr_reading": {"file_type": "SPC-130"},

@@ -41,14 +41,14 @@ def test_a_definition_without_detectors_is_proposed_from_the_measurement(env, pt
     model.read_tttr(ptu)
     # two-colour PIE: donor and acceptor on the prompt window, the acceptor again on the delayed
     assert {n: d["chs"] for n, d in model.data["detectors"].items()} == {
-        "green": [0], "red": [1], "yellow": [1]
+        "G|G": [0], "R|G": [1], "R|R": [1]
     }
     windows = model.data["windows"]
     assert set(windows) == {"prompt", "delayed"}
     assert windows["prompt"][0] < 300  # the pulse is inside its window (instrument delay)
     gates = {n: d["micro_time_ranges"] for n, d in model.data["detectors"].items()}
-    assert gates == {"green": [windows["prompt"]], "red": [windows["prompt"]],
-                     "yellow": [windows["delayed"]]}
+    assert gates == {"G|G": [windows["prompt"]], "R|G": [windows["prompt"]],
+                     "R|R": [windows["delayed"]]}
 
     kept = ChannelDefinition({"detectors": {"mine": {"chs": [1]}}})
     kept.read_tttr(ptu)
@@ -66,7 +66,7 @@ def test_a_ptu_is_analysed_without_any_stored_setup(env, ptu):
         receive_photons(hub, {"files": [str(ptu)]})
         drv.draw(2)
         assert list(hub.children["setup"].selected_setup_data()["detectors"]) == [
-            "green", "red", "yellow"
+            "G|G", "R|G", "R|R"
         ]
         hub.select("selection")
         drv.draw(2)
@@ -104,7 +104,7 @@ def test_a_setup_made_in_settings_is_chosen_in_the_hub_and_in_record(env, ptu, t
         time.sleep(0.05)
     record.setup_address = "library:lab_pie"
     exp = record.make_experiment(4096, 8e-12)
-    assert set(exp.setup["detectors"]) == {"green", "red", "yellow"} and exp.preset == "pie"
+    assert set(exp.setup["detectors"]) == {"G|G", "R|G", "R|R"} and exp.preset == "pie"
 
 
 def test_a_recorded_ptu_carries_its_micro_time_channels_and_laser_period(ptu):

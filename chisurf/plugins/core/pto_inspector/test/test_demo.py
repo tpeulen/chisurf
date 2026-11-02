@@ -9,7 +9,7 @@ def test_demo_container_opens_with_its_two_tables(tmp_path):
     assert path.suffix == ".pto" and path.is_file()
     with PtoInspection(path) as inspection:
         names = {item.name for item in inspection.infos()}
-    assert {"bursts", "lifetimes green"} <= names
+    assert {"bursts", "lifetimes G|G"} <= names
 
 
 def test_demo_container_exports_to_the_legacy_burst_folder(tmp_path):

@@ -62,8 +62,8 @@ def test_native_fusion_real_photons_handoff_settings_report(tmp_path, caplog):
     app.set_channel_settings(
         {
             "detectors": {
-                "green": {"chs": [0, 8], "micro_time_ranges": [[0, 2048]]},
-                "red": {"chs": [1, 9], "micro_time_ranges": [[0, 2048]]},
+                "G|G": {"chs": [0, 8], "micro_time_ranges": [[0, 2048]]},
+                "R|G": {"chs": [1, 9], "micro_time_ranges": [[0, 2048]]},
             },
             "windows": {"prompt": [0, 2048], "delayed": [2048, 4095]},
         }

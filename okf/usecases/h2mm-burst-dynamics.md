@@ -120,7 +120,7 @@ the tool fitted three streams and picked **3 states** (BIC 314141 / 260822 /
 k₀₁ = 34 s⁻¹, k₁₀ = 46 s⁻¹, k₁₂ = 44 s⁻¹, k₂₁ = 685 s⁻¹. The primary panel
 switched from the dwell-E histogram to a **Dwell E–S scatter** in which every
 point sits at S = 0.93–0.99 — this is CW two-colour data, so the "Aex" stream is
-just the delayed half of the red detector's TAC range and S is meaningless. No
+just the delayed half of the `R|G` detector's TAC range and S is meaningless. No
 warning is shown, and `has_alex` is simply "S is finite anywhere" (RF-326).
 
 **Run B — the winning model did not converge and nothing said so.** With Aex set
@@ -158,7 +158,7 @@ window-wide CI means the state is poorly identified") cannot be acted on
 photons per dwell but its y axis is labelled *Dwells*, so the peak reads 60 000
 where the fit has 11 905 dwells (RF-324). In *Channel Definitions* the detector
 table gives its width to G-Factor / l1 / l2 and clips the three columns that
-matter: the header reads *"tector Nar"*, and the yellow detector's micro-time
+matter: the header reads *"tector Nar"*, and the `R|R` detector's micro-time
 range `2048:4095` is shown as `048:4095` (RF-327). At 1600×1000 the default
 two-column dock layout is clean and readable; below roughly 1300×600 the axis
 tick labels of the six stacked plots collide.

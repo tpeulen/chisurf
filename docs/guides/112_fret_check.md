@@ -62,7 +62,7 @@ trace and ndX appear.
 Advanced mode. Left, Channels: excitation *ALEX / PIE*, donor channel 0, acceptor channel 1,
 Dex window 255–2301 and Aex window 2301–4091 micro-time channels, over the log-scale
 micro-time histogram of both detectors with the windows marked. Right, Bursts: burst size,
-duration and count rate histograms, and E against the donor lifetime `Tau (green)`.
+duration and count rate histograms, and E against the donor lifetime `Tau (G|G)`.
 ```
 
 1. **Channels.** A wrong window or a swapped donor/acceptor breaks everything downstream.

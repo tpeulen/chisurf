@@ -104,7 +104,7 @@ def test_the_picked_run_is_fitted_and_written_into_the_container(model, containe
     assert model.export_results() >= 1
     with Measurement.open(container, writable=False) as m:
         names = {o.uid: str(o.name) for o in m._f.objects()}
-        fits = [o for o in m.artifacts() if str(o.name).endswith("mle green")]
+        fits = [o for o in m.artifacts() if str(o.name).endswith("mle G|G")]
         assert fits, list(names.values())
         # The parent is the picked search, whichever of the two is the newest.
         assert [names[u] for u in m.parents(fits[0].uid)][0].startswith(f"{picked}/")

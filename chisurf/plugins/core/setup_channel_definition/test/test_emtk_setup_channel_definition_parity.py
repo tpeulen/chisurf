@@ -81,7 +81,7 @@ def data_app(setups_file):
 
 def legacy_reference():
     """Load the immutable measured original form, with explicit source provenance."""
-    return json.loads((HERE / "fixtures/detector_page_legacy.json").read_text())
+    return driver.new_names(json.loads((HERE / "fixtures/detector_page_legacy.json").read_text()))
 
 
 @pytest.fixture
@@ -123,12 +123,12 @@ def test_save_rename_delete_equal_frozen_original_file_store(legacy, data_app, s
 def test_save_stores_every_edit_equal_frozen_original(legacy, data_app, setups_file):
     """Scientific detector/window edits must equal the original independently captured storage."""
     model = data_app.model
-    model.data["detectors"]["red"]["g_factor"] = 2.5
-    model.data["detectors"]["green"]["micro_time_ranges"] = [[0, 100], [200, 300]]
+    model.data["detectors"]["R|G"]["g_factor"] = 2.5
+    model.data["detectors"]["G|G"]["micro_time_ranges"] = [[0, 100], [200, 300]]
     model.data["windows"]["delayed"] = [2000, 4000]
     data_app.toolbar.save("Edited")
     assert stored_emtk(setups_file)["Edited"] == legacy["edited"]
-    assert stored_emtk(setups_file)["Edited"]["detectors"]["red"]["g_factor"] == 2.5
+    assert stored_emtk(setups_file)["Edited"]["detectors"]["R|G"]["g_factor"] == 2.5
 
 
 def test_public_flag_is_saved_like_frozen_original_and_survives_rename(
@@ -215,18 +215,18 @@ def test_a_failed_store_keeps_the_working_state_and_says_so(data_app, tmp_path):
     assert bar.save("Nope") is False
     assert "Failed to save setup 'Nope'" in data_app.page.status
     assert bar.selected == "" and bar.definition.setups == {}
-    assert data_app.model.data["detectors"]["green"]["chs"] == [8, 0, 3]
+    assert data_app.model.data["detectors"]["G|G"]["chs"] == [8, 0, 3]
 
 
 def test_setup_choice_loads_a_saved_setup_and_the_blank_entry_keeps_the_tables(data_app):
     bar = data_app.toolbar
     bar.save("Lab")
-    data_app.model.data["detectors"].pop("red")
+    data_app.model.data["detectors"].pop("R|G")
     bar.select("Lab")
-    assert set(data_app.model.data["detectors"]) == {"green", "red"}
+    assert set(data_app.model.data["detectors"]) == {"G|G", "R|G"}
     assert bar.selected == "Lab" and data_app.page.setup_name == "Lab"
     bar.select("")
-    assert bar.selected == "" and set(data_app.model.data["detectors"]) == {"green", "red"}
+    assert bar.selected == "" and set(data_app.model.data["detectors"]) == {"G|G", "R|G"}
     assert not bar.can_public() and data_app.page.calibrations == []
 
 
@@ -267,14 +267,14 @@ def test_crud_and_calibration_in_the_mmfdb_equal_the_frozen_qt_record(tmp_path):
         emtk["calibration_items"][0] == "Latest"
         and "2026-09-01T10:00:00" in emtk["calibration_items"]
     )
-    assert emtk["calibration_cells"] == {"green": [1.7, 0.1, 0.2], "red": [0.9, 0.3, 0.4]}
+    assert emtk["calibration_cells"] == {"G|G": [1.7, 0.1, 0.2], "R|G": [0.9, 0.3, 0.4]}
     if qt["calibration_cells"] == emtk["calibration_cells"]:  # the day the Qt combo works
         assert qt["calibration_items"] == emtk["calibration_items"][: len(qt["calibration_items"])]
     else:
         # Qt defect: its combo calls setup_id_for_name(name, user) without the prefix argument,
         # swallows the TypeError and so never lists a snapshot nor applies one.
         assert qt["calibration_items"] == ["Latest"]
-        assert qt["calibration_cells"] == {"green": [1.0, 0.0, 0.0], "red": [1.25, 0.01, 0.02]}
+        assert qt["calibration_cells"] == {"G|G": [1.0, 0.0, 0.0], "R|G": [1.25, 0.01, 0.02]}
 
 
 def test_calibration_latest_is_a_no_op_and_a_snapshot_applies_to_named_detectors(tmp_path):
@@ -289,7 +289,7 @@ def test_calibration_latest_is_a_no_op_and_a_snapshot_applies_to_named_detectors
         def get_setup_calibration(self, key, calibrated_at=None):
             assert calibrated_at == "2026-09-01"
             return [
-                {"channel_name": "green", "g_factor": 1.7, "l1": 0.1, "l2": 0.2},
+                {"channel_name": "G|G", "g_factor": 1.7, "l1": 0.1, "l2": 0.2},
                 {"channel_name": "ghost", "g_factor": 9},
             ]
 
@@ -302,10 +302,10 @@ def test_calibration_latest_is_a_no_op_and_a_snapshot_applies_to_named_detectors
     page.calibrations = bar.definition.calibration_dates()
     assert bar.calibration_items() == ["Latest", "2026-09-01"]
     bar.select_calibration("Latest")
-    assert page.model.data["detectors"]["green"]["g_factor"] == 1.0
+    assert page.model.data["detectors"]["G|G"]["g_factor"] == 1.0
     bar.select_calibration("2026-09-01")
-    assert page.model.data["detectors"]["green"]["g_factor"] == 1.7
-    assert page.model.data["detectors"]["red"]["g_factor"] == 1.25  # not in the snapshot: untouched
+    assert page.model.data["detectors"]["G|G"]["g_factor"] == 1.7
+    assert page.model.data["detectors"]["R|G"]["g_factor"] == 1.25  # not in the snapshot: untouched
     assert "Applied the calibration of 2026-09-01 to 2 detector(s)." == page.status
 
 

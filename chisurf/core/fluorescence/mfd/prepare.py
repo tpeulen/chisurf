@@ -51,14 +51,16 @@ from chisurf.core.fio.fluorescence.burst_manifest import (
 )
 from chisurf.core.fluorescence.burst.photons import (
     StreamDef,
-    default_streams,
     is_sentinel_file_reference,
     load_bur_dataframe,
     stream_index_arrays,
     streams_from_dicts,
 )
+# Imported by name: this module has its own `detector_names(frame)`.
+from chisurf.core.fluorescence.detector_names import ACCEPTOR, DONOR, detector_of_role, role
 
 __all__ = [
+    "fret_channels",
     "BurstPreparation",
     "NuisanceMeasure",
     "PhotonIndexConvention",
@@ -82,13 +84,13 @@ __all__ = [
 #: *unverified* and unusable, never quietly wrong (see :func:`prepare_burst_folder`).
 #:
 #: A name not listed here gets no channels rather than a plausible guess. An
-#: acceptor-excitation ("yellow") detector in particular is a micro-time window on
+#: acceptor-excitation (``R|R``) detector in particular is a micro-time window on
 #: the *same* channels as the acceptor, and which window cannot be recovered from
 #: the name — guessing the channels alone would attribute every delayed photon to
 #: the prompt detector.
 FALLBACK_CHANNELS: dict[str, tuple[int, ...]] = {
-    "green": (0, 8),
-    "red": (1, 9),
+    DONOR: (0, 8),
+    ACCEPTOR: (1, 9),
 }
 
 #: Fraction of bursts whose recomputed per-detector count must match the ``.bur``
@@ -775,7 +777,7 @@ def infer_streams(
     """Work out each detector's channel definition from the burst table itself.
 
     A detector *name* does not determine its definition, and the same name means
-    different things in different folders: ``red`` is the acceptor channels ungated
+    different things in different folders: ``R|G`` is the acceptor channels ungated
     in one analysis and gated to the prompt window in another. Guessing from the
     name is therefore wrong roughly as often as it is right — which is why the
     guess was verified, and why failing verification used to leave a folder
@@ -885,7 +887,7 @@ def _align_caller_streams(
     matched by name (case-insensitively) rather than trusted by position: a
     reordered list would otherwise check and fit each detector against another's
     photons. A definition for every detector is required, because no single
-    detector can be completed from a guess — ``red`` is ungated in one analysis
+    detector can be completed from a guess — ``R|G`` is ungated in one analysis
     and gated to the prompt window in another.
 
     Parameters
@@ -938,14 +940,13 @@ def _align_caller_streams(
 
 def _fallback_streams(names: Sequence[str]) -> list[StreamDef]:
     """Return channel definitions guessed from conventional detector names."""
-    known = {s.name: s for s in default_streams()}
+    # Guessed by the detector's FRET role (donor / acceptor), whatever it is called.
+    fallback = {role(k): v for k, v in FALLBACK_CHANNELS.items()}
     out: list[StreamDef] = []
     for name in names:
-        lowered = str(name).lower()
-        if lowered in known:
-            out.append(StreamDef(name=name, channels=list(known[lowered].channels)))
-        elif lowered in FALLBACK_CHANNELS:
-            out.append(StreamDef(name=name, channels=list(FALLBACK_CHANNELS[lowered])))
+        found = role(name)
+        if found in fallback:
+            out.append(StreamDef(name=name, channels=list(fallback[found])))
         else:
             out.append(StreamDef(name=name, channels=[]))
     return out
@@ -1136,7 +1137,7 @@ def prepare_burst_folder(
         if resolved_streams is None:
             # Deferred until the photons are open — inference needs them. The
             # name-based guess is only the last resort, because a detector name
-            # does not determine its definition: ``red`` is ungated in one
+            # does not determine its definition: ``R|G`` is ungated in one
             # analysis and gated to the prompt window in another.
             resolved_streams = None
             stream_origin = "inferred"
@@ -1277,10 +1278,33 @@ def prepare_burst_folder(
     return preparation
 
 
+def fret_channels(
+    preparation: BurstPreparation, green: str | None = None, red: str | None = None
+) -> tuple[str, str]:
+    """The donor and acceptor detectors of *preparation*: *green* / *red* when given, else
+    the detectors whose :func:`~chisurf.core.fluorescence.detector_names.role` is donor /
+    acceptor (``G|G`` / ``R|G`` in a default setup).
+
+    Raises
+    ------
+    KeyError
+        If the folder has no detector of a role that was not given.
+    """
+    names = list(preparation.channels)
+    green = green or detector_of_role(names, "donor")
+    red = red or detector_of_role(names, "acceptor")
+    if not green or not red:
+        raise KeyError(
+            f"no donor and acceptor detector in {preparation.folder} (have {names}); "
+            f"name them ({DONOR}, {ACCEPTOR})"
+        )
+    return green, red
+
+
 def nuisance_measure(
     preparation: BurstPreparation,
     *,
-    channels: Sequence[str] = ("green", "red"),
+    channels: Sequence[str] | None = None,
     min_signal: int = 1,
 ) -> NuisanceMeasure:
     """Build ``D12 = P(S, t_G, t_R)`` from the burst-table columns.
@@ -1300,8 +1324,9 @@ def nuisance_measure(
     ----------
     preparation : BurstPreparation
         From :func:`prepare_burst_folder`.
-    channels : sequence of str
-        The detectors whose signal and spans make up the measure.
+    channels : sequence of str, optional
+        The detectors whose signal and spans make up the measure; default the donor
+        and acceptor detectors (:func:`fret_channels`).
     min_signal : int
         Bursts with less total signal than this are excluded — and **counted** in
         the summary, so a folder where half the bursts are unusable cannot present
@@ -1311,6 +1336,7 @@ def nuisance_measure(
     -------
     NuisanceMeasure
     """
+    channels = tuple(channels) if channels else fret_channels(preparation)
     preparation.require_verified(channels)
     index = [preparation.channel_index(name) for name in channels]
     counts = preparation.counts[:, index]

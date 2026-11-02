@@ -10,7 +10,6 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-import tttrlib
 
 from .. import core as _core
 
@@ -80,7 +79,7 @@ def calibrate_file(params: dict) -> dict:
         path = payload.pop("path")
         wanted = payload.pop("columns", None) or {}
         columns = _core.read_burst_table(path)
-        mapping = {**tttrlib.guess_burst_columns(list(columns)), **wanted}
+        mapping = {**_core.guess_columns(list(columns)), **wanted}
         arrays = {
             role: (
                 None

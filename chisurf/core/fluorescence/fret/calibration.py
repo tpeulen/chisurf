@@ -270,7 +270,7 @@ def lightpath_correction_factors(
     donor, acceptor : str
         Dye labels.
     green_detector, red_detector : str
-        Detector labels for the donor (green) and acceptor (red) channels.
+        Detector labels for the donor (``G|G``) and acceptor (``R|G``) channels.
     green_laser : str, optional
         Donor-excitation laser label. Defaults to the first excitation row.
     red_laser : str, optional

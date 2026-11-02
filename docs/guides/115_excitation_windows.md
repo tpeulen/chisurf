@@ -117,7 +117,7 @@ All of them run the same pre-flight (`windows_preflight`) on the measurement the
 it the same way: one line in the tool's status / warnings / CLI stderr, and — where the tool holds
 the setup and its result does not already depend on the ranges — **Use detected windows**, which
 takes the detected windows and opens a detector gate that sees none of its pulses. A gate that
-keeps one excitation on purpose (BVA's acceptor gated to the prompt pulse, PIE's red/yellow split
+keeps one excitation on purpose (BVA's acceptor gated to the prompt pulse, PIE's `R|G`/`R|R` split
 of one detector) is fine.
 
 | Tool | What is checked | Offer |
@@ -160,7 +160,7 @@ report = check_setup(setup, "run.ptu")     # status, issues, proposal
 report.mismatch, report.summary, report.proposal
 
 # from histograms you already have (one per detector)
-det = detect_pie_windows({"green": h_green, "red": h_red}, resolution_s=32e-12)
+det = detect_pie_windows({"G|G": h_green, "R|G": h_red}, resolution_s=32e-12)
 
 # reading a setup is tttrlib's
 import tttrlib

@@ -25,6 +25,8 @@ from typing import Any, Callable
 
 import numpy as np
 
+from chisurf.core.fluorescence.detector_names import ACCEPTOR, ACCEPTOR_DIRECT, DONOR
+
 logger = logging.getLogger("chisurf.plugins.burst")
 
 #: Name of the detector setup this step writes. Reused (overwritten) on every run, so a second measurement does
@@ -39,19 +41,19 @@ def build_setup(windows: dict, donor, acceptor, period: int) -> dict:
 
     The names are not free. ChiSurf's burst tables name a gated stream ``S {window} {detector}``, and everything
     that reads one (ndX's shipped MFD equations, the accurate-FRET column mapping, the shared conventions in
-    :mod:`chisurf.core.fluorescence.burst.table`) recognises the Seidel vocabulary: excitation windows ``prompt``
-    and ``delayed``, detectors ``green``, ``red`` and ``yellow``. So the four ALEX streams come out as
+    :mod:`chisurf.core.fluorescence.burst.table`) recognises excitation windows ``prompt`` and ``delayed`` and the
+    detectors ``G|G``, ``R|G`` and ``R|R`` (:mod:`chisurf.core.fluorescence.detector_names`). So the four ALEX streams come out as
 
     ============  =========================  ==================
     ALEX stream   column                     meaning
     ============  =========================  ==================
-    DD            ``S prompt green``         donor emission, donor excitation
-    DA            ``S prompt red``           acceptor emission, donor excitation
-    AA            ``S delayed yellow``       acceptor emission, acceptor excitation
-    AD            ``S delayed green``        donor emission, acceptor excitation
+    DD            ``S prompt G|G``           donor emission, donor excitation
+    DA            ``S prompt R|G``           acceptor emission, donor excitation
+    AA            ``S delayed R|R``          acceptor emission, acceptor excitation
+    AD            ``S delayed G|G``          donor emission, acceptor excitation
     ============  =========================  ==================
 
-    ``red`` and ``yellow`` are the *same physical detector* listed twice, once per excitation window (the Seidel
+    ``R|G`` and ``R|R`` are the *same physical detector* listed twice, once per excitation window (the Seidel
     convention), which makes a two-detector ALEX measurement readable by tools written for a three-detector MFD
     setup.
 
@@ -87,9 +89,9 @@ def build_setup(windows: dict, donor, acceptor, period: int) -> dict:
         "setup_name": SETUP_NAME,
         "windows": {"prompt": prompt, "delayed": delayed},
         "detectors": {
-            "green": detector(donor_chs, prompt),
-            "red": detector(acceptor_chs, prompt),
-            "yellow": detector(acceptor_chs, delayed),
+            DONOR: detector(donor_chs, prompt),
+            ACCEPTOR: detector(acceptor_chs, prompt),
+            ACCEPTOR_DIRECT: detector(acceptor_chs, delayed),
         },
         "tttr_reading": {
             "file_type": "PTO",

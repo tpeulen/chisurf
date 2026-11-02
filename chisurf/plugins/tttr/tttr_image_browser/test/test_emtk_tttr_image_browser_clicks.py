@@ -203,7 +203,7 @@ def test_tiff_writes_the_stacks_of_the_selected_file(app, drv, shown, tmp_path):
     choose_in_dialog(drv, app, tmp_path, "tiffs", "Choose")
     drv.settle()
     names = sorted(p.name for p in (tmp_path / "tiffs").iterdir())
-    assert names == ["Leica_SP8_green.tiff", "Leica_SP8_red.tiff"]
+    assert names == ["Leica_SP8_G-G.tiff", "Leica_SP8_R-G.tiff"]
     assert imread(tmp_path / "tiffs" / names[0]).shape == (93, 512, 512)
     assert "Wrote 2 TIFF stack(s)" in app.model.status_line
 
@@ -480,8 +480,8 @@ def test_a_click_on_a_row_selects_it_and_draws_its_mosaic(app, drv, opened):
     assert app.item_rects["image"][
         2
     ] > 100 and "Leica_SP8.ptu: 2 tile(s), mosaic 512 x 256 px" in strings(drv)
-    assert any(t.startswith("green") for t in strings(drv)) and any(
-        t.startswith("red") for t in strings(drv)
+    assert any(t.startswith("G|G") for t in strings(drv)) and any(
+        t.startswith("R|G") for t in strings(drv)
     )  # tile labels
 
 
@@ -897,7 +897,7 @@ def test_the_imaging_hub_contract(app, drv, photon_folder):
 
     app.apply_setup_settings(two_detector_setup())
     assert (
-        set(app.model.setup_settings["detectors"]) == {"green", "red"}
+        set(app.model.setup_settings["detectors"]) == {"G|G", "R|G"}
         and "2 detector(s)" in app.model.status_line
     )
     app._coordinator = Hub()
@@ -912,7 +912,7 @@ def test_the_imaging_hub_contract(app, drv, photon_folder):
     drv.draw(3)
     drv.click_text("Detectors")
     drv.draw(3)
-    assert "green" in strings(drv) and "red" in strings(
+    assert "G|G" in strings(drv) and "R|G" in strings(
         drv
     )  # the shared editor holds the hub's setup
     app.apply_pipeline_context({})  # nothing to open: ignored

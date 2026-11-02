@@ -1,8 +1,8 @@
 """A photon measurement with a known background, for the tool's tests and captures.
 
-``<root>/m000.spc`` (SPC-130, 12.5 ns ticks): Poisson background of 2 kHz on the green
-routing channel 0 and 1 kHz on the red channel 1 for 20 s, plus 200 bursts of 1 ms at
-100 kHz split 60 : 40 green : red. A background estimate should return the two rates.
+``<root>/m000.spc`` (SPC-130, 12.5 ns ticks): Poisson background of 2 kHz on the G|G
+routing channel 0 and 1 kHz on the R|G channel 1 for 20 s, plus 200 bursts of 1 ms at
+100 kHz split 60 : 40 G|G : R|G. A background estimate should return the two rates.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import numpy as np
 
 TICK = 12.5e-9
 DURATION_S = 20.0
-BACKGROUND_KHZ = {"green": 2.0, "red": 1.0}
+BACKGROUND_KHZ = {"G|G": 2.0, "R|G": 1.0}
 
 
 def build(root: pathlib.Path, seed: int = 5) -> pathlib.Path:
@@ -22,7 +22,7 @@ def build(root: pathlib.Path, seed: int = 5) -> pathlib.Path:
 
     rng = np.random.default_rng(seed)
     times, channels = [], []
-    for channel, rate_khz in ((0, BACKGROUND_KHZ["green"]), (1, BACKGROUND_KHZ["red"])):
+    for channel, rate_khz in ((0, BACKGROUND_KHZ["G|G"]), (1, BACKGROUND_KHZ["R|G"])):
         n = rng.poisson(rate_khz * 1e3 * DURATION_S)
         times.append(rng.uniform(0.0, DURATION_S, n))
         channels.append(np.full(n, channel))

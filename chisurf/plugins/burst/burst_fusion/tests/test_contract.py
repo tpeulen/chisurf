@@ -87,14 +87,14 @@ def test_prepare_resolves_the_folder_and_detectors_from_a_workflow_context():
         workflow_context={
             "burst_folder": "/data/burstwise",
             "channel_settings": {
-                "detectors": {"green": {"chs": [0]}},
+                "detectors": {"G|G": {"chs": [0]}},
                 "windows": {"prompt": [0, 4096]},
             },
         }
     )
     assert response["status"] == "ok"
     assert response["analysis_folder"] == "/data/burstwise"
-    assert response["detectors"] == {"green": {"chs": [0]}}
+    assert response["detectors"] == {"G|G": {"chs": [0]}}
     assert response["windows"] == {"prompt": [0, 4096]}
     assert response["settings"]["threshold"] == FusionSettings().threshold
 

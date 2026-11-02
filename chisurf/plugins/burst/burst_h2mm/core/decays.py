@@ -19,7 +19,7 @@ histogram at the finest key that is physically meaningful —
   one curve per real detector, which is what an IRF is measured for and what the
   saved table carries.
 * **per colour** (summing the routing channels of one stream) is the analysis
-  view: green, red, yellow.
+  view: G|G, R|G, R|R.
 
 The distinction between *stream* and *routing channel* is not pedantry. Under
 PIE/ALEX the acceptor-excitation stream shares its detectors with the acceptor
@@ -45,6 +45,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from chisurf.core.datastore import store_from_arrays
+from chisurf.core.fluorescence.detector_names import ACCEPTOR, ACCEPTOR_DIRECT, DONOR
 
 __all__ = [
     "StateDecays",
@@ -113,7 +114,7 @@ class StateDecays:
 def colour_groups(analysis, settings) -> list[tuple[str, tuple[int, ...]]]:
     """Return ``(colour name, stream indices)`` in role order.
 
-    One definition of "which streams are green" shared by the export and the
+    One definition of "which streams are the donor (G|G)" shared by the export and the
     plot, so a curve on screen and a curve in the written table cannot disagree
     about what a colour is. Stream indices rather than routing channels, because
     that is what survives PIE and nanotime divisors.
@@ -135,12 +136,12 @@ def colour_groups(analysis, settings) -> list[tuple[str, tuple[int, ...]]]:
         return stream_settings[i].name if i < len(stream_settings) else default
 
     groups = [
-        (name(0, "green"), tuple(getattr(analysis, "donor_streams", (0,)) or (0,))),
-        (name(1, "red"), tuple(getattr(analysis, "acceptor_streams", (1,)) or (1,))),
+        (name(0, DONOR), tuple(getattr(analysis, "donor_streams", (0,)) or (0,))),
+        (name(1, ACCEPTOR), tuple(getattr(analysis, "acceptor_streams", (1,)) or (1,))),
     ]
     aex = getattr(analysis, "aex_streams", None)
     if aex:
-        groups.append((name(2, "yellow"), tuple(aex)))
+        groups.append((name(2, ACCEPTOR_DIRECT), tuple(aex)))
     return groups
 
 

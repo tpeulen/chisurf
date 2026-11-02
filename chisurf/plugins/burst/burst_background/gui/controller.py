@@ -18,8 +18,8 @@ class BackgroundController:
         self.model = model
         self.on_show_channels: Callable[[], None] | None = None
         self.detectors = {
-            "green": {"chs": [0, 8], "micro_time_ranges": [[0, 32768]]},
-            "red": {"chs": [1, 9], "micro_time_ranges": [[0, 32768]]},
+            "G|G": {"chs": [0, 8], "micro_time_ranges": [[0, 32768]]},
+            "R|G": {"chs": [1, 9], "micro_time_ranges": [[0, 32768]]},
         }
         if model.channels_provider is None:
             model.channels_provider = lambda: self.detectors

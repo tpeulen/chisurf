@@ -31,9 +31,9 @@ excitation (ALEX/PIE) there are three:
 
 | channel | alias | what it holds |
 |---|---|---|
-| $I_{11}$ | `i_dd` | donor emission under donor excitation ("green") |
-| $I_{12}$ | `i_da` | acceptor emission under donor excitation ("red", FRET) |
-| $I_{22}$ | `i_aa` | acceptor emission under acceptor excitation ("yellow") |
+| $I_{11}$ | `i_dd` | donor emission under donor excitation (detector `G\|G`) |
+| $I_{12}$ | `i_da` | acceptor emission under donor excitation (detector `R\|G`, FRET) |
+| $I_{22}$ | `i_aa` | acceptor emission under acceptor excitation (detector `R\|R`) |
 
 The FRET channel is contaminated twice over: some donor photons land in the
 acceptor detector (**leakage** $\alpha$), and the donor laser excites the

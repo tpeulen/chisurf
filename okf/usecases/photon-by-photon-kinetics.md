@@ -74,7 +74,7 @@ that agreement between them is evidence rather than a shared bug.
    `auto`.
 9. Set **Donor channels** / **Acceptor channels**. These are raw routing-channel
    numbers, not the named detector setup the rest of the burst family uses; the
-   defaults `0, 8` and `1, 9` match this measurement's green/red detectors.
+   defaults `0, 8` and `1, 9` match this measurement's `G|G`/`R|G` detectors.
    Photons in neither list are dropped.
 10. **Type the macro-time tick: 13.5 ns.** The documented "leave it at 0 and it
     is read from the file header" does not work on a burst folder ChiSurf wrote

@@ -312,7 +312,7 @@ def test_intensity_reproduces_columns_removed_from_mle():
     vm.apply_setup_settings(
         {
             "detectors": {
-                "green": {"chs": [0, 1], "ch_p": [0], "ch_s": [1], "micro_time_ranges": []},
+                "G|G": {"chs": [0, 1], "ch_p": [0], "ch_s": [1], "micro_time_ranges": []},
             }
         }
     )
@@ -320,10 +320,10 @@ def test_intensity_reproduces_columns_removed_from_mle():
     vm.run()
     cols = set(vm._columns)
     # the exact per-detector columns the pixel-MLE used to write:
-    removed = {"green Count Rate (KHz)", "Number of Photons", "Ng-p-all", "Ng-s-all", "Ng-all"}
+    removed = {"G|G Count Rate (KHz)", "Number of Photons", "Ng-p-all", "Ng-s-all", "Ng-all"}
     assert removed <= cols, f"missing from Intensity: {removed - cols}"
     # plus the ndxplorer-MFD name so equations compute derived values:
-    assert "S prompt green (kHz)" in cols
+    assert "S prompt G|G (kHz)" in cols
     # p + s = all (polarization-resolved counts are consistent):
     import numpy as np
 
