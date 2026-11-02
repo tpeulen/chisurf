@@ -140,21 +140,38 @@ def _detector_mask(tttr: typing.Any, detectors: typing.Mapping[str, typing.Any])
     return mask
 
 
-def detector_backgrounds_cps(tttr: typing.Any, detectors: typing.Mapping[str, typing.Any]) -> dict:
-    """Background count rate (counts/s) of each detector, as the Background tool estimates it.
+def channel_streams(detectors: typing.Mapping[str, typing.Any]) -> dict:
+    """*detectors* split into one stream per routing channel (``"ch1"``), each inside its
+    detector's micro-time gates -- the streams the Background tool fits. A channel two detectors
+    gate differently (PIE's prompt and delayed) stays two streams."""
+    out: dict = {}
+    for name, det in detectors.items():
+        gates = [list(r) for r in (det or {}).get("micro_time_ranges") or []]
+        for ch in (det or {}).get("chs") or []:
+            key = f"ch{int(ch)}"
+            if key in out and out[key]["micro_time_ranges"] != gates:
+                key = f"ch{int(ch)} ({name})"
+            out[key] = {"chs": [int(ch)], "micro_time_ranges": gates}
+    return out
 
-    Each detector's inter-photon times (its channels, inside its micro-time gates), one fit window
-    for all of them (:func:`~chisurf.core.fluorescence.burst.background.seed_tail_window`) and an
-    exponential fit of each one's tail in it
-    (:func:`~chisurf.core.fluorescence.burst.background.interphoton_time_diagnostics`) -- the
-    numbers the Background tool shows for the same file and setup.
+
+def detector_backgrounds_cps(tttr: typing.Any, detectors: typing.Mapping[str, typing.Any]) -> dict:
+    """Background count rate (counts/s) of each routing channel of *detectors*, as the Background
+    tool estimates it: ``{"ch0": cps, ...}``.
+
+    One stream per channel (:func:`channel_streams`), one fit window for all of them
+    (:func:`~chisurf.core.fluorescence.burst.background.seed_tail_window`) and an exponential fit
+    of each one's tail in it (:func:`~chisurf.core.fluorescence.burst.background.
+    interphoton_time_diagnostics`). Per channel, not per detector: fitting a detector's channels
+    as one stream moves the shared window and gave other numbers than the tool (DNA13bp_3: 2.25
+    kcps for green 0+2 and red 1 against the tool's 3.317 over ch0-ch3).
     """
     from chisurf.core.fluorescence.burst import background as bg
 
     scale = float(tttr.header.macro_time_resolution) * 1e3  # ticks -> ms
     gaps = {
-        str(name): bg._detector_interphoton_times(tttr, det or {}, scale)
-        for name, det in detectors.items()
+        name: bg._detector_interphoton_times(tttr, det, scale)
+        for name, det in channel_streams(detectors).items()
     }
     usable = [g for g in gaps.values() if g.size > 1]
     window = bg.seed_tail_window(usable, binsize_ms=0.1, min_counts=1) if usable else None

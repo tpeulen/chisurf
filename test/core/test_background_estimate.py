@@ -108,8 +108,12 @@ def test_the_background_tool_estimate_per_detector():
 
     tttr = _three_channels(np.random.default_rng(4))
     found = detector_backgrounds_cps(tttr, {"green": {"chs": [0]}, "red": {"chs": [1]}})
-    assert abs(found["green"] - 1600.0) < 0.06 * 1600.0, found
-    assert abs(found["red"] - 700.0) < 0.06 * 700.0, found
+    assert abs(found["ch0"] - 1600.0) < 0.06 * 1600.0, found
+    assert abs(found["ch1"] - 700.0) < 0.06 * 700.0, found
+    # per routing channel, as the Background tool fits: grouping channels into one detector
+    # gives the same numbers
+    grouped = detector_backgrounds_cps(tttr, {"both": {"chs": [0, 1]}})
+    assert grouped == found
 
 
 def test_cusum_reads_the_selecting_detectors_and_their_background(monkeypatch):

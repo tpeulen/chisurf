@@ -693,19 +693,20 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         found = getattr(self, "_background", None)
         if str(m.algorithm) != "cusum_sprt" or not found:
             return
-        shares = ", ".join(f"{name} {cps / 1e3:.2f}" for name, cps in found.items())
+        shares = ", ".join(f"{name} {cps / 1e3:.2f}" for name, cps in sorted(found.items()))
         typed = float(m.search.background_cps or 0.0)
         own = getattr(self, "_prefilled_cps", None)
         source = (tr("the Background tool's estimate") if own is not None and abs(typed - own) < 1e-6
                   else tr("typed; the Background tool estimates {:.2f}").format(sum(found.values()) / 1e3))
         im.push_text_wrap_pos(0.0)
-        im.text_disabled(tr("Background rate: {} (kcps per detector: {}). The search reads the photons "
-                            "of these detectors.").format(source, shares))
+        im.text_disabled(tr("Background rate: {} (kcps per channel: {}). The search reads the photons "
+                            "of the detectors the bursts are selected on.").format(source, shares))
         im.pop_text_wrap_pos()
         im.set_item_tooltip(tr(
-            "The detectors the bursts are selected on (Channel selection; all by default). Each "
-            "detector's background is fitted to the tail of its inter-photon times, as the Background "
-            "tool does; the search tests against their sum. Type a rate to use that instead."))
+            "The detectors the bursts are selected on (Channel selection; all by default). Each of their "
+            "routing channels is fitted to the tail of its inter-photon times in one shared window, as "
+            "the Background tool does; the search tests against the sum. Type a rate to use that "
+            "instead."))
 
     def _estimate_background(self, tttr, detectors: dict, key) -> None:
         """The Background tool's per-detector estimate of *tttr*, in a thread (~1 s on 300 MB)."""
