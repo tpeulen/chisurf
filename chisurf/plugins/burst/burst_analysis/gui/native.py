@@ -17,6 +17,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from emtk.i18n import tr
+
 from chisurf.emtk.tool_hub import ToolHubApp
 
 from ..workflow_context import (
@@ -29,6 +31,12 @@ from ..workflow_context import (
 
 HERE = Path(__file__).resolve().parent
 PLUGIN = HERE.parent
+
+#: Steps that read the bursts: they open once Burst Selection has found them.
+NEEDS_BURSTS = frozenset({"fusion", "bva", "two_cde", "mle", "h2mm", "browser", "accurate_fret",
+                          "burst_fcs", "burst_gs"})
+#: Steps that read the measurements: they open once Data Selection has files.
+NEEDS_FILES = frozenset({"selection", "background", "irf_bg"})
 
 #: The rail: step order, names and roles of the legacy ``BURST_PANELS``; ``plugin`` names the child's folder.
 STEPS: list[dict[str, Any]] = [
@@ -302,10 +310,10 @@ class BurstAnalysisHubApp(ToolHubApp):
         if artifacts:
             self.context.mmfdb_artifacts = dict(artifacts)
         legacy_folder = folder_from_result(result)
-        # The workflow stores bursts in .pto containers, end to end: materialize them
-        # whether or not the search also wrote a legacy folder (that folder stays in the
-        # context for the steps that still read it; the exporter is its way out).
-        sources = materialize_handoff(
+        # The run the search wrote (into the project's analysis container) is what the later
+        # steps read -- by its address, ``<container>/<run>``, so a new search is a new input
+        # for them. Only a search that wrote no container gets one written here.
+        sources = searched_runs(result, model.files) or materialize_handoff(
             self.context,
             model.frames_by_file,
             run_name=legacy_folder.name if legacy_folder is not None else _search_run(model),
@@ -459,7 +467,15 @@ class BurstAnalysisHubApp(ToolHubApp):
 
     def _to_mle(self, child) -> None:
         role = child_role(self, child)
-        if self.context.bur_files and not child.model.session.bur_files:
+        bursts = [str(p) for p in self.context.bur_files or ()]
+        if bursts and (
+            not child.model.session.bur_files or self._changed(role, "bursts", bursts)
+        ):
+            # A new search is a new analysis: the step drops the previous bursts and their
+            # lifetimes and takes the new run (``m.pto/<run> (2)``) -- never fits stale bursts.
+            self._handed[(role, "bursts")] = _signature(bursts)
+            if child.model.session.bur_files:
+                child.model.clear_files()
             child.model.add_files(self.context.bur_files)
         # The workflow's setup is the authority: a container may carry the setup of
         # the search that wrote it, so this goes to the session AFTER the files.
@@ -574,6 +590,22 @@ class BurstAnalysisHubApp(ToolHubApp):
             controller.add_files([str(p) for p in self.context.raw_files])
 
     # -- the rail ------------------------------------------------------------------------------------------ #
+    def panel_enabled(self, role: str) -> bool:
+        """The steps open in order: Burst Selection once there are files, everything that reads
+        bursts (MLE, BVA, 2CDE, Fusion, H2MM and the burst side tools) once the bursts are there."""
+        if role in NEEDS_BURSTS:
+            return self.step_done("selection")
+        if role in NEEDS_FILES:
+            return bool(self.context.raw_files)
+        return True
+
+    def disabled_reason(self, role: str) -> str:
+        if role in NEEDS_BURSTS:
+            return tr("Run 2. Burst Selection first: this step reads its bursts.")
+        if role in NEEDS_FILES:
+            return tr("Add the measurements in 1. Data Selection first.")
+        return super().disabled_reason(role)
+
     def step_done(self, role: str) -> bool:
         """Whether a step has done its work (its rail row gets a check)."""
         ctx = self.context
@@ -644,7 +676,10 @@ class BurstAnalysisHubApp(ToolHubApp):
         parts = [f"Setup: {ctx.setup_name or '(unsaved)' if ctx.channel_settings else 'none'}"]
         parts.append(f"{len(ctx.raw_files)} TTTR file(s)")
         if ctx.burst_folder is not None:
-            parts.append(f"bursts: {ctx.burst_folder.name}" if width >= 1000 else "bursts ready")
+            folder = Path(ctx.burst_folder)
+            # a run of a container reads "m000.pto/<run>": which measurement, which analysis
+            shown = f"{folder.parent.name}/{folder.name}" if folder.parent.suffix == ".pto" else folder.name
+            parts.append(f"bursts: {shown}" if width >= 1000 else "bursts ready")
         return " · ".join(parts)
 
     def export_settings(self):
@@ -700,11 +735,33 @@ class BurstAnalysisHubApp(ToolHubApp):
                     except Exception as exc:  # noqa: BLE001 - shown in the status line
                         self.status = f"{role}: {type(exc).__name__}: {exc}"
                 self.wants_frame = True
+            # MLE prepares the new bursts (references, IRF / background) as soon as they come,
+            # also while another step is on screen; its job's poll is all its frame does with it.
+            job = getattr(child, "job", None) if role in MLE_ROLES else None
+            if job is not None and getattr(job, "busy", False):
+                try:
+                    job.poll()
+                except Exception as exc:  # noqa: BLE001 - shown in the status line
+                    self.status = f"{role}: {type(exc).__name__}: {exc}"
+                self.wants_frame = True
         for panel in self.tools:
             base = self._base_names.get(panel["role"], panel["name"])
             badge = self.badge(panel["role"])
             panel["name"] = f"{base} {badge}" if badge else base
         super().render()
+
+
+def searched_runs(result: Any, files) -> list[Path]:
+    """The container runs (``m.pto/<run>``) a burst search wrote, in the order of *files*."""
+    from chisurf.core.fio.analysis_path import is_container_path
+
+    by_file = (result or {}).get("output_paths_by_file") or {} if isinstance(result, dict) else {}
+    runs = []
+    for path in [str(f) for f in files] or list(by_file):
+        folder = (by_file.get(path) or by_file.get(str(Path(path).resolve())) or {}).get("output_folder")
+        if folder and is_container_path(Path(folder)) and Path(folder).parent.exists():
+            runs.append(Path(folder))
+    return runs
 
 
 def _search_run(model) -> str | None:

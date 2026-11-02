@@ -137,8 +137,10 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
     ctx = hub.context
     assert ctx.setup_name == "probe"
     assert [p.name for p in ctx.raw_files] == ["m000.spc", "m001.spc"]
-    assert ctx.burst_folder is not None and ctx.burst_folder.name == "m000.pto"
-    assert [p.name for p in ctx.bur_files] == ["m000.pto", "m001.pto"]
+    # the later steps read the run the search wrote, by its address (m000.pto/<run>)
+    assert ctx.burst_folder is not None and ctx.burst_folder.parent.name == "m000.pto"
+    assert ctx.burst_folder.name.startswith("sliding_window_All 0.1500#60")  # "(2)" when one exists
+    assert [p.parent.name for p in ctx.bur_files] == ["m000.pto", "m001.pto"]
     assert "2. Burst Selection ✓" in [p["name"] for p in hub.tools]  # the rail checks the step
 
     for role in (
@@ -160,7 +162,7 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
     # The search writes no legacy folder: every step reads the run of the analysis container.
     assert ctx.legacy_burst_folder is None
     run = analysis_path(ctx)  # the search's run, named as the search names it
-    assert run.parent.name == "m000.pto" and run.name == "sliding_window_All 0.1500#60"
+    assert run.parent.name == "m000.pto" and run.name.startswith("sliding_window_All 0.1500#60")
     assert str(c["bva"].model.analysis_folder) == str(run)
     assert (c["bva"].model.donor_channels_text, c["bva"].model.acceptor_channels_text) == (
         "0,1",
@@ -179,7 +181,7 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
     # ... and the container readers: accurate FRET reads the newest run of m000.pto
     # ... and accurate FRET reads the named run of the container
     assert Path(c["accurate_fret"].model.filename).parts[-2].endswith(".pto")
-    assert Path(c["accurate_fret"].model.filename).parts[-1] == "sliding_window_All 0.1500#60"
+    assert Path(c["accurate_fret"].model.filename).parts[-1] == run.name  # the run the search wrote
     assert c["accurate_fret"].model.setup_name == "probe"
     # the setup's detector names pick the photon counts, not "First Photon (green)"
     assert (c["accurate_fret"].model.column_i_dd, c["accurate_fret"].model.column_i_da) == (
@@ -221,7 +223,7 @@ def test_a_fused_run_redirects_the_later_steps(hub, files):
     assert str(hub.children["bva"].model.analysis_folder) == str(fused)  # an open step follows
     # a new search supersedes the fusion
     hub._selection_done(hub.children["selection"].model)
-    assert hub.context.burst_folder.name == "m000.pto"
+    assert hub.context.burst_folder.parent.name == "m000.pto" and hub.context.burst_folder != fused
 
 
 def test_send_to_mle_reaches_the_mle_step(hub, files):
@@ -261,10 +263,10 @@ def test_hub_controls_have_tooltips(hub):
 
 def test_settings_round_trip(hub):
     drv = Driver(hub, (1200, 800))
-    hub.select("bva")
+    hub.select("data")
     drv.draw(2)
     state = hub.export_settings()
-    assert state["selected"] == "bva"
+    assert state["selected"] == "data"
     from chisurf.plugins.burst.burst_analysis.gui.native import create_app
 
     again = create_app()
@@ -334,10 +336,11 @@ print('QT-FREE OK')
     assert done.returncode == 0 and "QT-FREE OK" in done.stdout, (done.stdout + done.stderr)[-3000:]
 
 
-def test_the_pipeline_selection_shows_no_legacy_exports(hub):
+def test_the_pipeline_selection_shows_no_legacy_exports(hub, files):
     """On the pipeline Burst Selection writes .pto only: no zipped folders, no flrCIF export, no
     example or Clear (its files are step 1's) -- File > Data > Legacy Export has the legacy formats."""
     drv = Driver(hub, (1400, 900))
+    hub.context.raw_files = list(files)
     hub.select("selection")
     drv.draw(3)
     selection = hub.children["selection"]
@@ -348,3 +351,22 @@ def test_the_pipeline_selection_shows_no_legacy_exports(hub):
     selection.model.zip_output = selection.model.remove_folder = True
     selection.run()
     assert not selection.model.zip_output and not selection.model.remove_folder
+
+
+def test_the_steps_open_in_order(hub, files):
+    """Burst Selection opens once there are files; MLE, BVA, 2CDE, Fusion, H2MM and the burst side
+    tools once the bursts are there. A step that cannot open yet says why; Next and the
+    fast-forward never land on it."""
+    drv = Driver(hub, (1200, 800))
+    drv.draw(2)
+    assert hub.panel_enabled("setup") and hub.panel_enabled("data")
+    for role in ("selection", "mle", "bva", "h2mm", "browser", "background"):
+        assert not hub.panel_enabled(role), role
+    hub.select("mle")
+    assert hub.selected != "mle" and "Burst Selection" in hub.status
+    hub.context.raw_files = list(files)
+    assert hub.panel_enabled("selection") and hub.panel_enabled("background")
+    assert not hub.panel_enabled("mle")
+    walk_to_bursts(hub, files)
+    for role in ("mle", "bva", "two_cde", "h2mm", "browser", "accurate_fret"):
+        assert hub.panel_enabled(role), role

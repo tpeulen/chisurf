@@ -160,7 +160,7 @@ def test_next_alone_takes_the_demo_from_files_to_an_es_histogram(hub, settings):
     press_next(drv)  # Next runs the search, waits, then opens 5. Background
     assert selection.model.n_bursts > 300, selection.model.status_text
     assert hub.selected == "background"
-    assert ctx.burst_folder is not None and ctx.burst_folder.suffix == ".pto"
+    assert ctx.burst_folder is not None and ctx.burst_folder.parent.suffix == ".pto"  # the run in it
     background = hub.children["background"]
     assert [Path(p).name for p in background.model.files] == ["alex_demo_alex.pto"]
     wait_for(drv, lambda: bool(background.model.diagnostics))

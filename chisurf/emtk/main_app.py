@@ -408,6 +408,23 @@ class ShellDockManager(DockManager):
         ctx.windows[:] = earlier + mine + later
 
 
+
+def _watch_containers(docks: Any) -> None:
+    """Refresh *docks*' dataset list after every analysis-container write (held weakly)."""
+    import weakref
+
+    from chisurf.core.project.analysis import on_container_changed
+
+    ref = weakref.ref(docks)
+
+    def changed(_path: Any = None) -> None:
+        live = ref()
+        if live is not None:
+            live.refresh()
+
+    docks._container_listener = changed  # the listener lives as long as the docks
+    on_container_changed(changed)
+
 class EmtkShellApp(ImApp):
     """The ChiSurf main window: menu bar, Tools / Log docks and every opened plugin as a dock window.
 
@@ -604,6 +621,10 @@ class EmtkShellApp(ImApp):
         from chisurf.emtk.fit_docks import ANALYSIS_KEY, PLOT_KEY, DataDocks
 
         self.data = DataDocks(self, session_factory)
+        # A burst run, an MLE / BVA / 2CDE / H2MM table written into a project container: the
+        # workspace lists it at once (analysis.container_changed), and the Datasets dock reads its
+        # rows again -- a run added in process publishes no server event of its own.
+        _watch_containers(self.data)
         self.project = ShellProject(self)
         from chisurf.emtk.post_show import PostShow
 

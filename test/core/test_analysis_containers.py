@@ -71,3 +71,30 @@ def test_ndx_reads_the_run_out_of_the_container(tmp_path):
     tables = list_tables(container)
     assert [t["run"] for t in tables] == ["runBursts#1"]
     assert read_container(container).size == tables[0]["rows"]
+
+
+def test_a_search_with_other_settings_is_a_new_run_the_same_settings_replace_it(tmp_path):
+    """The run name (``sliding_window_All 0.1500#60``) does not carry every setting: a second
+    search with other settings is a new analysis (``... (2)``), not hidden under the first."""
+    from chisurf.core.fio.fluorescence.burst import read_bur_file
+    from chisurf.core.fio.fluorescence.burst_container import deinterleave_bursts, new_run_name
+    from chisurf.plugins.burst.burst_2cde.tests.demo_folder import build
+    from chisurf.plugins.burst.burst_selection.api.io import write_container
+
+    measurement = build(tmp_path / "measurement")
+    source = measurement.parent / "m000.spc"
+    table = deinterleave_bursts(read_bur_file(sorted((measurement / "bi4_bur").glob("*.bur"))[0]))
+    out = analysis.container_dir("photons-1")
+
+    def search(settings):
+        run = new_run_name(source, "runBursts#1", settings, out)
+        write_container(source, table, parameters=settings, out_dir=out, run=run, raw_data="sidecar")
+        return run
+
+    assert search({"T": 0.5}) == "runBursts#1"
+    assert search({"T": 0.5}) == "runBursts#1"  # the same settings: replaced
+    assert search({"T": 0.6}) == "runBursts#1 (2)"  # other settings: a new analysis
+    assert search({"T": 0.7}) == "runBursts#1 (3)"
+    assert search({"T": 0.6}) == "runBursts#1 (2)"
+    names = sorted(Path(r.address).name for r in analysis.derived_datasets())
+    assert names == ["runBursts#1", "runBursts#1 (2)", "runBursts#1 (3)"]

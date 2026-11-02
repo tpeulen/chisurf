@@ -57,6 +57,19 @@ this molecule doing, on average, while it crossed"; the per-state MLE asks "what
 was it doing in each part of the crossing". A burst that visited two states has
 one blurred lifetime per burst and two sharp ones per state.
 
+A step opens once its input is there: Burst Selection when 1. Data Selection has
+files, and everything that reads bursts (MLE, BVA, 2CDE, Fusion, H2MM and the
+burst side tools) once Burst Selection has found them. Until then its row is grey
+and its tooltip says what is missing.
+
+**Every search is its own analysis.** A search writes a run into the project's
+analysis container of the measurement, named the way the old folder was
+(`sliding_window_All 0.1500#60`). A search with other settings is a new run
+(`… (2)`, `… (3)`) beside the earlier ones -- the same settings again replace
+their run. The later steps take the new run as soon as it is written (MLE drops
+the previous bursts and their lifetimes), and the run shows at once under its
+measurement in the **Datasets** dock.
+
 ## Where the results go
 
 Every step writes a **burst companion** beside the bursts rather than a file of

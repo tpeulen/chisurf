@@ -415,7 +415,7 @@ class ToolHubApp(ImApp):
         if panel is None:
             raise ValueError(f"Unknown {self.title} panel: {role}")
         if not self.panel_enabled(role):
-            self.status = f"{tr(panel['name'])} is switched off in the steps."
+            self.status = f"{tr(panel['name'])}: {self.disabled_reason(role)}"
             return self.child
         self.selected = role
         self._child_focus = self._child_capture = False
@@ -499,7 +499,9 @@ class ToolHubApp(ImApp):
                 continue
             if panel["role"] == self.selected:
                 started = True
-            if started and self.panel_enabled(panel["role"]) and self.shown(panel):
+            # every shown step: one that cannot open yet (its input comes from a step before it
+            # in the walk) is checked when the walk gets there
+            if started and self.shown(panel):
                 queue.append(panel["role"])
         self._ff_queue = queue
         self._ff_total = len(queue)
@@ -516,6 +518,11 @@ class ToolHubApp(ImApp):
             return
         if self._ff_queue:
             role = self._ff_queue.pop(0)
+            if not self.panel_enabled(role):
+                if not self._ff_queue:
+                    self.status = "Fast-forward finished."
+                self.wants_frame = True
+                return
             if role != self.selected:
                 self.select(role, by_user=False)
             self.status = f"Fast-forward {self._ff_total - len(self._ff_queue)}/{self._ff_total}: {self.panel['name']}"

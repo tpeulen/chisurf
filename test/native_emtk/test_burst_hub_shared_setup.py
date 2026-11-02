@@ -16,8 +16,7 @@ SETUP = {
 }
 ROLES = (
     "selection",
-    "mle",
-    "segment_mle",
+    "mle",  # its split by H2MM state is a switch of this step (no segment_mle step any more)
     "background",
     "irf_bg",
     "h2mm",
@@ -48,6 +47,8 @@ def test_actual_burst_children_share_the_setup_and_keep_context():
     from chisurf.plugins.burst.burst_analysis.gui.native import create_app
 
     hub = create_app()
+    # setup sharing, not step order: every step opens without files or bursts here
+    hub.panel_enabled = lambda role: True
     try:
         step = hub.ensure_child("setup")
         step.autoload = False
@@ -73,6 +74,8 @@ def test_child_restore_cannot_replace_hub_authority_in_place():
     from chisurf.plugins.burst.burst_analysis.gui.native import create_app
 
     hub = create_app()
+    # setup sharing, not step order: every step opens without files or bursts here
+    hub.panel_enabled = lambda role: True
     try:
         step = hub.ensure_child("setup")
         step.autoload = False
@@ -114,6 +117,8 @@ def test_irf_deferred_setup_drains_with_channel_dock_closed():
     from chisurf.plugins.burst.burst_analysis.gui.native import create_app
 
     hub = create_app()
+    # setup sharing, not step order: every step opens without files or bursts here
+    hub.panel_enabled = lambda role: True
     try:
         step = hub.ensure_child("setup")
         step.autoload = False
@@ -141,6 +146,8 @@ def test_context_patterns_sources_and_fusion_survive_restore(tmp_path):
     from chisurf.plugins.burst.burst_analysis.gui.native import create_app
 
     hub = create_app()
+    # setup sharing, not step order: every step opens without files or bursts here
+    hub.panel_enabled = lambda role: True
     again = create_app()
     try:
         step = hub.ensure_child("setup")

@@ -368,6 +368,24 @@ def staged_source(
             shutil.rmtree(local.parent, ignore_errors=True)
 
 
+def _sidecar_photons(local: Path) -> Path | None:
+    """The photon file a sidecar ``.pto`` links (``None``: not a container, or it embeds them)."""
+    if Path(local).suffix.lower() != ".pto" or not Path(local).exists():
+        return None
+    try:
+        from chisurf.core.fio.pto import Measurement, is_measurement
+
+        if not is_measurement(local):
+            return None
+        with Measurement.open(local) as m:
+            if not m.is_sidecar():
+                return None
+            linked = m.external_path()
+    except Exception:  # noqa: BLE001 - not readable as a container: tttrlib says why
+        return None
+    return Path(linked) if linked is not None and Path(linked).exists() else None
+
+
 def _tttrlib_source(local: Path, member: str) -> str:
     """What the installed ``tttrlib`` accepts for *member* of the container *local*.
 
@@ -524,6 +542,11 @@ def open_tttr(
             return cached
 
     with staged_source(path, progress_cb=progress_cb, cancel_cb=cancel_cb, **stage_kwargs) as local:
+        linked = _sidecar_photons(local) if not selector else None
+        if linked is not None:
+            # An analysis container of the project links its photons rather than embedding
+            # them: tttrlib reads the linked file (a container without photons is no stream).
+            local, container = linked, None
         spec = _tttrlib_source(local, selector)
         if container is None:
             tttr = tttrlib.TTTR(spec)

@@ -15,6 +15,7 @@ finer or coarser than the bursts is ordinary rather than impossible. See
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -259,6 +260,46 @@ def open_measurement(
     if is_measurement(target):
         return Measurement.open(target, writable=True)
     return Measurement.create(source, out_dir=out_dir, raw_data=raw_data)
+
+
+def new_run_name(
+    source: str | Path,
+    run: str,
+    parameters: Mapping[str, Any] | None,
+    out_dir: str | Path | None = None,
+) -> str:
+    """The name a burst search with *parameters* is stored under: *run*, or a numbered *run*.
+
+    A search is named the way its legacy folder was (``sliding_window_All 0.1500#60``), which does
+    not carry every setting: two searches that differ in, say, the window duration got the same
+    name, and the second hid the first. Each search with other settings is a new analysis: when the
+    container holds a run of that name with *other* settings, the next free ``run (2)``,
+    ``run (3)`` ... is returned. The same settings again keep the name (the run is replaced).
+    """
+    from chisurf.core.fio.analysis_path import bur_artifact_name
+    from chisurf.core.fio.pto import Measurement, is_measurement
+
+    if not run:
+        return run
+    target = container_for(source, out_dir)
+    if not is_measurement(target):
+        return run
+    wanted = json.loads(json.dumps(dict(parameters or {}), default=str))
+    stem = Path(source).stem if Path(source).suffix != ".pto" else Path(source).stem
+    try:
+        with Measurement.open(target) as m:
+            by_name: dict[str, list[dict]] = {}
+            for obj in m._f.objects():
+                by_name.setdefault(obj.name, []).append(m.provenance(obj.uid).get("settings") or {})
+    except Exception:  # noqa: BLE001 - an unreadable container is replaced by the write anyway
+        return run
+    n = 1
+    while True:
+        candidate = run if n == 1 else f"{run} ({n})"
+        stored = by_name.get(bur_artifact_name(candidate, stem))
+        if not stored or any(s == wanted for s in stored):
+            return candidate
+        n += 1
 
 
 def _stale(source: str | Path, target: Path) -> bool:

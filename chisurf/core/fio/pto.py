@@ -41,6 +41,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import re
 import uuid
 import warnings
@@ -491,6 +492,29 @@ def _primary_uid(handle: Any) -> int:
     return 0
 
 
+
+def _follow_link(folder: Path, link: Path) -> Path:
+    """The file a relative sidecar *link* recorded in *folder* names.
+
+    The link was made from one spelling of the folder and may be read through another: on macOS
+    ``/var`` and ``/tmp`` are symlinks into ``/private``, so ``../..`` steps counted from
+    ``/var/folders/...`` land one level off when taken from ``/private/var/folders/...`` -- and
+    ``Path.resolve`` follows the symlink before the ``..`` steps, landing off as well. Every
+    spelling is tried, lexically and resolved; the first that exists wins.
+    """
+    folders = [Path(folder)]
+    real = Path(os.path.realpath(folder))
+    if real != folders[0]:
+        folders.append(real)
+    text = str(folder)
+    if text.startswith("/private/"):
+        folders.append(Path(text[len("/private"):]))
+    candidates = []
+    for base in folders:
+        candidates.append(Path(os.path.normpath(base / link)))
+        candidates.append((base / link).resolve())
+    return next((c for c in candidates if c.exists()), candidates[0])
+
 class Measurement:
     """One measurement: the instrument data, and everything computed from it.
 
@@ -835,21 +859,28 @@ class Measurement:
                 pass
         if not is_sc:
             return None
+        resolved = None
         try:
             ext = getattr(self._f, "external_payload_path", None)
             if callable(ext):
                 p_str = ext(uid)
                 if p_str:
-                    return Path(p_str)
+                    resolved = Path(p_str)
         except Exception:
             pass
+        if resolved is not None and resolved.exists():
+            return resolved
+        # tttrlib resolves a link against the container's real path, which on macOS is one
+        # folder deeper than the path the link was made from (/var -> /private/var): the
+        # result can miss the file (/private/private/tmp/...). The link ChiSurf recorded
+        # itself is read the way it was written.
         tag_path = self.tag(uid, _FILE_PATH, "")
         if tag_path:
             p = Path(tag_path)
             if not p.is_absolute():
-                p = (self._path.parent / p).resolve()
+                p = _follow_link(self._path.parent, p)
             return p
-        return None
+        return resolved
 
     # -- writing --------------------------------------------------------------
 
