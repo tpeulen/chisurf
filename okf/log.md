@@ -19,6 +19,7 @@
 - 2026-11-02 standard burst pipeline: >> now fits Burst MLE (it had no run_step); MLE fits in parallel chunks with a kept warm pool (1.45 -> 0.3 s); hand-over, prefetch and warm-up off the UI thread; files -> lifetimes 8.8 -> 6.0 s, worst frame 0.8 -> 0.24 s. See okf/plugins/burst.md item 00.
 - 2026-11-02 burst pipeline round 3: BVA/2CDE computed in task processes while MLE is set up; analysis container made ahead (search 3.2 -> 1.15 s); MLE prep without list round trips; burst_analysis tests isolate the workspace + analysis session (fixed BVA/2CDE order-dependent failures). See okf/plugins/burst.md item 00.
 - 2026-11-02 burst pipeline round 4: hub opens in ~1.2 s (manifest walk pruned, emtk icons.preload from a staged warm-up). Next targets recorded in okf/plugins/burst.md item 00 (search pieces in other lanes' files; ptolib SHA-256 of the link).
+- 2026-11-02 evening: CUSUM background from the inter-photon gap tail + per-detector hint (fixes 'no bursts' with a typed per-detector rate); count rates in kHz; flicker causes fixed in emtk (atlas load race a0e5c34, glyph cache eviction 287c7a0) and the Datasets dock refresh on the UI thread. See okf/plugins/burst.md item 00.
 
 ## 2026-10-29
 

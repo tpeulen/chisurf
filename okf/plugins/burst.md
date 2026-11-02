@@ -82,6 +82,22 @@ timestamp: '2026-07-05T00:00:00Z'
     either hardware SHA2 (ARMv8/SHA-NI) there or an `add_link` that takes a caller's digest
     (`hashlib` does it in 0.15 s; `pto._sha256_of_path` already computes and caches it) -- a
     tttrlib rebuild, so it waits for the owner and a build slot on the board.
+    **2026-11-02 evening, committed:** (a) CUSUM background: the estimate is the exponential tail
+    of the inter-photon gaps (`estimate_background_cps`, above the 90th percentile; the binned
+    median quantised to 4.00 kcps); the hint shows the total the search sees (it runs on every
+    photon) and each detector's share -- typing one detector's rate is what made "every value >0
+    gives no bursts" (DNA13bp_3: 3.53 kcps; green 1.58, red 2.00). Re-derive: scratch
+    `cusum_gui.py` (set `algorithm_choice`, not `algorithm` -- the latter keeps the sliding-window
+    parameters and the run fails "cusum_sprt does not take L, T, m", silently overwritten by the
+    preview status). (b) Count-rate plots in kHz (selection trace, acquisition live + fit page).
+    (c) Flicker / misplaced pixels / missing updates: three causes fixed -- emtk `load_atlas` race
+    with the hub's warm-up thread (emtk a0e5c34), emtk glyph cache FIFO eviction into a cell the
+    frame had placed (now grow to 64 rows, then LRU; emtk 287c7a0), Datasets dock rebuilt on the
+    writer's thread (`main_app._watch_containers`). Offscreen GPU idle frames are pixel-identical
+    after the first two (scratch `gpu_idle.py`). Open: whether the owner still sees flicker in the
+    real window -- ask when (resize, scrolling, a running job) to aim at the host loop next.
+    Trap: a scratch script that does work at top level without a `__main__` guard crashes the
+    spawned MLE / task workers ("A child process terminated abruptly").
     Tried and reverted: workers returning column arrays instead of rows (no gain). Next: the GUI's
     `_finish` rebuilds a store from the rows (pass the table through, `gui/model.py` is shared);
     `_to_mle` still spends 0.45 s on the UI thread (`set_setup` + `burst_indices`); H2MM is now
