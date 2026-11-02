@@ -482,12 +482,18 @@ class BurstDataSelectionApp(TourTarget, ImApp):
                     if selected
                     else "Select a file in the table first.",
                 },
-                {
-                    "label": "Clear",
-                    "key": "clear",
-                    "enabled": bool(paths),
-                    "tip": "Remove every file from the list." if paths else "No files to remove.",
-                },
+                *(
+                    []
+                    if not self.advanced  # Simple: Remove does it, one file at a time
+                    else [
+                        {
+                            "label": "Clear",
+                            "key": "clear",
+                            "enabled": bool(paths),
+                            "tip": "Remove every file from the list." if paths else "No files to remove.",
+                        }
+                    ]
+                ),
                 # in a workflow's Simple mode the hub's own Help and Guide are the ones
                 *(
                     []

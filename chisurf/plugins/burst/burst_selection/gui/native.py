@@ -568,9 +568,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             buttons = [b for b in buttons if b["key"] not in PIPELINE_HIDDEN_BUTTONS]
         simple = self.pipeline and not getattr(m, "advanced", True)
         if simple:
-            # Simple: the search (Next runs it too); the hub has Help and Guide, the rest is Advanced
-            buttons = [b for b in buttons if b["key"] == "toolAction_run"]
-        pressed = button_row(buttons, remember=self.remember)
+            # Simple: no buttons -- Next (or >>) runs the search; the rest is Advanced
+            buttons = []
+        pressed = button_row(buttons, remember=self.remember) if buttons else None
         if pressed == "load_example":
             self.load_example()
         elif pressed:

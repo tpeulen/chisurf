@@ -1851,6 +1851,10 @@ class ChannelDefinitionWidget:
         hidden = self._narrow_detector_columns(width)
         for key in self.NARROW_COLUMNS:
             self._detector_table.control.set_column_hidden(key, key in hidden)
+        # a workflow's Simple mode shows the detectors; calibrating or removing one is Advanced
+        actions = self.is_visible("detector_actions")
+        for key in ("calc", "delete"):
+            self._detector_table.control.set_column_hidden(key, not actions)
         self._draw_table(self._detector_table, "detectors", len(self.model.data["detectors"]))
 
     # ------------------------------------------------------------------ LUT handling

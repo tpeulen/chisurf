@@ -154,7 +154,10 @@ class BurstSetupSelectionApp(SetupStepApp):
     advanced = True
     #: What Simple leaves out of the page: setup management, the reading routine, the LUTs, the
     #: JSON / LUT / light-path tools and the page's own help (the hub has Help).
-    SIMPLE_HIDDEN = ("setup_actions", "tttr_reading", "lut", "definition_tools", "help")
+    SIMPLE_HIDDEN = (
+        "setup_actions", "tttr_reading", "lut", "definition_tools", "help",
+        "add_inputs", "detector_actions",  # no Add / Calc G / Delete: the setup is shown, not edited
+    )
 
     def set_advanced(self, advanced: bool) -> None:
         """Simple: pick a setup and see its detectors. Advanced: edit and manage it all."""

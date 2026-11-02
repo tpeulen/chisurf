@@ -531,6 +531,19 @@ class ToolHubApp(ImApp):
                 self.status = "Fast-forward finished."
             self.wants_frame = True
 
+    def _can_go_on(self) -> bool:
+        """Whether Next does something: a later step can be opened, or the open step has a run of
+        its own -- running it is what opens the next one (Burst MLE greys out until Burst Selection
+        has found bursts), and the last step's run (the fit) is the point of pressing Next there."""
+        if self._neighbour(1):
+            return True
+        panel = self.panel
+        return bool(
+            panel is not None
+            and not panel.get("optional")
+            and callable(getattr(self.child, "run_step", None))
+        )
+
     def _neighbour(self, delta: int) -> bool:
         roles = self.shown_roles()
         index = (roles.index(self.selected) if self.selected in roles else 0) + delta
@@ -655,7 +668,7 @@ class ToolHubApp(ImApp):
             matching = {p["role"] for p in self.matching_panels()}
             for panel in self.panels:
                 if panel.get("separator"):
-                    if not self.filter:
+                    if not self.filter and self.shown(panel):  # an Advanced group has an Advanced caption
                         if panel.get("name"):
                             im.text_disabled(tr(panel["name"]))
                         else:
@@ -744,7 +757,7 @@ class ToolHubApp(ImApp):
                     )
                 )
                 im.same_line()
-            im.begin_disabled(not self._neighbour(1))
+            im.begin_disabled(not self._can_go_on())
             if im.button(tr("Next")):
                 self.next_step()
             self.item_rects["next"] = im.get_item_rect()

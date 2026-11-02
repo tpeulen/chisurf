@@ -62,20 +62,13 @@
     },
     {
       "title": "The background is not a detail",
-      "text": "Every corrected quantity is a count <i>minus a background</i>. Get it wrong and <i>E</i> moves for the dim bursts while the bright ones stay put — which looks exactly like a real sub-population, and is the most common way a burst histogram lies.<br/><br/>Estimate it from the measurement itself, not from a blank.",
-      "target": {
-        "panel": "Background"
-      },
-      "await": {
-        "hint": "Select <b>Background</b>, below the separator."
-      }
+      "text": "Every corrected quantity is a count <i>minus a background</i>. Get it wrong and <i>E</i> moves for the dim bursts while the bright ones stay put — which looks exactly like a real sub-population, and is the most common way a burst histogram lies.<br/><br/>Estimate it from the measurement itself, not from a blank.<br/><br/>The <b>Background</b> tool is a side tool: tick <b>Advanced</b> to see it in the rail.",
+      "target": {}
     },
     {
       "title": "Until this is done, E is an instrument reading",
-      "text": "α, β, γ and δ remove the biases the optics and the dyes put into the raw counts. Before they are set, an efficiency is a number about your microscope; after, it is a number about your molecule and comparable with anyone else's.<br/><br/>The check that catches most errors: the <b>donor-only population must land at E ≈ 0</b>. It is the one answer you know in advance.",
-      "target": {
-        "panel": "Accurate FRET"
-      }
+      "text": "α, β, γ and δ remove the biases the optics and the dyes put into the raw counts. Before they are set, an efficiency is a number about your microscope; after, it is a number about your molecule and comparable with anyone else's.<br/><br/>The check that catches most errors: the <b>donor-only population must land at E ≈ 0</b>. It is the one answer you know in advance.<br/><br/><b>Accurate FRET</b> is a side tool: tick <b>Advanced</b> to see it in the rail.",
+      "target": {}
     },
     {
       "title": "Four checks before you believe a histogram",

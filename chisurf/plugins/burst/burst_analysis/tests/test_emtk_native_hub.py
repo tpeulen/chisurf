@@ -431,5 +431,13 @@ def test_simple_steps_show_what_the_step_needs_only(hub, files):
     assert "Rename" not in seen["setup"] and "Optical Setup" not in seen["setup"]
     assert "Import now" not in seen["data"]
     assert "Files: all" not in seen["selection"] and "Open in ndX" not in seen["selection"]
-    assert "1. Auto IRF/background" in seen["mle"] and "2. Fit bursts" in seen["mle"]
+    # no buttons Next does anyway: the search, the IRF / background and the fit run on Next
+    assert "Run" not in seen["selection"].split() and "toolAction_run" not in seen["selection"]
+    assert "Auto IRF/background" not in seen["mle"] and "Fit bursts" not in seen["mle"]
     assert "Save results" not in seen["mle"] and "Opt" not in seen["mle"].split()
+    assert "Calc G" not in seen["setup"] and "Add" not in seen["setup"].split()
+    # the side tools are Advanced
+    assert hub.shown_roles() == ["setup", "data", "selection", "mle"]
+    rail = " ".join(drv.draw(1).strings)
+    for tool in ("Browser", "Accurate FRET", "Kinetics", "Side tools"):
+        assert tool not in rail, tool

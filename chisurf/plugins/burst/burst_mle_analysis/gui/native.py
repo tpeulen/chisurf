@@ -248,6 +248,12 @@ class MleNativeApp(TourTarget, ImApp):
             return True
         if self.model.session.df_bursts is None:
             return False
+        if not self.model.input_status()[0]:
+            # no IRF and background (nothing beside the data, a preparation that failed): estimate
+            # them from the photons outside the bursts first -- Next is the only button in Simple
+            self._queue_job("auto_extract")
+            self._fit_when_ready = True
+            return True
         self.fit_bursts()
         return bool(self.job.busy)
 
@@ -365,12 +371,12 @@ class MleNativeApp(TourTarget, ImApp):
             im.pop_style_color()
         elif not self.model.input_status()[0]:
             im.push_style_color(im.Col.TEXT, _style.TEXT_WARNING)
-            im.text_wrapped(str(tr("No IRF and background yet: press 1. Auto IRF/background.")))
+            im.text_wrapped(str(tr("No IRF and background yet: Next estimates them and fits.")))
             im.pop_style_color()
         elif self.model.burst_results:
             im.text_wrapped(str(tr("Fitted {count} bursts.")).format(count=self.model.n_bursts))
         else:
-            im.text_wrapped(str(tr("IRF and background ready: press 2. Fit bursts (or Next).")))
+            im.text_wrapped(str(tr("IRF and background ready: Next fits the bursts.")))
 
     def _draw_input(self, name: str) -> None:
         """One generated Input section (the workspace data of the ``accepts`` entry *name*)."""
@@ -530,10 +536,10 @@ class MleNativeApp(TourTarget, ImApp):
         ]
         simple = self._simple()
         if simple:
-            # the two steps, in their order, and Stop while a fit runs; the hub has Help and Guide
-            keep = {"auto", "toolAction_run"} | ({"Stop"} if running else set())
-            buttons = [b for b in buttons if b["key"] in keep]
-        pressed = button_row(buttons, remember=self.remember)
+            # no buttons: the IRF and background are prepared when the bursts arrive and Next (or >>)
+            # fits; Stop while a fit runs
+            buttons = [b for b in buttons if b["key"] == "Stop"] if running else []
+        pressed = button_row(buttons, remember=self.remember) if buttons else None
         if pressed == "toolAction_run":
             self.track("toolAction_run")
             self.fit_bursts()
