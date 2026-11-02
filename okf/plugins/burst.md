@@ -20,11 +20,19 @@ timestamp: '2026-07-05T00:00:00Z'
    chooser + PTU header (`acq/gui/record_app.py`, `acq/live/session.py`); Burst Selection caches
    (`burst_selection/gui/model.py`). All verified: H2MM+MLE suites 278 passed; summary identical
    to the old implementation on sim PIE and BH SPC data.
-   **Speed now** (sim 600 s PIE, 12k bursts, `time_steps.py` in scratch with `KEEP_SETTINGS`):
-   search 2.4 s (28M photons 3.4-3.6 s), BVA 0.3 s, 2CDE 0.5 s, Accurate FRET 1.0 s, MLE batch
-   ~3 s, GS 11.5 s, H2MM 53 s. Next cuts: **H2MM** -- EM scan 31 s (tttrlib EM already ~4.4 cores;
-   restarts/state counts are independent -> run them in processes), result tables ~10 s;
-   **GS** fit 11 s; the burst container write embeds the raw PTU (~0.6 s/150 MB, by design).
+   **Speed now** (sim 600 s PIE, 12k bursts, scratch `time_steps.py` with `KEEP_SETTINGS`):
+   search 2.8 s (28M photons 3.4-3.6 s), BVA 0.3 s, 2CDE 0.5 s, Accurate FRET 1.0 s, MLE batch
+   ~3 s, MLE split by state 7.3 s, GS 11.4 s (worst frame 140 ms), H2MM 31.8 s (was 71: dwells
+   vectorised, restarts on threads, dwell table vectorised -- the last in uncommitted
+   `burst_h2mm/core/export.py`). Next cuts: **H2MM EM** ~27 s (tttrlib EM ~4.4 cores; restarts
+   already parallel -- the remaining lever is in tttrlib's EM itself); **GS** fit ~11 s (~400
+   likelihood evaluations of 25 ms: analytic gradients would cut them); the container embed of
+   the raw PTU (~0.6 s/150 MB, by design).
+   **Open, analysis:** a detector without a PIE gate (red, ungated) mixes FRET-sensitised and
+   direct-excitation photons; its MLE lifetimes then sit at the period (32 / 16 ns on the sim).
+   The setup proposal (`ChannelDefinition.propose_from_tttr`) should propose per-detector gates
+   for PIE data (donor: prompt, acceptor: prompt for FRET + a separate delayed detector), or MLE
+   should refuse an ungated detector on PIE data.
    Known: H2MM over-fits states on sim data (500k dwells at 3 states); the simulated
    long-lifetime population fits ~6% low (pulse at the period end, rising edge outside the gate).
 1. Open: **rate-only PIE burst tables mis-ratio E/S** — the top blocker: 923 of 2980 sm-DNA bursts drop out of the

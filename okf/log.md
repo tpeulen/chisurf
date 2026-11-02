@@ -10,6 +10,7 @@
 - Burst MLE automatic binning: the IRF width is the contiguous peak (wrapping), not first-to-last above half maximum (two PIE pulses read as a 4000-channel IRF -> binning 256, ~15 bins/period, 12% of donor fits at tau~0); at least 64 bins per period. Sim 600 s PIE: no tau~0 fits, 0.945/3.10 ns vs truth 0.9/3.3.
 - Burst summary (generate_burst_dataframe) computed for all bursts at once (prefix sums + searchsorted), identical output, 0.56 -> 0.22 s for 12.5k bursts; guard test/core/test_burst_summary_vectorised.py. H2MM dwells/transitions vectorised (15 s -> <1 s, identical). Burst GS writes its container on the worker (UI freeze 3.8 s -> 0.66 s).
 - H2MM records only into the .pto: per-burst states, dwells, per-photon states ('h2mm states', Photon/State) and per-state decays as tables of its run; no h2mm/ folder, no HDF5 anywhere (photon_hdf5/photon_csv options and write_hdf5 removed); loose CSV only via Export / CLI --output. Burst MLE split by state (step 8) reads the container's states (burst_states.container_state_array) -- before, containers were never split.
+- H2MM 71 -> 32 s on 2.5M photons / 12k bursts: dwell table vectorised (27 s -> <0.1 s, bit-identical; in uncommitted burst_h2mm/core/export.py), restarts of a state count on threads (committed). H2MM Output tooltips say what a run records (.pto) and what Export adds.
 
 ## 2026-10-29
 
