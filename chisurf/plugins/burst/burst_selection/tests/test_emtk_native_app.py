@@ -188,7 +188,9 @@ def test_simple_mode_shows_the_essential_inputs_only(app):
     drv.click_text("Filter settings")
     drv.draw(3)
     shown = set(app.search_form.rects)
-    assert {"min_photons", "background_cps", "signal_to_background_ratio"} <= shown
+    assert {"min_photons", "signal_to_background_ratio"} <= shown
+    # the background rate is prefilled from the Background tool's estimate: Advanced shows it
+    assert "background_cps" not in shown
     assert "alpha" not in shown and "More search parameters.fold" not in shown
     assert "min_photons" in app.form.rects
     for hidden in ("dt_max", "detector", "photon_window", "filter_active", "save_defaults"):

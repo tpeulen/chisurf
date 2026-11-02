@@ -47,7 +47,8 @@ from .model import BurstSelectionModel
 #: under "More search parameters"); a search not listed shows its first three.
 ESSENTIAL_SEARCH_PARAMETERS = {
     "sliding_window": ("L", "m", "T"),
-    "cusum_sprt": ("min_photons", "background_cps", "signal_to_background_ratio"),
+    # the background rate is prefilled with the Background tool's estimate (Advanced shows it)
+    "cusum_sprt": ("min_photons", "signal_to_background_ratio"),
     "kalman": ("L", "dt", "z_thresh"),
     "bocpd": ("L", "dt", "changepoint_prob"),
     "maxtree": ("L", "m", "min_significance"),
@@ -600,13 +601,14 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         if params:
             essential, more = self._split_search(params)
             search = ScaledParameters(m.search, factors)
+            self._cusum_background()
             draw_sections(essential, search, self.search_form)
-            self._background_hint()
             if more and getattr(m, "advanced", True):
                 fold = {"type": "panel", "title": "More search parameters", "collapsible": True,
                         "collapsed": True, "sections": more,
                         "description": "The other parameters of this search; their defaults suit most data."}
                 draw_sections([fold], search, self.search_form)
+                self._background_hint()
         if nested:
             im.text(tr("Per-group search parameters"))
             draw_sections(nested, ScaledParameters(m.inner_search, nested_factors), self.inner_search_form)
@@ -639,60 +641,82 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         essential = sorted((p for p in params if p.get("attr") in names), key=lambda p: names.index(p["attr"]))
         return essential, [p for p in params if p.get("attr") not in names]
 
-    def _background_hint(self) -> None:
-        """CUSUM/SPRT: the background the search sees -- every photon of the stream, so the sum over
-        the detectors -- and each detector's share, so a typed rate is the right one."""
+    def _selecting_detectors(self) -> dict:
+        """The detectors the bursts are selected on: the one picked in Channel selection, else all."""
         m = self.model
-        if str(m.algorithm) != "cusum_sprt":
-            return
-        tttr = (m.diagnostic or {}).get("tttr")
-        typed = float(getattr(m.search, "background_cps", 0) or 0)
-        if tttr is None:
-            if typed <= 0:
-                im.text_disabled(tr("Background 0: estimated per file from the data."))
-            return
         detectors = {
-            str(name): [int(c) for c in (d or {}).get("chs", [])]
+            str(name): {"chs": [int(c) for c in (d or {}).get("chs", [])],
+                        "micro_time_ranges": [list(r) for r in (d or {}).get("micro_time_ranges") or []]}
             for name, d in (m.detectors or {}).items()
             if (d or {}).get("chs")
         }
+        picked = getattr(m, "detector", None)
+        return {picked: detectors[picked]} if picked in detectors else detectors
+
+    def _cusum_background(self) -> None:
+        """CUSUM/SPRT: search the photons of the selecting detectors, its background prefilled with
+        their Background-tool estimate (summed) -- refilled when the file or detectors change,
+        until the user types a rate of their own."""
+        from chisurf.core.fluorescence.burst.tttrlib_search import SEARCH_DETECTORS
+
+        m = self.model
+        if str(m.algorithm) != "cusum_sprt":
+            return
+        detectors = self._selecting_detectors()
+        if m.parameters.get(SEARCH_DETECTORS) != detectors:
+            m.parameters[SEARCH_DETECTORS] = detectors
+            m.settings_changed()
+        tttr = (m.diagnostic or {}).get("tttr")
+        if tttr is None or not detectors:
+            return
         key = (id(tttr), len(tttr), json.dumps(detectors, sort_keys=True))
         if getattr(self, "_background_key", None) != key:
             self._background_key, self._background = key, None
             self._estimate_background(tttr, detectors, key)
         found = self._background
         if found is None:
-            im.text_disabled(tr("Estimating the background ..."))
             ctx = get_current_context()
             ctx.request_frame_at(ctx.io.now + 0.1)  # the estimate lands in a thread: look again
             return
-        total, parts = found
-        shares = ", ".join(f"{name} {cps / 1e3:.2f}" for name, cps in parts.items())
-        if typed <= 0:
-            text = tr("Background 0: estimated from the data, {:.2f} kcps (all photons; {}).").format(
-                total / 1e3, shares)
-        else:
-            text = tr("Data: {:.2f} kcps over all photons the search sees ({}).").format(
-                total / 1e3, shares)
-        im.push_text_wrap_pos(0.0)  # at the panel's edge: the shares make it a long line
-        im.text_disabled(text)
+        total = sum(found.values())
+        typed = float(m.search.background_cps or 0.0)
+        prefilled = getattr(self, "_prefilled_cps", None)
+        if total > 0 and (typed <= 0 or (prefilled is not None and abs(typed - prefilled) < 1e-6)):
+            if abs(typed - total) > 1e-6:
+                m.search.background_cps = total
+                m.settings_changed()
+            self._prefilled_cps = total
+
+    def _background_hint(self) -> None:
+        """Advanced: where the prefilled background rate comes from, per detector."""
+        m = self.model
+        found = getattr(self, "_background", None)
+        if str(m.algorithm) != "cusum_sprt" or not found:
+            return
+        shares = ", ".join(f"{name} {cps / 1e3:.2f}" for name, cps in found.items())
+        typed = float(m.search.background_cps or 0.0)
+        own = getattr(self, "_prefilled_cps", None)
+        source = (tr("the Background tool's estimate") if own is not None and abs(typed - own) < 1e-6
+                  else tr("typed; the Background tool estimates {:.2f}").format(sum(found.values()) / 1e3))
+        im.push_text_wrap_pos(0.0)
+        im.text_disabled(tr("Background rate: {} (kcps per detector: {}). The search reads the photons "
+                            "of these detectors.").format(source, shares))
         im.pop_text_wrap_pos()
         im.set_item_tooltip(tr(
-            "The search runs on every photon of the stream, so its background is the sum over the "
-            "detectors -- type that total, not one detector's rate. Estimated from the gaps between "
-            "photons: the long gaps are the background's (bursts add short ones)."))
+            "The detectors the bursts are selected on (Channel selection; all by default). Each "
+            "detector's background is fitted to the tail of its inter-photon times, as the Background "
+            "tool does; the search tests against their sum. Type a rate to use that instead."))
 
     def _estimate_background(self, tttr, detectors: dict, key) -> None:
-        """The total and per-detector background of *tttr*, in a thread (0.1-0.3 s each on 300 MB)."""
+        """The Background tool's per-detector estimate of *tttr*, in a thread (~1 s on 300 MB)."""
         import threading
 
-        from chisurf.core.fluorescence.burst.tttrlib_search import estimate_background_cps
+        from chisurf.core.fluorescence.burst.tttrlib_search import detector_backgrounds_cps
 
         def work() -> None:
             try:
-                parts = {name: estimate_background_cps(tttr, chs) for name, chs in detectors.items()}
-                found = (estimate_background_cps(tttr), parts)
-            except Exception:  # noqa: BLE001 - no hint rather than a broken panel
+                found = detector_backgrounds_cps(tttr, detectors)
+            except Exception:  # noqa: BLE001 - no prefill rather than a broken panel
                 found = None
             if getattr(self, "_background_key", None) == key:
                 self._background = found

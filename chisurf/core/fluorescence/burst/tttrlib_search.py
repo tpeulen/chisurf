@@ -103,14 +103,92 @@ def search(
     """
     describe(algorithm)  # reject an unknown name before touching the data
     parameters = dict(parameters or {})
+    detectors = parameters.pop(SEARCH_DETECTORS, None)
+    if algorithm == "cusum_sprt" and detectors:
+        return _search_detectors(tttr, algorithm, parameters, detectors)
     if algorithm == "cusum_sprt" and float(parameters.get("background_cps") or 0.0) <= 0.0:
         # tttrlib's own estimate is the median rate of 100-photon bins: a burst packs many such
-        # bins into little time, so the estimate drifts up toward burst rates. Pass a
-        # time-binned median instead (the CUSUM's "0 = estimate from the data").
+        # bins into little time, so the estimate drifts up toward burst rates. Pass the
+        # inter-photon-gap estimate instead (the CUSUM's "0 = estimate from the data").
         estimate = estimate_background_cps(tttr)
         if estimate > 0:
             parameters["background_cps"] = estimate
     return tttr.burst_search_by_name(algorithm, **parameters)
+
+
+#: Search parameter naming the detectors whose photons a CUSUM/SPRT search runs on, as
+#: ``{name: {"chs": [...], "micro_time_ranges": [...]}}``. Taken out before tttrlib sees the
+#: parameters; it travels with them so the search, its preview and its fingerprint all see it.
+SEARCH_DETECTORS = "_detectors"
+
+
+def _detector_mask(tttr: typing.Any, detectors: typing.Mapping[str, typing.Any]) -> np.ndarray:
+    """The photons of *detectors*: their channels, inside their micro-time gates."""
+    from tttrlib import micro_time_mask
+
+    from chisurf.core.fluorescence.channels import channel_mask
+
+    routing = np.asarray(tttr.routing_channels)
+    micro = np.asarray(tttr.micro_times)
+    mask = np.zeros(routing.shape, dtype=bool)
+    for det in detectors.values():
+        chs = list((det or {}).get("chs") or [])
+        if chs:
+            mask |= channel_mask(routing, chs) & np.asarray(
+                micro_time_mask(micro, (det or {}).get("micro_time_ranges")), dtype=bool
+            )
+    return mask
+
+
+def detector_backgrounds_cps(tttr: typing.Any, detectors: typing.Mapping[str, typing.Any]) -> dict:
+    """Background count rate (counts/s) of each detector, as the Background tool estimates it.
+
+    Each detector's inter-photon times (its channels, inside its micro-time gates), one fit window
+    for all of them (:func:`~chisurf.core.fluorescence.burst.background.seed_tail_window`) and an
+    exponential fit of each one's tail in it
+    (:func:`~chisurf.core.fluorescence.burst.background.interphoton_time_diagnostics`) -- the
+    numbers the Background tool shows for the same file and setup.
+    """
+    from chisurf.core.fluorescence.burst import background as bg
+
+    scale = float(tttr.header.macro_time_resolution) * 1e3  # ticks -> ms
+    gaps = {
+        str(name): bg._detector_interphoton_times(tttr, det or {}, scale)
+        for name, det in detectors.items()
+    }
+    usable = [g for g in gaps.values() if g.size > 1]
+    window = bg.seed_tail_window(usable, binsize_ms=0.1, min_counts=1) if usable else None
+    out = {}
+    for name, dt in gaps.items():
+        if dt.size < 2:
+            out[name] = 0.0
+            continue
+        fit = bg.interphoton_time_diagnostics(
+            dt, binsize_ms=0.1, tail_fraction=0.8, min_counts=1, tail_range_ms=window
+        )
+        out[name] = max(0.0, float(fit.rate_khz) * 1e3)
+    return out
+
+
+def _search_detectors(tttr, algorithm: str, parameters: dict, detectors) -> np.ndarray:
+    """*algorithm* on the photons of *detectors* only, its background theirs; full-stream indices.
+
+    The background rate a CUSUM tests against is the rate of the photons it reads: the detectors
+    the bursts are selected on, not every channel of the file. ``0`` is their sum as the
+    Background tool estimates it.
+    """
+    index = np.flatnonzero(_detector_mask(tttr, detectors))
+    if index.size < 2:
+        return np.zeros((0,), dtype=np.int64)
+    if float(parameters.get("background_cps") or 0.0) <= 0.0:
+        total = sum(detector_backgrounds_cps(tttr, detectors).values())
+        if total <= 0:
+            total = estimate_background_cps(tttr, sorted({c for d in detectors.values() for c in (d or {}).get("chs", [])}))
+        if total > 0:
+            parameters["background_cps"] = total
+    found = np.asarray(tttr[index].burst_search_by_name(algorithm, **parameters), dtype=np.int64)
+    return index[found] if found.size else found
+
 
 
 #: The inter-photon times above this quantile are the background's: bursts add short gaps only.
