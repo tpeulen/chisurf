@@ -22,6 +22,7 @@ import numpy as np
 
 __all__ = [
     "UNASSIGNED",
+    "container_state_array",
     "h2mm_output_dir",
     "read_photon_table",
     "state_arrays",
@@ -203,3 +204,51 @@ def _source_order(analysis_dir, stems: list[str]) -> list[str]:
     if isinstance(recorded, str) and recorded:
         return [pathlib.Path(n).stem for n in recorded.split(",")]
     return list(stems)
+
+
+def container_state_array(container, n_photons: int) -> tuple[np.ndarray | None, int]:
+    """The newest H2MM run's per-photon states of one measurement container.
+
+    H2MM records the Viterbi state of every analysed photon as the ``h2mm states`` table of its
+    run (``Photon``: the photon's position in the measurement, ``State``). This lays it out as
+    one ``int8`` array of *n_photons*, :data:`UNASSIGNED` where no state was assigned.
+
+    Parameters
+    ----------
+    container : path-like
+        The ``.pto`` (a run path inside one is reduced to the container).
+    n_photons : int
+        Photons in the measurement (the array's length).
+
+    Returns
+    -------
+    states : numpy.ndarray or None
+        ``None`` when the container holds no H2MM run.
+    n_states : int
+    """
+    from chisurf.core.fio.analysis_path import split_artifact_name, split_container_path
+    from chisurf.core.fio.pto import Measurement, is_measurement
+
+    path, _run = split_container_path(container)
+    path = pathlib.Path(path if path is not None else container)
+    if not path.exists() or not is_measurement(path):
+        return None, 0
+    with Measurement.open(path, writable=False) as m:
+        found = ""
+        for obj in m.artifacts():
+            if m.tag(obj.uid, "_mmfdb_operation.operation_type") != "photon_hmm":
+                continue
+            if split_artifact_name(str(obj.name))[1] == "h2mm states":
+                found = str(obj.name)  # the most recent run's
+        if not found:
+            return None, 0
+        from chisurf.core.datastore import column_values, column_names
+
+        store = m.get_store(found)
+        names = column_names(store)
+        photon = np.array(column_values(store, names.index("Photon")), dtype=np.int64)
+        state = np.array(column_values(store, names.index("State")), dtype=np.int64)
+    out = np.full(int(n_photons), UNASSIGNED, dtype=np.int8)
+    ok = (photon >= 0) & (photon < out.size)
+    out[photon[ok]] = state[ok].astype(np.int8)
+    return out, int(state.max()) + 1 if state.size else 0

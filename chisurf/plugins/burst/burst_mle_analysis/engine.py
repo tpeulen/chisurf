@@ -1174,6 +1174,25 @@ class MleSession:
                     arrays[identity] = states[Path(identity).stem]
             count = max(count, n_states)
             messages.append(message)
+        # A container records its H2MM run beside the bursts: the states of its photons.
+        from chisurf.core.fio.fluorescence.burst_states import container_state_array
+
+        for identity, container in dict.fromkeys(
+            (k, v) for k, v in self.tttr_paths.items() if _is_container(Path(str(v)))
+        ):
+            tttr = self.tttrs.get(identity)
+            if tttr is None or identity in arrays:
+                continue
+            states, n_states = container_state_array(container, len(tttr))
+            if states is None:
+                messages.append(f"Split by state: {Path(str(container)).name} has no H2MM run.")
+                continue
+            arrays[identity] = states
+            count = max(count, n_states)
+            messages.append(
+                f"Split by state: {n_states} states, {int((states >= 0).sum()):,} photons "
+                f"labelled ({Path(str(container)).name})."
+            )
         return arrays, count, "\n".join(messages)
 
     # -- derived ----------------------------------------------------------------------------------------------- #
@@ -1640,7 +1659,7 @@ class MleSession:
         # Per-photon H2MM states, when the batch is split by state (the wizard's ``_load_state_arrays``).
         state_arrays: dict[str, np.ndarray] = {}
         n_states = 0
-        if self.split_by_state and any(not _is_container(p) for p in self.bur_files):
+        if self.split_by_state:
             from . import state_split
 
             state_arrays, n_states, self.status = self.state_arrays_by_measurement()
