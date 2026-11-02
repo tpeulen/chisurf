@@ -13,6 +13,7 @@
 - H2MM 71 -> 32 s on 2.5M photons / 12k bursts: dwell table vectorised (27 s -> <0.1 s, bit-identical; in uncommitted burst_h2mm/core/export.py), restarts of a state count on threads (committed). H2MM Output tooltips say what a run records (.pto) and what Export adds.
 - PIE setup proposal: green/red gated on prompt + yellow on delayed (the lab layout); PIE simulator gets a 1.5 ns instrument delay (pulse edges wrapped, windows were detected reversed); MLE auto IRF/background restricted to each detector's gate (a gated acceptor took the other laser's pulse as IRF; fits ran to 32 ns).
 - PIE simulator background: half scatter at the pulse (an auto IRF from non-burst photons was fluorescence; MLE read ~20% short). Simulated PIE with the proposed setup: MLE 0.88-0.90 / 3.11-3.40 ns vs truth 0.9 / 3.3.
+- Record: stutter every 2 s root-caused (setup-library and laser-device option lists refreshed synchronously in the frame, 0.2-0.33 s) -> gui/refreshed.py background refresh + hardware lock on connects; live analysis no longer closes for the run after one overflow (a gap, a boundary, then it continues), run bar shows the recorder's clock -- the 'acquisition stops when the laser is off' symptom. Details: okf/design/2026-10-30-owner-instructions.md (2026-11-02).
 
 ## 2026-10-29
 
