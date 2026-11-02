@@ -75,6 +75,11 @@ timestamp: '2026-07-05T00:00:00Z'
    native (allow-list empty); a grabber must still set the detector setup explicitly (`guides_26_36.SM_DNA_SETUP`,
    green 0/8, red 1/9) — the existing hub / Burst Selection tests still use 0/1 – 8/9 and pass only because the
    counts coincide.
+4a. tttrlib follow-up (2026-11-02): `TTTR::burst_search_cusum_sprt` (modules/spectroscopy/burst/src/
+   TTTRBurstSearch.cpp) estimates background_cps=0 as the median rate of 100-photon bins, biased up by
+   bursts. ChiSurf now passes a time-binned median (`tttrlib_search.estimate_background_cps`); port the
+   same to the C++ when the tttrlib tree is free (it had other lanes' uncommitted work), then drop the
+   ChiSurf override.
 4. Blocked: **where Accurate FRET reports β from** needs the uncommitted tttrlib `estimated_beta` change; only the arm64 env is
    rebuilt — rebuild pixi (`pixi run build-tttrlib`) before trusting pixi runs of `accurate_fret`.
 5. Measure: H2MM *Rates* lists rates below one event in the burst time as bounds (`< 1/T`): sm-DNA T = 3.96 s →
