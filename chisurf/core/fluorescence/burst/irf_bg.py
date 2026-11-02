@@ -519,15 +519,28 @@ def extract_mle_irf_background(
         # A mild right-skew, the characteristic shape of a real detector response.
         shape = 1.5
 
-    def _half(channels: list[int]) -> tuple[np.ndarray, np.ndarray]:
-        """Return (irf, bg) micro-time patterns for one polarization sub-channel set."""
+    def _half(channels: list[int], gates=None) -> tuple[np.ndarray, np.ndarray]:
+        """Return (irf, bg) micro-time patterns for one polarization sub-channel set.
+
+        *gates* (the detector's raw micro-time ranges) restrict both to the detector's own window:
+        a gated PIE acceptor would otherwise take the other laser's pulse -- the stronger one in
+        its channels -- as its IRF, outside its fit window, and every lifetime ran to the bound.
+        """
         rout = np.asarray(non_burst.routing_channel)
         sel = channel_mask(rout, channels)
         sub = non_burst[np.where(sel)[0]]
         hist = np.asarray(sub.get_microtime_histogram(binning)[0], dtype=np.float64)
+        ranges = [r for r in (gates or []) if r is not None and len(r) >= 2]
+        inside = np.ones(hist.size, dtype=bool)
+        if ranges and hist.size:
+            inside[:] = False
+            for lo, hi in ranges:
+                inside[max(0, int(lo) // binning) : max(0, int(np.ceil(int(hi) / binning)))] = True
+            hist = np.where(inside, hist, 0.0)
         bg = hist.copy()
         if hist.sum() > 0:
-            prompt = np.clip(hist - float(np.quantile(hist, q)), 0.0, None)
+            baseline = float(np.quantile(hist[inside], q)) if inside.any() else 0.0
+            prompt = np.where(inside, np.clip(hist - baseline, 0.0, None), 0.0)
             irf = prompt if experimental else gaussian_prompt(prompt, shape)
         else:
             irf = np.zeros_like(hist)
@@ -540,8 +553,9 @@ def extract_mle_irf_background(
             continue
         p_chs = chs[::2]
         s_chs = chs[1::2] if len(chs) > 1 else chs
-        irf_p, bg_p = _half(p_chs)
-        irf_s, bg_s = _half(s_chs)
+        gates = det.get("micro_time_ranges")
+        irf_p, bg_p = _half(p_chs, gates)
+        irf_s, bg_s = _half(s_chs, gates)
         results[name] = {
             "irf": np.hstack([irf_p, irf_s]),
             "bg": np.hstack([bg_p, bg_s]),
