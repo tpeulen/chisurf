@@ -30,12 +30,11 @@ timestamp: '2026-07-05T00:00:00Z'
    the raw PTU (~0.6 s/150 MB, by design).
    **Resolved:** ungated PIE acceptor (proposal now gates green/red on prompt + yellow on
    delayed; MLE auto IRF/background are taken inside each detector's gate -- red no longer fits
-   to the 32 ns period). **Open, analysis:** on the simulator the MLE lifetimes read ~20% low
-   (green/red 0.67-0.69 / 2.8-3.2 ns vs truth 0.9 / 3.3; scratch `proposal_walk.py`): the
-   simulator has no scattered light, so the auto "IRF" from non-burst photons is fluorescence
-   whose peak sits ~0.2 ns after the pulse (bin 13 vs 11.7 at binning 16). Give the simulator a
-   scatter/IRF component (realism already models an IRF for the rig source) or fit with a measured
-   IRF before reading anything into the bias.
+   to the 32 ns period); the PIE simulator's background is half scatter at the pulse, so the auto
+   IRF is right: MLE on the simulated 600 s PIE recording with the proposed setup reads donor
+   0.88 / 3.11 ns, acceptor 0.90 / 3.40 ns vs truth 0.9 / 3.3 (scratch `proposal_walk.py`). The
+   long lifetime still reads 3-6% low on green/yellow -- probably the gate truncating the tail;
+   not investigated.
    Known: H2MM over-fits states on sim data (500k dwells at 3 states); the simulated
    long-lifetime population fits ~6% low (pulse at the period end, rising edge outside the gate).
 1. Open: **rate-only PIE burst tables mis-ratio E/S** — the top blocker: 923 of 2980 sm-DNA bursts drop out of the
