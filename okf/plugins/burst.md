@@ -26,6 +26,11 @@ timestamp: '2026-07-05T00:00:00Z'
    sim photons (simulator density). Existing library setups keep the MMFDB-sorted detector order
    until saved once more (order is stored from now on). Burst Selection's search has no Stop
    (one tttrlib call): the busy overlay shows no Stop button there.
+   **Open: ~12% of MLE donor fits collapse to tau ~ 0** on the simulated 600 s PIE PTU (1,280 of
+   10,417 bursts; the rest peak at 0.85/3.1 ns vs truth 0.9/3.3). Re-derive: scratch `mle_truth.py
+   sim_600s.ptu` (hub, step-0 gate prompt 0-2000, auto IRF/background, `run_batch`), histogram
+   `Tau (donor)`. Suspects, untested: acceptor-only/low-donor bursts above the 10-photon floor, or
+   the auto IRF taken from non-burst photons; check the photon count of the tau~0 rows first.
 1. Open: **rate-only PIE burst tables mis-ratio E/S** — the top blocker: 923 of 2980 sm-DNA bursts drop out of the
    Burst Browser at full gates, and every consumer of `guess_burst_columns` (Accurate FRET too) ratios rates over
    different per-stream spans. Measure: `BurstBrowserViewModel().load_folder(".../burstwise_All 0.1000#15/bi4_bur")`
