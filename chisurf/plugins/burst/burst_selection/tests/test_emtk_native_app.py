@@ -171,7 +171,33 @@ def test_algorithm_switch_regenerates_the_parameter_form(app):
     assert "T" in app.search_form.rects
     app.model.algorithm_choice = "maxtree"
     drv.draw(2)
+    # the essential parameters show; the rest are folded under "More search parameters"
+    assert "min_significance" in app.search_form.rects and "delta" not in app.search_form.rects
+    drv.click(app.search_form.rects["More search parameters.fold"])
+    drv.draw(2)
     assert "delta" in app.search_form.rects and "max_variation" in app.search_form.rects
+
+
+def test_simple_mode_shows_the_essential_inputs_only(app):
+    """Simple: the search's key parameters and the burst size; the photon pre-filter, the channel
+    selection (step 0's), the other search parameters and Save as setup default are Advanced."""
+    drv = Driver(app, (1200, 800))
+    app.set_advanced(False)
+    app.model.algorithm_choice = "cusum_sprt"
+    drv.draw(2)
+    drv.click_text("Filter settings")
+    drv.draw(3)
+    shown = set(app.search_form.rects)
+    assert {"min_photons", "background_cps", "signal_to_background_ratio"} <= shown
+    assert "alpha" not in shown and "More search parameters.fold" not in shown
+    assert "min_photons" in app.form.rects
+    for hidden in ("dt_max", "detector", "photon_window", "filter_active", "save_defaults"):
+        assert hidden not in app.form.rects and hidden not in app.item_rects, hidden
+    app.set_advanced(True)
+    drv.draw(2)
+    drv.click_text("Filter settings")
+    drv.draw(3)
+    assert "dt_max" in app.form.rects and "More search parameters.fold" in app.search_form.rects
 
 
 def test_a_search_parameter_named_like_a_filter_field_is_its_own_field(app):

@@ -41,3 +41,15 @@ def test_a_title_with_its_unit_loses_it_for_the_suffix():
     schema = {"properties": {"dt": {"unit": "s", "default": 1e-4}}}
     shown, _ = scaled_sections([{"attr": "dt", "label": "Bin width (s)", "kind": "float"}], schema)
     assert shown[0]["label"] == "Bin width" and shown[0]["suffix"] == " ms"
+
+
+def test_a_count_rate_reads_in_kcps():
+    from chisurf.emtk.display_units import rate_unit
+
+    assert rate_unit(0.0) == ("kcps", 1e-3) and rate_unit(4000.0)[0] == "kcps" and rate_unit(2e6)[0] == "Mcps"
+    schema = {"properties": {"background_cps": {"unit": "cps", "default": 0.0, "maximum": 1e9}}}
+    shown, factors = scaled_sections(
+        [{"attr": "background_cps", "label": "Background rate (cps)", "kind": "float",
+          "description": "Background count rate. Unit: cps."}], schema)
+    assert shown[0]["label"] == "Background rate" and shown[0]["suffix"] == " kcps"
+    assert factors == {"background_cps": 1e-3} and shown[0]["description"].endswith("Unit: kcps.")

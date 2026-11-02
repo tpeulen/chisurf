@@ -126,14 +126,20 @@
         {
           "type": "toggle",
           "attr": "zip_output",
-          "hidden_when": {"attr": "files_from_pipeline", "equals": true},
+          "hidden_when": {
+            "attr": "files_from_pipeline",
+            "equals": true
+          },
           "label": "Zip output",
           "description": "Zip the companion folder after the run (vendor files only; a .pto has no folder)."
         },
         {
           "type": "toggle",
           "attr": "remove_folder",
-          "hidden_when": {"attr": "files_from_pipeline", "equals": true},
+          "hidden_when": {
+            "attr": "files_from_pipeline",
+            "equals": true
+          },
           "label": "Remove folder",
           "description": "Delete the unzipped companion folder once it is zipped."
         },
@@ -225,7 +231,12 @@
             }
           ]
         }
-      ]
+      ],
+      "collapsible": true,
+      "hidden_when": {
+        "attr": "advanced",
+        "equals": false
+      }
     },
     {
       "type": "panel",
@@ -283,7 +294,12 @@
           "maximum": 1000,
           "description": "Largest run of unselected photons that is filled (when Fill gaps is on)."
         }
-      ]
+      ],
+      "collapsible": true,
+      "hidden_when": {
+        "attr": "advanced",
+        "equals": false
+      }
     },
     {
       "type": "panel",
@@ -295,13 +311,21 @@
           "type": "toggle",
           "attr": "filter_active",
           "label": "Filter on",
-          "description": "Apply the photon filter. Off: every photon goes to the search."
+          "description": "Apply the photon filter. Off: every photon goes to the search.",
+          "hidden_when": {
+            "attr": "advanced",
+            "equals": false
+          }
         },
         {
           "type": "toggle",
           "attr": "invert",
           "label": "Invert",
-          "description": "Invert the filter selection."
+          "description": "Invert the filter selection.",
+          "hidden_when": {
+            "attr": "advanced",
+            "equals": false
+          }
         },
         {
           "type": "value",
@@ -319,14 +343,19 @@
           "kind": "int",
           "minimum": 2,
           "maximum": 999,
-          "description": "Photons used to compute a count rate (recorded with the run)."
+          "description": "Photons used to compute a count rate (recorded with the run).",
+          "hidden_when": {
+            "attr": "advanced",
+            "equals": false
+          }
         }
-      ]
+      ],
+      "collapsible": true
     },
     {
       "type": "panel",
       "title": "Display",
-      "collapsed": false,
+      "collapsed": true,
       "description": "What the diagnostic plots draw.",
       "sections": [
         {
@@ -399,7 +428,8 @@
           "label": "Pool all files",
           "description": "The burst table, histogram, scatter and summary show the bursts of every searched file together instead of the active file only. The diagnostic plots always show the active file."
         }
-      ]
+      ],
+      "collapsible": true
     },
     {
       "type": "panel",

@@ -102,7 +102,48 @@ def search(
         ``(n, 2)`` array of inclusive ``[start, stop]`` photon indices.
     """
     describe(algorithm)  # reject an unknown name before touching the data
-    return tttr.burst_search_by_name(algorithm, **dict(parameters or {}))
+    parameters = dict(parameters or {})
+    if algorithm == "cusum_sprt" and float(parameters.get("background_cps") or 0.0) <= 0.0:
+        # tttrlib's own estimate is the median rate of 100-photon bins: a burst packs many such
+        # bins into little time, so the estimate drifts up toward burst rates. Pass a
+        # time-binned median instead (the CUSUM's "0 = estimate from the data").
+        estimate = estimate_background_cps(tttr)
+        if estimate > 0:
+            parameters["background_cps"] = estimate
+    return tttr.burst_search_by_name(algorithm, **parameters)
+
+
+#: Counts a time bin of :func:`estimate_background_cps` holds on average, at least.
+BACKGROUND_COUNTS_PER_BIN = 4.0
+
+
+def estimate_background_cps(tttr: typing.Any, bin_s: float | None = None) -> float:
+    """Background count rate (counts/s) of *tttr*: the median of its counts in time bins.
+
+    Bins are in time, not photons, so the bursts weigh by the time they last (a few percent of
+    a measurement) and the median is the background between them. The bin is 1 ms, or longer
+    where the stream is so sparse that a 1 ms bin would hold fewer than
+    :data:`BACKGROUND_COUNTS_PER_BIN` counts on average (a median of mostly empty bins is 0).
+
+    Returns
+    -------
+    float
+        Counts per second; ``0.0`` when the stream is empty or has no duration.
+    """
+    macro = np.asarray(tttr.macro_times, dtype=np.int64)
+    if macro.size < 2:
+        return 0.0
+    resolution = float(tttr.header.macro_time_resolution)
+    duration = float(macro[-1] - macro[0]) * resolution
+    if duration <= 0 or resolution <= 0:
+        return 0.0
+    mean_rate = macro.size / duration
+    width = float(bin_s) if bin_s else max(1e-3, BACKGROUND_COUNTS_PER_BIN / mean_rate)
+    ticks = max(1, int(round(width / resolution)))
+    counts = np.bincount((macro - macro[0]) // ticks)
+    if counts.size > 1:
+        counts = counts[:-1]  # the last bin is cut short
+    return float(np.median(counts)) / (ticks * resolution)
 
 
 def tttrlib_burst_filter(

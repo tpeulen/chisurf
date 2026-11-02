@@ -1,4 +1,4 @@
-"""Show a parameter stored in seconds in the unit that reads best: µs, ms or s.
+"""Show a parameter stored in seconds (or counts/s) in the unit that reads best: µs, ms, s (kcps).
 
 A registry schema (tttrlib's burst searches) stores times in seconds, so a sliding-window duration
 of 0.5 ms appeared as ``0.0005``. :func:`scaled_sections` gives each seconds-valued field of a form
@@ -16,7 +16,10 @@ from typing import Any
 TIME_UNITS = (("s", 1.0), ("ms", 1e3), ("µs", 1e6), ("ns", 1e9))
 _SECONDS = {"s", "sec", "second", "seconds"}
 #: A unit written into a title ("Bin width (s)"), dropped once the field carries its own suffix.
-_TITLE_UNIT = re.compile(r"\s*\((?:s|sec|seconds)\)\s*$")
+_TITLE_UNIT = re.compile(r"\s*\((?:s|sec|seconds|cps)\)\s*$")
+#: Display units of a count rate, largest first.
+RATE_UNITS = (("Mcps", 1e-6), ("kcps", 1e-3), ("cps", 1.0))
+_RATE = {"cps", "counts/s", "hz", "1/s"}
 
 
 def time_unit(seconds: float | None) -> tuple[str, float]:
@@ -34,6 +37,26 @@ def time_unit(seconds: float | None) -> tuple[str, float]:
     return TIME_UNITS[-1]
 
 
+def rate_unit(cps: float | None) -> tuple[str, float]:
+    """The unit a count rate reads best in; ``0`` or unknown is kcps (a smFRET background)."""
+    value = abs(float(cps or 0.0))
+    if value == 0.0:
+        return "kcps", 1e-3
+    for suffix, factor in RATE_UNITS:
+        if value * factor >= 1.0:
+            return suffix, factor
+    return RATE_UNITS[-1]
+
+
+def _unit_of(prop: dict[str, Any]) -> tuple[str, float] | None:
+    unit = str(prop.get("unit") or "").strip()
+    if unit in _SECONDS:
+        return time_unit(prop.get("default"))
+    if unit.lower() in _RATE and unit != "1/s":
+        return rate_unit(prop.get("default"))
+    return None
+
+
 def scaled_sections(
     sections: list[dict[str, Any]], schema: dict[str, Any]
 ) -> tuple[list[dict[str, Any]], dict[str, float]]:
@@ -42,15 +65,16 @@ def scaled_sections(
     out, factors = [], {}
     for section in sections:
         prop = props.get(section.get("attr"), {})
-        if section.get("kind") != "float" or str(prop.get("unit") or "").strip() not in _SECONDS:
+        unit = _unit_of(prop) if section.get("kind") == "float" else None
+        if unit is None:
             out.append(section)
             continue
-        suffix, factor = time_unit(prop.get("default"))
+        suffix, factor = unit
         section = dict(section)
         section["label"] = _TITLE_UNIT.sub("", str(section.get("label", "")))
         section["suffix"] = " " + suffix
-        section["description"] = str(section.get("description", "")).replace(
-            "Unit: s.", f"Unit: {suffix}."
+        section["description"] = re.sub(
+            r"Unit: [^.]*\.", f"Unit: {suffix}.", str(section.get("description", ""))
         )
         for bound in ("minimum", "maximum"):
             if section.get(bound) is not None:
@@ -91,4 +115,4 @@ class ScaledParameters:
         return self.__getattr__(name)
 
 
-__all__ = ["TIME_UNITS", "ScaledParameters", "scaled_sections", "time_unit"]
+__all__ = ["RATE_UNITS", "TIME_UNITS", "ScaledParameters", "rate_unit", "scaled_sections", "time_unit"]

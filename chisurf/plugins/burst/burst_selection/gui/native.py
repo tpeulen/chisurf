@@ -41,6 +41,18 @@ from chisurf.plugins.emtk_layout import (
 
 from .model import BurstSelectionModel
 
+#: The parameters of each burst search that Simple mode shows (the rest are Advanced, folded
+#: under "More search parameters"); a search not listed shows its first three.
+ESSENTIAL_SEARCH_PARAMETERS = {
+    "sliding_window": ("L", "m", "T"),
+    "cusum_sprt": ("min_photons", "background_cps", "signal_to_background_ratio"),
+    "kalman": ("L", "dt", "z_thresh"),
+    "bocpd": ("L", "dt", "changepoint_prob"),
+    "maxtree": ("L", "m", "min_significance"),
+    "bayesian_blocks": ("L", "m", "min_significance"),
+    "coincident": ("channel_groups", "algorithm", "min_groups", "L"),
+}
+
 #: Toolbar buttons a pipeline step does not show: its files are step 1's, and the legacy exports
 #: (flrCIF and its metadata) live in File > Data > Legacy Export.
 PIPELINE_HIDDEN_BUTTONS = frozenset({"load_example", "toolAction_clear", "export_cif", "metadata"})
@@ -96,6 +108,8 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         #: them, handed over by the hub (:meth:`use_files`); this step has no Input of its own.
         self.pipeline = bool(pipeline)
         self.model.files_from_pipeline = self.pipeline  # rows are not removed here then
+        #: Simple / Advanced (the spec hides the expert inputs when False); standalone shows all.
+        self.model.advanced = not self.pipeline
         if model is None and restore:
             self.model.restore()
             if self.pipeline:
@@ -269,6 +283,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
     def set_advanced(self, advanced: bool) -> None:
         """The pipeline's Simple / Advanced mode: Simple shows only the essential inputs -- the
         detector setup is step 0's, the burst table is for the expert -- Advanced shows them."""
+        self.model.advanced = bool(advanced)
         for key in ("detectors", "table"):
             if key not in self.docks.windows:
                 continue
@@ -581,29 +596,66 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         draw_sections(self.search_sections, target, self.form)
         self.remember("search", None)
         if params:
-            draw_sections(params, ScaledParameters(m.search, factors), self.search_form)
+            essential, more = self._split_search(params)
+            search = ScaledParameters(m.search, factors)
+            draw_sections(essential, search, self.search_form)
+            self._background_hint()
+            if more and getattr(m, "advanced", True):
+                fold = {"type": "panel", "title": "More search parameters", "collapsible": True,
+                        "collapsed": True, "sections": more,
+                        "description": "The other parameters of this search; their defaults suit most data."}
+                draw_sections([fold], search, self.search_form)
         if nested:
             im.text(tr("Per-group search parameters"))
             draw_sections(nested, ScaledParameters(m.inner_search, nested_factors), self.inner_search_form)
         for prefix, form in (("search", self.search_form), ("inner_search", self.inner_search_form)):
             for name, rect in form.rects.items():
                 self.item_rects[f"{prefix}.{name}"] = tuple(rect)
-        if im.button(tr("Save as setup default")):
-            self.track("save_defaults")
-            try:
-                m.save_defaults_to_setup()
-            except Exception as exc:  # noqa: BLE001 - shown in the status line
-                m.status_text = f"Error: {exc}"
-        im.set_item_tooltip(
-            tr(
-                "Store the current filter and search as the defaults of the selected detector setup "
-                "(read again whenever the setup is chosen)."
+        if getattr(m, "advanced", True):
+            if im.button(tr("Save as setup default")):
+                self.track("save_defaults")
+                try:
+                    m.save_defaults_to_setup()
+                except Exception as exc:  # noqa: BLE001 - shown in the status line
+                    m.status_text = f"Error: {exc}"
+            im.set_item_tooltip(
+                tr(
+                    "Store the current filter and search as the defaults of the selected detector setup "
+                    "(read again whenever the setup is chosen)."
+                )
             )
-        )
-        self.remember("save_defaults")
+            self.remember("save_defaults")
         draw_sections(self.filter_sections, target, self.form)
         draw_sections(self.display_sections, target, self.form)
         im.end_disabled()
+
+    def _split_search(self, params: list[dict]) -> tuple[list[dict], list[dict]]:
+        """The search's parameters Simple shows, and the rest (Advanced, folded)."""
+        names = ESSENTIAL_SEARCH_PARAMETERS.get(str(self.model.algorithm))
+        if names is None:
+            names = tuple(p.get("attr") for p in params[:3])
+        essential = sorted((p for p in params if p.get("attr") in names), key=lambda p: names.index(p["attr"]))
+        return essential, [p for p in params if p.get("attr") not in names]
+
+    def _background_hint(self) -> None:
+        """CUSUM/SPRT with background 0: say what the search will use (the time-binned estimate)."""
+        m = self.model
+        if str(m.algorithm) != "cusum_sprt" or float(getattr(m.search, "background_cps", 0) or 0) > 0:
+            return
+        tttr = (m.diagnostic or {}).get("tttr")
+        if tttr is None:
+            im.text_disabled(tr("Background 0: estimated per file from the data."))
+            return
+        key = id(tttr)
+        if getattr(self, "_background_key", None) != key:
+            from chisurf.core.fluorescence.burst.tttrlib_search import estimate_background_cps
+
+            self._background_key, self._background_cps = key, estimate_background_cps(tttr)
+        im.text_disabled(tr("Background 0: estimated per file, {:.2f} kcps in this one.").format(
+            self._background_cps / 1e3))
+        im.set_item_tooltip(tr(
+            "The median count rate in time bins of 1 ms (longer for sparse data): the rate between "
+            "bursts. Type a rate to use that instead."))
 
     def _detectors(self, box=None) -> None:
         self.remember("detectors", box)
