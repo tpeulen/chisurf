@@ -1,5 +1,13 @@
 # Update Log
 
+## 2026-11-02
+
+- Setups are one library: a definition without detectors is proposed from the first measurement read (ChannelDefinition.propose_from_tttr: detectors per routing channel + pre-flight windows); the burst hub proposes from the first data file so a PTU runs end to end with no stored setup; Record's setup chooser lists the Settings library ('library:<name>'). Test: burst_analysis/tests/test_ptu_setup_e2e.py.
+- Burst MLE uses the step-0 setup: a detector's micro_time_ranges are its gates (both polarisations) in preview and batch; one-channel detectors fill VV and VH alike (the batch put every photon in VH); photon counts and the floor are the photons in the fit window. Legacy VV/VH-pair reading dropped (owner: no legacy). Verified on a simulated 600 s PIE PTU: donor tau peaks 0.85/3.1 ns vs truth 0.9/3.3.
+- Record PTUs carry MeasDesc_NumberMicrotimes and TTResult_SyncRate (readers took 1 channel per period; every MLE fit of a recording failed). A burst container older than its instrument file is set aside as <stem>.stale-<time>.pto and rebuilt (a re-recorded PTU was analysed from the old embedded photons). Saved setups keep detector/window order (_order; MMFDB JSON sorts keys).
+- Shell: a tool opened in ChiSurf restores its settings but not its data files (emtk.state.strip_data_files); the burst hub without data opens at step 0. Busy overlay for every hosted tool (chisurf/emtk/busy_overlay.py): after 0.5 s blur + card + progress bar (+ Stop when the tool can), clicks swallowed; Record opts out (busy_overlay = False).
+- Burst pipeline speed: mmCIF vocabulary parsed once per process and cached on disk (chisurf/core/support/vocabulary.py; was 2 parses ~1 s each on the first search); channel_mask LUT replaces np.isin in the burst path (6-8x); file digests cached by inode/size/mtime; per-frame manifest deep-copies, run-picker container opens, container dirs and MMFDB sample queries cached; Burst Selection diagnostics preview off the UI thread. 28M photons: search 6.2 -> 3.4 s, worst frame 1084 -> 74 ms.
+
 ## 2026-10-29
 
 - 2026-10-29: Survey: Scanner learning option (first tile, re-check line triggers by default; first tile only; every tile) -> phacq pi learning 0/1/2; the spiral centre is the last image (the scanner parks at the stage centre).

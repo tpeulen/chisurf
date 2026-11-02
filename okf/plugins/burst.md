@@ -9,6 +9,23 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
+0. Open (2026-11-02): **burst pipeline speed, next cut = the burst summary.** Measure: scratch script
+   `time_hub.py <ptu> <green_ch>,<red_ch>` with `KEEP_SETTINGS=<persistent dir>` (a fresh settings dir
+   misses the on-disk vocabulary cache and adds ~1 s). Now: 28M-photon PTU search 3.4 s, 3.8M-photon
+   PIE sim 2.5 s; worst frame during a search 74 ms. What is left: `generate_burst_dataframe` walks
+   bursts in Python (`_span_features`, 24k calls for 12k bursts, ~0.5-0.8 s) -- vectorise per feature
+   over all bursts at once (start/stop index arrays + `np.add.reduceat`), keeping
+   `burst_features.yaml` the declaration; the container embed of the raw PTU (`add_sidecar_file`,
+   ~0.7 s for 150 MB) is the other half. Done: vocabulary parse cached, LUT channel masks,
+   digest cache, per-frame caches, diagnostics off the UI thread.
+   **PTU/setup flow** is walked headless (`test_ptu_setup_e2e.py`, 7 tests) and in the full shell
+   (scratch `shell_walk.py`, `reopen.py`); a click-through on a real MT200 PTU is still owed (the
+   owner's last one, `/Volumes/USBKEY/TP_20261031_DNA_KHM.sptw/DNA13bp_3.ptu`, was not mounted).
+   Known: simulator PIE windows detect at 1961-3961/3961-4000 (the donor pulse wraps), so the
+   default sim setup's 0-2000/2000-4000 draws a pre-flight warning; sliding_window takes ~74% of
+   sim photons (simulator density). Existing library setups keep the MMFDB-sorted detector order
+   until saved once more (order is stored from now on). Burst Selection's search has no Stop
+   (one tttrlib call): the busy overlay shows no Stop button there.
 1. Open: **rate-only PIE burst tables mis-ratio E/S** — the top blocker: 923 of 2980 sm-DNA bursts drop out of the
    Burst Browser at full gates, and every consumer of `guess_burst_columns` (Accurate FRET too) ratios rates over
    different per-stream spans. Measure: `BurstBrowserViewModel().load_folder(".../burstwise_All 0.1000#15/bi4_bur")`

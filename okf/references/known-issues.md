@@ -8799,3 +8799,21 @@ point glyph in the application at once, and the render fixtures would all need
 re-inspecting; that is its own change, with its own before/after images.
 
 ---
+
+## Order-dependent and SDK-drift test failures in the burst / core suites (2026-11-02)
+
+Found while verifying the burst setup / MLE / speed change; all reproduce with that change's
+caches switched off, so they predate it.
+
+- `test/core/test_burst_fcs_gate_boundaries.py::test_actual_burst_worker_includes_zero_microtime_photon`
+  pins tttrlib's `TTTRMask.select_microtime_ranges` at 215 photons; the installed tttrlib includes
+  the zero-microtime photon (216). The SDK contract changed -- update the pin or the tttrlib side.
+- `test/core/test_photon_dataset.py` (7 tests) and `test/core/test_project_links.py::test_embed_then_unembed...`
+  fail only when `test/core` runs as one batch (pass as a file): state leaks from an earlier test
+  (`too many values to unpack`, a patched hash helper called with 2 arguments).
+- `test/core/test_burst_fusion_detector_draft.py` (3): the draft now carries
+  `micro_time_resolution_ps: None` -- another lane's uncommitted gates work.
+- `burst_selection/tests/test_run_picker.py` (3), `burst_mle_analysis/tests/test_container_input.py`
+  (1), `burst_irf_bg/test/test_emtk_irf_bg_clicks.py` (1): order-dependent, a burst run left by an
+  earlier test is listed; pass per directory. `burst_selection/tests/test_real_data.py`: an
+  `alex_phase` key from the uncommitted ALEX work.
