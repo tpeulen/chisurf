@@ -342,14 +342,19 @@ class H2mmNativeApp(TourTarget, ImApp):
 
     def _controls(self, box=None) -> None:
         running = self.job.busy
-        im.begin_disabled(running)
         self.input_form.rects.clear()
-        draw_form(self.input_spec, self.input, self.input_form)
-        im.end_disabled()
-        for name, rect in self.input_form.rects.items():
-            self.item_rects[name] = tuple(rect)
         run = str(self.model.data_folder or "")
-        im.text_wrapped(tr("Burst run: {run}").format(run=run or tr("none picked")))
+        if getattr(self, "pipeline", False):
+            # In the pipeline the bursts are Burst Selection's: no Input to pick from.
+            im.text_wrapped(tr("Bursts: {run} from Burst Selection").format(
+                run=Path(run).name if run else tr("none yet")))
+        else:
+            im.begin_disabled(running)
+            draw_form(self.input_spec, self.input, self.input_form)
+            im.end_disabled()
+            for name, rect in self.input_form.rects.items():
+                self.item_rects[name] = tuple(rect)
+            im.text_wrapped(tr("Burst run: {run}").format(run=run or tr("none picked")))
         self.remember("burst_run")
         problem = self.model.can_run()
         has_fit = self.model.bundle is not None
