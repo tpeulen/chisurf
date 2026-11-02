@@ -47,6 +47,33 @@ HERE = Path(__file__).parent
 REGION_FILL = (46, 117, 182, 60)
 
 
+
+def _pipeline_drop(section: dict) -> bool:
+    """A part of the spec the pipeline step does without: its bursts are Burst Selection's (no file
+    list, no example to load) and the models it cannot offer are not worth a line each."""
+    if section.get("type") == "button_row":
+        return all(b.get("action") == "load_example" for b in section.get("buttons", []))
+    if section.get("type") == "info" and section.get("source") == "model_availability":
+        return True
+    options = section.get("options") or {}
+    return section.get("type") == "custom" and options.get("source") == "file_rows"
+
+
+def pipeline_sections(sections: list) -> list:
+    """*sections* for the pipeline step: without :func:`_pipeline_drop`'s parts; the files panel,
+    left with the fit model alone, is called that."""
+    out = []
+    for section in sections:
+        if _pipeline_drop(section):
+            continue
+        if isinstance(section.get("sections"), list):
+            section = dict(section, sections=pipeline_sections(section["sections"]))
+            if section.get("title") == "Burst files":
+                section["title"] = "Lifetime model"
+                section["description"] = "The fit model of every detector's burst fit."
+        out.append(section)
+    return out
+
 class MleNativeApp(TourTarget, ImApp):
     """Immediate-mode burst-MLE app: files, detector editor, settings, fit, batch, plots."""
 
@@ -316,6 +343,10 @@ class MleNativeApp(TourTarget, ImApp):
             self.labels.measure([f["label"] for f in fields])
             self.labels.pad(fields)
             self._measured = True
+        if getattr(self, "pipeline", False):
+            if getattr(self, "_pipeline_sections", None) is None:
+                self._pipeline_sections = pipeline_sections(self.sections)
+            return self._pipeline_sections
         return self.sections
 
     def _draw_input(self, name: str) -> None:
