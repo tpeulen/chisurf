@@ -9,28 +9,24 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
-0. Open (2026-11-02): **burst pipeline speed, next cut = the burst summary.** Measure: scratch script
-   `time_hub.py <ptu> <green_ch>,<red_ch>` with `KEEP_SETTINGS=<persistent dir>` (a fresh settings dir
-   misses the on-disk vocabulary cache and adds ~1 s). Now: 28M-photon PTU search 3.4 s, 3.8M-photon
-   PIE sim 2.5 s; worst frame during a search 74 ms. What is left: `generate_burst_dataframe` walks
-   bursts in Python (`_span_features`, 24k calls for 12k bursts, ~0.5-0.8 s) -- vectorise per feature
-   over all bursts at once (start/stop index arrays + `np.add.reduceat`), keeping
-   `burst_features.yaml` the declaration; the container embed of the raw PTU (`add_sidecar_file`,
-   ~0.7 s for 150 MB) is the other half. Done: vocabulary parse cached, LUT channel masks,
-   digest cache, per-frame caches, diagnostics off the UI thread.
-   **PTU/setup flow** is walked headless (`test_ptu_setup_e2e.py`, 7 tests) and in the full shell
-   (scratch `shell_walk.py`, `reopen.py`); a click-through on a real MT200 PTU is still owed (the
-   owner's last one, `/Volumes/USBKEY/TP_20261031_DNA_KHM.sptw/DNA13bp_3.ptu`, was not mounted).
-   Known: simulator PIE windows detect at 1961-3961/3961-4000 (the donor pulse wraps), so the
-   default sim setup's 0-2000/2000-4000 draws a pre-flight warning; sliding_window takes ~74% of
-   sim photons (simulator density). Existing library setups keep the MMFDB-sorted detector order
-   until saved once more (order is stored from now on). Burst Selection's search has no Stop
-   (one tttrlib call): the busy overlay shows no Stop button there.
-   **Open: ~12% of MLE donor fits collapse to tau ~ 0** on the simulated 600 s PIE PTU (1,280 of
-   10,417 bursts; the rest peak at 0.85/3.1 ns vs truth 0.9/3.3). Re-derive: scratch `mle_truth.py
-   sim_600s.ptu` (hub, step-0 gate prompt 0-2000, auto IRF/background, `run_batch`), histogram
-   `Tau (donor)`. Suspects, untested: acceptor-only/low-donor bursts above the 10-photon floor, or
-   the auto IRF taken from non-burst photons; check the photon count of the tau~0 rows first.
+0. Open (2026-11-02, second round): **uncommitted, shared with another lane -- commit when that lane lands.**
+   These carry this round's work but also another lane's uncommitted hunks, so they were not
+   committed (committing part of them leaves HEAD inconsistent): H2MM container-only output
+   (`burst_h2mm/backend/services.py`, `gui/model.py`, `api/models.py` + `core/export.py`,
+   `cli/main.py`, `gui/h2mm.view.json`, its tests incl. `tests/test_container_record.py`, docs
+   `guides/h2mm.md`, `guides/19_*`, `guides/34_*`, `reference/plugins/burst_h2mm.md`); the vectorised
+   burst summary (`core/fio/fluorescence/burst.py` + `test/core/test_burst_summary_vectorised.py`);
+   LUT `channel_mask` in `core/fluorescence/burst/{photons,background}.py`; Record's library-setup
+   chooser + PTU header (`acq/gui/record_app.py`, `acq/live/session.py`); Burst Selection caches
+   (`burst_selection/gui/model.py`). All verified: H2MM+MLE suites 278 passed; summary identical
+   to the old implementation on sim PIE and BH SPC data.
+   **Speed now** (sim 600 s PIE, 12k bursts, `time_steps.py` in scratch with `KEEP_SETTINGS`):
+   search 2.4 s (28M photons 3.4-3.6 s), BVA 0.3 s, 2CDE 0.5 s, Accurate FRET 1.0 s, MLE batch
+   ~3 s, GS 11.5 s, H2MM 53 s. Next cuts: **H2MM** -- EM scan 31 s (tttrlib EM already ~4.4 cores;
+   restarts/state counts are independent -> run them in processes), result tables ~10 s;
+   **GS** fit 11 s; the burst container write embeds the raw PTU (~0.6 s/150 MB, by design).
+   Known: H2MM over-fits states on sim data (500k dwells at 3 states); the simulated
+   long-lifetime population fits ~6% low (pulse at the period end, rising edge outside the gate).
 1. Open: **rate-only PIE burst tables mis-ratio E/S** — the top blocker: 923 of 2980 sm-DNA bursts drop out of the
    Burst Browser at full gates, and every consumer of `guess_burst_columns` (Accurate FRET too) ratios rates over
    different per-stream spans. Measure: `BurstBrowserViewModel().load_folder(".../burstwise_All 0.1000#15/bi4_bur")`
