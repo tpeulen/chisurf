@@ -627,7 +627,19 @@ def run_rows_for(path, *, operation: str = DEFAULT_OPERATION) -> list[dict]:
     from chisurf.core.fio.pto import Measurement, is_measurement
 
     container, _wanted = split_container_path(path)
-    if container is None or not container.exists() or not is_measurement(container):
+    if container is None:
+        return []
+    # A picker asks every frame: list the runs again only when the container changed on disk
+    # (checked by its stat alone -- opening it to see it is a container is what cost the frame).
+    try:
+        stat = container.stat()
+    except OSError:
+        return []
+    key = (str(container), stat.st_mtime_ns, stat.st_size, operation)
+    if key in _RUN_ROWS:
+        return [dict(row) for row in _RUN_ROWS[key]]
+    if not is_measurement(container):
+        _RUN_ROWS[key] = []
         return []
     rows: dict[str, dict] = {}
     try:
@@ -657,7 +669,14 @@ def run_rows_for(path, *, operation: str = DEFAULT_OPERATION) -> list[dict]:
     out = list(rows.values())
     for order, row in enumerate(out, start=1):
         row["created"] = order
+    if len(_RUN_ROWS) > 64:
+        _RUN_ROWS.clear()
+    _RUN_ROWS[key] = [dict(row) for row in out]
     return out
+
+
+#: :func:`run_rows_for` by (container, mtime, size, operation).
+_RUN_ROWS: dict[tuple, list[dict]] = {}
 
 
 class RunPickerMixin:

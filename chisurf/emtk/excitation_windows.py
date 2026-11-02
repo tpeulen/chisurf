@@ -331,9 +331,9 @@ class WorkspaceInputSection:
         from emtk.view_form import FormState
 
         from chisurf.core.plugin.workspace_input import WorkspaceInputMixin, input_section, spec_for
-        from chisurf.emtk.plugins import manifests
+        from chisurf.emtk.plugins import manifest
 
-        found = spec_for(manifests().get(plugin), kind=kind)
+        found = spec_for(manifest(plugin), kind=kind)
         if found is None:
             raise LookupError(f"plugin {plugin!r} declares no {kind} input")
 

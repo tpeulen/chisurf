@@ -779,11 +779,29 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             self._diag_due = self._diag_due or time.monotonic()
         if self._diag_due is None or time.monotonic() < self._diag_due:
             return
+        if self.diagnostics_running:
+            return  # the next one starts once this one has landed (the due time stays)
         self._diag_due = None
-        try:
-            m.load_diagnostics()
-        except Exception as exc:  # noqa: BLE001 - shown in the status line
-            m.status_text = f"Diagnostics unavailable: {exc}"
+        # Opening the measurement, filtering and searching the visible window takes seconds on a large
+        # file: off the UI thread, or every settled edit froze the window that long.
+        import threading
+
+        from chisurf.emtk.background_build import track
+
+        def work() -> None:
+            try:
+                m.load_diagnostics()
+            except Exception as exc:  # noqa: BLE001 - shown in the status line
+                m.status_text = f"Diagnostics unavailable: {exc}"
+
+        self._diag_thread = track(threading.Thread(target=work, daemon=True, name="burst-diagnostics"))
+        self._diag_thread.start()
+
+    @property
+    def diagnostics_running(self) -> bool:
+        """The visible window's preview is being computed on its worker thread."""
+        thread = getattr(self, "_diag_thread", None)
+        return thread is not None and thread.is_alive()
 
     def _render(self) -> None:
         self.editor.poll()
@@ -795,7 +813,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                 self._register_runs()
             if self.on_run_done is not None and not self.job.error:
                 self.on_run_done(self.model)
-        if self.job.busy or self._diag_due is not None:
+        if self.job.busy or self._diag_due is not None or self.diagnostics_running:
             ctx.request_frame_at(ctx.io.now + 0.1)
         self._diagnostics_tick()
         w, h = im.get_main_viewport().size

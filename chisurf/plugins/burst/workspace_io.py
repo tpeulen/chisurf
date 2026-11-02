@@ -61,13 +61,21 @@ class NamedWorkspaceInput(WorkspaceInputMixin):
         self.workspace_input_app = app
 
     def _workspace_input(self):
+        # Asked several times a frame (rows, hint): the manifest does not change while the tool is open.
+        key = (self.workspace_input_plugin, self.workspace_input_handoff)
+        cached = getattr(self, "_workspace_input_cache", None)
+        if cached is not None and cached[0] == key:
+            return cached[1]
         from chisurf.core.plugin.handoff import specs_of
-        from chisurf.emtk.plugins import manifests
+        from chisurf.emtk.plugins import manifest
 
-        for spec in specs_of(manifests().get(self.workspace_input_plugin)):
+        found = None
+        for spec in specs_of(manifest(self.workspace_input_plugin)):
             if spec.name == self.workspace_input_handoff and spec.from_workspace is not None:
-                return spec, spec.from_workspace
-        return None
+                found = (spec, spec.from_workspace)
+                break
+        self._workspace_input_cache = (key, found)
+        return found
 
 
 def input_spec(manifest_path, handoff: str = "", *, title: str = "Input") -> dict:

@@ -409,9 +409,9 @@ class WorkspaceInputMixin:
     workspace_input_on_used: Any = None
 
     def _workspace_input(self) -> tuple[Any, WorkspaceInput] | None:
-        from chisurf.emtk.plugins import manifests
+        from chisurf.emtk.plugins import manifest
 
-        return spec_for(manifests().get(self.workspace_input_plugin), kind=self.workspace_input_kind)
+        return spec_for(manifest(self.workspace_input_plugin), kind=self.workspace_input_kind)
 
     def workspace_input_rows(self) -> list[dict]:
         """The workspace rows this plugin takes (a method: AutoForm calls its sources)."""

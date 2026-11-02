@@ -34,6 +34,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
+
+from chisurf.core.fluorescence.channels import channel_mask
 import tttrlib
 from tttrlib import micro_time_mask
 
@@ -358,7 +360,7 @@ def extract_irf_background(
     gaps: dict[str, np.ndarray] = {}
     for name, det in detectors.items():
         chs = np.asarray(det.get("chs", []), dtype=int)
-        ch_mask = np.isin(rout, chs) if chs.size else np.zeros_like(keep)
+        ch_mask = channel_mask(rout, chs) if chs.size else np.zeros_like(keep)
         times = macro[ch_mask & keep & micro_time_mask(micro, det.get("micro_time_ranges"))]
         gaps[name] = (
             np.diff(times.astype(np.float64)) * dt_scale_ms if times.size >= 2 else np.empty(0)
@@ -372,7 +374,7 @@ def extract_irf_background(
     results: dict[str, DetectorIrfBackground] = {}
     for name, det in detectors.items():
         chs = np.asarray(det.get("chs", []), dtype=int)
-        ch_mask = np.isin(rout, chs) if chs.size else np.zeros_like(keep)
+        ch_mask = channel_mask(rout, chs) if chs.size else np.zeros_like(keep)
         det_bg = ch_mask & keep
         det_burst = ch_mask & ~keep
 
@@ -520,7 +522,7 @@ def extract_mle_irf_background(
     def _half(channels: list[int]) -> tuple[np.ndarray, np.ndarray]:
         """Return (irf, bg) micro-time patterns for one polarization sub-channel set."""
         rout = np.asarray(non_burst.routing_channel)
-        sel = np.isin(rout, channels)
+        sel = channel_mask(rout, channels)
         sub = non_burst[np.where(sel)[0]]
         hist = np.asarray(sub.get_microtime_histogram(binning)[0], dtype=np.float64)
         bg = hist.copy()

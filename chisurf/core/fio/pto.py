@@ -324,13 +324,9 @@ def _vocabulary() -> Any:
     -------
     mmfdb.schema.pdbx_metadata.MmcifDictionary
     """
-    from mmfdb.schema.pdbx_metadata import MmcifDictionary
+    from chisurf.core.support.vocabulary import dictionary
 
-    paths = [
-        MmcifDictionary._resolve_dic(name)
-        for name in (*MmcifDictionary.BUNDLED_DICTS, *MmcifDictionary.EXPORT_ONLY_DICTS)
-    ]
-    return MmcifDictionary(*paths)
+    return dictionary()  # parsed once per process, cached on disk
 
 
 _VOCABULARY: Any = None
@@ -405,13 +401,31 @@ def _sha256_of_path(path: Path) -> tuple[str, int]:
     tuple of (str, int)
         Lowercase hexadecimal digest and the size in octets.
     """
+    # One container write digests the same raw file more than once (instrument, sidecar record):
+    # an unchanged file (same inode, size and modification time) is read once per process.
+    try:
+        stat = Path(path).stat()
+        key = (str(Path(path).resolve()), stat.st_ino, stat.st_size, stat.st_mtime_ns)
+    except OSError:
+        key = None
+    if key is not None and key in _DIGESTS:
+        return _DIGESTS[key]
     digest = hashlib.sha256()
     size = 0
     with open(path, "rb") as handle:
         for block in iter(lambda: handle.read(_BLOCK), b""):
             digest.update(block)
             size += len(block)
-    return digest.hexdigest(), size
+    result = (digest.hexdigest(), size)
+    if key is not None:
+        if len(_DIGESTS) > 256:
+            _DIGESTS.clear()
+        _DIGESTS[key] = result
+    return result
+
+
+#: :func:`_sha256_of_path` by (path, inode, size, mtime).
+_DIGESTS: dict[tuple, tuple[str, int]] = {}
 
 
 def is_measurement(path: str | Path) -> bool:

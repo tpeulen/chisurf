@@ -81,13 +81,9 @@ def known_units() -> dict[str, Unit]:
     -------
     dict of str to Unit
     """
-    from mmfdb.schema.pdbx_metadata import MmcifDictionary
+    from chisurf.core.support.vocabulary import dictionary
 
-    paths = [
-        MmcifDictionary._resolve_dic(name)
-        for name in (*MmcifDictionary.BUNDLED_DICTS, *MmcifDictionary.EXPORT_ONLY_DICTS)
-    ]
-    rows = MmcifDictionary(*paths).category_rows("mmfdb_units")
+    rows = dictionary().category_rows("mmfdb_units")
     out: dict[str, Unit] = {}
     for row in rows:
         factor = row.get("si_factor", "")

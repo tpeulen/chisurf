@@ -74,9 +74,9 @@ class NamedWorkspaceInput(WorkspaceInputMixin):
     def _workspace_input(self):
         if self._found is None:
             from chisurf.core.plugin.handoff import specs_of
-            from chisurf.emtk.plugins import manifests
+            from chisurf.emtk.plugins import manifest
 
-            for spec in specs_of(manifests().get(self.workspace_input_plugin)):
+            for spec in specs_of(manifest(self.workspace_input_plugin)):
                 if spec.name == self.name and spec.from_workspace is not None:
                     self._found = (spec, spec.from_workspace)
                     break

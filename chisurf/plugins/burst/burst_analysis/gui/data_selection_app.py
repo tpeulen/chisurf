@@ -331,11 +331,11 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         self.message = ""
         # The Input section: the workspace's photon streams.
         from chisurf.core.plugin.workspace_input import input_section, spec_for
-        from chisurf.emtk.plugins import manifests
+        from chisurf.emtk.plugins import manifest
         from chisurf.plugins.burst.workspace_io import NamedWorkspaceInput
 
         self.input = NamedWorkspaceInput(self.WORKSPACE_PLUGIN, "photons", app=self)
-        found = spec_for(manifests().get(self.WORKSPACE_PLUGIN), kind="photons")
+        found = spec_for(manifest(self.WORKSPACE_PLUGIN), kind="photons")
         self.input_spec = {"sections": [input_section(found[1])]} if found else {"sections": []}
         self.input_form = FormState()
         self.help_window = EmTkHelpWindow(
