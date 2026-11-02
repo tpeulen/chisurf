@@ -37,19 +37,25 @@ The order is not a suggestion. Each step consumes what the one before it wrote:
 2. **Burst selection** — the detector channels and the burst search. This is the
    step that decides *what a burst is*; every later number is one row per burst
    found here.
-3. **Burst fusion** (optional) — merges bursts the same molecule produced on a
-   quick return to the focus. It is the only later step that changes what a burst
-   *is*, which is why it sits before everything that measures one.
-4.–6. **Burst-level features** — BVA, 2CDE, MLE. One number per burst.
-7. **Segmentation (H2MM)** — cuts each burst into segments and gives every photon
-   a state.
-8. **Segment MLE** — the same fit one level down: one number per burst *and*
-   state.
+   - **2.1 Burst fusion** (optional, Advanced) — merges bursts the same
+     molecule produced on a quick return to the focus. It is the only later
+     step that changes what a burst *is*, which is why it sits before
+     everything that measures one.
+   - **2.2 BVA, 2.3 2CDE** (Advanced) — burst-level checks of whether the FRET
+     efficiency stays steady while a burst crosses. In Simple they are not
+     shown but run with their defaults as soon as the bursts are there.
+3. **Burst MLE** — one lifetime per burst and detector. In Advanced, a checkbox
+   also fits one per burst *and* H2MM state.
+   - **3.1 Segmentation (H2MM)** (Advanced) — cuts each burst into segments and
+     gives every photon a state.
 
-The split at step 7 is the thing to hold on to. Steps 4–6 ask "what was this
-molecule doing, on average, while it crossed", step 8 asks "what was it doing in
-each part of the crossing". A burst that visited two states has one blurred
-lifetime at step 6 and two sharp ones at step 8.
+Steps only Advanced shows carry a sub-number of the step before them, so Simple
+counts 0–3 without a gap and a step has the same number in both modes.
+
+The split at 3.1 is the thing to hold on to. Burst-level numbers ask "what was
+this molecule doing, on average, while it crossed"; the per-state MLE asks "what
+was it doing in each part of the crossing". A burst that visited two states has
+one blurred lifetime per burst and two sharp ones per state.
 
 ## Where the results go
 

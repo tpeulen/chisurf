@@ -296,6 +296,9 @@ def test_settings_round_trip(hub):
     again = create_app()
     try:
         again.restore_settings(state)
+        # without its files (the hub keeps settings, not data) the workflow starts at its first step
+        assert again.selected == "setup"
+        again.restore_settings({**state, "workflow": {**state.get("workflow", {}), "raw_files": ["a.ptu"]}})
         assert again.selected == "titration"
     finally:
         again.close()

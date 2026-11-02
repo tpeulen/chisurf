@@ -20,6 +20,7 @@ import copy
 import functools
 import importlib
 import json
+import re
 from pathlib import Path
 from typing import Any, Callable
 
@@ -85,6 +86,36 @@ def _with_maturity(panel: dict) -> dict:
     return panel
 
 
+_STEP_NUMBER = re.compile(r"^\s*\d+(?:\.\d+)*\.?\s+")
+
+
+def number_steps(panels: list[dict]) -> list[dict]:
+    """Number the numbered steps (a name starting ``"N. "``) gaplessly, in rail order.
+
+    A step every mode shows gets the next whole number, counting on from the first step's own
+    number (``0`` or ``1``); a step only Advanced shows (``"advanced"`` or ``"background"``) gets a
+    sub-number of the step before it (``2.1``, ``2.2``). A step keeps its number in both modes, and
+    Simple, which hides the sub-steps, has no gap. Names without a number are left alone.
+    """
+    main: int | None = None
+    sub = 0
+    for panel in panels:
+        name = panel.get("name") or ""
+        found = _STEP_NUMBER.match(name)
+        if panel.get("separator") or not found:
+            continue
+        if main is None:
+            main = int(found.group(0).strip().split(".")[0]) - 1
+        bare = name[found.end():]
+        if panel.get("advanced") or panel.get("background"):
+            sub += 1
+            panel["name"] = f"{max(main, 0)}.{sub} {bare}"
+        else:
+            main, sub = main + 1, 0
+            panel["name"] = f"{main}. {bare}"
+    return panels
+
+
 def _marker(panel: dict) -> str:
     return "".join(f" {mark}" for flag, (mark, _msg) in MATURITY.items() if panel.get(flag))
 
@@ -131,7 +162,7 @@ class ToolHubApp(ImApp):
                     ),
                 },
             )
-        self.panels = [_with_icon(_with_maturity(dict(p))) for p in panels]
+        self.panels = number_steps([_with_icon(_with_maturity(dict(p))) for p in panels])
         self.tools = [p for p in self.panels if not p.get("separator")]
         self.selected = initial or (self.tools[0]["role"] if self.tools else None)
         #: Simple (False) or Advanced (True): a panel marked ``"advanced"`` (a step only an expert

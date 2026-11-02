@@ -55,7 +55,7 @@ STEPS: list[dict[str, Any]] = [
         "description": "Define detector channels and find/filter bursts from TTTR data.",
     },
     {
-        "name": "3. Burst Fusion (optional)",
+        "name": "2.1 Burst Fusion (optional)",
         "icon": "🔗",
         "role": "fusion",
         "plugin": "burst/burst_fusion",
@@ -66,7 +66,7 @@ STEPS: list[dict[str, Any]] = [
         "folder the later steps then use.",
     },
     {
-        "name": "4. Burst BVA",
+        "name": "2.2 Burst BVA",
         "icon": "📊",
         "role": "bva",
         "plugin": "burst/burst_bva",
@@ -75,7 +75,7 @@ STEPS: list[dict[str, Any]] = [
         "description": "Burst-level feature: burst variance analysis of the selected bursts.",
     },
     {
-        "name": "5. Burst 2CDE",
+        "name": "2.3 Burst 2CDE",
         "icon": "📊",
         "role": "two_cde",
         "plugin": "burst/burst_2cde",
@@ -83,15 +83,15 @@ STEPS: list[dict[str, Any]] = [
         "description": "Burst-level feature: the FRET-2CDE / ALEX-2CDE burst-dynamics filter.",
     },
     {
-        "name": "6. Burst MLE",
+        "name": "3. Burst MLE",
         "icon": "🎯",
         "role": "mle",
         "plugin": "burst/burst_mle_analysis",
         "description": "Burst-level feature: one maximum-likelihood lifetime per burst (Advanced: also "
-        "per H2MM state of each burst, after step 7).",
+        "per H2MM state of each burst, after step 3.1, H2MM).",
     },
     {
-        "name": "7. Burst segmentation (H2MM)",
+        "name": "3.1 Burst segmentation (H2MM)",
         "icon": "🔀",
         "role": "h2mm",
         "plugin": "burst/burst_h2mm",
