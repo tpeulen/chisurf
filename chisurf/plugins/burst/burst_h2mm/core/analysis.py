@@ -767,77 +767,92 @@ def _dwells_and_transitions(
     Returns ``(dwell_durations, dwells, transitions, populations)`` where
     ``dwell_durations`` keeps the legacy ``state -> [durations]`` mapping and
     ``dwells`` is the richer per-dwell record list with measured E/S.
+
+    Computed for every photon at once (a dwell is a run of one state between a change point or
+    a burst edge): the photon-by-photon Python walk this replaced took ~15 s on 2.5M photons.
     """
     n_states = model.n_states
-    offsets = data.burst_offsets
+    offsets = np.asarray(data.burst_offsets, dtype=np.int64)
     streams_all = np.asarray(data.streams)
+    path = np.asarray(path, dtype=np.int64)
+    n = path.size
+
+    counts = np.bincount(path, minlength=n_states).astype(np.float64)[:n_states]
+    populations = counts / counts.sum() if counts.sum() > 0 else counts
+
+    # Time of every photon from the start of the measurement's burst stream: the gap after
+    # photon i is unique_dt[gap_slot[i]] (-1: last photon of a burst, no gap inside a burst).
+    slots = np.asarray(data.gap_slot, dtype=np.int64)[:n]
+    unique_dt = np.asarray(data.unique_dt, dtype=np.int64)
+    gaps = np.where(slots >= 0, unique_dt[np.clip(slots, 0, None)] if unique_dt.size else 0, 0)
+    clock = np.zeros(n, dtype=np.int64)
+    if n > 1:
+        np.cumsum(gaps[: n - 1], out=clock[1:])
+
+    # Dwell starts: every burst's first photon and every state change inside a burst.
+    burst_first = offsets[:-1][offsets[1:] > offsets[:-1]]
+    change = np.zeros(n, dtype=bool)
+    change[burst_first] = True
+    if n > 1:
+        change[1:] |= path[1:] != path[:-1]
+    starts = np.flatnonzero(change)
+    burst_of = np.searchsorted(offsets, starts, side="right") - 1
+    burst_end = offsets[burst_of + 1]
+    nxt = np.append(starts[1:], n)
+    stops = np.minimum(nxt, burst_end)
+    trailing = stops == burst_end
+    states = path[starts]
+    dur = np.where(trailing, clock[stops - 1], clock[np.minimum(stops, n - 1)]) - clock[starts]
+    edge = (starts == offsets[burst_of]) | trailing
+
+    def prefix(roles):
+        from chisurf.core.fluorescence.channels import channel_mask
+
+        return np.concatenate(([0], np.cumsum(channel_mask(streams_all, roles), dtype=np.int64)))
+
+    cd, ca = prefix(donor_streams), prefix(acceptor_streams)
+    d = cd[stops] - cd[starts]
+    a = ca[stops] - ca[starts]
+    dex = d + a
+    with np.errstate(divide="ignore", invalid="ignore"):
+        e_meas = np.where(dex > 0, a / np.where(dex > 0, dex, 1), np.nan)
+        if aex_streams:
+            cx = prefix(aex_streams)
+            aex = cx[stops] - cx[starts]
+            tot = dex + aex
+            s_meas = np.where(tot > 0, dex / np.where(tot > 0, tot, 1), np.nan)
+        else:
+            s_meas = np.full(starts.size, np.nan)
 
     dwell_durs: dict[int, list[int]] = {s: [] for s in range(n_states)}
     dwells: list[Dwell] = []
-    transitions: list[Transition] = []
-    populations = np.zeros(n_states, dtype=np.float64)
-
-    # We need macro times to measure dwell durations; reconstruct per burst
-    # from gap_slot + unique_dt (cumulative), which mirrors the input times.
-    unique_dt = data.unique_dt
-
-    def _record_dwell(b: int, st: int, g0: int, g1: int, dur: int) -> None:
-        """Append the dwell spanning global photon indices ``[g0, g1)``."""
-        dwell_durs[st].append(int(dur))
-        e, s = _measured_es(streams_all[g0:g1], donor_streams, acceptor_streams, aex_streams)
-        # Censored at a burst boundary: one end of this dwell is the burst, not
-        # a transition. Decided here, where the burst bounds are, so every
-        # consumer shares one definition of "edge".
-        edge = g0 == int(offsets[b]) or g1 == int(offsets[b + 1])
+    rows = zip(
+        burst_of.tolist(), states.tolist(), dur.tolist(), starts.tolist(), stops.tolist(),
+        e_meas.tolist(), s_meas.tolist(), edge.tolist(),
+    )
+    for b, st, du, g0, g1, e, sm, ed in rows:
+        dwell_durs[st].append(int(du))
         dwells.append(
-            Dwell(
-                burst=b,
-                state=st,
-                dur=int(dur),
-                n_photons=int(g1 - g0),
-                e=float(e),
-                s=float(s),
-                start=int(g0),
-                stop=int(g1),
-                is_edge=bool(edge),
-            )
+            Dwell(burst=b, state=st, dur=int(du), n_photons=g1 - g0, e=float(e), s=float(sm),
+                  start=g0, stop=g1, is_edge=bool(ed))
         )
 
-    for b in range(data.n_bursts):
-        s = int(offsets[b])
-        e = int(offsets[b + 1])
-        seg = path[s:e]
-        for st in seg:
-            populations[st] += 1
-
-        # Rebuild relative macro times within the burst.
-        t = np.zeros(e - s, dtype=np.int64)
-        for rel in range(1, e - s):
-            slot = data.gap_slot[s + rel - 1]
-            t[rel] = t[rel - 1] + (int(unique_dt[slot]) if slot >= 0 else 0)
-
-        run_start = 0
-        for rel in range(1, e - s):
-            if seg[rel] != seg[rel - 1]:
-                _record_dwell(
-                    b, int(seg[rel - 1]), s + run_start, s + rel, int(t[rel] - t[run_start])
-                )
-                transitions.append(
-                    Transition(
-                        burst=b,
-                        state_from=int(seg[rel - 1]),
-                        state_to=int(seg[rel]),
-                        e_from=float(fret[seg[rel - 1]]),
-                        e_to=float(fret[seg[rel]]),
-                        time=int(t[rel]),
-                    )
-                )
-                run_start = rel
-        # Trailing dwell of the final run.
-        _record_dwell(b, int(seg[-1]), s + run_start, e, int(t[e - s - 1] - t[run_start]))
-
-    if populations.sum() > 0:
-        populations /= populations.sum()
+    # A transition at every dwell end inside its burst: into the next dwell's state, at the
+    # burst-relative time of the next dwell's first photon.
+    inner = np.flatnonzero(~trailing)
+    fret = np.asarray(fret)
+    transitions = [
+        Transition(
+            burst=b, state_from=f, state_to=t, e_from=float(fret[f]), e_to=float(fret[t]),
+            time=int(tm),
+        )
+        for b, f, t, tm in zip(
+            burst_of[inner].tolist(),
+            states[inner].tolist(),
+            path[stops[inner]].tolist(),
+            (clock[stops[inner]] - clock[offsets[burst_of[inner]]]).tolist(),
+        )
+    ]
     return dwell_durs, dwells, transitions, populations
 
 
