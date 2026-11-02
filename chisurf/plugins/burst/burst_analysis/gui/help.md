@@ -52,6 +52,19 @@ The order is not a suggestion. Each step consumes what the one before it wrote:
 Steps only Advanced shows carry a sub-number of the step before them, so Simple
 counts 0–3 without a gap and a step has the same number in both modes.
 
+**Simple shows what a step needs, nothing more.** Each step keeps only what you
+need there; Advanced has everything else:
+- **0. Setup:** the setup choice and its detectors.
+- **1. Data:** the files and how to add them.
+- **2. Burst Selection:** the search's main parameters, *Run*, the count rate
+  and the histogram.
+- **3. Burst MLE:** *1. Auto IRF/background* and *2. Fit bursts*, numbered
+  because the fit needs the IRF and background, plus the fit model and its
+  result.
+
+The steps' own Help, Guide and *Proceed* buttons only appear in Advanced; the
+hub's Help, Guide and Next do the same.
+
 The split at 3.1 is the thing to hold on to. Burst-level numbers ask "what was
 this molecule doing, on average, while it crossed"; the per-state MLE asks "what
 was it doing in each part of the crossing". A burst that visited two states has

@@ -912,6 +912,9 @@ class ChannelDefinitionWidget:
         if changed:
             bar.select("" if picked == 0 else names[picked])
             self._used("setup_choice")
+        if not self.is_visible("setup_actions"):
+            im.end_disabled()  # a workflow's Simple mode: the choice only (manage setups in Advanced)
+            return
         place(self._width(action_caption("save")))
         tip = tr("Ask for a name and store the working definition as a saved setup.")
         if action_button("save", tooltip=tip):
@@ -2008,6 +2011,8 @@ class ChannelDefinitionWidget:
         for key, title, _opened in SECTIONS:
             if key == "reading" and not self.is_visible("tttr_reading"):
                 continue
+            if key == "lut" and not self.is_visible("lut"):
+                continue
             if key in ("windows", "detectors") and not self.is_visible("tables"):
                 continue
             tip = {
@@ -2044,6 +2049,12 @@ class ChannelDefinitionWidget:
                     "detectors": self._detectors_section,
                     "lut": self._lut_section,
                 }[key]()
+        if not self.is_visible("definition_tools"):
+            # a workflow's Simple mode: no LUT, JSON or light-path tools (Advanced has them)
+            im.end_disabled()
+            if self.status:
+                im.text_wrapped(self.status)
+            return
         draw_form(self._json_view["toolbar"], self, self._json_toolbar_state)
         self.item_rects.update(self._json_toolbar_state.rects)
         if self.show_save_definition or self.show_setups_file:

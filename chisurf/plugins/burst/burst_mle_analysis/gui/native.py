@@ -346,8 +346,31 @@ class MleNativeApp(TourTarget, ImApp):
         if getattr(self, "pipeline", False):
             if getattr(self, "_pipeline_sections", None) is None:
                 self._pipeline_sections = pipeline_sections(self.sections)
+            if self._simple():
+                return [x for x in self._pipeline_sections if x.get("title") == "Lifetime model"]
             return self._pipeline_sections
         return self.sections
+
+    def _simple(self) -> bool:
+        """The pipeline's Simple mode: the fit and its result, nothing to tune."""
+        return bool(getattr(self, "pipeline", False)) and not getattr(self.model, "advanced", True)
+
+    def _simple_status(self, running: bool) -> None:
+        """One line: what runs, what failed, or what is missing -- not the history of the inputs."""
+        if running or self.job.progress:
+            im.text_wrapped(self.job.progress or self.model.status_text)
+        elif self.job.error:
+            im.push_style_color(im.Col.TEXT, _style.TEXT_DANGER)
+            im.text_wrapped(self.job.error)
+            im.pop_style_color()
+        elif not self.model.input_status()[0]:
+            im.push_style_color(im.Col.TEXT, _style.TEXT_WARNING)
+            im.text_wrapped(str(tr("No IRF and background yet: press 1. Auto IRF/background.")))
+            im.pop_style_color()
+        elif self.model.burst_results:
+            im.text_wrapped(str(tr("Fitted {count} bursts.")).format(count=self.model.n_bursts))
+        else:
+            im.text_wrapped(str(tr("IRF and background ready: press 2. Fit bursts (or Next).")))
 
     def _draw_input(self, name: str) -> None:
         """One generated Input section (the workspace data of the ``accepts`` entry *name*)."""
@@ -370,7 +393,9 @@ class MleNativeApp(TourTarget, ImApp):
                 self.model.split_by_state = False
             except Exception:  # noqa: BLE001 - a running job keeps its setting
                 pass
-        for key in ("detectors", "results"):
+        # Simple: the fit and its result. The IRF and its files are prepared by the pipeline; their
+        # tabs, the setup, the tables and the single-burst inspector are Advanced.
+        for key in ("detectors", "results", "irf", "patterns", "inspect"):
             if key not in self.docks.windows:
                 continue
             if advanced:
@@ -396,8 +421,7 @@ class MleNativeApp(TourTarget, ImApp):
         has_data = self.model.session.df_bursts is not None
         has_results = bool(self.model.burst_results)
         ready, _n = self.model.input_status()
-        pressed = button_row(
-            [
+        buttons = [
                 {
                     "label": "Clear",
                     "key": "clear_files",
@@ -407,7 +431,7 @@ class MleNativeApp(TourTarget, ImApp):
                     else "No burst files to remove.",
                 },
                 {
-                    "label": "Auto IRF/background",
+                    "label": "1. Auto IRF/background",
                     "key": "auto",
                     "enabled": has_data and not running,
                     "tip": "Pick the binning and fit window and estimate a Gaussian IRF and the background from the photons "
@@ -438,7 +462,7 @@ class MleNativeApp(TourTarget, ImApp):
                     else str(tr("Needs an IRF and a background.")),
                 },
                 {
-                    "label": "Fit bursts",
+                    "label": "2. Fit bursts",
                     "key": "toolAction_run",
                     "enabled": has_data and ready and not running,
                     "tip": "Fit every burst of every file and detector by maximum likelihood (worker processes)."
@@ -503,9 +527,13 @@ class MleNativeApp(TourTarget, ImApp):
                     "key": "help",
                     "tip": action_tooltip("help"),
                 },
-            ],
-            remember=self.remember,
-        )
+        ]
+        simple = self._simple()
+        if simple:
+            # the two steps, in their order, and Stop while a fit runs; the hub has Help and Guide
+            keep = {"auto", "toolAction_run"} | ({"Stop"} if running else set())
+            buttons = [b for b in buttons if b["key"] in keep]
+        pressed = button_row(buttons, remember=self.remember)
         if pressed == "toolAction_run":
             self.track("toolAction_run")
             self.fit_bursts()
@@ -538,7 +566,9 @@ class MleNativeApp(TourTarget, ImApp):
             self.start_guide()
         elif pressed == "help":
             self.show_help()
-        if running or self.job.progress:
+        if simple:
+            self._simple_status(running)
+        elif running or self.job.progress:
             im.text_wrapped(self.job.progress or self.model.status_text)
         elif self.job.error:
             im.push_style_color(im.Col.TEXT, _style.TEXT_DANGER)
@@ -547,7 +577,9 @@ class MleNativeApp(TourTarget, ImApp):
         else:
             im.text_wrapped(self.model.status_text)
         ok, n_files = self.model.input_status()
-        if ok:
+        if simple:
+            pass
+        elif ok:
             im.push_style_color(im.Col.TEXT, _style.TEXT_TIP)
             message = str(tr("IRF and background loaded for {detector}; {count} burst file(s)"))
             im.text_wrapped(message.format(detector=self.model.current_detector, count=n_files))

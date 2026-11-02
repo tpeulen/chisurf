@@ -369,6 +369,22 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         )
         super().__init__(gui=self._render, continuous=False)
 
+    #: The workflow's Simple / Advanced mode (standalone: everything).
+    advanced = True
+
+    def set_advanced(self, advanced: bool) -> None:
+        """Simple: the files and how to add them. The file details (path, MMFDB import) and the
+        summary are Advanced -- unless a workflow puts controls of its own in the summary."""
+        self.advanced = bool(advanced)
+        keep_summary = type(self)._draw_summary_extra is not BurstDataSelectionApp._draw_summary_extra
+        for key in ("details",) + (() if keep_summary else ("summary",)):
+            if key in self.docks.windows:
+                if advanced:
+                    self.docks.show(key)
+                else:
+                    self.docks.hide(key)
+        self.docks.focus("files")
+
     # -- tour / help ---------------------------------------------------------------------------------------- #
     def start_guide(self) -> None:
         if callable(self._on_guide):
@@ -472,8 +488,15 @@ class BurstDataSelectionApp(TourTarget, ImApp):
                     "enabled": bool(paths),
                     "tip": "Remove every file from the list." if paths else "No files to remove.",
                 },
-                {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
-                {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
+                # in a workflow's Simple mode the hub's own Help and Guide are the ones
+                *(
+                    []
+                    if not self.advanced
+                    else [
+                        {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
+                        {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
+                    ]
+                ),
             ],
             remember=self.remember,
         )

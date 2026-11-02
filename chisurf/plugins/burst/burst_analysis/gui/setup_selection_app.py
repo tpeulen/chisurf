@@ -150,7 +150,26 @@ class BurstSetupSelectionApp(SetupStepApp):
         self.help_window.draw(box)
         self.tour.draw(*vp.size)
 
+    #: The workflow's Simple / Advanced mode (standalone: everything).
+    advanced = True
+    #: What Simple leaves out of the page: setup management, the reading routine, the LUTs, the
+    #: JSON / LUT / light-path tools and the page's own help (the hub has Help).
+    SIMPLE_HIDDEN = ("setup_actions", "tttr_reading", "lut", "definition_tools", "help")
+
+    def set_advanced(self, advanced: bool) -> None:
+        """Simple: pick a setup and see its detectors. Advanced: edit and manage it all."""
+        self.advanced = bool(advanced)
+        for key in self.SIMPLE_HIDDEN:
+            if advanced:
+                self.page.visibility.pop(key, None)
+            else:
+                self.page.visibility[key] = False
+
     def _draw_window(self, box: Any = None) -> None:
+        if not self.advanced:
+            # Simple: no Guide / Help / Proceed (the hub's), no setup from the workspace
+            SetupStepApp._draw_window(self, box)
+            return
         draw_sections(self.strip, self, self.strip_form)
         self.item_rects.update(self.strip_form.rects)
         self.setup_input_form.rects.clear()

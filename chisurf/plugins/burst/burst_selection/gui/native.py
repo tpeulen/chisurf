@@ -475,9 +475,11 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         busy = self.running
         self.input_form.rects.clear()
         if self.pipeline:
-            # In the pipeline the files are step 1's, all of them: no Input to pick from.
-            im.text(f"Files: all {len(m.files)} from 1. Data Selection")
-            im.set_item_tooltip("Add or remove files in step 1 (Data Selection); this step searches all of them.")
+            # In the pipeline the files are step 1's, all of them: no Input to pick from (Simple
+            # does not repeat them at all -- step 1 chose them).
+            if getattr(m, "advanced", True):
+                im.text(f"Files: all {len(m.files)} from 1. Data Selection")
+                im.set_item_tooltip("Add or remove files in step 1 (Data Selection); this step searches all of them.")
         else:
             im.begin_disabled(busy)
             self.input.workspace_input_on_used = self.track
@@ -564,6 +566,10 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             # Not on the pipeline: its files are step 1's (no example, no Clear), and the legacy
             # exports (flrCIF + its metadata, zipped folders) are File > Data > Legacy Export's.
             buttons = [b for b in buttons if b["key"] not in PIPELINE_HIDDEN_BUTTONS]
+        simple = self.pipeline and not getattr(m, "advanced", True)
+        if simple:
+            # Simple: the search (Next runs it too); the hub has Help and Guide, the rest is Advanced
+            buttons = [b for b in buttons if b["key"] == "toolAction_run"]
         pressed = button_row(buttons, remember=self.remember)
         if pressed == "load_example":
             self.load_example()
@@ -576,6 +582,8 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         else:
             im.text_wrapped(m.status_text)
         self.remember("status")
+        if simple:
+            return  # the setup is step 0's; the file and run tables and the output are Advanced
         im.text_wrapped(m.setup_text())
         im.separator()
         im.begin_disabled(busy)
@@ -832,8 +840,10 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
     def _histogram(self, box=None) -> None:
         self.remember("histogram", box)
         m = self.model
-        draw_sections(self.hist_sections, m, self.form)
-        pressed = button_row(
+        simple = self.pipeline and not getattr(m, "advanced", True)
+        if not simple:  # Simple: the histogram alone; its feature, range and GMM are Advanced
+            draw_sections(self.hist_sections, m, self.form)
+        pressed = None if simple else button_row(
             [
                 {
                     "label": "Auto range",

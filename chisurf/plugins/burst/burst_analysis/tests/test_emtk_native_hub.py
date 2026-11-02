@@ -340,6 +340,7 @@ def test_the_pipeline_selection_shows_no_legacy_exports(hub, files):
     """On the pipeline Burst Selection writes .pto only: no zipped folders, no flrCIF export, no
     example or Clear (its files are step 1's) -- File > Data > Legacy Export has the legacy formats."""
     drv = Driver(hub, (1400, 900))
+    hub.set_advanced(True)  # Advanced shows everything the pipeline step has
     hub.context.raw_files = list(files)
     hub.select("selection")
     drv.draw(3)
@@ -399,3 +400,36 @@ def test_fast_forward_runs_the_simple_pipeline_to_fitted_lifetimes(hub, files):
     assert mle.model.n_bursts == 198
     assert len(mle.model.burst_results) == 198 * 2  # a row per burst and detector
     assert not hub.errors, hub.errors
+
+
+def test_simple_steps_show_what_the_step_needs_only(hub, files):
+    """Simple: no Help / Guide / Proceed of the steps (the hub has them), no setup management,
+    no file details, no file or run tables, two numbered MLE steps."""
+    from chisurf.plugins.burst.burst_analysis.gui.native import receive_photons
+
+    drv = Driver(hub, (1300, 820))
+    hub.set_advanced(False)
+    drv.draw(2)
+    hub.children["setup"].select_setup("probe")
+    receive_photons(hub, {"files": [str(f) for f in files]})
+    drv.click(hub.item_rects["fast_forward"])
+    end = time.monotonic() + 240
+    while time.monotonic() < end and not hub.step_done("mle"):
+        drv.draw(1)
+        time.sleep(0.02)
+    settle(drv)
+    seen = {}
+    for role in ("setup", "data", "selection", "mle"):
+        hub.select(role)
+        drv.draw(3)
+        child = hub.children[role]
+        seen[role] = " ".join(drv.draw(2).strings) + " " + " ".join(
+            set(getattr(child, "item_rects", {})) | set(getattr(getattr(child, "form", None), "rects", {}) or {})
+        )
+    for role, text in seen.items():
+        assert "Proceed to" not in text, role
+    assert "Rename" not in seen["setup"] and "Optical Setup" not in seen["setup"]
+    assert "Import now" not in seen["data"]
+    assert "Files: all" not in seen["selection"] and "Open in ndX" not in seen["selection"]
+    assert "1. Auto IRF/background" in seen["mle"] and "2. Fit bursts" in seen["mle"]
+    assert "Save results" not in seen["mle"] and "Opt" not in seen["mle"].split()
