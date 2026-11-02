@@ -48,6 +48,11 @@ class BurstGsController:
 
     def _compute(self, snapshot):
         ok = snapshot.compute(progress=self.progress)
+        if ok:
+            # Recording the fit (per-photon states of every fitted photon) takes seconds on a long
+            # measurement: on this worker, never in the frame that adopts the result.
+            self.progress(1, "Writing the fit into the measurement's container…")
+            type(snapshot)._write_container(snapshot)
         self.progress(1, "")
         return snapshot, ok
 
@@ -79,7 +84,6 @@ class BurstGsController:
                 self.model._bursts, self.model._analysis = snapshot._bursts, snapshot._analysis
                 self.model._info = snapshot._info
                 self.model.results_text = snapshot.results_text
-                self.model._write_container()
                 self.model.notify("computed")
                 self.status = self._fit_line()
             else:
