@@ -1,6 +1,6 @@
 """The drawn VV/VH app, driven with simulated pointer and keyboard events.
 
-Every control of the Qt tool and of its batch window is used the way a person uses it: the
+Every control of the window and of its batch window is used the way a person uses it: the
 pointer moves over the drawn control, presses and releases, text is typed into a field, a plot's
 line is dragged, a file is dropped on the host. Each test asserts what the next frame shows
 (state, status text, table cell, plot data).
@@ -20,7 +20,7 @@ from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.vv_vh_anisotropy.gui.app import create_app
 from chisurf.plugins.vv_vh_anisotropy.gui.model import AnisotropyModel
 from chisurf.plugins.vv_vh_anisotropy.test.pointer import KEY_BACKSPACE, KEY_ESCAPE, Pointer
-from chisurf.plugins.vv_vh_anisotropy.test.test_emtk_vv_vh_parity import make
+from chisurf.plugins.vv_vh_anisotropy.test.test_emtk_vv_vh import make
 
 
 @pytest.fixture
@@ -137,7 +137,7 @@ def test_g_factor_stepper_arrows_and_the_range(ui, files):
     ui.click((x + w / 2, y + h * 0.75))  # down arrow
     ui.click((x + w / 2, y + h * 0.75))
     assert ui.app.model.g_factor == pytest.approx(0.999)
-    set_field(ui, "g_factor", "99")  # clamped to the Qt range
+    set_field(ui, "g_factor", "99")  # clamped to the field's range
     assert ui.app.model.g_factor == 10.0
     set_field(ui, "g_factor", "-3")
     assert ui.app.model.g_factor == 0.0

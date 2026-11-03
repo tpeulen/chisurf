@@ -1,10 +1,9 @@
-"""The native VV/VH anisotropy app at parity with the retired Qt VvVhAnisotropyCalculator.
+"""The VV/VH anisotropy app: r(t), r-infinity, the saved files, the batch, the window.
 
-Numbers are compared with the values recorded from the genuine Qt tool (``qt_reference.json``) for the same
-generated input (:func:`make`): r-infinity, the
-anisotropy trace and metadata files, and the batch rows. Two Qt defects are not reproduced and
-are tested as fixed: ``_shifted.dat`` was never written, and a file without numbers made the
-load slot and the batch raise.
+The input is generated (:func:`make`) with a planted residual anisotropy, and r(t) is checked against the
+documented formula recomputed here from the input file: after background subtraction, an optional VV/VH swap
+and a linearly interpolated shift of VH, ``r = (VV - g VH) / ((1 - 3 l2) VV + (2 - 3 l1) g VH)``;
+r-infinity is the mean of the finite r(t) over the region ``[lo, hi)`` of channels.
 """
 
 from __future__ import annotations
@@ -28,7 +27,7 @@ GUI = HERE.parent / "gui"
 
 
 def make(path, seed=1, n=256, tau=40.0, rho=18.0, r0=0.36, rinf=0.05, g=1.0, bg_vv=12.0, bg_vh=9.0):
-    """A VV/VH decay pair with Poisson noise, VV then VH in one column (the same generator as the evidence script)."""
+    """A VV/VH decay pair with Poisson noise, VV then VH in one column; r(t) decays from r0 to ``rinf``."""
     rng = np.random.default_rng(seed)
     t = np.arange(n, dtype=float)
     i = 60000.0 * np.exp(-t / tau)
@@ -59,9 +58,7 @@ def app():
     app.close()
 
 
-# the retired Qt tool's recorded values -----------------------------------------------------
-
-QT_REFERENCE = json.loads((HERE / "qt_reference.json").read_text())
+# r(t) recomputed from the input file -----------------------------------------------------------
 
 SETTINGS = [
     dict(g=1.0, bg=(0.0, 0.0), apply_bg=False, shift=0.0, flip=False),
@@ -76,34 +73,65 @@ def _set_model(model, s):
     model.compute()
 
 
-# 1. r(t), r-infinity and the saved files equal the values recorded from the Qt tool, for the same input and settings
+def expected_r(path, s):
+    """r(t) of the file at *path* under the settings *s*, from the documented formula (l1 = l2 = 0)."""
+    raw = np.loadtxt(path)
+    vv, vh = raw[: raw.size // 2], raw[raw.size // 2 :]
+    if s["flip"]:
+        vv, vh = vh, vv
+    if s["apply_bg"]:
+        vv, vh = vv - s["bg"][0], vh - s["bg"][1]
+    t = np.arange(vh.size, dtype=float)
+    query = t - s["shift"]
+    inside = (query >= 0) & (query <= t[-1])
+    shifted = np.full(vh.size, np.nan)
+    shifted[inside] = np.interp(query[inside], t, vh)
+    g = s["g"]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return (vv - g * shifted) / (vv + 2.0 * g * shifted)
+
+
+def mean_over(r, lo, hi):
+    part = r[int(lo) : int(hi)]
+    return float(np.mean(part[np.isfinite(part)]))
+
+
+# 1. r(t), r-infinity and the saved files follow the formula, for every setting
 @pytest.mark.parametrize(
     "index", range(len(SETTINGS)), ids=["plain", "bg+shift", "flip+negative-shift"]
 )
-def test_trace_rinf_and_files_equal_the_recorded_qt_tool(files, tmp_path, index):
-    settings, ref = SETTINGS[index], QT_REFERENCE["trace"][index]
+def test_trace_rinf_and_files_follow_the_formula(files, tmp_path, index):
+    settings = SETTINGS[index]
     a, _ = files
     model = AnisotropyModel()
     model.load(a)
     _set_model(model, settings)
-    assert model.region_bounds == ref["region_bounds"]
-    expected = np.array([np.nan if v is None else v for v in ref["r_t"]])
+    assert model.region_bounds == [179.0, 230.0]  # 70 % and 90 % of the 256 channels
+    expected = expected_r(a, settings)
     np.testing.assert_allclose(model.r_t, expected, rtol=1e-12, equal_nan=True)
-    assert model.r_infty == pytest.approx(ref["r_infty"], rel=1e-12)
-    assert model.r_infty_text == ref["r_infty_text"]
-    # the files: the anisotropy trace and the metadata are byte-identical
+    assert model.r_infty == pytest.approx(mean_over(expected, 179, 230), rel=1e-12)
+    assert model.r_infty_text == f"{model.r_infty:.5f}"
+    if index == 0:  # no correction needed: the planted residual anisotropy comes back
+        assert model.r_infty == pytest.approx(0.05, abs=0.01)
     out = tmp_path / "emtk" / "r.txt"
     out.parent.mkdir()
     model.save(out)
-    # the Qt tool wrote two of the three files (see the next test): the two it wrote are the ones compared
-    assert ref["files"] == ["r_anisotropy.txt", "r_rinf.csv"]
-    for name in ("r_anisotropy.txt", "r_rinf.csv"):
-        assert (out.parent / name).read_text() == ref[name]
+    trace = np.loadtxt(out.parent / "r_anisotropy.txt", skiprows=1)
+    assert (out.parent / "r_anisotropy.txt").read_text().splitlines()[0] == "channel\tr(t)\tr(t)-r_inf"
+    np.testing.assert_array_equal(trace[:, 0], np.arange(256.0))
+    np.testing.assert_allclose(trace[:, 1], model.r_t, rtol=1e-9, equal_nan=True)
+    np.testing.assert_allclose(trace[:, 2], model.r_t - model.r_infty, rtol=1e-9, atol=1e-12, equal_nan=True)
+    (row,) = csv.DictReader((out.parent / "r_rinf.csv").open())
+    assert row["filename"] == "a.dat" and float(row["r_inf"]) == model.r_infty
+    assert [float(row[k]) for k in ("region_min", "region_max", "bg_vv", "bg_vh", "g_factor")] == [
+        179.0,
+        230.0,
+        *settings["bg"],
+        settings["g"],
+    ]
 
 
-# 2. the Qt tool never wrote _shifted.dat (write_vv_vh got its arguments in the wrong order inside
-#    a bare except, see the file set asserted above); the native tool writes it, and it reads back as
-#    the background-corrected VV and the shifted VH
+# 2. _shifted.dat reads back as the background-corrected VV and the shifted VH
 def test_shifted_decays_are_written_and_read_back(files, tmp_path):
     a, _ = files
     model = AnisotropyModel()
@@ -122,11 +150,11 @@ def test_shifted_decays_are_written_and_read_back(files, tmp_path):
     assert len(vv) == len(vh) == 256
 
 
-# 3. the batch rows equal the Qt batch window's recorded rows, for the same snapshot
+# 3. the batch rows: r-infinity of each file over the snapshot's region, clamped to the last channel
 @pytest.mark.parametrize(
     "index", range(len(SETTINGS)), ids=["plain", "bg+shift", "flip+negative-shift"]
 )
-def test_batch_rows_equal_the_recorded_qt_batch_window(files, index):
+def test_batch_rows_follow_the_formula(files, index):
     settings = SETTINGS[index]
     snap_in = {
         "apply_bg": settings["apply_bg"],
@@ -137,19 +165,21 @@ def test_batch_rows_equal_the_recorded_qt_batch_window(files, index):
         "flip": settings["flip"],
         "region_min": 150.0,
         "region_max": 400.0,
-    }  # past the last channel: clamped in both tools
+    }  # past the last channel: clamped
     model = AnisotropyModel()
     model.batch_snapshot = dict(snap_in)
     model.batch_files = [str(p) for p in files]
     rows = model.run_batch()
-    for row, qt_row in zip(rows, QT_REFERENCE["batch"][index]):
-        assert row[0] == qt_row[0]
-        assert row[1] == pytest.approx(qt_row[1], rel=1e-12)
-        assert list(row[2:7]) == pytest.approx(list(qt_row[2:7]))
+    assert [row[0] for row in rows] == ["a.dat", "b.dat"]
+    for row, path in zip(rows, files):
+        assert row[1] == pytest.approx(mean_over(expected_r(path, settings), 150, 255), rel=1e-12)
+        assert list(row[2:7]) == [150.0, 255.0, *settings["bg"], settings["g"]]
         assert row[7] == ""
+    if index == 0:  # the planted residual anisotropies
+        assert (rows[0][1], rows[1][1]) == (pytest.approx(0.05, abs=0.01), pytest.approx(0.08, abs=0.01))
 
 
-# 4. the batch uses the settings the window was opened with (the Qt snapshot), not later edits
+# 4. the batch uses the settings the window was opened with, not later edits
 def test_batch_uses_the_snapshot_taken_when_the_window_opens(files):
     a, b = files
     model = AnisotropyModel()
@@ -170,7 +200,7 @@ def test_batch_uses_the_snapshot_taken_when_the_window_opens(files):
     assert model.loaded_file == str(a) and model.g_factor == 3.0  # the main state is untouched
 
 
-# 5. load: errors keep the loaded data and say why (the Qt slot raised IndexError)
+# 5. load: errors keep the loaded data and say why
 def test_load_errors_are_reported_and_keep_the_data(app, files, tmp_path):
     a, _ = files
     assert app.load_file(a)
@@ -434,7 +464,7 @@ def test_draws_empty_and_populated(app, files, size):
     assert "Run Batch" in painter.strings and "r_inf" in painter.strings
     assert (
         f"{rows[0][1]:.5f}" in painter.strings and f"{rows[1][1]:.5f}" in painter.strings
-    )  # the table cells, Qt's five decimals
+    )  # the table cells, five decimals
     app.model.request_save_batch()
     _draw(app, size)
     assert app.dialog is not None

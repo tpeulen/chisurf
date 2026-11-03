@@ -16,7 +16,7 @@ from chisurf.plugins.fret_line.gui.app import FRETLineApp
 from chisurf.plugins.fret_line.gui.model import NO_NDX_WINDOW, FretLineModel
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 
-from .test_emtk_fret_line_parity import BIG, SMALL, hermetic  # noqa: F401  (hermetic is autouse)
+from .test_emtk_fret_line import BIG, SMALL, hermetic  # noqa: F401  (hermetic is autouse)
 
 
 @pytest.fixture
@@ -277,7 +277,7 @@ def test_min_max_points_tau_typed_with_enter_and_clamped(drv):
     assert m.minimum == 25.0
 
 
-def test_the_sweep_arrows_step_by_the_qt_steps(drv):
+def test_the_sweep_arrows_step_by_the_field_steps(drv):
     m = drv.app.model
     tab(drv, "Sweep")
     for name, step in (("minimum", 1.0), ("maximum", 1.0), ("tau_d0", 0.1), ("n_points", 1)):
@@ -631,7 +631,7 @@ def test_the_tour_card_does_not_cover_the_control_a_step_points_at(drv):
         assert clear or not free, step["title"]
 
 
-def test_a_file_dropped_on_the_window_is_ignored_as_the_qt_window_ignored_it(drv, tmp_path):
+def test_a_file_dropped_on_the_window_is_ignored(drv, tmp_path):
     path = tmp_path / "x.csv"
     path.write_text("1,2\n")
     assert drv.drop(str(path)) is False and not drv.app.model.lines

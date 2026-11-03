@@ -27,7 +27,7 @@ from .model import AnisotropyModel
 from .strings import tr
 
 HERE = Path(__file__).parent
-#: Series colours carry data (the Qt plot's blue VV, red VH, magenta r(t)).
+#: Series colours carry data (blue VV, red VH, magenta r(t)).
 VV_COLOUR = (70, 130, 255, 255)
 VH_COLOUR = (255, 80, 80, 255)
 R_COLOUR = (230, 70, 230, 255)

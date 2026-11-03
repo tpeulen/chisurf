@@ -1,7 +1,7 @@
 """The FRET line generator without Qt: the mixture, the sweep, the computed lines, the donor references and the CSV.
 
 The window is a view over this class (``gui/fret_line_emtk.view.json`` + ``gui/app.py``). Every method a button calls
-takes no arguments; ``enabled(action)`` greys the buttons that have nothing to act on, as the Qt tool did.
+takes no arguments; ``enabled(action)`` greys the buttons that have nothing to act on, so a button is never pressed in vain.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from ..core.algorithms import (
     sweep_targets_for_models,
 )
 
-#: Colour cycle of the computed lines (the Qt tool's).
+#: Colour cycle of the computed lines.
 PALETTE = (
     "#e05c00",
     "#1f77b4",
@@ -97,7 +97,7 @@ class FretLineModel:
         self.line_index = -1
         self._line_seq = 0
         self.message = "Ready"
-        # notice dialog (the Qt tool's information / warning boxes)
+        # in-app notice dialog (information and warnings)
         self.dialog_title = ""
         self.dialog_text = ""
         self.request = ""
@@ -215,7 +215,7 @@ class FretLineModel:
             self.component_index = int(record["index"])
 
     def component_rows(self) -> list[dict]:
-        """One row per component for the table: ``C0``, its model and its weight (the Qt list's text)."""
+        """One row per component for the table: ``C0``, its model and its weight."""
         return [
             {"index": i, "name": f"C{i}", "model": c["model_name"], "weight": c["weight"]}
             for i, c in enumerate(self.components)
@@ -351,7 +351,7 @@ class FretLineModel:
 
     # -- computing and the collection of lines ----------------------------------------- #
     def add_line(self) -> dict | None:
-        """Compute the current mixture and sweep and append the result as a new line (the Qt *+ Add FRET line*)."""
+        """Compute the current mixture and sweep and append the result as a new line (*+ Add FRET line*)."""
         try:
             targets = self.sweep_targets()
             if not targets:
@@ -448,7 +448,7 @@ class FretLineModel:
             self.request = "save"
 
     def write_csv(self, path: str | Path) -> None:
-        """Write every line in the Qt tool's format (two comment lines, then one row per sweep point)."""
+        """Write every line as CSV (two comment lines, then one row per sweep point)."""
         path = Path(path)
         if path.suffix.lower() != ".csv":
             path = path.with_name(path.name + ".csv")
@@ -492,7 +492,7 @@ class FretLineModel:
     def dialog_ok(self) -> None:
         self.dialog_title = self.dialog_text = ""
 
-    # -- the parameters of the selected component (the Qt editor's table) ------------------------------------- #
+    # -- the parameters of the selected component (the editor's table) ----------------------------------------- #
     def parameter_rows(self) -> list[dict]:
         """One record per parameter the selected model uses: name, value, fixed, bounds on, lower, upper."""
         rows = []

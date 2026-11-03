@@ -60,7 +60,7 @@ class AnisotropyModel:
         self.message = "No file loaded"
         #: a dialog the window should open: load, save, add_files, add_folder, save_batch, database
         self.request = ""
-        #: whether the batch window is open, and the settings it was opened with (as the Qt window)
+        #: whether the batch window is open, and the settings it was opened with
         self.batch_open = False
         self.batch_snapshot = None
         self.selected_batch_file = ""
@@ -86,7 +86,7 @@ class AnisotropyModel:
 
     @property
     def region_min(self):
-        """Lower bound of the r-infinity region (the Qt region was always ordered)."""
+        """Lower bound of the r-infinity region (the bounds may be dragged past each other)."""
         return min(self.region_bounds)
 
     @property
@@ -96,7 +96,7 @@ class AnisotropyModel:
 
     @property
     def r_infty_text(self):
-        """The Qt tool's r-infinity read-out: five decimals, or N/A."""
+        """The r-infinity read-out: five decimals, or N/A."""
         return f"{self.r_infty:.5f}" if np.isfinite(self.r_infty) else "N/A"
 
     @property
@@ -152,7 +152,7 @@ class AnisotropyModel:
         self.request = "save_batch"
 
     def open_batch(self):
-        """Open the batch window with a snapshot of the current settings, as the Qt tool does."""
+        """Open the batch window with a snapshot of the current settings; later edits do not reach the batch."""
         self.batch_snapshot = self.snapshot()
         self.batch_open = True
 
@@ -352,7 +352,7 @@ class AnisotropyModel:
         self.selected_batch_file = record.get("path", "") if isinstance(record, dict) else ""
 
     def remove_selected(self, _record=None):
-        """Take the selected file off the batch queue; results go when the queue empties (as the Qt list)."""
+        """Take the selected file off the batch queue; results go when the queue empties."""
         path = self.selected_batch_file
         if path in self.batch_files:
             self.batch_files.remove(path)

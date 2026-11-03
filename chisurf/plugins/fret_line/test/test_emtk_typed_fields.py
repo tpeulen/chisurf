@@ -8,7 +8,7 @@ from chisurf.plugins.fret_line.gui.app import FRETLineApp
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 
 from .test_emtk_fret_line_clicks import open_expert, tab
-from .test_emtk_fret_line_parity import BIG, hermetic  # noqa: F401  (hermetic is autouse)
+from .test_emtk_fret_line import BIG, hermetic  # noqa: F401  (hermetic is autouse)
 
 
 @pytest.fixture

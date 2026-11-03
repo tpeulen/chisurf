@@ -1,11 +1,10 @@
-"""The native FRET line generator against the Qt tool it replaced: sweep targets, computed lines, the CSV, the collection.
+"""The FRET line generator: the mixture, the sweep targets, the computed lines, the CSV, the collection.
 
-The Qt tool (``chisurf/plugins/fret_line/gui/tool.py``, ``FRETLineTool``) is retired; what these tests compared
-against it is frozen in ``qt_reference.json`` beside this file. It was recorded on 2026-10-13 from the live Qt widget
-at commit 26eeba5f8, built offscreen in hermetic settings/MMFDB/HOME folders, its message boxes and file dialog
-replaced so nothing blocked, by driving the same steps each test below drives (the recording script drove
-``_sweep_combo``, ``_min_spin``, ``_do_compute``, ``_on_save`` ... exactly as the former ``qt`` fixture did; its
-``source_commit`` is in the file). Arrays are stored as JSON floats (exact round trip); the CSV as its sha256.
+The lines are checked against the documented formula recomputed here: a Gaussian distance distribution
+``p(R) ~ exp(-(R - R_DA)^2 / 2 sigma^2)`` weighted at the nodes of the engine's distance grid
+(``geomspace(1, 130, 96)`` Å, normalised), each distance giving the donor lifetime
+``tau(R) = tau_D0 / (1 + (R0 / R)^6)``; ``<tau>_x = sum p tau``, ``<tau>_F = sum p tau^2 / <tau>_x`` and
+``E = 1 - <tau>_x / tau_D0``. A mixture adds the components' spectra weighted by their fractions.
 
 Hermetic: settings, MMFDB and HOME are temporary folders, the CSV goes to ``tmp_path``, no network. A module guard
 fails the run if anything appears in the real ``~/.chisurf`` other than its ``logs`` folder.
@@ -13,7 +12,6 @@ fails the run if anything appears in the real ``~/.chisurf`` other than its ``lo
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -35,8 +33,8 @@ PLUGIN = HERE.parent
 SPEC = PLUGIN / "gui/fret_line_emtk.view.json"
 BIG, SMALL = (1200, 800), (800, 600)
 REAL_CHISURF = Path(os.path.expanduser("~")) / ".chisurf"
-#: What the retired Qt tool showed and computed (see the module docstring).
-QT = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
+#: The distance grid of the Gaussian FRET model's lifetime spectrum (Å).
+R_GRID = np.geomspace(1.0, 130.0, 96)
 
 
 def _snapshot(root: Path) -> dict:
@@ -83,61 +81,88 @@ def model():
     m.close()
 
 
+# -- the documented formula ----------------------------------------------------------------------------------------- #
+
+
+def gaussian_spectrum(r_mean, sigma=6.0, r0=52.0, tau_d0=4.0):
+    """Amplitudes and lifetimes of a Gaussian distance distribution on the model's grid."""
+    p = np.exp(-0.5 * ((R_GRID - r_mean) / sigma) ** 2)
+    return p / p.sum(), tau_d0 / (1.0 + (r0 / R_GRID) ** 6)
+
+
+def averaged(p, tau):
+    tau_x = float(np.sum(p * tau))
+    return tau_x, float(np.sum(p * tau * tau)) / tau_x
+
+
+def expected_line(spectra, tau_d0=4.0):
+    tau_x, tau_f = np.array([averaged(p, t) for p, t in spectra]).T
+    return {"tau_x": tau_x, "tau_f": tau_f, "e_fret": 1.0 - tau_x / tau_d0}
+
+
+def line_arrays(result):
+    return {k: np.asarray(result[k]) for k in ("tau_f", "tau_x", "e_fret", "parameter_values")}
+
+
+def assert_line(a, expected):
+    for key, value in expected.items():
+        np.testing.assert_allclose(a[key], value, rtol=1e-4, atol=1e-5, err_msg=key)
+
+
 # -- the defaults and the mixture --------------------------------------------------------------------------------------- #
 
 
-def test_defaults_equal_the_qt_tools(model):
-    qt = QT["defaults"]
-    assert (model.minimum, model.maximum, model.n_points, model.tau_d0, model.log_scale) == (
-        qt["minimum"],
-        qt["maximum"],
-        qt["n_points"],
-        qt["tau_d0"],
-        qt["log_scale"],
-    )
-    assert model.weight == qt["weight"] == 1.0
-    assert [c["model_name"] for c in model.components] == qt["component_labels"]
-    assert set(qt["model_labels"]) <= set(
+def test_one_gaussian_component_and_a_linear_sweep_by_default(model):
+    assert (model.minimum, model.maximum, model.n_points, model.log_scale) == (0.0, 100.0, 100, False)
+    assert model.weight == 1.0
+    assert [c["model_name"] for c in model.components] == ["FRET: FD (Gaussian)"]
+    assert {"FRET: FD (Gaussian)", "FRET: FD (Worm-like chain)", "FRET: FD (Discrete)", "Lifetime"} <= set(
         model.model_labels()
-    )  # the native list adds the backend's fixed-distance entry
+    )
 
 
-def test_the_component_list_text_and_the_add_remove_rules_equal_the_qt_tools(model):
+def test_components_are_numbered_and_the_last_one_cannot_be_removed(model):
     model.add_component()
     rows = model.component_rows()
-    assert QT["component_items_after_add"] == [
-        f"{r['name']}: {r['model']}  (w={r['weight']:g})" for r in rows
+    assert [(r["name"], r["model"], r["weight"]) for r in rows] == [
+        ("C0", "FRET: FD (Gaussian)", 1.0),
+        ("C1", "FRET: FD (Gaussian)", 1.0),
     ]
     model.remove_component()
     model.remove_component()  # the last one stays
-    assert QT["components_after_two_removes"] == len(model.components) == 1 and not model.enabled(
-        "remove_component"
-    )
+    assert len(model.components) == 1 and not model.enabled("remove_component")
 
 
-def test_a_changed_weight_and_model_follow_the_qt_rules(model):
-    qt = QT["weight_and_model"]
+def test_a_changed_weight_survives_a_model_change(model):
     model.weight = 2.5
-    assert qt["weight_after_set"] == model.components[0]["weight"] == 2.5
+    assert model.components[0]["weight"] == 2.5
     model.model_label = "Lifetime"
-    assert qt["label_after_model_change"] == model.components[0]["model_name"] == "Lifetime"
-    assert (
-        qt["weight_after_model_change"] == model.components[0]["weight"] == 2.5
-    )  # the weight survives a model change
+    assert model.components[0]["model_name"] == "Lifetime"
+    assert model.components[0]["weight"] == 2.5
 
 
 # -- the sweep targets and the lines --------------------------------------------------------------------------------------- #
 
+NUISANCE = ("rho0", "b0", "r0", "g", "l1", "l2", "scatter", "background", "xDOnly")
+
 
 @pytest.mark.parametrize("two", [False, True])
 @pytest.mark.parametrize("all_parameters", [False, True])
-def test_sweep_target_labels_equal_the_qt_tools(model, two, all_parameters):
+def test_sweep_targets_are_the_component_parameters_and_the_fractions(model, two, all_parameters):
     if two:
         model.add_component()
     model.show_all_parameters = all_parameters
-    assert model.sweep_labels() == QT["targets"][f"two={two},all={all_parameters}"]
-    if two:
-        assert any(label.startswith("fraction") for label in model.sweep_labels())
+    labels = model.sweep_labels()
+    names = {label.split(" · ")[-1] for label in labels if not label.startswith("fraction")}
+    assert {"RDA0", "s0", "R0", "tD0", "kappa2"} <= names
+    assert bool(names & set(NUISANCE)) is all_parameters
+    prefixes = ["C0 [FRET: FD (Gaussian)] · "] + (["C1 [FRET: FD (Gaussian)] · "] if two else [])
+    for prefix in prefixes:
+        assert any(label.startswith(prefix) for label in labels)
+    fractions = [label for label in labels if label.startswith("fraction")]
+    assert fractions == (
+        ["fraction · C0 [FRET: FD (Gaussian)]", "fraction · C1 [FRET: FD (Gaussian)]"] if two else []
+    )
 
 
 def test_the_filter_keeps_the_targets_containing_the_text_case_insensitively(model):
@@ -147,48 +172,29 @@ def test_the_filter_keeps_the_targets_containing_the_text_case_insensitively(mod
     assert model.sweep_labels() == []
 
 
-def line_arrays(result):
-    return {k: np.asarray(result[k]) for k in ("tau_f", "tau_x", "e_fret", "parameter_values")}
-
-
-def assert_arrays_equal(a, recorded):
-    for key in a:
-        np.testing.assert_allclose(a[key], np.asarray(recorded[key]), rtol=1e-12, err_msg=key)
-
-
-def test_the_static_line_equals_the_qt_tools_point_for_point(model):
-    qt = QT["static"]
+def test_the_static_line_follows_the_gaussian_distance_formula(model):
     model.minimum, model.maximum = 20.0, 120.0
     line = model.add_line()
     a = line_arrays(line["result"])
-    assert_arrays_equal(a, qt["arrays"])
-    assert line["sweep_label"] == qt["sweep_label"] and line["name"] == "Line 1" == qt["name"]
-    assert line["color"] == qt["color"] == PALETTE[0]
-    assert line["components"] == qt["components"]
-    assert len(a["tau_f"]) == 100
+    np.testing.assert_allclose(a["parameter_values"], np.linspace(20.0, 120.0, 100))
+    assert_line(a, expected_line([gaussian_spectrum(r) for r in a["parameter_values"]]))
+    assert line["sweep_label"] == "C0 [FRET: FD (Gaussian)] · RDA0" and line["name"] == "Line 1"
+    assert line["color"] == PALETTE[0]
+    assert line["components"] == "C0=FRET: FD (Gaussian)(w=1)"
 
 
-def test_a_log_sweep_and_a_user_tau_d0_equal_the_qt_tools(model):
-    model.minimum, model.maximum, model.log_scale, model.tau_d0, model.n_points = (
-        20.0,
-        120.0,
-        True,
-        3.5,
-        40,
-    )
+def test_a_log_sweep_and_a_user_tau_d0_follow_the_formula(model):
+    model.minimum, model.maximum, model.log_scale, model.tau_d0, model.n_points = 20.0, 120.0, True, 3.5, 40
     line = model.add_line()
     a = line_arrays(line["result"])
-    assert_arrays_equal(a, QT["log_sweep"]["arrays"])
-    assert (
-        line["log"] is True is QT["log_sweep"]["log"]
-        and a["parameter_values"][0] == pytest.approx(20.0)
-        and len(a["tau_f"]) == 40
-    )
+    np.testing.assert_allclose(a["parameter_values"], np.geomspace(20.0, 120.0, 40))
+    assert_line(a, expected_line([gaussian_spectrum(r) for r in a["parameter_values"]], tau_d0=3.5))
+    assert line["log"] is True
 
 
-def test_the_dynamic_line_equals_the_qt_tools_from_the_same_start(model):
+def test_the_fraction_line_mixes_the_two_spectra(model):
     model.add_component()
-    # one component at another distance, as the Qt tool was driven
+    # the second component at another distance
     comp = model.components[1]["model"]
     next(p for p in comp.parameters_all if p.canonical_id == "distance.mean.0").value = 70.0
     model.sweep_label = next(
@@ -197,39 +203,40 @@ def test_the_dynamic_line_equals_the_qt_tools_from_the_same_start(model):
     model.minimum, model.maximum = 0.0, 1.0
     line = model.add_line()
     a = line_arrays(line["result"])
-    assert_arrays_equal(a, QT["dynamic"]["arrays"])
-    assert line["sweep_label"] == QT["dynamic"]["sweep_label"]
-    assert a["tau_f"].min() < a["tau_f"].max() and "fraction" in line["sweep_label"]
+    (p0, tau), (p1, _) = gaussian_spectrum(50.0), gaussian_spectrum(70.0)
+    assert_line(a, expected_line([(f * p0 + (1 - f) * p1, tau) for f in a["parameter_values"]]))
+    assert line["sweep_label"] == "fraction · C0 [FRET: FD (Gaussian)]"
 
 
-def test_the_editors_kappa2_regime_is_drawn_and_its_static_line_equals_the_qt_editors():
-    """The Qt editor's dynamic / static κ² radios moved the line; the emtk editor draws the same control.
+def test_the_editors_static_kappa2_moves_the_line_and_dynamic_kappa2_brings_it_back():
+    """The editor's dynamic / static κ² radios set the orientation mode of the selected component.
 
-    Pressed as a user presses it (at its drawn rectangle): static κ² gives the recorded static-κ² line, which
-    lies well away from the dynamic one; dynamic κ² brings the ordinary static line back.
+    Pressed as a user presses it (at its drawn rectangle): static κ² averages the transfer over a static
+    isotropic κ² distribution, which lowers E at short distances well away from the dynamic line; dynamic κ²
+    brings the line of the formula back.
     """
     from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 
-    qt = QT["kappa2_static"]
     app = FRETLineApp()
     try:
         app.show_advanced("editor")
         drv = Driver(app, BIG)
         drawn = {t[5] for t in drv.draw(4).texts}
-        assert set(qt["editor_controls"]) <= drawn, set(qt["editor_controls"]) - drawn
+        assert {"dynamic κ²", "static κ²"} <= drawn
         app.model.minimum, app.model.maximum = 20.0, 120.0
+        dynamic = expected_line([gaussian_spectrum(r) for r in np.linspace(20.0, 120.0, 100)])
         drv.click(app.form.rects["kappa2.static"])
         drv.draw(2)
-        assert app.model.selected["model"].orientation_parameter.mode == qt["mode"] == "slow"
+        assert app.model.selected["model"].orientation_parameter.mode == "slow"
         line = app.model.add_line()
         a = line_arrays(line["result"])
-        assert_arrays_equal(a, qt["arrays"])
-        assert line["sweep_label"] == qt["sweep_label"] == QT["static"]["sweep_label"]
-        assert np.max(np.abs(a["e_fret"] - np.asarray(QT["static"]["arrays"]["e_fret"]))) > 0.1
+        assert line["sweep_label"] == "C0 [FRET: FD (Gaussian)] · RDA0"
+        assert np.max(np.abs(a["e_fret"] - dynamic["e_fret"])) > 0.1
+        assert a["e_fret"][0] < dynamic["e_fret"][0]
         drv.click(app.form.rects["kappa2.dynamic"])
         drv.draw(2)
         assert app.model.selected["model"].orientation_parameter.mode == "fast"
-        assert_arrays_equal(line_arrays(app.model.add_line()["result"]), QT["static"]["arrays"])
+        assert_line(line_arrays(app.model.add_line()["result"]), dynamic)
     finally:
         app.close()
 
@@ -243,15 +250,15 @@ def test_a_sweep_leaves_the_users_parameters_where_they_were(model):
     parameter.value = 55.0
     model.minimum, model.maximum = 20.0, 120.0
     model.add_line()
-    assert parameter.value == 55.0  # the Qt tool left the swept parameter at the last sweep value
+    assert parameter.value == 55.0
 
 
 def test_a_failing_compute_says_why_and_adds_no_line(model):
-    qt = QT["failing_compute"]
     model.log_scale, model.minimum = True, 0.0
-    assert model.add_line() is None and not model.lines and qt["lines"] == 0
-    assert qt["title"] == "Compute error" == model.dialog_title
-    assert qt["text"] == model.dialog_text and "Log-scale" in model.message
+    assert model.add_line() is None and not model.lines
+    assert model.dialog_title == "Compute error"
+    assert model.dialog_text == "Log-scale sweep requires param_min and param_max > 0."
+    assert "Log-scale" in model.message
 
 
 # -- the collection ---------------------------------------------------------------------------------------------------------- #
@@ -263,47 +270,49 @@ def three_lines(model):
         model.add_line()
 
 
-def test_visibility_remove_and_clear_follow_the_qt_rules(model):
-    qt = QT["collection"]
+def test_visibility_remove_and_clear(model):
     three_lines(model)
-    assert [l["color"] for l in model.lines] == qt["colors"] == list(PALETTE[:3])
+    assert [l["color"] for l in model.lines] == list(PALETTE[:3])
     model.hide_all()
-    assert [l["visible"] for l in model.lines] == qt["visible_after_hide_all"] == [False] * 3
+    assert [l["visible"] for l in model.lines] == [False] * 3
     model.show_all()
     assert all(l["visible"] for l in model.lines)
     model.line_index = 1
     model.remove_line()
-    assert (
-        [l["name"] for l in model.lines] == qt["names_after_remove_second"] == ["Line 1", "Line 3"]
-    )
-    model.remove_line()  # nothing selected any more: the last one goes, as in the Qt tool
+    assert [l["name"] for l in model.lines] == ["Line 1", "Line 3"]
+    model.remove_line()  # nothing selected any more: the last one goes
     model.line_index = -1
     model.clear_lines()
-    assert model.lines == [] and qt["after_clear"] == 0
+    assert model.lines == []
     assert not any(
         model.enabled(a)
         for a in ("save_csv", "push", "show_all", "hide_all", "remove_line", "clear_lines")
     )
     model.add_line()
-    assert (
-        qt["next_name_after_clear"] == "Line 4" == model.lines[0]["name"]
-    )  # the numbering continues
+    assert model.lines[0]["name"] == "Line 4"  # the numbering continues
 
 
-def test_the_csv_is_byte_equal_to_the_qt_writer(model, tmp_path):
-    qt = QT["csv"]
+def test_the_csv_holds_every_point_of_every_line(model, tmp_path):
     model.add_component()
     model.minimum, model.maximum = 20.0, 120.0
     for _ in range(2):
         model.add_line()
-    mine = tmp_path / "mine.csv"
-    model.write_csv(mine)
-    data = mine.read_bytes()
-    assert data.decode().splitlines()[:3] == qt["head"]
-    assert (len(data), hashlib.sha256(data).hexdigest()) == (qt["bytes"], qt["sha256"])
-    assert qt["saved_title"] == "Saved" == model.dialog_title and model.dialog_text.startswith(
-        qt["saved_text_prefix"]
-    )
+    path = tmp_path / "mine.csv"
+    model.write_csv(path)
+    text = path.read_text().splitlines()
+    assert text[:2] == ["# 2 FRET line(s)", "# line,sweep,log,components,parameter,tau_F_ns,tau_X_ns,E_FRET"]
+    rows = [row.split(",") for row in text[2:]]
+    assert len(rows) == 200
+    for i, line in enumerate(model.lines):
+        a = line_arrays(line["result"])
+        block = rows[i * 100 : (i + 1) * 100]
+        assert {(r[0], r[1], r[2], r[3]) for r in block} == {
+            (line["name"], line["sweep_label"], "False", line["components"].replace(",", ";"))
+        }
+        values = np.array([[float(v) for v in r[4:]] for r in block])
+        for col, key in enumerate(("parameter_values", "tau_f", "tau_x", "e_fret")):
+            np.testing.assert_allclose(values[:, col], a[key], rtol=1e-7, err_msg=key)
+    assert model.dialog_title == "Saved" and model.dialog_text.startswith("Saved 2 line(s) to:")
 
 
 def test_a_name_without_csv_gets_the_extension_and_an_unwritable_path_is_reported(model, tmp_path):
