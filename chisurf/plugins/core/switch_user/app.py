@@ -126,7 +126,7 @@ class SwitchUserApp(ImApp):
 
     # -- persistence ------------------------------------------------------
     def export_settings(self) -> dict:
-        """Nothing is kept here: the account and server live in the ``mmfdb`` settings, as with Qt.
+        """Nothing is kept here: the account and server live in the ``mmfdb`` settings.
 
         The password is never stored.
         """

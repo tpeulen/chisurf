@@ -1,7 +1,7 @@
-"""The native switch-user port: model equals the Qt login dialog, actions, drawing, no Qt.
+"""The switch-user window: reading the settings, logging in, the actions, drawing, no Qt.
 
-The Qt side is ``qt_reference.json``: the legacy ``LoginDialog``'s answers, recorded per case from
-the live dialog and frozen (``_recorded`` names the commit), so this file imports no Qt.
+Every expected value is built from the inputs: the :data:`BASE` settings block and the fields
+typed into the model (see :func:`expected_mmfdb`).
 
 Hermetic: settings, MMFDB database and credential store are temporary or stubbed (see the
 ``world`` fixture); one test proves the real ``~/.chisurf`` settings file is not touched.
@@ -158,50 +158,53 @@ def click(app, label, size=(1200, 800), nth=0):
     return True
 
 
-#: The legacy ``chisurf.gui.LoginDialog``'s answers, recorded once per case from the live dialog
-#: (offscreen, through this file's ``world`` fixture) and frozen here: the dialog is driven by the
-#: same inputs every time, so its facts do not drift and the parity needs no Qt at test time.
-QT = json.loads((Path(__file__).with_name("qt_reference.json")).read_text(encoding="utf-8"))
+def expected_mmfdb(server, port, save, auto, user="admin"):
+    """The ``mmfdb`` settings block a successful login leaves, built from :data:`BASE` and the inputs.
+
+    The rules: the endpoint becomes ``server``/``port`` (publish port one above), the server moves to
+    the front of the history, and the account is remembered only when one of the two options is on.
+    """
+    cfg = copy.deepcopy(BASE)
+    cfg["client"].update(host=server, cmd_port=port, pub_port=port + 1)
+    if save or auto:
+        cfg["default_user_id"] = user
+        cfg["client"]["username"] = user
+    history = [s for s in BASE["server_history"] if s != server]
+    cfg["server_history"] = [server] + history
+    cfg.update(last_server=server, last_port=port, save_login=save, autologin=auto)
+    return cfg
 
 
-def _as_tuples(shown):
-    return [tuple(item) for item in shown]
+# ------------------------------------------------ reading the settings
+def test_initial_fields_come_from_the_settings(world, model):
+    assert model.server_history == BASE["server_history"]
+    assert model.server == BASE["last_server"]
+    assert model.port == BASE["last_port"]
+    assert tuple(model.bounds("port")) == (1, 65535)
+    from chisurf.core.mmfdb_services import DESKTOP_CREDENTIALS
 
-
-# ------------------------------------------------ equal to the Qt dialog
-def test_initial_fields_equal_the_qt_dialog(world, model):
-    qt = QT["initial"]
-    assert model.server_history == qt["server_items"]
-    assert model.server == qt["server"] == "lab-server.example.org"
-    assert model.port == qt["port"] == 9100
-    assert tuple(qt["port_bounds"]) == tuple(model.bounds("port"))
-    assert model.known_users == qt["user_items"] == ["alice", "user", "admin"]
-    assert model.user == qt["user"]
-    assert model.save_login == qt["save_login"] is True
-    assert model.autologin == qt["autologin"] is False
-    assert qt["password_echo_is_normal"] is False and model.password == ""
+    assert model.known_users[0] == model.user == "alice"
+    assert set(model.known_users[1:]) == set(DESKTOP_CREDENTIALS) - {"alice"}
+    assert model.save_login is True and model.autologin is False
+    assert model.password == ""
     assert model.server_label == "Server"
 
 
-def test_remote_mode_equals_the_qt_dialog(world):
+def test_remote_mode_offers_the_url_and_no_port(world):
     from chisurf.plugins.core.switch_user.model import SwitchUserModel
 
-    world.configure(
-        {"client": {"mode": "remote", "base_url": "http://127.0.0.1:8080", "username": "alice"}}
-    )
-    qt = QT["remote"]
+    url = "http://127.0.0.1:8080"
+    world.configure({"client": {"mode": "remote", "base_url": url, "username": "alice"}})
     m = SwitchUserModel()
-    assert "MMFDB URL:" in qt["labels"] and m.server_label == "MMFDB URL"
-    assert m.remote and not qt["port_visible"]
-    assert qt["server_items"] == m.server_history
-    assert m.server == qt["server"] == "http://127.0.0.1:8080"
-    assert m.known_users == qt["user_items"] == ["alice"]
+    assert m.server_label == "MMFDB URL" and m.remote
+    assert m.server_history == [url] and m.server == url
+    assert m.known_users == ["alice"]
 
 
+# ------------------------------------------------------------- logging in
 @pytest.mark.parametrize("save,auto", [(True, False), (False, False), (True, True), (False, True)])
 @pytest.mark.parametrize("server,port", [("10.0.0.7", 9200), ("new-host", 7000)])
-def test_successful_login_persists_exactly_what_the_qt_dialog_did(world, save, auto, server, port):
-    qt = QT["success"][f"{server}:{port}:save={save}:auto={auto}"]
+def test_successful_login_persists_the_endpoint_history_and_account(world, save, auto, server, port):
     from chisurf.plugins.core.switch_user.model import SwitchUserModel
 
     client = FakeClient()
@@ -209,65 +212,69 @@ def test_successful_login_persists_exactly_what_the_qt_dialog_did(world, save, a
     m.user, m.password, m.server, m.port = "  admin ", "admin", server, port
     m.save_login, m.autologin = save, auto
     m.login()
-    assert m.accepted == qt["accepted"] is True
-    assert world.cs.cs_settings["mmfdb"] == qt["mmfdb"]
-    assert world.yaml == qt["yaml"]
-    assert [list(c) for c in world.token_calls] == qt["token_calls"]
+    expected = expected_mmfdb(server, port, save, auto)
+    assert m.accepted is True
+    assert world.cs.cs_settings["mmfdb"] == expected
+    assert world.yaml == expected
+    token_call = ("store", server, port, "admin", "fake-token") if auto else (
+        "delete", server, port, "admin")
+    assert world.token_calls == [token_call]
     assert client.calls == [{"user_id": "admin", "password": "admin"}]
-    assert m.notices == [] and m.closed and qt["shown"] == []
-    assert sorted(world.creds._RUNTIME_SESSION_TOKENS) == qt["runtime_tokens"]
-    assert qt["runtime_tokens"] == [f"{server}:{port}:admin"]
+    assert m.notices == [] and m.closed
+    assert sorted(world.creds._RUNTIME_SESSION_TOKENS) == [f"{server}:{port}:admin"]
 
 
-def test_rejected_login_changes_nothing_like_the_qt_dialog(world, model):
-    expected_messages = ["Incorrect credentials", "Account locked", "Incorrect credentials"]
-    assert len(QT["rejected"]) == len(expected_messages)
-    for qt, expected in zip(QT["rejected"], expected_messages):
-        answer = qt["answer"]
-        assert not qt["accepted"] and _as_tuples(qt["shown"]) == [
-            ("warning", "Login Failed", expected)
-        ]
-        assert qt["settings_unchanged"] and qt["yaml"] is None and qt["token_calls"] == []
-        world.configure(BASE)
-        before = copy.deepcopy(world.cs.cs_settings["mmfdb"])
-        model.fake.answer = answer
-        model.user, model.password = "admin", "x"
-        model.login()
-        assert model.notices == _as_tuples(qt["shown"])
-        assert not model.accepted and not model.closed
-        assert world.cs.cs_settings["mmfdb"] == before and world.yaml is None
-        assert world.token_calls == []
-        model.notices.clear()
+@pytest.mark.parametrize(
+    "answer,expected",
+    [
+        ({"ok": False, "error": "Incorrect credentials"}, "Incorrect credentials"),
+        ({"authenticated": False, "error": {"message": "Account locked"}}, "Account locked"),
+        ({"ok": False}, "Incorrect credentials"),
+    ],
+)
+def test_a_rejected_login_shows_the_reason_and_changes_nothing(world, model, answer, expected):
+    before = copy.deepcopy(world.cs.cs_settings["mmfdb"])
+    model.fake.answer = answer
+    model.user, model.password = "admin", "x"
+    model.login()
+    assert model.notices == [("warning", "Login Failed", expected)]
+    assert not model.accepted and not model.closed
+    assert world.cs.cs_settings["mmfdb"] == before and world.yaml is None
+    assert world.token_calls == []
 
 
-def test_exception_is_the_error_message_of_the_qt_dialog(world, model):
-    qt = QT["exception"]
+def test_an_exception_becomes_an_error_message(world, model):
     model.fake.error = RuntimeError("Connection refused")
     model.login()
-    assert _as_tuples(qt["shown"]) == [("error", "Error", "Login failed: Connection refused")]
-    assert model.notices == _as_tuples(qt["shown"]) and not model.accepted and not qt["accepted"]
+    assert model.notices == [("error", "Error", "Login failed: Connection refused")]
+    assert not model.accepted
 
 
-def test_empty_user_falls_back_to_the_picked_account_like_qt(world, model):
+def test_an_empty_user_falls_back_to_the_picked_account(world, model):
     model.user, model.password = "", "x"
     model.login()
-    assert QT["empty_user"]["calls"][-1] == {"user_id": "alice", "password": "x"}
-    assert model.fake.calls[-1] == QT["empty_user"]["calls"][-1]
+    assert model.fake.calls[-1] == {"user_id": model.picked_user, "password": "x"}
+    assert model.picked_user == "alice"
 
 
-def test_token_refused_and_settings_not_saved_warnings_equal_qt(world, model, monkeypatch):
+def test_token_refused_and_settings_not_saved_warnings(world, model, monkeypatch):
     from chisurf.core.settings import settings_utils
 
-    qt = QT["token_refused"]
     world.store_ok = False
     world.configure(BASE)
     model.user, model.password, model.autologin = "admin", "admin", True
     model.server, model.port = "10.0.0.7", 9200
     model.login()
-    assert [list(n[1:]) for n in model.notices] == [s[1:] for s in qt["shown"]]
-    assert model.notices[0][1] == "Autologin Not Saved"
-    assert world.cs.cs_settings["mmfdb"]["autologin"] is False and qt["mmfdb_autologin"] is False
-    assert world.yaml["autologin"] is False == qt["yaml_autologin"]
+    assert model.notices == [
+        (
+            "warning",
+            "Autologin Not Saved",
+            "Login succeeded, but ChiSurf could not store the session token in the OS "
+            "credential store.",
+        )
+    ]
+    assert world.cs.cs_settings["mmfdb"]["autologin"] is False
+    assert world.yaml["autologin"] is False
     assert model.accepted and not model.closed  # the box must be read first
     model.dismiss_notice()
     assert model.closed

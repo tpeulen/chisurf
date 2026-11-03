@@ -1,13 +1,13 @@
 """Qt-free model of the switch-user (MMFDB login) window.
 
-It carries what the Qt ``LoginDialog`` carried: the server (or MMFDB URL) and port, the
-account, the password, the two remember-options, the server history and the offered accounts,
-and the login itself -- authenticate through the MMFDB client, then persist the choice in the
-``mmfdb`` settings and the session-token stores exactly as the dialog did.
+It carries the server (or MMFDB URL) and port, the account, the password, the two
+remember-options, the server history and the offered accounts, and the login itself --
+authenticate through the MMFDB client, then persist the choice in the ``mmfdb`` settings and the
+session-token stores.
 
-Messages the dialog showed in modal message boxes (Login Failed, Settings Not Saved, Autologin
-Not Saved, Error) are queued in :attr:`notices` and shown one at a time by the app; the window
-closes once the last one is acknowledged, as the dialog closed after its boxes.
+Messages (Login Failed, Settings Not Saved, Autologin Not Saved, Error) are queued in
+:attr:`notices` and shown one at a time by the app; the window closes once the last one is
+acknowledged.
 """
 
 from __future__ import annotations
@@ -15,12 +15,12 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
-#: Servers remembered in the history, as in the Qt dialog.
+#: Servers remembered in the history.
 HISTORY_LENGTH = 5
 
 
 def format_login_error(error: object) -> str:
-    """GUI-safe text for a raw MMFDB login error (the Qt dialog's rule)."""
+    """GUI-safe text for a raw MMFDB login error."""
     fallback = "Incorrect credentials"
     if error is None:
         return fallback
@@ -66,12 +66,12 @@ class SwitchUserModel:
         self.autologin = False
         self.server_history: list[str] = []
         self.known_users: list[str] = []
-        #: Pickers over the editable combos of the Qt dialog.
+        #: Pickers beside the server and account text fields.
         self.recent_server = ""
         self.known_user = ""
         self.message = ""
         self.busy = False
-        #: True once a login succeeded (the Qt dialog's ``accept``).
+        #: True once a login succeeded.
         self.accepted = False
         #: True once the window should close (accepted and notices read, or cancelled).
         self.closed = False
@@ -90,10 +90,10 @@ class SwitchUserModel:
         for callback in list(self._observers):
             callback(event)
 
-    # -- reading the configuration (the dialog's constructor) -----------
+    # -- reading the configuration ---------------------------------------
 
     def load_settings(self) -> None:
-        """Fill the form from the ``mmfdb`` settings, as the dialog's constructor did."""
+        """Fill the form from the ``mmfdb`` settings."""
         import chisurf.core.settings as cs_settings
         from chisurf.plugins.core.mmfdb_admin.gui.client import client_config
 
@@ -156,7 +156,7 @@ class SwitchUserModel:
         return list(self.known_users)
 
     def bounds(self, name: str):
-        """The port range of the Qt spin box."""
+        """The allowed range of field *name* (the port is 1..65535)."""
         if name == "port":
             return (1, 65535)
         return None
@@ -213,7 +213,7 @@ class SwitchUserModel:
     # -- actions ---------------------------------------------------------
 
     def cancel(self) -> None:
-        """Close without changing the active user (the Qt Cancel button)."""
+        """Close without changing the active user."""
         self.password = ""
         self.closed = True
 
@@ -263,7 +263,7 @@ class SwitchUserModel:
         self.notify("login")
 
     def _apply(self, result: dict, user_id: str) -> None:
-        """Remember the account and the server and keep the session token (as the dialog did)."""
+        """Remember the account and the server and keep the session token."""
         from mmfdb.security import credentials
 
         import chisurf.core.settings as cs_settings
