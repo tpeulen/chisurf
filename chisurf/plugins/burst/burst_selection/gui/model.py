@@ -122,9 +122,6 @@ _DISPLAY_ATTRS = (
     "window_start_s",
     "window_length_s",
     "trace_bin_ms",
-    "decay_bins",
-    "burst_bins",
-    "pool_files",
     "hist_feature",
     "hist_bins",
     "hist_min",
@@ -390,9 +387,8 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         self.window_start_s = 0.0
         self.window_length_s = 10.0
         self.trace_bin_ms = diag_mod.DEFAULT_TRACE_BIN_WIDTH_MS
-        self.decay_bins = diag_mod.DEFAULT_DECAY_BINS
-        self.burst_bins = diag_mod.DEFAULT_BURST_BINS
-        self._pool_files = False
+        #: Micro-time channels summed per decay bin: the setup's ``micro_time_binning`` (set_setup).
+        self.decay_bins = 1
         self.hist_feature = PROXIMITY_RATIO_COLUMN
         self.hist_bins = diag_mod.DEFAULT_HISTOGRAM_BINS
         self.hist_min = 0.0
@@ -541,6 +537,8 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         self.windows = copy.deepcopy(settings.get("windows") or {})
         reading = settings.get("tttr_reading") or {}
         self.file_type = diag_mod.normalize_filetype(reading.get("file_type"))
+        # the decay is binned as the setup reads the micro times (one setting, in the setup)
+        self.decay_bins = max(1, int(reading.get("micro_time_binning") or 1))
         from tttrlib import setup_micro_time_resolution
 
         self.window_resolution_s = setup_micro_time_resolution(settings)
@@ -643,10 +641,6 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
             self.merge_gap = int(params["max_gap"])
         if "trace_bin_width" in params:
             self.trace_bin_ms = float(params["trace_bin_width"])
-        if "number_of_burst_bins" in params:
-            self.burst_bins = int(params["number_of_burst_bins"])
-        if "decay_coarse" in params:
-            self.decay_bins = int(params["decay_coarse"])
         algorithm = params.get("tttrlib_algorithm")
         if algorithm and algorithm in self.algorithms:
             self.algorithm = str(algorithm)
@@ -669,7 +663,6 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
             "use_gap_fill": bool(self.use_gap_fill),
             "max_gap": int(self.merge_gap),
             "trace_bin_width": float(self.trace_bin_ms),
-            "number_of_burst_bins": int(self.burst_bins),
             "channels": self.channels,
             "decay_coarse": int(self.decay_bins),
             "ph_window": int(self.photon_window),
@@ -1086,36 +1079,19 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         )
 
     # -- the displayed burst table ----------------------------------------------------------------------- #
-    @property
-    def pool_files(self) -> bool:
-        """Whether the burst table, histogram, scatter and summary show the bursts of every file together.
-
-        The Qt tool stacked the tables of all selected files; fitting the proximity-ratio histogram of a whole
-        measurement (ten repeats, say) needs exactly that. The diagnostic plots stay on the active file.
-        """
-        return bool(self._pool_files)
-
-    @pool_files.setter
-    def pool_files(self, value: bool) -> None:
-        value = bool(value)
-        if value == self._pool_files:
-            return
-        self._pool_files = value
-        self.gmm_result = None
-        self._refresh_display_frame()
-        self.notify("files")
-
     def _refresh_display_frame(self) -> None:
-        if self._pool_files:
-            stacked = [
-                (index, self.frames_by_file.get(str(path))) for index, path in enumerate(self.files)
-            ]
-            stacked = [(i, f) for i, f in stacked if f is not None and row_count(f)]
-            if stacked:
-                self.display_frame = diag_mod.display_frame(
-                    [f for _i, f in stacked], [i for i, _f in stacked]
-                )
-                return
+        """The burst table, histogram, scatter and summary show the bursts of every searched file
+        together: the files are one measurement (ten repeats, say), and its histogram is what is
+        fitted. The diagnostic plots stay on the active file."""
+        stacked = [
+            (index, self.frames_by_file.get(str(path))) for index, path in enumerate(self.files)
+        ]
+        stacked = [(i, f) for i, f in stacked if f is not None and row_count(f)]
+        if stacked:
+            self.display_frame = diag_mod.display_frame(
+                [f for _i, f in stacked], [i for i, _f in stacked]
+            )
+            return
         path = self.active_file
         frame = self.frames_by_file.get(str(path)) if path is not None else None
         if frame is None or row_count(frame) == 0:
@@ -1477,16 +1453,6 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
             if got is not None:
                 out["selected"] = got
         return out
-
-    def duration_histogram(self) -> tuple[np.ndarray, np.ndarray, float] | None:
-        """``(centres, counts, width)`` of the burst durations (ms) of the visible window."""
-        if self.diagnostic is None:
-            return None
-        durations = diag_mod.burst_durations_ms(self.diagnostic)
-        if durations.size == 0:
-            return None
-        counts, edges = np.histogram(durations, bins=max(3, int(self.burst_bins)))
-        return (edges[:-1] + edges[1:]) / 2.0, counts.astype(float), float(edges[1] - edges[0])
 
     def thresholds(self) -> dict[str, float | None]:
         """Lines the dT plot draws: the active macro-time cuts in ms."""
