@@ -1,9 +1,9 @@
-"""The native hidden-Markov-model tool against the Qt tool it replaces, every control operated with real input events.
+"""The emtk hidden-Markov-model tool, every control operated with real input events.
 
-Hermetic through ``conftest.py`` (HOME, chisurf/MMFDB folders, QSettings in a temp folder); the last test proves the
-user's real ``~/.chisurf`` is untouched. The Qt tool and the native app share the Qt-free ``HmmViewModel``: the numbers
-of a fit started from the native window must equal those of the Qt tool's model for the same trace and settings, and the
-native forms must carry the ranges, choices and decimals of ``hmm.view.json``.
+Hermetic through ``conftest.py`` (HOME, chisurf/MMFDB folders in a temp folder); the last test proves the user's real
+``~/.chisurf`` is untouched. The window drives ``HmmViewModel``: the numbers of a fit started from the window must equal
+those of the view model run directly on the same trace and settings, and the window's forms must carry the ranges,
+choices and decimals of the view model's own spec, ``hmm.view.json``.
 """
 
 from __future__ import annotations
@@ -17,9 +17,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from emtk import keys
 
-from chisurf.plugins.core.hmm.gui.app import HmmApp, make_app
+from chisurf.plugins.core.hmm.gui.app import make_app
 from chisurf.plugins.core.hmm.gui.view_model import HmmViewModel
 from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.emtk_test_input import CTRL, SIZE, SMALL, Driver
@@ -114,60 +113,58 @@ def type_value(ui, name, text):
     return ui.app.model
 
 
-# ───────────────────────────── numbers equal the Qt tool ───────────────────────────── #
+# ──────────────────── the window's numbers equal the view model run directly ──────────────────── #
 
 
 @pytest.fixture
-def qt_tool(files):
-    """The view model the retired Qt window drove (it hosted this Qt-free model unchanged)."""
-    from types import SimpleNamespace
-
+def direct(files):
+    """A fresh view model, run directly (no window) on the same trace and settings."""
     from chisurf.plugins.core.hmm.gui.view_model import HmmViewModel
 
-    return SimpleNamespace(model=HmmViewModel())
+    return HmmViewModel()
 
 
-def test_a_fit_started_in_the_native_window_equals_the_qt_tools_fit(qt_tool, ui, files):
-    qt = qt_tool.model
-    qt.files = [files["a"]]
-    qt.n_states, qt.time_step = 3, 0.001
-    qt.run()
+def test_a_fit_started_in_the_window_equals_the_direct_fit(direct, ui, files):
+    ref = direct
+    ref.files = [files["a"]]
+    ref.n_states, ref.time_step = 3, 0.001
+    ref.run()
     ui.app.add_files([files["a"]])
     ui.app.model.n_states, ui.app.model.time_step = 3, 0.001
     ui.draw(2)
     m = fit(ui)
-    assert m.fit.n_states == qt.fit.n_states == 3
-    assert m.fit.log_likelihood == pytest.approx(qt.fit.log_likelihood, rel=1e-9)
-    np.testing.assert_allclose(m.fit.means, qt.fit.means)
-    np.testing.assert_allclose(m.fit.transmat, qt.fit.transmat)
-    np.testing.assert_allclose(m.fit.transition_rates, qt.fit.transition_rates)
-    assert m._status == qt._status
+    assert m.fit.n_states == ref.fit.n_states == 3
+    assert m.fit.log_likelihood == pytest.approx(ref.fit.log_likelihood, rel=1e-9)
+    np.testing.assert_allclose(m.fit.means, ref.fit.means)
+    np.testing.assert_allclose(m.fit.transmat, ref.fit.transmat)
+    np.testing.assert_allclose(m.fit.transition_rates, ref.fit.transition_rates)
+    assert m._status == ref._status
 
 
-def test_the_state_scan_equals_the_qt_tools_scan(qt_tool, ui, files):
-    qt = qt_tool.model
-    qt.files, qt.max_states, qt.time_step = [files["a"]], 5, 0.001
-    qt.run_scan()
+def test_the_state_scan_in_the_window_equals_the_direct_scan(direct, ui, files):
+    ref = direct
+    ref.files, ref.max_states, ref.time_step = [files["a"]], 5, 0.001
+    ref.run_scan()
     ui.app.add_files([files["a"]])
     ui.app.model.max_states, ui.app.model.time_step = 5, 0.001
     ui.click_name("request_scan")
     m = ui.settle()
-    assert list(m._scan.n_states) == list(qt._scan.n_states)
-    np.testing.assert_allclose(m._scan.bic, qt._scan.bic)
-    np.testing.assert_allclose(m._scan.aic, qt._scan.aic)
-    assert (m._scan.best_bic, m._scan.best_aic) == (qt._scan.best_bic, qt._scan.best_aic) == (3, 3)
+    assert list(m._scan.n_states) == list(ref._scan.n_states)
+    np.testing.assert_allclose(m._scan.bic, ref._scan.bic)
+    np.testing.assert_allclose(m._scan.aic, ref._scan.aic)
+    assert (m._scan.best_bic, m._scan.best_aic) == (ref._scan.best_bic, ref._scan.best_aic) == (3, 3)
 
 
-def test_the_tables_show_what_the_qt_html_tables_show(qt_tool, ui, files):
-    qt = qt_tool.model
-    qt.files, qt.time_step = [files["a"]], 0.001
-    qt.n_states = 3
-    qt.run()
-    html = qt.states_html()
-    qt_cells = [
+def test_the_table_rows_show_what_the_html_tables_show(direct, ui, files):
+    ref = direct
+    ref.files, ref.time_step = [files["a"]], 0.001
+    ref.n_states = 3
+    ref.run()
+    html = ref.states_html()
+    html_cells = [
         re.sub(r"<[^>]+>|&#9632;", "", c).strip() for c in re.findall(r"<td[^>]*>(.*?)</td>", html)
     ]
-    rows = qt.state_rows()
+    rows = ref.state_rows()
     native_cells = []
     for r in rows:
         native_cells += [
@@ -178,14 +175,14 @@ def test_the_tables_show_what_the_qt_html_tables_show(qt_tool, ui, files):
             str(r["visits"]),
             f"{r['dwell']:.4g}",
         ]
-    assert native_cells == qt_cells
-    trans = re.findall(r"<td[^>]*>(\d\.\d{4})", qt.transitions_html())
-    flat = [t[f"to_{j}"].split()[0] for t in qt.transition_rows() for j in range(3)]
+    assert native_cells == html_cells
+    trans = re.findall(r"<td[^>]*>(\d\.\d{4})", ref.transitions_html())
+    flat = [t[f"to_{j}"].split()[0] for t in ref.transition_rows() for j in range(3)]
     assert flat == trans
 
 
-def test_the_native_forms_carry_the_ranges_choices_and_decimals_of_the_qt_spec():
-    qt_spec = json.loads((PLUGIN / "gui" / "hmm.view.json").read_text())
+def test_the_window_forms_carry_the_ranges_choices_and_decimals_of_the_view_model_spec():
+    vm_spec = json.loads((PLUGIN / "gui" / "hmm.view.json").read_text())
     native = json.loads((PLUGIN / "gui" / "hmm_emtk.view.json").read_text())["panels"]
 
     def leaves(sections, out):
@@ -195,7 +192,7 @@ def test_the_native_forms_carry_the_ranges_choices_and_decimals_of_the_qt_spec()
             leaves(s.get("sections", []), out)
         return out
 
-    qt = leaves(qt_spec["sections"], {})
+    ref = leaves(vm_spec["sections"], {})
     nat = {}
     for panel in native.values():
         leaves(panel["sections"], nat)
@@ -213,9 +210,9 @@ def test_the_native_forms_carry_the_ranges_choices_and_decimals_of_the_qt_spec()
             "max_states",
         }
         <= set(nat)
-        == set(qt) - set()
+        == set(ref) - set()
     )
-    for attr, section in qt.items():
+    for attr, section in ref.items():
         for key in ("minimum", "maximum", "options", "decimals", "kind"):
             if key in section:
                 assert nat[attr].get(key) == section[key], (attr, key)

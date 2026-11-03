@@ -1,6 +1,6 @@
 {
   "window": {"width": 1200, "height": 800},
- "_comment": "emtk forms and tables of the HMM tool over HmmViewModel; the Qt tool reads hmm.view.json.",
+ "_comment": "emtk forms and tables of the HMM tool over HmmViewModel; the view model's own spec is hmm.view.json.",
  "panels": {
   "model": {
    "sections": [
