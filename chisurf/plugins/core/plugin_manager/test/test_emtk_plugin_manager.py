@@ -1,4 +1,4 @@
-"""The native plugin manager against the Qt tool: rows, search, edits, file operations, drawing, no Qt.
+"""The plugin manager: rows, search, edits, file operations, drawing, no Qt.
 
 Hermetic: the settings folder is a temporary one (Save writes there, never to the user's
 ``~/.chisurf``) and the user plugin directory is a temporary one too, so Install,
@@ -202,35 +202,13 @@ def trio(user_dir):
     return user_dir
 
 
-# ── 1. rows, columns, status equal the Qt tool's ────────────────────────
-
-QT_TO_KEY = {
-    "Plugin": "name",
-    "Id": "id",
-    "Version": "version",
-    "Category": "category",
-    "Status": "status",
-    "Requires": "requires",
-    "Required by": "required_by",
-    "Optional": "optional",
-    "Source": "source",
-    "Toolbar": "toolbar",
-    "Window state": "state",
-}
+# ── 1. rows, columns, status from the planted plugins ───────────────────
 
 
-QT = json.loads((Path(__file__).parent / "qt_reference.json").read_text())
-
-
-def test_rows_columns_and_status_match_the_qt_widget(trio):
-    """The same registry and settings give the retired Qt table's cells and status line (recorded).
-
-    The Qt table was recorded over the real registry; the throwaway plugins' rows, the column
-    set and order, the status wording and the dependency table are compared.
-    """
+def test_rows_columns_and_status_follow_the_planted_plugins(trio):
+    """The throwaway trio's manifests and the settings decide every cell, the status and the edges."""
     from chisurf.plugins.core.plugin_manager.gui.model import TABLE_COLUMNS
 
-    titles, qt_cells = QT["titles"], QT["trio_cells"]
     settings = {
         "disabled_plugins": ["tttr_audifier", "photon_table"],
         "toolbar_plugins": ["alpha"],
@@ -240,34 +218,33 @@ def test_rows_columns_and_status_match_the_qt_widget(trio):
     draw(app)
     rows, columns = app.displayed()
     assert [title for _k, title in columns] == [t for _k, t in TABLE_COLUMNS]
-    assert len(rows) > 100 and QT["n_rows_gt"] > 100
-    # every Qt column, visible or hidden, by its title, on the throwaway plugins' rows
+    assert len(rows) > 100  # the built-in registry is there too
     ours = {r["id"]: r for r in rows}
-    for qt_row in qt_cells:
-        mine = ours[qt_row[titles.index("Id")]]
-        for qt_index, title in enumerate(titles):
-            assert str(mine[QT_TO_KEY[title]]) == qt_row[qt_index], title
-    assert sorted(QT_TO_KEY[t] for t in titles) == sorted(
-        c["key"]
-        for c in json.loads(SPEC_FILE.read_text())["sections"][0]["sections"][2]["options"][
-            "columns"
-        ]
-    )
+    # what make_plugin and the trio fixture wrote, with the settings above
+    keys = ("name", "id", "version", "category", "status", "requires", "required_by", "optional",
+            "source", "toolbar", "state")
+    planted = {
+        "alpha": ("Alpha", "alpha", "0.1.0", "Tools", "cli only", "", "gamma", "", "user", "yes",
+                  "plugin default"),
+        "delta": ("Delta", "delta", "0.1.0", "", "cli only", "ghost", "", "", "user", "",
+                  "plugin default"),
+        "gamma": ("Gamma", "gamma", "0.1.0", "Setup", "cli only", "alpha", "", "", "user", "",
+                  "plugin default"),
+    }
+    spec_columns = json.loads(SPEC_FILE.read_text())["sections"][0]["sections"][2]["options"]["columns"]
+    assert sorted(keys) == sorted(c["key"] for c in spec_columns)  # every column, shown or hidden
+    for plugin_id, cells in planted.items():
+        assert {k: str(ours[plugin_id][k]) for k in keys} == dict(zip(keys, cells)), plugin_id
 
-    def shape(text):
-        return re.sub(r"\d+", "N", text)
+    total = len(model.rows)
+    assert re.fullmatch(rf"{total} plugins · 2 disabled · \d+ needing attention", model.status_text())
 
-    assert shape(model.status_text()) == shape(QT["status"])
-    assert "2 disabled" in model.status_text() and "needing attention" in model.status_text()
-
-    # the dependency table of a plugin with edges: same cells, same order
+    # gamma requires alpha (any version): one edge in the dependency table
     model.select_row({"id": "gamma"})
-    mine = model.dependency_rows()
-    assert QT["dep_titles"] == ["Plugin", "Relation", "Bound", "Installed", "Status"]
     assert [
-        [str(r[k]) for k in ("plugin", "relation", "bound", "installed", "status")] for r in mine
-    ] == QT["dep_cells"]
-    assert QT["dep_cells"] and QT["dep_cells"][0][0] == "alpha"
+        [str(r[k]) for k in ("plugin", "relation", "bound", "installed", "status")]
+        for r in model.dependency_rows()
+    ] == [["alpha", "requires", "any", "0.1.0", "cli only"]]
 
 
 def test_rows_status_and_counts_for_the_throwaway_plugins(trio):
@@ -436,7 +413,7 @@ def test_a_deprecated_plugin_shows_why_it_needs_attention():
     assert ("fact", "Status: deprecated") in blocks
     note = [t for k, t in blocks if k == "note"]
     assert note and note[0].startswith("Deprecated — ")
-    assert "> **Deprecated**" in model.details_text()  # the Qt pane's Markdown says the same
+    assert "> **Deprecated**" in model.details_text()  
 
 
 # ── 4. switches and choices: dirty, Save, Revert ────────────────────────
@@ -453,7 +430,7 @@ def test_toggling_disabled_marks_dirty_and_updates_the_status(trio):
     assert "1 disabled" not in model.status_text() or "unsaved changes" in model.status_text()
     assert "unsaved changes" in model.status_text()
     draw(app)
-    # a hidden (disabled) row keeps its details, as in the Qt tool
+    # a hidden (disabled) row keeps its details
     assert "alpha" not in shown_ids(app)
     assert model.selected.plugin_id == "alpha"
 
@@ -534,7 +511,7 @@ def test_confirmation_dialog_opens_on_screen_and_the_x_cancels(trio):
 # ── 5. Move up / Move down ──────────────────────────────────────────────
 
 
-def test_move_reorders_like_the_qt_tool(trio):
+def test_move_reorders_by_one_place(trio):
     from chisurf.plugins.core.plugin_manager.api.settings_io import PluginSettings
 
     model = make_model()
@@ -555,7 +532,7 @@ def test_move_reorders_like_the_qt_tool(trio):
     assert model.settings.order == before
     model.select_row(None)
     assert not model.enabled("move_up") and not model.enabled("move_down")
-    model.move_up()  # no selection: a no-op, as in Qt
+    model.move_up()  # no selection: a no-op
     assert model.settings.order == before
 
 
@@ -976,7 +953,7 @@ def test_uninstall_refuses_a_builtin_plugin_and_changes_nothing_outside(trio):
     about = PLUGINS_ROOT / "core" / "about"
     before = (_snapshot(about), _snapshot(trio))
     model.ask_uninstall()
-    assert model.dialog == "confirm_uninstall"  # as in Qt: asks, then refuses
+    assert model.dialog == "confirm_uninstall"  # asks, then refuses
     model.dialog_ok()
     pump(app)
     assert model.dialog == "notice" and model.dialog_title == "Cannot uninstall"

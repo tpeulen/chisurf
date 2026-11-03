@@ -3,9 +3,8 @@
 :class:`PluginManagerModel` is the shared :class:`~.view_model.PluginManagerViewModel`
 (discovery rows, the settings working copy, selection, save and revert) plus what
 only the painted window needs: record lists for the two tables that keep their
-identity between frames, the in-app dialogs the Qt tool asked through message
-boxes and file choosers (confirm, notice, rename), the icon panel, and the
-background rescan / install / uninstall.
+identity between frames, the in-app dialogs (confirm, notice, rename), the
+icon panel, and the background rescan / install / uninstall.
 
 Nothing here imports Qt, and every file operation goes through the Qt-free
 ``api`` package, so the whole manager is testable against a throwaway plugin
@@ -26,9 +25,9 @@ from typing import Any, Callable
 
 from chisurf.plugins.core.plugin_manager.gui.view_model import PluginManagerViewModel
 
-#: The columns of the plugin table, in the order the Qt table shows them:
-#: ``(record key, header)``. The rest (Id, Optional, Source, Toolbar, Window
-#: state) start hidden and are offered by the column picker.
+#: The columns of the plugin table, in display order: ``(record key, header)``.
+#: The rest (Id, Optional, Source, Toolbar, Window state) start hidden and are
+#: offered by the column picker.
 TABLE_COLUMNS = (
     ("name", "Plugin"),
     ("version", "Version"),
@@ -38,12 +37,12 @@ TABLE_COLUMNS = (
     ("required_by", "Required by"),
 )
 
-#: Side length of the icon written to disk (the Qt icon panel's size).
+#: Side length of the icon written to disk.
 ICON_SIZE = 256
 
 
 def open_path(path: str) -> None:
-    """Show *path* in the system file browser (the Qt tool's ``Open folder``)."""
+    """Show *path* in the system file browser (``Open folder``)."""
     if sys.platform.startswith("win"):  # pragma: no cover - platform specific
         os.startfile(path)  # type: ignore[attr-defined]  # noqa: S606
     else:
@@ -145,7 +144,7 @@ class PluginManagerModel(PluginManagerViewModel):
     def details_blocks(self) -> list[tuple[str, str]]:
         """The selected plugin as ``(kind, text)`` blocks for the painted pane.
 
-        The Qt tool shows :meth:`details_text` as Markdown. The painted Markdown
+        :meth:`details_text` is the same content as Markdown. The painted Markdown
         drops the underscores of every second plugin id, and the lists of
         requirements it adds are the rows of the Dependencies table beside it,
         so the painted pane draws these blocks as plain text instead: ``title``,

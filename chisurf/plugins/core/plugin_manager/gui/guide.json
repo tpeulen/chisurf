@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour of the plugin manager. Every step points at a real control; two wait for the user to press it -- watching a button being pressed does not teach anyone where it is. 'name' is the emtk control (table, action or attr); 'key' / 'action' with the toolbar glyph label keep the legacy Qt tool's spotlight working.",
+  "_comment": "Guided tour of the plugin manager. Every step points at a real control; two wait for the user to press it -- watching a button being pressed does not teach anyone where it is. 'name' is the emtk control (table, action or attr);",
   "steps": [
     {
       "title": "Everything ChiSurf found",

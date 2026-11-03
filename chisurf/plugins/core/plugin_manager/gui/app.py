@@ -277,7 +277,7 @@ class PluginManagerApp(ImApp):
         elif result is False:
             self.dialog = None
             if purpose == "install_archive":
-                # As in the Qt tool: no archive chosen, so offer a folder instead.
+                # No archive chosen, so offer a folder instead.
                 self._open_dialog(
                     "install_folder",
                     # not-input: plugin archives/folders and icons to install, not measurement data

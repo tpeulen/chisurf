@@ -1,10 +1,9 @@
-"""Qt-free view model behind the plugin manager.
+"""View model behind the plugin manager.
 
 Everything the panel shows and every edit it makes lives here; the emtk app
 (``gui/app.py``) hands this object to the AutoForm view spec.
-That split is what makes the manager testable headlessly -- the old widget put
-the data model, the settings writer, the installer and an HTTP client inside Qt
-callbacks, so none of it could be exercised without a display.
+That split is what makes the manager testable headlessly: the data model, the
+settings writer, the installer and the HTTP client all run without a display.
 """
 
 from __future__ import annotations
