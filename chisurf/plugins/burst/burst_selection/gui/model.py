@@ -406,6 +406,8 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         self.metadata_value = ""
         self.scatter_x, self.scatter_y = SCATTER_DEFAULTS
         # -- results --------------------------------------------------------------------------------------- #
+        #: The button that runs the search, as the texts name it (the pipeline's step sets "Next").
+        self.run_word = "Run"
         self.status_text = "Add TTTR files and choose a detector setup, then press Run."
         self.result: dict[str, Any] | None = None
         self.frames_by_file: dict[str, Any] = {}
@@ -463,7 +465,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
                     self.files.append(child)
                     added += 1
         if added:
-            self.status_text = f"{len(self.files)} file(s) loaded. Press Run to search the bursts."
+            self.status_text = f"{len(self.files)} file(s) loaded. Press {self.run_word} to search the bursts."
             self.notify("files")
         return added
 
@@ -1309,7 +1311,8 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         self._check_windows(diag["tttr"])
         self.status_text = (
             f"Preview of {self.window_start_s:.1f}-{end:.1f} s: {len(start_stop)} burst(s). "
-            "These are the bursts of the visible window only; press Run to search every photon and write the table."
+            "These are the bursts of the visible window only; "
+            f"press {self.run_word} to search every photon and write the table."
             + (f" Warning: {warning}" if warning else "")
             + (f" {self.windows_check_text()}" if self.windows_check_text() else "")
         )
