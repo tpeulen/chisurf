@@ -5,8 +5,7 @@ A TTTR file binned per detector into an intensity trace, its count histograms, a
 (states, BIC elbow, dwell times with exponential fits, transition matrix), FRET efficiency per state, and the burst IDs,
 traces and histograms written beside the file.
 
-The state and computation are :mod:`.model` (Qt-free); the only window is the native app :mod:`.gui.app`. The Qt tool
-was retired with the pyqtgraph dependency: the app has every control, plot and hand-off it had.
+The state and computation are :mod:`.model` (Qt-free); the only window is the native app :mod:`.gui.app`.
 """
 
 # Plugin brand icon (unified emoji set)

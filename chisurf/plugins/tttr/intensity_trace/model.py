@@ -1,9 +1,9 @@
-"""The intensity-trace tool's state and computation, Qt-free: what the Qt widget and the native app both use.
+"""The intensity-trace tool's state and computation, Qt-free: what the app draws and runs.
 
 A TTTR file binned per detector (or per routing channel) into counts per time window; the count histograms; a hidden
 Markov model of the binned trace (the shared HMM core: dimmest state first); the BIC of 1..N states; dwell times per
 state with a single-exponential fit; FRET efficiency (first channel over the sum) per state; and the structured export
-the Qt tool writes beside the file (``<stem>_HMM#<n>_<ms>ms/{bst,traces,hist}``).
+written beside the file (``<stem>_HMM#<n>_<ms>ms/{bst,traces,hist}``).
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from typing import Any
 
 import numpy as np
 
-#: The Qt widget's ranges.
+#: The ranges of the numeric fields.
 WINDOW_MS = (0.1, 999.0)
 BINS = (10, 500)
 COUNTS = (0.0, 10000.0)
@@ -112,7 +112,7 @@ def dwell_histograms(
 
 
 def histogram(values, n_bins: int, lo: float | None, hi: float | None):
-    """Counts of the non-zero values in [lo, hi] (the Qt histogram's rule); ``(centres, counts)`` or ``None``."""
+    """Counts of the non-zero values in [lo, hi]; ``(centres, counts)`` or ``None``."""
     data = np.asarray(values, float)
     data = data[data > 0]
     if lo is not None and hi is not None and hi > lo:
@@ -157,7 +157,7 @@ class IntensityTraceModel:
             return [str(name) for name in detectors]
         if used_channels is None and self.available:
             return list(self.available)
-        # before a file is read: the Qt widget's routing channels 0-7
+        # before a file is read: routing channels 0-7
         return [f"routing_{c}" for c in (used_channels if used_channels is not None else range(8))]
 
     def load(self, path: str | pathlib.Path) -> bool:
@@ -191,7 +191,7 @@ class IntensityTraceModel:
             return False
         available = None
         if self.path != address and not detectors:
-            # a new file: offer the channels it uses (Qt offered 0-7, so channels 8+ could not be chosen)
+            # a new file: offer the channels it uses, 8 and above included
             available = [f"routing_{int(c)}" for c in sorted(tttr.get_used_routing_channels())]
         # The binned trace replaces the old one in one step: the window draws it on another thread while a
         # rebin runs here, and a time axis of the new binning over counts of the old one is a torn frame.
@@ -312,7 +312,7 @@ class IntensityTraceModel:
         return pathlib.Path(path)
 
     def export(self) -> pathlib.Path:
-        """The HMM outputs beside the file, as the Qt tool writes them after Compute HMM:
+        """The HMM outputs beside the file, written after Compute HMM:
         ``<stem>_HMM#<n>_<ms>ms/`` with ``bst/`` (burst IDs per state), ``traces/`` (traces, state and FRET
         trajectories) and ``hist/`` (per-channel, sum and FRET histograms)."""
         from chisurf.core.fio.address import container_of

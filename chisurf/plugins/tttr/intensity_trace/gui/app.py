@@ -1,4 +1,4 @@
-"""The native intensity-trace tool: the Qt ``IntensityTrace`` widget as an emtk app.
+"""The native intensity-trace tool: binned TTTR traces, their histograms and an HMM, as an emtk app.
 
 Controls are ``intensity_trace.view.json`` drawn by :func:`emtk.view_form.draw_form` over :class:`_Form` (the
 :class:`..model.IntensityTraceModel`'s fields, this app's actions); the detector list is a custom section. The trace and
@@ -245,7 +245,7 @@ class IntensityTraceApp(ImApp):
         self.docks.add_window(
             "results", "Results", self._draw_results, dock="results", closable=False
         )
-        # The Qt tool's Setup dialog: the shared detector-setup editor, a tab beside the results.
+        # The shared detector-setup editor, a tab beside the results.
         self.editor = ChannelDefinitionWidget(on_changed=self.setup_edited, host_app=self)
         self.editor.on_used = self._used
         self.docks.add_window(
@@ -314,7 +314,7 @@ class IntensityTraceApp(ImApp):
             self.rebin()
 
     def setup_edited(self, settings: dict) -> None:
-        """The editor changed the setup: bin with it (the Qt tool re-processed the file after its Setup dialog)."""
+        """The editor changed the setup: bin the file again with it."""
         if isinstance(settings, dict) and settings.get("detectors"):
             self.model.setup = settings
             self.model.selected = []

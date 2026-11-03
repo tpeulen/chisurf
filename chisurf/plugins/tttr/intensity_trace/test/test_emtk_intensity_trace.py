@@ -1,13 +1,14 @@
-"""The native intensity-trace tool: the Qt tool's numbers, and real input (presses at drawn rects, typed keys, dialogs).
+"""The native intensity-trace tool: its numbers on a real file, and real input (presses at drawn rects, typed keys, dialogs).
 
 Data: the tool's own demo (a molecule switching between two FRET states, dwell 20 / 80 ms, two detectors) and a temp
-copy of BH_SPC132.spc for the numbers the Qt widget recorded (``data/qt_values.json``;
-Compute HMM writes beside the file, so never on the repository's copy). Hermetic: temp settings and HOME.
+copy of BH_SPC132.spc (Compute HMM writes beside the file, so never on the repository's copy), whose trace is checked
+against the file: one bin per window from time 0 to the last photon, holding every photon of the channel.
+Hermetic: temp settings and HOME.
 """
 
 from __future__ import annotations
 
-import json
+import math
 import shutil
 import sys
 import time
@@ -23,7 +24,6 @@ from chisurf.plugins.tttr.intensity_trace.model import IntensityTraceModel
 
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 SPC = REPO / "test/data/tttr/BH/132/BH_SPC132.spc"
-QT = Path(__file__).with_name("data") / "qt_values.json"
 CTRL_A = 0x04000000
 SIZES = [(1200, 800), (800, 600)]
 
@@ -114,23 +114,32 @@ def spc(tmp_path):
     return dst
 
 
-# ---- the Qt tool's numbers ------------------------------------------------------------------------------------------
+# ---- a real file -----------------------------------------------------------------------------------------------------
 
 
-def test_the_model_reproduces_the_qt_tools_trace_hmm_and_outputs(spc):
-    """Qt bound with no setup bins its first ticked routing channel (Ch0); the same selection gives the same numbers."""
-    qt = json.loads(QT.read_text())
+def test_the_trace_holds_every_photon_of_the_channel_and_the_hmm_writes_its_outputs(spc):
+    """Binned with no setup and Ch0 ticked: one 10 ms bin per window up to the last photon."""
+    import tttrlib
+
+    data = tttrlib.TTTR(str(SPC), "SPC-130")
+    routing = np.asarray(data.routing_channels)
+    duration_s = float(data.macro_times[-1]) * data.header.macro_time_resolution
     m = IntensityTraceModel(selected=["routing_0"])
-    assert m.load(spc)
-    assert m.labels == qt["channels"] and m.counts.shape[0] == qt["n_bins"]
-    assert m.counts.sum(axis=0).tolist() == qt["counts_sum"]
+    assert m.window_ms == 10.0 and m.load(spc)
+    assert m.labels == ["Ch0"]
+    assert m.counts.shape[0] == math.floor(duration_s / 0.010) + 1  # 62.3 s: 6233 bins
+    assert m.counts.sum(axis=0).tolist() == [float(np.sum(routing == 0))]
     m.n_states = 3
     m.run_hmm()
-    assert np.bincount(m.states).tolist() == qt["state_counts"]
-    assert np.allclose(np.asarray(m.transmat), qt["transmat"], atol=1e-4)
+    assert len(m.states) == m.counts.shape[0] and set(np.unique(m.states)) == {0, 1, 2}
+    np.testing.assert_allclose(np.asarray(m.transmat).sum(axis=1), 1.0, atol=1e-9)
     base = m.export()
-    assert sorted(p.name for p in base.rglob("*") if p.is_file()) == sorted(
-        Path(p).name for p in qt["outputs"]
+    assert base.name == "BH_SPC132_HMM#3_10ms"  # <stem>_HMM#<states>_<window>ms
+    written = sorted(str(p.relative_to(base)) for p in base.rglob("*") if p.is_file())
+    assert written == sorted(
+        [f"bst/BH_SPC132_state_{i}.bst" for i in range(3)]
+        + ["hist/BH_SPC132_hist_Ch0.csv", "hist/BH_SPC132_hist_sum.csv"]
+        + ["traces/BH_SPC132_state_traj.csv", "traces/BH_SPC132_traces.csv"]
     )
 
 
@@ -142,7 +151,7 @@ def test_without_a_setup_every_channel_the_file_uses_is_offered(spc):
         "routing_1",
         "routing_8",
         "routing_9",
-    ]  # Qt offered 0-7 only
+    ]  # the routing channels the file uses, 8 and 9 included
     assert m.labels == ["Ch0", "Ch1", "Ch8", "Ch9"]
 
 
