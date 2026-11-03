@@ -1,8 +1,8 @@
 """Portable LLTF command, configuration, process and result workflow.
 
 :class:`LLTFModel` is also the model the emtk app's view spec (``lltf.view.json``)
-draws: its fields are the spec's attrs, :meth:`enabled` greys what the Qt wizard
-greyed, :meth:`lifetime_rows` / :meth:`results_summary` feed the Results panel.
+draws: its fields are the spec's attrs, :meth:`enabled` greys the options that
+do not apply, :meth:`lifetime_rows` / :meth:`results_summary` feed the Results panel.
 """
 
 from __future__ import annotations
@@ -76,7 +76,7 @@ class LLTFModel:
 
     # ── view-spec hooks ───────────────────────────────────────────────────
     def enabled(self, name):
-        """What the Qt wizard greyed: the fixed count under a search, the search's limits without one."""
+        """Grey what does not apply: the fixed count under a search, the search's limits without one."""
         if self.running:
             return False
         if name == "n_lifetimes":
@@ -99,7 +99,7 @@ class LLTFModel:
         return rows
 
     def lifetime_rows(self):
-        """The fitted components, as the Qt results table listed them."""
+        """The fitted components: number, amplitude and lifetime, one row each."""
         return [
             {
                 "component": index + 1,
@@ -110,7 +110,7 @@ class LLTFModel:
         ]
 
     def results_summary(self):
-        """The lines under the Qt results table: χ², χ²ᵣ, the time range and the component count."""
+        """The lines under the results table: χ², χ²ᵣ, the time range and the component count."""
         result = self.result
         if not result:
             return "Run an analysis to obtain fit results."

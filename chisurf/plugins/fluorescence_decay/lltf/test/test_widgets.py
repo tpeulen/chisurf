@@ -1,8 +1,7 @@
 """The LLTF window's output pane, entry point and configuration editor.
 
-These assertions were written against the Qt ``LLTFGUIWizard`` (its
-``ProcessOutputWidget`` and ``LLTFSettingsEditor``); the wizard is retired and
-they hold on the emtk app that replaced it.
+The output pane streams the fit's log, the manifest launches the emtk app, and
+the configuration editor edits and saves the YAML buffer.
 """
 
 import json

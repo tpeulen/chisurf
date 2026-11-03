@@ -1,1 +1,1 @@
-"""Pure native presentation for LLTF; the legacy Qt wizard remains separate."""
+"""The emtk window of Lazy Lifetime Analysis (app, model and view spec)."""

@@ -1,12 +1,11 @@
-"""The native Lazy Lifetime Analysis at parity with the Qt LLTFGUIWizard.
+"""The Lazy Lifetime Analysis window: its fit command, a real fit, its controls.
 
-Both hosts ran the LLTF command line in a subprocess, so parity is first the command:
-what the Qt wizard launched (recorded before it was retired, ``qt_reference_lltf.json``)
-is compared with the emtk model's command for the same inputs and options. Then one
-real fit of the shipped example is checked against the data itself (the starting
-values are random, so two runs agree only to a tolerance -- a known issue), and the
-two command-line defects the port fixed are pinned down: ``-n`` now wins over the
-configuration's own ``find_optimal``, and no figure is shown on screen.
+The window runs the LLTF command line in a subprocess, so the command is checked first
+against the command line's own flags for the inputs and options set. Then one real fit
+of the shipped example is checked against the data itself (the starting values are
+random, so two runs agree only to a tolerance -- a known issue), and two command-line
+behaviours are pinned down: ``-n`` wins over the configuration's own ``find_optimal``,
+and no figure is shown on screen.
 """
 
 from __future__ import annotations
@@ -69,71 +68,48 @@ def _fields(sections):
         yield from _fields(section.get("sections", []))
 
 
-#: What the Qt ``LLTFGUIWizard`` launched for the same inputs, recorded from the
-#: wizard itself (offscreen, ``Popen`` replaced by a recorder) on 2026-10-06, just
-#: before it was retired. Paths are placeholders: {DECAY} {IRF} {CONFIG} {OUT} {PYTHON}.
-QT_REFERENCE = HERE / "qt_reference_lltf.json"
-
-
-@pytest.fixture(scope="module")
-def qt(tmp_path_factory):
-    out = tmp_path_factory.mktemp("qt")
-    values = {
-        "{DECAY}": DECAY,
-        "{IRF}": IRF,
-        "{CONFIG}": CONFIG,
-        "{OUT}": str(out),
-        "{PYTHON}": sys.executable,
-    }
-
-    def fill(x):
-        if isinstance(x, str):
-            for key, value in values.items():
-                x = x.replace(key, value)
-            return x
-        if isinstance(x, list):
-            return [fill(v) for v in x]
-        if isinstance(x, dict):
-            return {k: fill(v) for k, v in x.items()}
-        return x
-
-    facts = fill(json.loads(QT_REFERENCE.read_text()))
-    facts["out"] = out
-    return facts
-
-
-def _without_config(cmd):
-    cmd = list(cmd)
-    i = cmd.index("-c")
-    cmd, config = cmd[:i] + cmd[i + 2 :], cmd[i + 1]
-    # Deliberate addition over the Qt wizard: the panel's Noise Model choice.
-    if "--noise-model" in cmd:
-        j = cmd.index("--noise-model")
-        assert cmd[j + 1] in ("neyman", "poisson")
-        cmd = cmd[:j] + cmd[j + 2 :]
-    return cmd, config
-
-
-# 1. the same command as the Qt wizard, fixed count and search; the subprocess never shows figures
-def test_the_fit_command_is_the_qt_wizards(qt):
-    fixed, search = qt["launched"]
+# 1. the fit command: the command line's flags for the options set; the subprocess shows no figures
+def test_the_fit_command_carries_the_options(tmp_path):
+    out = str(tmp_path)
     model = LLTFModel()
-    model.decay_file, model.irf_file, model.output_dir = DECAY, IRF, str(qt["out"])
-    model.n_lifetimes, model.verbose = 2, False
-    ours, config = _without_config(model.build_command("EDITED.yml"))
-    theirs, qt_config = _without_config(fixed["cmd"])
-    assert (
-        ours[1:] == theirs[1:] and config == "EDITED.yml" and qt_config == CONFIG
-    )  # emtk runs the edited buffer
-    model.find_optimal, model.max_lifetimes, model.prob_threshold, model.verbose = (
-        True,
-        3,
-        0.7,
-        True,
-    )
-    assert _without_config(model.build_command("x"))[0][1:] == _without_config(search["cmd"])[0][1:]
-    assert fixed["mpl"] == search["mpl"] == "Agg"  # the wizard's subprocess: no screen figures
-    assert qt["warned"] == [["Warning", "Please load decay and IRF data first."]]
+    model.decay_file, model.irf_file, model.output_dir = DECAY, IRF, out
+    model.n_lifetimes, model.verbose, model.noise_model = 2, False, "poisson"
+    head = [sys.executable, "-m", "chisurf.plugins.fluorescence_decay.lltf.core", "fit", DECAY, IRF,
+            "-sp", out, "-o", os.path.join(out, "5-44_D0_fit.json"), "-c", "EDITED.yml",
+            "--noise-model", "poisson"]  # emtk runs the edited configuration buffer
+    assert model.build_command("EDITED.yml") == head + ["-n", "2"]
+    model.find_optimal, model.max_lifetimes, model.prob_threshold, model.verbose = True, 3, 0.7, True
+    assert model.build_command("EDITED.yml") == head + ["-f", "-m", "3", "-pt", "0.7", "-v"]
+
+
+def test_the_fit_subprocess_draws_no_figures(monkeypatch, tmp_path):
+    from chisurf.plugins.fluorescence_decay.lltf.gui import model as model_module
+
+    seen = {}
+
+    class Recorder:
+        def __init__(self, cmd, **kw):
+            seen["env"] = kw.get("env", {})
+            self.stdout = __import__("io").StringIO()
+            self.returncode = 0
+
+        def poll(self):
+            return 0
+
+        def wait(self, *a, **k):
+            return 0
+
+        def kill(self):
+            pass
+
+        terminate = kill
+
+    monkeypatch.setattr(model_module.subprocess, "Popen", Recorder)
+    m = LLTFModel()
+    m.decay_file, m.irf_file, m.output_dir = DECAY, IRF, str(tmp_path)
+    m.load_config(CONFIG)
+    m.start()
+    assert seen["env"]["MPLBACKEND"] == "Agg"
 
 
 # a real fit: the example's two components, a model that follows the data
@@ -231,10 +207,9 @@ def test_the_command_line_shows_no_figures_and_search_still_works(tmp_path):
 
 
 # 2. actions and errors
-def test_fit_needs_both_files_and_says_so(qt, tmp_path):
+def test_fit_needs_both_files_and_says_so(tmp_path):
     app = LLTFApp()
     try:
-        assert qt["fit_enabled"] is True
         _draw(app)
         assert app.error(app.start) is None
         assert app.model.status == "Error: Load existing decay and IRF files first."
@@ -262,12 +237,12 @@ def test_fit_cannot_be_pressed_without_files():
         _draw(app, size, n=1, painter=PixelPainter)
         assert (
             app.model.status == before and app.model.process is None
-        )  # greyed, as the Qt Fit button was
+        )  # greyed: nothing to fit
     finally:
         app.close()
 
 
-def test_the_options_grey_as_the_qt_wizard_greys_them(qt):
+def test_a_search_greys_the_fixed_count_and_a_fixed_count_greys_the_search():
     m = LLTFModel()
     assert [m.enabled(n) for n in ("n_lifetimes", "max_lifetimes", "prob_threshold")] == [
         True,
@@ -277,13 +252,12 @@ def test_the_options_grey_as_the_qt_wizard_greys_them(qt):
     m.find_optimal = True
     assert (
         [m.enabled(n) for n in ("n_lifetimes", "max_lifetimes", "prob_threshold")]
-        == qt["greyed"]
         == [False, True, True]
     )
 
 
 def test_picked_workspace_curves_route_to_decay_and_irf(tmp_path):
-    """The Qt tool's file rows are filled from the workspace (receive_decays), not a drop."""
+    """The file rows are filled from the workspace (receive_decays), not a drop."""
     from chisurf.plugins.fluorescence_decay.lltf.gui.app import receive_decays
 
     app = LLTFApp()
@@ -337,7 +311,7 @@ def test_every_spec_field_is_drawn_with_its_description(monkeypatch):
         app.close()
 
 
-# guide: the Qt tour's targets are the emtk controls too; the Input pick and Fit wait for the user
+# guide: the tour's targets are real controls; the Input pick and Fit wait for the user
 def test_the_guide_points_at_real_controls_and_waits(tmp_path):
     app = LLTFApp()
     size = (1200, 800)
@@ -345,7 +319,7 @@ def test_the_guide_points_at_real_controls_and_waits(tmp_path):
         _draw(app, size, painter=PixelPainter)
         steps = app.tour.steps
         keys = {app.tour._target_key(s.get("target")) for s in steps} - {""}
-        # The Qt tour's targets, plus the VV/VH steps (mode switch, Load example, rotations,
+        # The magic-angle steps, plus the VV/VH steps (mode switch, Load example, rotations,
         # r(t) plot tab: drawn once a VV/VH fit is shown).
         assert keys == {
             "workspace_input_rows",

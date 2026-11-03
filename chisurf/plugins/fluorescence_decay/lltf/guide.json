@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour for Lazy Lifetime Analysis (hand-built Qt panel, no view spec): steps target buttons by caption ('action') and output tabs ('tab'). Read by chisurf.gui.widgets.tools.guided_tour.",
+  "_comment": "Guided tour for Lazy Lifetime Analysis : steps target buttons by caption ('action') and output tabs ('tab'). Read by chisurf.gui.widgets.tools.guided_tour.",
   "steps": [
     {
       "title": "One decay, one IRF, choices made by rule",

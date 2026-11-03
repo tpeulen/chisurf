@@ -293,10 +293,10 @@ class LLTFApp(TourTarget, ImApp):
         self.item_rects.update(self.form.rects)
         self.item_rects["Find Optimal"] = self.form.rects.get(
             "find_optimal"
-        )  # the Qt tour's name for it
+        )  # the tour's name for it
 
     def draw_files(self, section, model, state, width):
-        """The file rows of the Qt wizard, each as its caption and, under it, the path and -- for the
+        """The file rows, each as its caption and, under it, the path and -- for the
         configuration and the output directory -- its Edit... / Select... button.
 
         The path takes the dock's width less the button, so a long path stays readable in a narrow dock instead of
