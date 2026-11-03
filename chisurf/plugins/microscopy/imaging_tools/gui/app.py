@@ -119,7 +119,7 @@ PANELS = (
 ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).parent
 LIST_MAX_W = 300.0
-#: The role the list draws a separator above (the Qt list's rule before the tools outside the numbered pipeline).
+#: The role the list draws a separator above: the rule before the tools outside the numbered pipeline.
 SEPARATOR_BEFORE = "clsm_draw"
 
 
@@ -130,7 +130,7 @@ def label(text):
 class ImagingToolsApp(ImApp):
     """The imaging pipeline list on the left, the chosen step (built on first use) on the right, one shared context."""
 
-    #: The steps a tool's own Next / Previous walk, in pipeline order (the Qt tool's order, less the tools that left).
+    #: The steps a tool's own Next / Previous walk, in pipeline order.
     PIPELINE_ORDER = (
         "browser",
         "frc",
@@ -412,7 +412,7 @@ class ImagingToolsApp(ImApp):
         if apply:
             apply(copy.deepcopy(self._pipeline))
 
-    # -- background precompute (the Qt hub's _start_background_compute) -------------------------------------------------- #
+    # -- background precompute ----------------------------------------------------------------------------------------------- #
     def precompute(self):
         """Queue intensity, N&B, micro-time and phasor to compute in the background, one after the other.
 
@@ -505,7 +505,7 @@ class ImagingToolsApp(ImApp):
     def previous_from(self, role):
         self._step(role, -1)
 
-    # -- the Back / Next / fast-forward stepper (the Qt shell's: the list order, up to the rule) ---------------------------- #
+    # -- the Back / Next / fast-forward stepper (the list order, up to the rule) -------------------------------------------- #
     def list_roles(self):
         """The list's tools in order (the entries the stepper walks)."""
         return [e.id for e in self.entries]
@@ -521,7 +521,7 @@ class ImagingToolsApp(ImApp):
         return False
 
     def fast_forward_queue(self):
-        """The tools from the open one to the end of the numbered pipeline (the Qt queue stops at the separator)."""
+        """The tools from the open one to the end of the numbered pipeline (the queue stops at the separator)."""
         roles = self.list_roles()
         at = roles.index(self.selected) if self.selected in roles else 0
         end = roles.index(SEPARATOR_BEFORE)

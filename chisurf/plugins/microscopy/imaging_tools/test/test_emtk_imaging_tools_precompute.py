@@ -12,7 +12,7 @@ from chisurf.plugins.microscopy.imaging_emtk.testing import hermetic_env
 from chisurf.plugins.microscopy.imaging_tools.gui.app import ImagingToolsApp
 
 from .test_emtk_imaging_tools_clicks import HubDriver
-from .test_emtk_imaging_tools_parity import BIG, Client
+from .test_emtk_imaging_tools_hub import BIG, Client
 
 STEPS = ImagingToolsApp.ANALYSIS_ROLES
 
@@ -121,7 +121,7 @@ def test_a_job_the_open_tool_finished_itself_does_not_leave_the_hub_waiting_on_i
     """The Spot Finder polls its own job; the hub's ``model.busy`` mirror must fall back to False after it."""
     from types import SimpleNamespace
 
-    from .test_emtk_imaging_tools_parity import ROLES, Child
+    from .test_emtk_imaging_tools_hub import ROLES, Child
 
     class Job:
         busy = False

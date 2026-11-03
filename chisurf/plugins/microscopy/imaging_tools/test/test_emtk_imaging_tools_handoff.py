@@ -23,7 +23,7 @@ from chisurf.plugins.microscopy.imaging_tools.gui.app import ImagingToolsApp
 from chisurf.plugins.tttr.tttr_image_browser.test.conftest import two_detector_setup
 
 from .test_emtk_imaging_tools_clicks import HubDriver
-from .test_emtk_imaging_tools_parity import BIG, Client
+from .test_emtk_imaging_tools_hub import BIG, Client
 
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 #: 512 x 512 px, two cells: the Leica SP8 scan the Browser's own tests use.

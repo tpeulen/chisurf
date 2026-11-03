@@ -17,7 +17,7 @@ from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 from chisurf.plugins.microscopy.imaging_tools.gui.app import PANELS, ImagingToolsApp
 
-from .test_emtk_imaging_tools_parity import (  # noqa: F401  (hermetic is autouse)
+from .test_emtk_imaging_tools_hub import (  # noqa: F401  (hermetic is autouse)
     BIG,
     ROLES,
     SMALL,
@@ -100,7 +100,7 @@ def test_back_and_next_buttons_walk_the_list_and_are_greyed_at_its_ends(drv):
     drv.click("next")
     assert app.selected == "frc"
     drv.click("next")
-    assert app.selected == "flow"  # the list order, the Qt shell's (the pipeline order skips Flow)
+    assert app.selected == "flow"  # the list order (the pipeline order skips Flow)
     drv.click("previous")
     assert app.selected == "frc"
     click_entry(drv, "setup")

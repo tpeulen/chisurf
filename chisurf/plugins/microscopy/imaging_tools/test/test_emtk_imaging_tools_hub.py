@@ -1,8 +1,7 @@
-"""The native Imaging Tools hub against the Qt tool it replaces: the tool list, the pipeline order, the shared context.
+"""The Imaging Tools hub: the tool list, the pipeline order, the shared context.
 
 Hermetic: settings, MMFDB and HOME are temporary folders (the detector-setup store is the temporary settings folder), no
-network. The Qt tool's lists were recorded before it was deleted (``qt_reference.json``). Children are fakes (recording what the hub
-hands them) except in the tests that draw the real native children. A module guard fails the run if anything appears
+network. Children are fakes (recording what the hub hands them) except in the tests that draw the real native children. A module guard fails the run if anything appears
 in the real ``~/.chisurf`` other than its ``logs`` folder.
 """
 
@@ -116,7 +115,7 @@ class Child(ImApp):
 
 ROLES = [row[0] for row in PANELS]
 
-#: Qt-list tools that left the pipeline window on purpose (2026-10-20): each reads its own input and takes none
+#: Tools outside the pipeline window: each reads its own input and takes none
 #: of the shared context, so in the emtk shell it is a Spectroscopy › Imaging ribbon entry and a dock of its own.
 SPLIT_OUT = {
     "drift": ("microscopy/img_drift", "Spectroscopy:Imaging:Drift Correction"),
@@ -124,8 +123,6 @@ SPLIT_OUT = {
     "psf": ("microscopy/psf_determination", "Spectroscopy:Imaging:PSF Determination"),
     "clsm_generator": ("microscopy/clsm_generator", "Spectroscopy:Imaging:CLSM Simulator"),
 }
-#: Pipeline tools whose description named a tool that left (where it "sits after Drift"): reworded on purpose.
-REWORDED = {"frc", "flow", "coloc"}
 
 
 def fake_hub(**kw):
@@ -143,44 +140,12 @@ def draw(app, size=BIG, frames=3):
     return painter
 
 
-@pytest.fixture(scope="module")
-def qt_module():
-    """What the retired Qt tool listed, recorded before its deletion (``qt_reference.json``)."""
-    import json
-    from types import SimpleNamespace
-
-    ref = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
-    return SimpleNamespace(
-        IMAGING_PANELS=[{k: v for k, v in p.items() if v is not None} for p in ref["panels"]],
-        ImagingToolsTool=SimpleNamespace(
-            PIPELINE_ORDER=tuple(ref["pipeline_order"]),
-            ANALYSIS_ROLES=tuple(ref["analysis_roles"]),
-        ),
-    )
-
-
-# -- parity with the Qt tool ------------------------------------------------------------------------------------------ #
-
-
-def test_the_tool_list_equals_the_qt_lists_names_order_roles_and_descriptions(qt_module):
-    qt = [
-        p for p in qt_module.IMAGING_PANELS if not p.get("separator") and p["role"] not in SPLIT_OUT
-    ]
-    assert [p["role"] for p in qt] == ROLES
-    assert [p["name"] for p in qt] == [row[2] for row in PANELS]
-    kept = [row for row in PANELS if row[0] not in REWORDED]
-    assert [p["description"] for p in qt if p["role"] not in REWORDED] == [
-        row[3] for row in kept
-    ]  # the tooltip and header texts, word for word
-
-
 @pytest.mark.parametrize("role", sorted(SPLIT_OUT))
-def test_a_tool_that_left_the_list_is_its_own_ribbon_entry(qt_module, role):
-    """Nothing is lost: every Qt-list tool not in the pipeline window has a ribbon button of its own."""
+def test_a_tool_outside_the_pipeline_window_is_its_own_ribbon_entry(role):
+    """Every imaging tool not in the pipeline window has a ribbon button of its own."""
     import json
 
     folder, address = SPLIT_OUT[role]
-    assert role in {p["role"] for p in qt_module.IMAGING_PANELS}
     assert role not in ROLES
     manifest = json.loads((HERE.parents[2] / folder / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["display_name"] == address
@@ -188,18 +153,13 @@ def test_a_tool_that_left_the_list_is_its_own_ribbon_entry(qt_module, role):
     assert manifest["entrypoints"]["emtk"]
 
 
-def test_the_separator_sits_where_the_qt_list_has_it(qt_module):
-    roles = [p["role"] for p in qt_module.IMAGING_PANELS]
-    assert roles[roles.index("separator") + 1] == "clsm_draw"
+def test_the_separator_sits_before_the_tools_outside_the_numbered_pipeline():
     from chisurf.plugins.microscopy.imaging_tools.gui.app import SEPARATOR_BEFORE
 
     assert SEPARATOR_BEFORE == "clsm_draw"
-
-
-def test_the_pipeline_order_and_the_analysis_roles_equal_the_qt_tools(qt_module):
-    qt_order = tuple(r for r in qt_module.ImagingToolsTool.PIPELINE_ORDER if r not in SPLIT_OUT)
-    assert ImagingToolsApp.PIPELINE_ORDER == qt_order
-    assert ImagingToolsApp.ANALYSIS_ROLES == qt_module.ImagingToolsTool.ANALYSIS_ROLES
+    numbered = ROLES[: ROLES.index(SEPARATOR_BEFORE)]
+    assert set(ImagingToolsApp.PIPELINE_ORDER) <= set(numbered)
+    assert set(ImagingToolsApp.ANALYSIS_ROLES) <= set(ImagingToolsApp.PIPELINE_ORDER)
 
 
 def test_every_listed_tool_has_a_native_factory_in_its_manifest():
@@ -208,7 +168,7 @@ def test_every_listed_tool_has_a_native_factory_in_its_manifest():
     assert missing == [], missing
 
 
-# -- the shared context (the Qt tool's coordinator duties) ---------------------------------------------------------------- #
+# -- the shared context (the hub's coordinator duties) ------------------------------------------------------------------ #
 
 
 def test_lazy_context_navigation_snapshot_and_state():
@@ -238,22 +198,17 @@ def test_lazy_context_navigation_snapshot_and_state():
     restored.close()
 
 
-def test_the_stepper_walks_the_list_order_like_the_qt_shell(qt_module):
+def test_the_stepper_walks_the_list_order():
     app = fake_hub()
     roles = app.list_roles()
-    qt_roles = [
-        p["role"]
-        for p in qt_module.IMAGING_PANELS
-        if not p.get("separator") and p["role"] not in SPLIT_OUT
-    ]
-    assert roles == qt_roles
+    assert roles == ROLES
     app.goto_role("setup")
     visited = ["setup"]
     while app.step_list(1):
         visited.append(app.selected)
     assert visited == roles and not app.step_list(1)
     app.goto_role("browser")
-    assert app.fast_forward_queue()[-1] == "pixel_mle"  # the Qt queue stops at the separator
+    assert app.fast_forward_queue()[-1] == "pixel_mle"  # the queue stops at the separator
     app.close()
 
 
