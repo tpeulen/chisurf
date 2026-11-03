@@ -2,7 +2,7 @@
 
 import pytest
 
-from .test_emtk_calibration_parity import spc  # noqa: F401
+from .test_emtk_calibration_app import spc  # noqa: F401
 
 
 @pytest.fixture(autouse=True)

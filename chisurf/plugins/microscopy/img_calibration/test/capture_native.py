@@ -1,4 +1,4 @@
-"""Render native calibration with the same populated photon histograms as Qt."""
+"""Render the calibration window populated with synthetic decay and IRF histograms."""
 
 from pathlib import Path
 

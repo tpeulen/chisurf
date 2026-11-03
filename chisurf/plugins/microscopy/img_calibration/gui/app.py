@@ -1,7 +1,7 @@
 """EMTK app for the IRF & BG calibration step: per-detector IRF, fit/IRF windows and backgrounds.
 
-The controls are the Calibration panel of ``calibration.view.json`` -- the spec
-the Qt tool renders -- drawn by emtk's view_form over
+The controls are the Calibration panel of ``calibration.view.json``, drawn by
+emtk's view_form over
 :class:`~.view_model.CalibrationViewModel`; its ``path_list`` custom section is
 the IRF file list drawn here. The spec's ``decay_conv`` section is the plot dock:
 data and IRF decays with draggable fit (blue), IRF (green) and background (grey)
@@ -238,7 +238,7 @@ class CalibrationApp(TourTarget, ImApp):
             im.text_wrapped(label("Configure detector windows in Imaging Tools"))
         self.form.rects.clear()
         im.begin_disabled(not self.model.window_names())
-        draw_form(self.spec, self.model, self.form)  # the spec the Qt tool renders
+        draw_form(self.spec, self.model, self.form)
         im.end_disabled()
         self.item_rects.update(self.form.rects)
         if self.coordinator is not None:

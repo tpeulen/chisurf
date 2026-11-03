@@ -19,7 +19,7 @@ from chisurf.plugins.core.project_browser.test.driving import clipped_texts, lay
 from chisurf.plugins.emtk_layout import action_caption, help_close_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, MetricPainter
 
-from .test_emtk_calibration_parity import SETUP, _binned, _loaded
+from .test_emtk_calibration_app import SETUP, _binned, _loaded
 
 BIG, SMALL = (1200, 800), (800, 600)
 REAL_CHISURF = Path(os.path.expanduser("~")) / ".chisurf"

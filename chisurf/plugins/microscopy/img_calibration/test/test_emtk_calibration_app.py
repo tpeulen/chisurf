@@ -1,10 +1,9 @@
-"""The native IRF & BG calibration at parity with the retired Qt ImgCalibrationTool.
+"""The IRF & BG calibration app on real photons.
 
-The Qt tool's numbers on real photons were recorded before it was deleted (``qt_reference.json``) -- the
-micro-time shifter's demo SPC as source and IRF, one detector from channels 0 (parallel)
-and 8 (perpendicular) -- and its decay, windows and backgrounds are compared with the
-emtk app's; the backgrounds also with the mean counts of a histogram made here from
-the photons directly.
+The micro-time shifter's demo SPC is source and IRF, one detector from channels 0 (parallel) and 8
+(perpendicular). The oracle is the photons themselves: micro-time histograms of the two routing channels made
+here with numpy are the decay, their mean counts in the background window are the backgrounds, and the IRF is
+those histograms prepared with the backgrounds; the published snapshot is the settings that were applied.
 """
 
 from __future__ import annotations
@@ -75,45 +74,66 @@ def _fields(sections):
         yield from _fields(section.get("sections", []))
 
 
-@pytest.fixture(scope="module")
-def qt(spc):
-    """What the retired Qt tool computed on the same photons, recorded before its deletion."""
-    text = (HERE / "qt_reference.json").read_text(encoding="utf-8").replace("<SPC>", spc)
-    return json.loads(text)
-
-
-# 1. the Qt tool's decay, windows and backgrounds; the backgrounds are the photons' mean counts
-def test_the_calibration_is_the_qt_tools_and_the_backgrounds_are_the_photons(qt, spc):
+def photon_histograms(spc):
+    """The micro-time histograms of routing channels 0 and 8, binned here from the photons."""
     import tttrlib
+
+    data = tttrlib.TTTR(spc)
+    micro, routing = np.asarray(data.micro_times), np.asarray(data.routing_channels)
+    return tuple(np.bincount(micro[routing == ch], minlength=4096) for ch in (0, 8))
+
+
+# 1. the decay, IRF, windows and backgrounds are the photons'
+def test_the_decay_irf_and_backgrounds_are_the_photons(spc):
+    from chisurf.core.fluorescence.imaging import prepare_irf_hist
 
     app = _loaded(spc)
     try:
+        vv, vh = photon_histograms(spc)
         d = app.model.decay_data()
-        assert d["n"] == qt["n"] == 4096
-        np.testing.assert_allclose(d["data"], qt["data"])
-        np.testing.assert_allclose(d["irf_vv"], qt["irf_vv"])
-        assert (
-            list(d["conv"]) == qt["conv"] == [500, 3000] and list(d["irf_range"]) == qt["irf_range"]
-        )
-        assert [app.model.sel_bg_vv, app.model.sel_bg_vh] == pytest.approx(qt["bg"])
-        data = tttrlib.TTTR(spc)
-        micro, routing = np.asarray(data.micro_times), np.asarray(data.routing_channels)
-        for channel, value in ((0, app.model.sel_bg_vv), (8, app.model.sel_bg_vh)):
-            counts = np.bincount(micro[routing == channel], minlength=4096)
+        assert d["n"] == 4096
+        np.testing.assert_array_equal(d["data"], vv + vh)  # the detector sums its two channels
+        assert list(d["conv"]) == [500, 3000] and list(d["irf_range"]) == [550, 700]
+        for value, counts in ((app.model.sel_bg_vv, vv), (app.model.sel_bg_vh, vh)):
             assert value == pytest.approx(counts[:400].mean())  # the grey region's mean
+        prepared = prepare_irf_hist(
+            vv,
+            vh,
+            shift_vv=0.0,
+            shift_vh=0.0,
+            background_vv=app.model.sel_bg_vv,
+            background_vh=app.model.sel_bg_vh,
+        )
+        np.testing.assert_allclose(d["irf_vv"], prepared["vv"])
+        assert (d["irf_vv"] >= 0).all() and d["irf_vv"].sum() == pytest.approx(1.0)
     finally:
         app.close()
 
 
-# 2. apply: the Qt status, a deep copy, and refusals the Qt tool did not make
-def test_apply_publishes_a_snapshot_as_the_qt_tool_does(qt, spc):
+# 2. apply: the status, a deep copy of the applied settings, and refusals
+def test_apply_publishes_a_snapshot_of_the_applied_settings(spc):
     app = _loaded(spc)
     try:
         published = []
         app.model.publish = published.append
         assert app.apply()
-        assert app.model.status_text == qt["status"] == "Applied calibration (1 detector(s) set)."
-        assert json.loads(json.dumps(published[0])) == json.loads(json.dumps(qt["published"][0]))
+        assert app.model.status_text == "Applied calibration (1 detector(s) set)."
+        vv, vh = photon_histograms(spc)
+        assert json.loads(json.dumps(published[0])) == {
+            "green": {
+                "irf": [spc],
+                "bg_vv": pytest.approx(vv[:400].mean()),
+                "bg_vh": pytest.approx(vh[:400].mean()),
+                "shift_vv": 0.0,
+                "shift_vh": 0.0,
+                "conv_start": 500,
+                "conv_stop": 3000,
+                "irf_start": 550,
+                "irf_stop": 700,
+                "bg_start": 0,
+                "bg_stop": 400,
+            }
+        }
         app.model.sel_irf_files = []
         assert published[0]["green"]["irf"] == [spc]  # an edit after Apply stays out
         app.model.set_conv_range(3000, 3000)
