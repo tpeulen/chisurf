@@ -67,9 +67,10 @@ def _kind_and_source(dto: dict) -> dict:
     found = KINDS.get(kind)
     address = str(dto.get("filename") or "")
     name = address.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1] if address else ""
-    if address and kind == "bursts":
-        # A run of an analysis container (``…/m.pto/<run>``): its source is the container the
-        # search wrote -- the row's name is already the run -- not the run once more.
+    if address and kind in ("bursts", "table"):
+        # A run of an analysis container (``…/m.pto/<run>``), or an analysis of a run
+        # (``…/m.pto/<run>/<table>``): its source is the container -- the row's name is already
+        # the run or the analysis -- not the run once more.
         from chisurf.core.fio.analysis_path import split_container_path
 
         container, _run = split_container_path(address)
@@ -140,13 +141,14 @@ def _results_under_sources(tree: _Rows, listed: list) -> _Rows:
 
 
 def _is_run_row(row: dict) -> bool:
-    """Whether *row* is a burst run of the project's analysis containers (its record is the
-    container, so removing it removes it there); a run of a dropped user file is not."""
+    """Whether *row* is an analysis of the project's analysis containers -- a burst run, or an
+    analysis of a run (BVA, 2CDE, lifetimes, ...) -- whose record is the container, so removing it
+    removes it there; a run of a dropped user file is not."""
     from chisurf.core.fio.analysis_path import split_container_path
     from chisurf.core.project.analysis import is_derived
 
     address = str(row.get("address") or "")
-    if row.get("kind") != "bursts" or not address or not is_derived(address):
+    if row.get("kind") not in ("bursts", "table") or not address or not is_derived(address):
         return False
     return bool(split_container_path(address)[1])
 
@@ -1715,38 +1717,43 @@ class DataDocks:
         )
 
     def remove_runs(self, runs: list[dict], others: list[str] = ()) -> bool:
-        """Remove the run rows *runs* from their analysis containers, with every analysis derived
-        from them, after a warning that names those analyses; *others* (dataset uids) go with them.
+        """Remove the analysis rows *runs* (burst runs, and analyses of a run: BVA, 2CDE, ...) from
+        their analysis containers, with everything computed from them, after a warning that names
+        what goes with them; *others* (dataset uids) go too.
 
-        A run of the project's analysis container is not a dataset of its own: the container is its
-        record, so a run that only left the workspace would come back with the next restore.
+        An analysis of the project's analysis container is not a dataset of its own: the container
+        is its record, so one that only left the workspace would come back with the next restore.
         """
-        from chisurf.core.fio.analysis_path import run_path, split_container_path
-        from chisurf.core.project.analysis import remove_run, run_dependents
+        from chisurf.core.fio.analysis_path import split_container_path
+        from chisurf.core.project.analysis import dependents, remove_analysis
 
         if not runs or self.session is None:
             return False
-        names, dependents = [], []
+        chosen = {str(r.get("address")) for r in runs}
+        names, extra = [], []
         for row in runs:
-            container, run = split_container_path(str(row.get("address") or ""))
-            names.append(f"{run} ({container.name})" if container is not None else run)
-            for other in run_dependents(row["address"]):
-                if run_path(container, other) not in {str(r.get("address")) for r in runs}:
-                    dependents.append(f"{other} ({container.name})")
+            container, _ = split_container_path(str(row.get("address") or ""))
+            where = f" ({container.name})" if container is not None else ""
+            names.append(f"{row.get('name', '')}{where}")
+            for node in dependents(row["address"]):
+                if node["address"] not in chosen:
+                    label = node["label"] if node["kind"] == "bursts" else f"{node['label']} of {node['run']}"
+                    if f"• {label}{where}" not in extra:
+                        extra.append(f"• {label}{where}")
         message = tr("Remove {runs} from the project's analysis container?").format(
             runs=", ".join(names)
         )
-        if dependents:
+        if extra:
             message += "\n\n" + tr(
                 "These analyses were computed from it and are removed with it:\n{dependents}"
-            ).format(dependents="\n".join(f"• {d}" for d in dependents))
+            ).format(dependents="\n".join(extra))
         rows = [dict(r) for r in self.datasets.datasets]
         api = self.session.api
 
         def removal() -> Any:
             gone: set[str] = set()
             for row in runs:
-                gone.update(remove_run(row["address"]))
+                gone.update(remove_analysis(row["address"]))
             uids = list(others) + [
                 str(r["uid"]) for r in rows if str(r.get("address") or "") in gone
             ]
@@ -1754,14 +1761,14 @@ class DataDocks:
 
         def answered(yes: bool) -> None:
             if yes:
-                self._start(tr("Removing the run…"), removal)
+                self._start(tr("Removing the analysis…"), removal)
 
         dialogs = getattr(getattr(self.shell, "project", None), "dialogs", None)
-        if dialogs is None:  # nothing can ask: a run is never removed unasked
-            self.status = tr("Cannot ask before removing a run; nothing was removed.")
+        if dialogs is None:  # nothing can ask: an analysis is never removed unasked
+            self.status = tr("Cannot ask before removing an analysis; nothing was removed.")
             return False
         dialogs.confirm(
-            tr("Remove burst run"), message, answered, default=False, yes=tr("Remove"), no=tr("Cancel")
+            tr("Remove analysis"), message, answered, default=False, yes=tr("Remove"), no=tr("Cancel")
         )
         return True
 
