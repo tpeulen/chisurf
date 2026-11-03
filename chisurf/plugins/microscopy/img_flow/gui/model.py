@@ -1,6 +1,6 @@
 """Qt-free model of the emtk flow-map window.
 
-The measurement is :class:`~.view_model.FlowViewModel` (unchanged, shared with the Qt tool); this adds the action methods the spec's buttons call, a
+The measurement is :class:`~.view_model.FlowViewModel` ; this adds the action methods the spec's buttons call, a
 status line, the file-dialog requests, the worker hand-off (the demo scan and the map run off the draw thread) and the imaging hub's adapters.
 """
 
@@ -14,7 +14,7 @@ from ...imaging_emtk.model_base import EmtkModelMixin
 from .. import core as _core
 from .view_model import FlowViewModel
 
-#: Files the Browse dialog lists (the Qt data-source field's filter).
+#: Files the Browse dialog lists.
 IMAGE_FILE_FILTER = (
     "Images and photon streams (*.pto *.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)"
 )
@@ -62,7 +62,7 @@ class FlowModel(EmtkModelMixin, FlowViewModel):
         self.request_dialog("database")
 
     def open_path(self, path: str) -> None:
-        """Select *path* and read its channels on the worker (choosing a file does not map it, as in the Qt tool)."""
+        """Select *path* and read its channels on the worker (choosing a file does not map it)."""
         if not path:
             return
         self.remember_folder(path)
@@ -89,7 +89,7 @@ class FlowModel(EmtkModelMixin, FlowViewModel):
 
     # -- the demo ------------------------------------------------------------------ #
     def load_example(self) -> None:
-        """Simulate (or reuse) the demo photon stream and select it (the Qt Load demo): a scan with a known flow, about twenty seconds the first time."""
+        """Simulate (or reuse) the demo photon stream and select it: a scan with a known flow, about twenty seconds the first time."""
         self.status_line = "Simulating the demo scan..."
         self.run_job("demo_job")
 
@@ -106,7 +106,7 @@ class FlowModel(EmtkModelMixin, FlowViewModel):
 
     # -- mapping ------------------------------------------------------------------- #
     def map_flow(self) -> None:
-        """Track each tile's correlation peak and read its velocity (the Qt Map flow)."""
+        """Track each tile's correlation peak and read its velocity."""
         if not self.filename:
             self.status_line = "Load an image first."
             return
@@ -122,7 +122,7 @@ class FlowModel(EmtkModelMixin, FlowViewModel):
 
     # -- export -------------------------------------------------------------------- #
     def request_export(self) -> None:
-        """Choose where to write the velocity field (the Qt Export CSV)."""
+        """Choose where to write the velocity field."""
         if self.result is None:
             self.status_line = "Nothing to export yet"
             return
@@ -142,7 +142,7 @@ class FlowModel(EmtkModelMixin, FlowViewModel):
 
     # -- sources named by the emtk spec ---------------------------------------------- #
     def tile_table_rows(self) -> list[dict]:
-        """The tile table with numbers (the Qt table held strings), so a header click sorts by value."""
+        """The tile table with numbers, so a header click sorts by value."""
         if self._result is None:
             return []
         rows = []
@@ -161,7 +161,7 @@ class FlowModel(EmtkModelMixin, FlowViewModel):
 
     # -- the imaging hub's adapters (the read runs on the worker) ------------------------- #
     def apply_pipeline_context(self, payload: dict) -> None:
-        """Adopt the toolbox pipeline's current source file, as the Qt tool did."""
+        """Adopt the toolbox pipeline's current source file."""
         if not isinstance(payload, dict):
             return
         self.pipeline_hdf5 = str(payload.get("hdf5") or self.pipeline_hdf5)
