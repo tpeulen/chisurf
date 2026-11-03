@@ -1,8 +1,8 @@
-"""The Qt-free model behind MFD Prepare: the burst folder, the preparation run and the result tables.
+"""The toolkit-free model behind MFD Prepare: the burst folder, the preparation run and the result tables.
 
 Everything shown is computed by :func:`~chisurf.plugins.burst.mfd_prepare.api.prepare_folder` (or the RPC method of the
 same name when a client is connected); the model reformats that result, it adds no number of its own. The report text is
-the one the Qt tool showed; the tables are the same facts, one row per detector or photon source.
+the backend's; the tables are the same facts, one row per detector or photon source.
 """
 
 from __future__ import annotations
@@ -79,7 +79,7 @@ class MfdPrepareModel:
                 self.report = result.get("report", json.dumps(result, indent=2, default=str))
                 self.result = result
                 self.window_warnings = [str(w) for w in result.get("warnings") or []]
-        except Exception as exc:  # noqa: BLE001 - shown in the report, as the Qt tool did
+        except Exception as exc:  # noqa: BLE001 - shown in the report
             self.report = f"Error: {exc}"
             self.error = str(exc)
             self.result = {}

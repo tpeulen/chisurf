@@ -2,9 +2,8 @@
 
 ## Goal
 
-Verify the current native Burst Analysis hub selection step and, separately,
-the retained modern Qt tool (`gui/tool.py`). The public tool/wizard still uses
-modern Qt; the older fallback is removed and cannot be launched for comparison.
+Verify the native Burst Analysis hub selection step and the standalone
+selection app (both `gui.native.create_app`).
 
 Use real inputs, owning measured oracles and archived before control inventories.
 Headless QApplication tests are available, but construction does not prove
@@ -32,7 +31,7 @@ pixi run -e test python -m chisurf
 ```
 
 Open the native **Burst Analysis** hub selection step, or the selection app on its own
-(**Spectroscopy → Single-Molecule → Burst Selection**). The earlier Qt wizard is retired.
+(**Spectroscopy → Single-Molecule → Burst Selection**). 
 
 ### 2. Visual checklist
 

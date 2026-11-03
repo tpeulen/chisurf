@@ -1,7 +1,7 @@
 """The native Burst Selection app (cards BS1 to BS6): real input on copies of the in-repository BH SPC-132 files.
 
 Files arrive by a host drop, the search runs by a click on Run, numbers on screen are the model's (which
-``test_emtk_native_model.py`` compares with the Qt tool). Nothing is plotted without photons.
+``test_emtk_native_model.py`` checks against the photons). Nothing is plotted without photons.
 """
 
 from __future__ import annotations

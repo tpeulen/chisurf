@@ -1,4 +1,4 @@
-"""MFD Prepare's emtk app, operated with real input events and compared with the backend the Qt tool called.
+"""MFD Prepare's emtk app, operated with real input events and compared with the backend call.
 
 The fixture is the in-repo measured BH SPC-132 burst folder of ``burst_selection``, handed to the window the way the workspace
 hands a burst (``receive_bursts``); a burst run of the workspace is picked in the Input section. Only pointer, wheel and typed keys
@@ -77,7 +77,7 @@ def workspace_run(tmp_path, monkeypatch):
         yield burst_run_in_workspace(tmp_path)
 
 
-# ---- parity with the backend the Qt tool called ---------------------------------------------------------------- #
+# ---- the backend's numbers ---------------------------------------------------------------------------------------- #
 def test_prepare_gives_the_backends_report_and_numbers(prepared):
     backend = prepare_folder(PrepareRequest(folder=str(FIXTURE))).to_dict()
     m = prepared.app.model
@@ -85,7 +85,7 @@ def test_prepare_gives_the_backends_report_and_numbers(prepared):
     assert m.result["n_bursts"] == backend["n_bursts"] == 152
     assert m.result["count_agreement"] == backend["count_agreement"]
     assert m.result["verified_channels"] == backend["verified_channels"]
-    # the status line of the Qt tool was the report itself; the new one names the same bursts and verdict
+    # the status line names the bursts and the verdict
     assert "152 bursts" in m.status_text and "every detector verified" in m.status_text
 
 

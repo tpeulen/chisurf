@@ -1,8 +1,6 @@
-"""Behaviours of the Qt Burst Selection tool, stated against the Qt-free model.
+"""Rules of Burst Selection about the data, stated against the toolkit-free model.
 
-The retired tool's tests drove widgets through ``BurstSelectionTool.__new__`` and fakes of Qt controls
-(``test_new_gui.py``, ``test_filter_ui_elements.py``, ``test_photon_range_controls.py``, ...). What they pinned was
-never the widget: it was a rule about the data (a window is clamped, a count rate is a rate, a preview searches
+Each test pins a rule about the data, not a widget (a window is clamped, a count rate is a rate, a preview searches
 nothing, MMFDB output needs a sample, "All" selects everything, a search parameter changes the burst count). Each is
 here against :class:`BurstSelectionModel`, on the in-repository BH SPC-132 photons where a real file is needed.
 """
@@ -35,7 +33,7 @@ class _Header:
 
 
 def test_the_defaults_are_the_photon_filter_pages(model):  # noqa: F811
-    """The model starts from the shared photon-filter page's defaults (what the Qt tool showed on opening)."""
+    """The model starts from the shared photon-filter page's defaults (what the app shows on opening)."""
     from chisurf.plugins.burst.burst_selection.api.models import BurstFilterMode
 
     assert (model.dt_min, model.dt_max) == (0.001, 0.150)
@@ -256,7 +254,7 @@ def test_mmfdb_output_needs_a_sample_and_registers_the_raw_files_to_it(
     model.mmfdb_output = True
 
     with pytest.raises(RuntimeError, match="needs a sample"):
-        model.mmfdb_context()  # the Qt tool asked in a dialog; here the Sample field says which
+        model.mmfdb_context()  # the Sample field says which sample is missing
 
     model.sample_id = sample_id
     context = model.mmfdb_context()
@@ -368,7 +366,7 @@ def test_frames_stay_paired_with_their_files(model):  # noqa: F811
 def test_the_plots_still_draw_when_the_preview_fails(model, monkeypatch):  # noqa: F811
     """A failure in the preview table must not blank the whole window.
 
-    Regression (the Qt tool): one printf-style logging call raised inside the loader's broad ``except``, which
+    Regression: one printf-style logging call raised inside the loader's broad ``except``, which
     *cleared the diagnostics*, so a cosmetic step cost every plot. Here the diagnostics are kept before the preview
     is built, so a failing preview leaves the plots their data.
     """
@@ -414,7 +412,7 @@ def test_the_search_refuses_unconverted_alex_data(model, monkeypatch):  # noqa: 
 def test_the_window_start_runs_over_the_active_file_and_survives_a_reload(model):  # noqa: F811
     """The range the plots draw is the one the controls show, and is not thrown away by an unrelated setting.
 
-    Regression (the Qt form): the re-clamp reset the range to the whole file on every diagnostics reload, which
+    Regression: the re-clamp reset the range to the whole file on every diagnostics reload, which
     happened on every filter change, so a range narrowed by hand was lost the moment any other setting was touched.
     """
     model.load_diagnostics()
@@ -587,7 +585,7 @@ def test_the_feature_list_survives_a_refresh_with_the_same_columns(model):  # no
 
 
 def test_the_gmm_settings_reach_the_estimator(model):  # noqa: F811
-    """The advanced settings update and ``_gmm`` honours them (the Qt dialog's only job)."""
+    """The advanced settings update and ``_gmm`` honours them."""
     from chisurf.plugins.burst.burst_selection.gui.model import DEFAULT_GMM_SETTINGS
 
     assert model.gmm_settings == dict(DEFAULT_GMM_SETTINGS)
@@ -643,8 +641,8 @@ def test_constructing_the_model_and_the_app_opens_no_mmfdb_connection(hermetic, 
 def test_the_table_and_histogram_show_every_searched_file_together(model):  # noqa: F811
     """Fitting the histogram of a whole measurement needs the bursts of all its files together.
 
-    The Qt tool stacked the tables of all selected files (guides 29 and 35 pool ten repeats); the
-    emtk app always does, with no switch to forget. The diagnostic plots stay on the active file.
+    The tables of all selected files are stacked (guides 29 and 35 pool ten repeats), always,
+    with no switch to forget. The diagnostic plots stay on the active file.
     """
     from chisurf.core.datastore import numeric_column
 

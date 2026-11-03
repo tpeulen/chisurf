@@ -1,8 +1,8 @@
 """The pooled proximity-ratio Gaussian mixture is pinned on fixed data.
 
 Guide 29 fits the proximity ratio of every burst of ten repeated BH SPC-130 files. Its caption once carried
-numbers (PR 0.023 / 0.400) that no tool state reproduced: the retired Qt tool and the emtk app both give
-0.031 / 0.428 on the same bursts (bit-identical data). These tests keep the pooled path honest: pooling is
+numbers (PR 0.023 / 0.400) that no tool state reproduced: the app gives
+0.031 / 0.428 on these bursts (bit-identical data). These tests keep the pooled path honest: pooling is
 the plain concatenation of the files' bursts, and the fit on it is the fit of a bare ``GaussianMixture``.
 """
 

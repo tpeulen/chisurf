@@ -1,7 +1,7 @@
 """Single Molecule Burst Selection Plugin.
 
-The tool is the emtk app ``gui.native:create_app`` over the Qt-free model ``gui.model``; the search, the CLI and the
-backend services are Qt-free as well.
+The tool is the emtk app ``gui.native:create_app`` over the toolkit-free model ``gui.model``; the search, the CLI and the
+backend services import no GUI toolkit either.
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""The emtk H2MM app over :class:`H2mmViewModel`: no Qt tool behind it (cards H0-H5).
+"""The emtk H2MM app over :class:`H2mmViewModel` (cards H0-H5).
 
 Settings are the AutoForm spec ``h2mm.view.json`` (typed, clamped, a description on every field); Run and Stop work
 on a snapshot of the model through :class:`chisurf.emtk.jobs.SnapshotJob`; the rate and state tables are the spec's
@@ -211,7 +211,7 @@ class H2mmNativeApp(TourTarget, ImApp):
         self._start("ll_scan", "Likelihood scan ...")
 
     def open_dwells_in_ndx(self) -> bool:
-        """Open the per-dwell table in ndX (the Qt tool's action); says why when that is not possible."""
+        """Open the per-dwell table in ndX; says why when that is not possible."""
         from chisurf.core.datastore import row_count
 
         table = self.model.dwell_table()

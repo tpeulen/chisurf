@@ -5,7 +5,7 @@ the spec ``native.view.json`` (tables as ``data_table`` / ``table`` sections); t
 are generated from the JSON Schema tttrlib publishes; the detector definition is the shared one-page detector editor.
 The plots draw only what the model computed from the photons, or say there is nothing. A run goes through
 :class:`chisurf.emtk.jobs.SnapshotJob`; the diagnostics of the visible window are recomputed (debounced) after every
-change, as the Qt tool does.
+change.
 """
 
 from __future__ import annotations
@@ -183,7 +183,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             except Exception:  # noqa: BLE001 - the editor shows its own default
                 pass
         else:
-            try:  # the last used setup, as the Qt tool opens it
+            try:  # the last used setup
                 self.editor.model.refresh_setups()
                 self.editor.model.open_last_used()
             except Exception:  # noqa: BLE001 - no store: the editor starts empty

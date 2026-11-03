@@ -43,9 +43,8 @@ soft/hard k-means restarts, the jitter filter, the `+batch` scripts.
   MATLAB wrote for `simulated-K04-N350` (traces export byte-identical; SMD
   identical but for ids and the version string; the MATLAB session loads and
   re-saves unchanged).
-- `tests/test_session.py`, `tests/test_services.py`, `tests/test_gui.py`,
-  `tests/test_tool_qt.py` — the workflow, the RPC layer, the emtk window driven
-  by clicks, and the Qt host with its tour anchors.
+- `tests/test_session.py`, `tests/test_services.py`, `tests/test_gui.py` — the
+  workflow, the RPC layer, and the emtk window driven by clicks.
 
 ## Usage
 

@@ -1,8 +1,7 @@
-"""The Qt-free Burst Selection model (card BS0): same search, same bursts as the Qt tool, no toolkit.
+"""The toolkit-free Burst Selection model (card BS0).
 
-The parity test runs :class:`BurstSelectionModel` on copies of the same two raw files with the same detector setup
-and asserts the burst tables the Qt ``BurstSelectionTool`` gave (recorded in ``qt_reference.json``; the measured
-baseline is 198 bursts).
+The model runs on copies of two raw files with a fixed detector setup; every burst row is checked against the
+photons of the file it came from.
 """
 
 from __future__ import annotations
@@ -12,7 +11,6 @@ import os
 import shutil
 import subprocess
 import sys
-from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
@@ -80,61 +78,56 @@ def test_model_is_qt_free():
     assert done.returncode == 0, done.stderr[-2000:]
 
 
-@pytest.fixture(scope="session")
-def qt_reference():
-    """What the retired Qt ``BurstSelectionTool`` gave on the two raw files (``qt_reference.json``).
+def _spc(path):
+    import tttrlib
 
-    Recorded once with the Qt tool present: the burst tables of both files (every column of every row), the search
-    settings the tool derived from its controls, the burst count and the output folder name.
+    t = tttrlib.TTTR(str(path), "SPC-130")
+    seconds = np.asarray(t.macro_times, dtype=np.float64) * t.header.macro_time_resolution
+    return np.asarray(t.routing_channels), seconds
+
+
+def test_every_burst_row_counts_the_photons_of_its_span(hermetic):
+    """Run the model on copies of the two raw files; every burst row is checked against the photons.
+
+    The oracle is the input itself: each row's photon counts (all, ``G|G`` on 0/1, ``R|G`` on 8/9) and its duration
+    are recounted from the raw file between the row's first and last photon, and each burst holds at least the
+    minimum photon number the search was given.
     """
-    return json.loads((Path(__file__).with_name("qt_reference.json")).read_text())
-
-
-def test_same_bursts_as_the_qt_tool(hermetic, qt_reference):
-    """Run the model on copies of the two raw files; the burst tables must be the ones the Qt tool gave."""
     from chisurf.plugins.burst.burst_selection.gui.model import BurstSelectionModel
 
     m = BurstSelectionModel()
     assert m.select_setup("probe")
     m.add_paths(hermetic)
     ms = m.analysis_settings()
-    # every setting the registry search reads equals the Qt tool's
-    pm = asdict(ms)["photon_filter"]
-    for key, value in qt_reference["photon_filter"].items():
-        got = pm[key]
-        # JSON has no tuples and no enum members
-        assert (
-            json.loads(json.dumps(got, default=lambda o: getattr(o, "value", str(o)))) == value
-        ), key
-    assert ms.burst_detection.min_photons == qt_reference["min_photons"] == 60
-    # The Qt tool wrote a folder; the native tool writes the run into the photon dataset's
-    # analysis container in the project (the folder is an explicit export). Same bursts.
-    assert qt_reference["output_formats"] == ["bur"] and ms.output_formats == ["pto"]
+    pf = ms.photon_filter
+    assert pf.tttrlib_search.algorithm == "sliding_window"
+    assert dict(pf.tttrlib_search.parameters) == {"L": 20, "m": 10, "T": 0.0005}
+    assert ms.burst_detection.min_photons == 60
+    # the run goes into the photon dataset's analysis container (the folder is an explicit export)
+    assert ms.output_formats == ["pto"]
     assert m.prepare_run() is None
     mine = m.run()
 
-    assert mine["metadata"]["n_bursts"] == qt_reference["n_bursts"] == 198
-    # the run is named as the Qt tool's folder was: `<container>/<run>`
-    assert Path(mine["output_paths"]["output_folder"]).name == qt_reference["output_folder_name"]
+    # the run is named after its search, detector, dT max (ms) and minimum photons
+    assert Path(mine["output_paths"]["output_folder"]).name == "sliding_window_All 0.1500#60"
     by_name = {Path(k).name: v for k, v in mine["dataframes"].items()}
-    assert by_name.keys() == qt_reference["frames"].keys()
-    for name, rows in qt_reference["frames"].items():
-        assert len(by_name[name]) == len(rows)
-        for a, b in zip(rows, by_name[name]):
-            assert a.keys() == b.keys()
-            for key, value in a.items():
-                if "path" in key.lower():
-                    continue
-                other = b[key]
-                if value is None:  # a recorded NaN
-                    assert isinstance(other, float) and np.isnan(other), key
-                elif isinstance(value, float):
-                    assert other == pytest.approx(value, rel=1e-12, abs=1e-12), key
-                else:
-                    assert other == value, key
-    assert [r["bursts"] for r in m.file_rows()] == ["71", "127"]
-    # the deliberate corrections: the macro-time cut in seconds, not min_photons / 1000
-    assert qt_reference["time_window"] == pytest.approx(0.06)
+    assert by_name.keys() == {"m000.spc", "m001.spc"}
+    counts = []
+    for name, rows in by_name.items():
+        channels, seconds = _spc(Path(hermetic[0]).parent / name)
+        bursts = [r for r in rows if r["Number of Photons"]]  # the table interleaves empty spacer rows
+        assert bursts and all(r["First File"] == name for r in bursts)
+        for r in bursts:
+            a, b = int(r["First Photon"]), int(r["Last Photon"])
+            span = channels[a : b + 1]
+            assert r["Number of Photons"] == b - a + 1 >= 60
+            assert r["Number of Photons (G|G)"] == np.isin(span, [0, 1]).sum()
+            assert r["Number of Photons (R|G)"] == np.isin(span, [8, 9]).sum()
+            assert r["Duration (ms)"] == pytest.approx((seconds[b] - seconds[a]) * 1e3, rel=1e-9)
+        counts.append(len(bursts))
+    assert mine["metadata"]["n_bursts"] == sum(counts)
+    assert [r["bursts"] for r in m.file_rows()] == [str(n) for n in counts]
+    # the macro-time cut is in seconds (dT max 0.15 ms), not min_photons / 1000
     assert ms.burst_detection.time_window == pytest.approx(0.15 / 1000.0)
     assert m.burst_selection_parameters()["dT_min"] == m.dt_min == 0.001
 

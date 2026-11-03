@@ -1,5 +1,5 @@
 {
-  "_comment": "Shared native/Qt guide. Named targets resolve to the real emtk control; Qt hosts use anchors from the same target mapping. Awaited controls are operated by the user.",
+  "_comment": "Guide of the emtk app. Named targets resolve to the real emtk control. Awaited controls are operated by the user.",
   "steps": [
     {
       "title": "What this window does",

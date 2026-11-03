@@ -2,8 +2,7 @@
 
 One window: pick a burst run of the workspace in the Input section, prepare it, read what was found as three tables
 (detectors, photon sources, summary) and the report text. The spec ``mfd_prepare.view.json`` is drawn by
-``emtk.view_form``; the state and the numbers are in :class:`~.model.MfdPrepareModel` (Qt-free). The Qt tool in ``tool.py``
-only hosts this app.
+``emtk.view_form``; the state and the numbers are in :class:`~.model.MfdPrepareModel` (toolkit-free).
 """
 
 from __future__ import annotations

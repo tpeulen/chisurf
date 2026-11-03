@@ -1,6 +1,4 @@
 """``BurstSelectionClient``: what it forwards to the backend and how it reads a file for the diagnostics.
-
-(Two tests of the retired Qt tool's test module that only ever touched the client, not the widget.)
 """
 
 from __future__ import annotations

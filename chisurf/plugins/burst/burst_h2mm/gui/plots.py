@@ -14,7 +14,7 @@ from emtk.i18n import tr
 from . import result_view
 
 REGION_FILL = (46, 117, 182, 60)
-#: One colour per state, the Qt tool's palette (cycles beyond eight states).
+#: One colour per state (cycles beyond eight states).
 STATE_COLORS = [
     "#4e79a7",
     "#f28e2b",
@@ -91,7 +91,7 @@ class ResultPlots:
             hist = result_view.tdp_histogram(ana)
             if hist is None:  # transition points without a histogram: an empty plot
                 hist = np.zeros((1, 1))
-            # rows are E after, row zero at the top: flip so E after grows upward (the Qt image's orientation)
+            # rows are E after, row zero at the top: flip so E after grows upward
             implot.plot_heatmap(
                 "Transitions",
                 np.ascontiguousarray(hist.T[::-1]),
@@ -203,7 +203,7 @@ class ResultPlots:
                     f"CI S{state}", np.array([lo, hi]), np.zeros(2), np.full(2, ymax * 1.1)
                 )
             for state, e in enumerate(info.model_e):
-                if e == e:  # model E of the state, dashed in the Qt tool
+                if e == e:  # model E of the state, dashed
                     implot.set_next_line_style(state_colour(state), 1.0)
                     implot.plot_inf_lines(f"model E S{state}", [float(e)])
             for i, j, x0, y0, x1, y1, width in result_view.transition_arrows(ana, ymax * 1.08):

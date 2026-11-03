@@ -1,9 +1,7 @@
 # Burst Selection — Maintained GUI direction
 
-The native Burst Analysis hub uses `gui.native.create_app`; the public tool and
-wizard retain the implemented modern Qt tool. The previous fallback and its
-runtime switch are retired. Use archived before control inventories for
-migration review instead of attempting to restore a removed implementation.
+The Burst Analysis hub and the standalone tool both use `gui.native.create_app`
+(emtk); there is no other GUI.
 
 New surfaces are emtk/AutoForm. Keep analysis in the existing API/backend and
 preserve scientific settings and output contracts. Changes to framework,

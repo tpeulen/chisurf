@@ -1,8 +1,4 @@
-"""The Qt-free diagnostics of Burst Selection (``gui/diagnostics.py`` and ``gui/adapter.py``).
-
-These functions were methods of the Qt ``BurstSelectionTool``; the tests that pinned them through
-``BurstSelectionTool.__new__`` (``test_new_gui.py``, ``test_proximity_ratio_is_not_faked.py``) now call them directly.
-"""
+"""The diagnostics of Burst Selection (``gui/diagnostics.py`` and ``gui/adapter.py``), called directly."""
 
 from __future__ import annotations
 

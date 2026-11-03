@@ -5,7 +5,7 @@ Every function takes the :class:`~chisurf.plugins.burst.burst_h2mm.core.analysis
 arrays the plots and tables show. With no analysis they return ``None`` (or an empty list): the windows then draw
 an empty-state message, never a placeholder curve (no invented data).
 
-The module is Qt-free and emtk-free so the parity tests can compare its output with the backend directly.
+The module is Qt-free and emtk-free so tests can compare its output with the backend directly.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from typing import Any
 
 import numpy as np
 
-#: Bins of a per-state dwell-time histogram (the Qt tool's ``_plot_dwell_times`` uses 30 as well).
+#: Bins of a per-state dwell-time histogram.
 DWELL_BINS = 30
 
 
@@ -111,8 +111,8 @@ def transitions_in_gate(
 def dwell_histograms(ana: Any, bins: int = DWELL_BINS) -> tuple[list[DwellHistogram], list[int]]:
     """Per-state histograms of the dwells that ended inside their burst, and the states that have none.
 
-    Dwells touching a burst edge are censored (the burst ended them, not the state) and are left out, exactly as in
-    the Qt tool; a state with no complete dwell is returned in the second list so the window can name it.
+    Dwells touching a burst edge are censored (the burst ended them, not the state) and are left out; a state with no
+    complete dwell is returned in the second list so the window can name it.
     """
     if ana is None:
         return [], []
@@ -135,7 +135,7 @@ def dwell_histograms(ana: Any, bins: int = DWELL_BINS) -> tuple[list[DwellHistog
 # --------------------------------------------------------------------------------------------------------------------
 # Further plots (card H4): dwell FRET / E-S, model selection, per-state decays, burst state path, likelihood scan
 # --------------------------------------------------------------------------------------------------------------------
-#: Bins of the dwell-E histogram (the Qt tool uses 41 over [0, 1]).
+#: Bins of the dwell-E histogram (41 over [0, 1]).
 DWELL_E_BINS = 41
 
 
@@ -206,7 +206,7 @@ def dynamic_bursts(ana: Any) -> list[int]:
 
 
 def burst_path(ana: Any, data: Any, burst: int) -> BurstPath | None:
-    """The state path of *burst* (``None`` without a fit or for an unknown burst); the Qt tool's ``_update_burst_path``."""
+    """The state path of *burst* (``None`` without a fit or for an unknown burst)."""
     if ana is None or data is None or not (0 <= int(burst) < int(data.n_bursts)):
         return None
     offsets = np.asarray(data.burst_offsets)
@@ -259,7 +259,7 @@ def scan_deviance(scan: Any) -> np.ndarray:
 
 
 # --------------------------------------------------------------------------------------------------------------------
-# TDP heatmap, kinetic-scheme arrows and bootstrap bands (the Qt tool's _plot_tdp, _overlay_trans_arrows, _overlay_e_ci_bands)
+# TDP heatmap, kinetic-scheme arrows and bootstrap bands
 # --------------------------------------------------------------------------------------------------------------------
 TDP_BINS = 41
 
