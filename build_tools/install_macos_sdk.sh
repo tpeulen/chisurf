@@ -1,33 +1,25 @@
-# See: https://github.com/openmm/openmm/blob/master/devtools/ci/gh-actions/scripts/install_macos_sdk.sh
-
-# Install an older MacOS SDK
-# This should guarantee OpenMM builds with extended compatibility across MacOS versions
-# Adapted from conda-forge-ci-setup scripts:
-# * https://github.com/conda-forge/conda-forge-ci-setup-feedstock/blob/dde296e/recipe/run_conda_forge_build_setup_osx
-# * https://github.com/conda-forge/conda-forge-ci-setup-feedstock/blob/dde296e/recipe/download_osx_sdk.sh
+#!/usr/bin/env bash
+# Configure macOS builds on CI: build against the runner's current SDK and set
+# the deployment target to conda-forge's default minimum (macOS 11.0).
 #
-# Some possible updates might involve upgrading the download link to future MacOS releases (10.15 to something else),
-# depending on the version provided by the CI
+# Apple's supported way to support older macOS versions is a newer SDK plus
+# MACOSX_DEPLOYMENT_TARGET; no old SDK download or Xcode Info.plist edits are
+# needed. 11.0 is also the minimum for Apple Silicon (macos-latest runners).
+# See https://conda-forge.org/docs/maintainer/knowledge_base/#requiring-newer-macos-sdks
+#
+# Override with MACOSX_DEPLOYMENT_TARGET in the workflow env if needed.
+set -euo pipefail
 
-OSX_SDK_DIR="$(xcode-select -p)/Platforms/MacOSX.platform/Developer/SDKs"
-export MACOSX_DEPLOYMENT_TARGET=10.9
-export MACOSX_SDK_VERSION=10.9
+MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-11.0}"
+SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
 
-export CMAKE_OSX_SYSROOT="${OSX_SDK_DIR}/MacOSX${MACOSX_SDK_VERSION}.sdk"
+echo "macOS SDK: ${SDKROOT} ($(xcrun --sdk macosx --show-sdk-version))"
+echo "MACOSX_DEPLOYMENT_TARGET: ${MACOSX_DEPLOYMENT_TARGET}"
 
-if [[ ! -d ${CMAKE_OSX_SYSROOT}} ]]; then
-    echo "Downloading ${MACOSX_SDK_VERSION} sdk"
-    curl -L -O --connect-timeout 5 --max-time 10 --retry 5  --retry-delay 0 --retry-max-time 40 --retry-connrefused --retry-all-errors \
-        https://github.com/phracker/MacOSX-SDKs/releases/download/10.15/MacOSX${MACOSX_SDK_VERSION}.sdk.tar.xz
-    tar -xf MacOSX${MACOSX_SDK_VERSION}.sdk.tar.xz -C "$(dirname ${CMAKE_OSX_SYSROOT})"
+if [[ -n "${GITHUB_ENV:-}" ]]; then
+  {
+    echo "MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET}"
+    echo "SDKROOT=${SDKROOT}"
+    echo "CMAKE_OSX_SYSROOT=${SDKROOT}"
+  } >> "${GITHUB_ENV}"
 fi
-
-if [[ "$MACOSX_DEPLOYMENT_TARGET" == 10.* ]]; then
-# set minimum sdk version to our target
-plutil -replace MinimumSDKVersion -string ${MACOSX_SDK_VERSION} $(xcode-select -p)/Platforms/MacOSX.platform/Info.plist
-plutil -replace DTSDKName -string macosx${MACOSX_SDK_VERSION}internal $(xcode-select -p)/Platforms/MacOSX.platform/Info.plist
-fi
-
-echo "MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET}" >> ${GITHUB_ENV}
-echo "CMAKE_OSX_SYSROOT=${MACOSX_DEPLOYMENT_TARGET}" >> ${GITHUB_ENV}
-echo "CMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}" >> ${GITHUB_ENV}
