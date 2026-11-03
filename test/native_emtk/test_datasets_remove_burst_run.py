@@ -43,6 +43,10 @@ def shell():
     from chisurf.emtk.session import start_session
 
     before = list(chisurf.imported_datasets)
+    # rows other tests' container writes left in the process's list are not this shell's
+    chisurf.imported_datasets[:] = [
+        d for d in before if not getattr(d, "result_of", "") and not getattr(d, "data_kind", "")
+    ]
     session = start_session()
     app = EmtkShellApp({}, loader=lambda plugin_id: None)
     app.data.adopt(session)
@@ -67,20 +71,29 @@ def _runs_of(raw: Path, uid: str) -> Path:
     from chisurf.core.fio.fluorescence.burst_container import container_for, write_burst_artifact
 
     out = analysis.container_dir(uid)
-    for run, parents in ((RUN, ()), (FUSED, [f"{RUN}/bi4_bur/{raw.stem}.bur"])):
+    bursts = f"{RUN}/bi4_bur/{raw.stem}.bur"
+    for name, operation, parents in (
+        (bursts, "burst_selection", ()),
+        (f"{RUN}/2cde fret", "burst_2cde", [bursts]),  # a companion: written into the run
+        (f"{FUSED}/bi4_bur/{raw.stem}.bur", "burst_selection", [bursts]),
+    ):
         write_burst_artifact(
             raw,
             _bur(4, raw.name),
-            name=f"{run}/bi4_bur/{raw.stem}.bur",
+            name=name,
             deinterleave=False,
             artifact_kind="burst_table",
-            operation_type="burst_selection",
-            parameters={"run": run},
+            operation_type=operation,
+            parameters={"name": name},
             derived_from=parents,
             out_dir=out,
             raw_data="sidecar",
         )
     return container_for(raw, out)
+
+
+def _tree(shell):
+    return {r["name"]: r for r in shell.data.datasets.datasets if r.get("kind") in ("bursts", "table")}
 
 
 def _rows(shell, kind):
@@ -100,10 +113,14 @@ def test_a_run_is_a_child_and_delete_removes_it_with_its_fusion_from_the_pto(she
     analysis.container_changed(container)
 
     def nested():
-        rows = {r["name"]: r for r in _rows(shell, "bursts")}
-        run, fused = rows.get(RUN), rows.get(FUSED)
-        # a tree: the search under its photons, the fusion under the search
-        return bool(run and fused) and str(run["parent"]) == uid and fused["parent"] == run["uid"]
+        rows = _tree(shell)
+        run, fused, cde = rows.get(RUN), rows.get(FUSED), rows.get("Burst 2CDE")
+        # a tree: the search under its photons, its 2CDE and the fusion under the search
+        return (
+            bool(run and fused and cde)
+            and str(run["parent"]) == uid
+            and fused["parent"] == run["uid"] == cde["parent"]
+        )
 
     _settle(driver, nested, "both runs under their photons")
     shell.docks.focus(DATASETS_KEY)
@@ -115,13 +132,13 @@ def test_a_run_is_a_child_and_delete_removes_it_with_its_fusion_from_the_pto(she
     dialogs = shell.project.dialogs
     question = dialogs.current
     assert question is not None and question.kind == "confirm"
-    assert FUSED in question.message  # the dependent analysis is named
+    assert FUSED in question.message and "Burst 2CDE" in question.message  # what goes with it
     assert list_runs(container) == [RUN, FUSED]  # nothing removed before the answer
     driver.frame(4)
     driver.screenshot(SHOTS / "datasets_remove_run_warning.png")
     dialogs.answer(key="yes")
 
-    _settle(driver, lambda: not _rows(shell, "bursts") and not shell.data.busy, "the runs removed")
+    _settle(driver, lambda: not _tree(shell) and not shell.data.busy, "the runs removed")
     assert list_runs(container) == []
     assert [r["uid"] for r in _rows(shell, "photons")] == [uid]  # the photons stay
     analysis.sync_runs()  # nothing comes back from the container
@@ -139,7 +156,7 @@ def test_cancel_removes_nothing(shell, tmp_path):
     uid = str(register_result(str(raw), kind="photons", name=raw.name).unique_identifier)
     container = _runs_of(raw, uid)
     analysis.container_changed(container)
-    _settle(driver, lambda: len(_rows(shell, "bursts")) == 2, "the runs")
+    _settle(driver, lambda: len(_tree(shell)) == 3, "the runs and the 2CDE")
     assert {uid} | {str(r["uid"]) for r in _rows(shell, "bursts")} >= {
         str(r["parent"]) for r in _rows(shell, "bursts")
     }
@@ -150,3 +167,21 @@ def test_cancel_removes_nothing(shell, tmp_path):
     shell.project.dialogs.answer(key="no")
     driver.frame(10)
     assert list_runs(container) == [RUN, FUSED] and len(_rows(shell, "bursts")) == 2
+
+
+def test_deleting_an_analysis_of_a_run_keeps_the_run(shell, tmp_path):
+    from chisurf.core.plugin.workspace_input import register_result
+
+    raw = tmp_path / "m.ptu"
+    shutil.copy(PTU, raw)
+    driver = Driver(shell, (1400, 900))
+    driver.frame(4)
+    uid = str(register_result(str(raw), kind="photons", name=raw.name).unique_identifier)
+    container = _runs_of(raw, uid)
+    analysis.container_changed(container)
+    _settle(driver, lambda: len(_tree(shell)) == 3, "the runs and the 2CDE")
+    shell.data.datasets.remove_dataset(_tree(shell)["Burst 2CDE"])
+    assert "computed from it" not in shell.project.dialogs.current.message
+    shell.project.dialogs.answer(key="yes")
+    _settle(driver, lambda: set(_tree(shell)) == {RUN, FUSED} and not shell.data.busy, "the 2CDE removed")
+    assert [n["label"] for n in analysis.analysis_graph(container)] == [RUN, FUSED]

@@ -181,15 +181,19 @@ Burst identification.
 ### The runs in the Datasets workspace
 
 Each search is a **run** in the photon dataset's analysis container, and the
-Datasets workspace shows it as a child of its photons. An analysis computed from
-a run, such as a fusion of its bursts, is a child of that run. The photons row
-unfolds when a new run arrives.
+Datasets workspace shows it as a child of its photons. Everything computed from
+a run hangs under it: BVA, 2CDE, burst-wise lifetimes, H2MM (one 🧮 row per
+analysis), and a fusion of its bursts (a run of its own). Anything computed
+from one of those hangs under that one in turn. The tree follows the parents
+each table records in the container, so it is the dependency graph of the
+analysis. A row unfolds when a new result of it arrives.
 
-Deleting a run (the **Delete** key, or **Remove** in the context menu) removes
-it from the container. Every analysis computed from it, directly or through
-another run, is removed as well. Before anything is removed, a warning names
-those analyses, and **Cancel** keeps everything. The photons are never removed
-with a run.
+Deleting a row (the **Delete** key, or **Remove** in the context menu) removes
+that analysis from the container, together with everything computed from it,
+directly or through another analysis. Before anything is removed, a warning
+names those analyses, and **Cancel** keeps everything. Deleting a 2CDE row
+leaves its run; deleting a run takes its companions and fusions with it. The
+photons are never removed.
 
 ## Reading the diagnostic plots
 

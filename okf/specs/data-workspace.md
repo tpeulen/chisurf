@@ -244,15 +244,21 @@ behind the API/CLI.
   stays above its list"). emtk gets a `column_filter` spec key exposing `DataTable.column_filters`.
 * Context menu **Open in…** lists the plugins that accept the row's kind; dragging a row onto any plugin
   feeds it (not only fit windows).
-* **A tree** (2026-11-03). A run is a child of its photon dataset. A run computed from another run (a
-  fusion) is a child of that run: `derived_datasets` records `source_run` from the container's
-  provenance (`analysis._run_graph`), and `sync_runs` makes it the source run's child. A parent unfolds
+* **A tree: the dependency graph of the analyses** (2026-11-03). `analysis.analysis_graph(container)`
+  has one node per *analysis*. A run's burst search (or import) is the run itself (`bursts` row);
+  every other operation that wrote tables into a run (BVA, 2CDE, lifetimes, H2MM; label from the
+  operation term, `operation_label`) is one `table` row at `…/m.pto/<run>/<first table>`. Each node's
+  parents are the nodes owning its tables' `derived_from` parents, and a companion always belongs to
+  its own run. `derived_datasets` emits the rows parents first, already linked to their source row,
+  so a reopened project nests the same way. `sync_runs` re-links them to the session's uids. The
+  "companion tables as view-only children" gap of item 6 is closed by this. A parent unfolds
   when a new result of it arrives (`DatasetsModel.expanded`, the table's `expanded_attr`).
   Burst Selection records the photon dataset's uid for every file, even when the hand-off brings files
   it already lists (a restored session), and otherwise falls back to the workspace dataset that reads
   the file. Without that, its runs went into the `_` folder and showed as top-level rows.
-* **Deleting a run removes it from the container** (`analysis.remove_run`), together with every run
-  derived from it (`run_dependents`, transitive over the `derived_from` parents). It runs only after a
+* **Deleting an analysis row removes it from the container** (`analysis.remove_analysis`), together
+  with everything computed from it (`dependents`, transitive over the graph; a run takes everything
+  written into it). It runs only after a
   confirm that names those runs (`DataDocks.remove_runs`); their workspace rows go too. Only runs of
   the project's analysis containers (`is_derived`) are removed from a file. A run of a dropped user
   `.pto` is only taken out of the workspace. The space is freed when the container is next rewritten;
