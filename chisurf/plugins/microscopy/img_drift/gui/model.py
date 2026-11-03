@@ -1,6 +1,6 @@
 """Qt-free model of the emtk drift-correction window.
 
-The measurement is :class:`~.view_model.DriftViewModel` (unchanged, shared with the Qt tool); this adds the action methods
+The measurement is :class:`~.view_model.DriftViewModel` ; this adds the action methods
 the spec's buttons call, a status line, the file-dialog requests and the worker hand-off.
 """
 
@@ -13,7 +13,7 @@ import numpy as np
 from ...imaging_emtk.model_base import EmtkModelMixin
 from .view_model import DriftViewModel
 
-#: Files the Open dialog lists (the Qt data-source field's filter).
+#: Files the Open dialog lists.
 IMAGE_FILE_FILTER = (
     "Images and photon streams (*.pto *.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)"
 )
@@ -48,15 +48,15 @@ class DriftModel(EmtkModelMixin, DriftViewModel):
 
     # -- the file --------------------------------------------------------------- #
     def open_file(self) -> None:
-        """Choose an image stack or photon-stream file (the Qt Browse button)."""
+        """Choose an image stack or photon-stream file."""
         self.request_dialog("open")
 
     def open_database(self) -> None:
-        """Pick a dataset registered in the database (the Qt Database button)."""
+        """Pick a dataset registered in the database."""
         self.request_dialog("database")
 
     def open_path(self, path: str) -> None:
-        """Select *path* and measure it, as the Qt tool did when a file was chosen (now: picked in the workspace)."""
+        """Select *path* (picked in the workspace) and measure it."""
         if not path:
             return
         self.remember_folder(path)
@@ -71,7 +71,7 @@ class DriftModel(EmtkModelMixin, DriftViewModel):
             self.open_path(str(value))
 
     def load_and_measure(self) -> None:
-        """The worker body: read the channel list, then (only when the file is usable) measure, like the Qt ``file`` event."""
+        """The worker body: read the channel list, then (only when the file is usable) measure."""
         if self.set_filename(self._pending_path):
             self._normalise_channel()
             self.compute_job()
@@ -86,7 +86,7 @@ class DriftModel(EmtkModelMixin, DriftViewModel):
 
     # -- measuring --------------------------------------------------------------- #
     def measure(self) -> None:
-        """Measure the drift of the loaded file (the Qt Measure); the Qt tool did nothing without a file, this says so."""
+        """Measure the drift of the loaded file; without a file, say so."""
         if not self.filename:
             self.status_line = self.status or "No image loaded."
             return
@@ -150,7 +150,7 @@ class DriftModel(EmtkModelMixin, DriftViewModel):
 
     # -- sources named by the emtk spec ----------------------------------------------- #
     def shift_table_rows(self) -> list[dict]:
-        """The shift table with numbers (the Qt table held strings), so a header click sorts by value."""
+        """The shift table with numbers, so a header click sorts by value."""
         if self._result is None:
             return []
         shifts = np.asarray(self._result.shifts, dtype=float)

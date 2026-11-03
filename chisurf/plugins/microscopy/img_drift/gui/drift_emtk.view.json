@@ -1,6 +1,6 @@
 {
   "window": {"width": 1100, "height": 720},
-  "_comment": "Drift correction, drawn by emtk. Top-level panels are dock windows: the settings on the left, the views as tabs on the right. The Qt tool's AutoForm spec is drift.view.json.",
+  "_comment": "Drift correction, drawn by emtk. Top-level panels are dock windows: the settings on the left, the views as tabs on the right. The settings mirror drift.view.json, which the view model reads.",
   "sections": [
     {
       "type": "panel",
