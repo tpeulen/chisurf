@@ -70,7 +70,7 @@ DATA_SUFFIXES = (
 
 def is_data_reference(value) -> bool:
     """Whether *value* names a data file: a path (or ``kind:path`` address, ``mmfdb://`` link)
-    ending in a data format."""
+    ending in a data format, or an address inside one (``m000.pto/<run>``)."""
     if isinstance(value, Path):
         value = str(value)
     if not isinstance(value, str):
@@ -80,7 +80,9 @@ def is_data_reference(value) -> bool:
         return True
     if "/" not in text and "\\" not in text:
         return False  # ".pto" as an output-format choice is a setting, not a file
-    return text.rstrip("/\\").lower().endswith(DATA_SUFFIXES)
+    # the file itself, or an address inside one: a burst run "m000.pto/<run>" is data too
+    parts = text.replace("\\", "/").rstrip("/").lower().split("/")
+    return any(part.endswith(DATA_SUFFIXES) for part in parts)
 
 
 def strip_data_files(state):

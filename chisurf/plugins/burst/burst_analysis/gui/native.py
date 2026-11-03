@@ -842,6 +842,13 @@ class BurstAnalysisHubApp(ToolHubApp):
                 payload[key] = [Path(path) for path in payload.get(key, [])]
             if payload.get("burst_folder") is not None:
                 payload["burst_folder"] = Path(payload["burst_folder"])
+            if not payload.get("raw_files"):
+                # Opened without its measurements (a new Burst Analysis): nothing of the last
+                # run may come back -- no bursts, no fused run, no IRF -- only the settings.
+                for key in ("bur_files", "burst_folder", "legacy_burst_folder",
+                            "irf_background_patterns"):
+                    payload.pop(key, None)
+                state = {k: v for k, v in state.items() if k not in ("fusion_source", "fused_folder")}
             names = {field.name for field in fields(BurstWorkflowContext)}
             self.context = BurstWorkflowContext(
                 **{key: value for key, value in payload.items() if key in names}
