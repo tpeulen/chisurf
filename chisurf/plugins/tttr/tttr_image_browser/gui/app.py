@@ -1,13 +1,13 @@
-"""Native emtk TTTR image browser: the Qt tool's two pages on emtk.
+"""Native emtk TTTR image browser: two pages, the image browser and the detector setup.
 
 Page *Image browser* (what the window opens on) holds three windows, laid out side by side so that the mosaic
 gets most of the area:
 
-* ``toolbar`` -- the Qt toolbar (Open folder, Clear, Clear caches, Copy raw files, TIFF, DOCX, Next, Include
+* ``toolbar`` -- the toolbar (Open folder, Clear, Clear caches, Copy raw files, TIFF, DOCX, Next, Include
   subfolders, Help, Guide), drawn from ``browser_emtk.view.json``;
-* ``files`` -- the Qt left column: folder, rating filter, the file list as a ``data_table`` (with its filter box,
+* ``files`` -- the left column: folder, rating filter, the file list as a ``data_table`` (with its filter box,
   sortable, one row selected or several), rating, info line and annotation;
-* ``image`` -- the display controls of the Qt image dock (colormap, gamma, levels, tile labels, reset view), the
+* ``image`` -- the display controls (colormap, gamma, levels, tile labels, reset view), the
   detector-window mosaic with its tile labels (mouse wheel zooms, a drag pans) and a level histogram whose two
   lines are the display levels (drag them).
 
@@ -195,9 +195,9 @@ class TTTRImageBrowserApp(ImApp):
         self._list_saved_setups()
 
     def _list_saved_setups(self) -> None:
-        """Offer the saved setups in the editor's *Setups* tab, as the Qt setup page does; none is applied.
+        """Offer the saved setups in the editor's *Setups* tab; none is applied.
 
-        The Qt tool starts on its setup page and applies nothing until *Use setup and continue*: a saved setup
+        Nothing is applied until *Use setup and continue*: a saved setup
         that is adopted silently would change which files the list shows (a setup that reads PTO lists no PTU).
         """
         assert self.editor is not None
@@ -353,7 +353,7 @@ class TTTRImageBrowserApp(ImApp):
             self.tour.notify_used(control)
 
     def next_step(self) -> None:
-        """Hand the current image to the imaging pipeline and open its Intensity step (the Qt *Next*)."""
+        """Hand the current image to the imaging pipeline and open its Intensity step (*Next*)."""
         coordinator = self._coordinator
         if coordinator is None:
             self.model.status_line = "Next needs Imaging Tools: open the browser from there."
@@ -397,7 +397,7 @@ class TTTRImageBrowserApp(ImApp):
         im.end()
 
     def _tabs(self, width: float) -> None:
-        """The two pages as tabs (the Qt tool showed the setup page first and had no way back)."""
+        """The two pages as tabs: the setup page can be revisited at any time."""
         labels = {"browser": "Image browser", "setup": "Detector setup"}
         tips = {
             "browser": "Browse the folder: file list, detector-window mosaic, ratings, annotations and exports.",
@@ -462,7 +462,7 @@ class TTTRImageBrowserApp(ImApp):
         self._fit("toolbar_h", 6.0)
 
     def _status_bar(self) -> None:
-        """The Qt status bar: the last message, or what the worker is doing."""
+        """The status line: the last message, or what the worker is doing."""
         model = self.model
         text = (
             f"{self.job.progress} {model.status_line}".strip()
@@ -652,7 +652,7 @@ class TTTRImageBrowserApp(ImApp):
         )
 
     def _draw_levels(self, width: float, height: float) -> None:
-        """The pixel-value histogram with the two display levels as draggable lines (the Qt level bar)."""
+        """The pixel-value histogram with the two display levels as draggable lines."""
         model = self.model
         counts = model.histogram()
         if counts is None:

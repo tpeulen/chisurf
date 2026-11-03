@@ -1,6 +1,6 @@
 """Qt-free model of the native TTTR image browser.
 
-Extends :class:`~.view_model.ImageBrowserViewModel` (the Qt tool's view model, unchanged: folder scan, ratings,
+Extends :class:`~.view_model.ImageBrowserViewModel` (folder scan, ratings,
 annotations, the detector-window mosaic and its tile labels) with what the emtk window needs: the table rows,
 a multi-selection, the display settings of the image (colormap, gamma, levels), the toolbar actions with their
 enabled state, the exports (raw copy, TIFF stacks, DOCX report) and the settings the host persists.
@@ -31,10 +31,10 @@ from chisurf.plugins.microscopy.imaging_emtk.model_base import EmtkModelMixin
 from .client import TTTRImageBrowserClient
 from .view_model import RATING_FILTERS, ImageBrowserViewModel
 
-#: Colormaps the Qt image dock offers (its ``IMAGE_COLORMAPS`` list), in its order.
+#: Colormaps the display offers, in the order of its choice.
 COLORMAPS = ("viridis", "magma", "inferno", "plasma", "cividis", "turbo", "gray")
 
-#: Longest side, in pixels, of the mosaic the preview reconstructs (the Qt view model asks for the same).
+#: Longest side, in pixels, of the mosaic the preview reconstructs.
 MAX_SIDE = 512
 
 
@@ -294,7 +294,7 @@ class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel, WindowsPreflightM
         return list(self.selected_files) or ([self.current_file] if self.current_file else [])
 
     def info_text(self) -> str:
-        """What the Qt info panel said (how many images are listed), plus the selection count."""
+        """How many images are listed, plus the selection count."""
         if not self.current_folder:
             return ""
         n = len(self.file_entries())
@@ -511,7 +511,7 @@ class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel, WindowsPreflightM
             self.status_line = "Open a folder with image files first."
 
     def dialog_filename(self, kind: str) -> str:
-        """The name a save dialog starts with (the Qt tool wrote ``<folder>.docx`` into the folder)."""
+        """The name a save dialog starts with (``<folder>.docx`` in the folder)."""
         if kind == "docx" and self.current_folder:
             folder = pathlib.Path(self.current_folder)
             return f"{folder.name or 'images'}.docx"

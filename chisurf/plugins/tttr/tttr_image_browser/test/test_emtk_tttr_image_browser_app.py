@@ -1,10 +1,11 @@
-"""The emtk TTTR image browser against the retired Qt tool: same files, same numbers, every action.
+"""The emtk TTTR image browser: real CLSM files, their numbers, every action.
 
-The Qt reference was recorded from the real ``TTTRImageBrowserTool`` (offscreen, on the same CLSM test files and the
-same detector setup, with temporary settings and the destination dialogs stubbed) into ``qt_reference.json``. Because
-the Qt tool and the emtk model shared ``ImageBrowserViewModel``, a fault in it would pass a Qt-versus-emtk comparison
-on its own: the numbers pinned below were captured from the Qt window before the port and a written-out reference of
-the rules (the DOCX content, the copy rule) is compared too.
+The numbers are checked against the files: the image of a detector is the photon file
+reconstructed by tttrlib's ``CLSMImage`` over that detector's routing channels (frames,
+lines, pixels); a mosaic tile is its frame sum min-max scaled to 0..255 and shrunk by
+nearest neighbour until the mosaic's longer side is 512; a copied file has the source's
+bytes. The detector setup is the two-detector one of ``conftest.py`` (green: channels 0
+and 1, red: channel 2, which neither Leica file uses).
 """
 
 import hashlib
@@ -24,46 +25,36 @@ from .conftest import REPO, two_detector_setup
 HERE = pathlib.Path(__file__).resolve().parent
 pytestmark = pytest.mark.usefixtures("hermetic")
 
-# Pinned from the Qt window before the port, real files of
-# test/data/clsm with the two-detector setup of conftest.py.
-QT_SP8 = dict(
-    shape=[256, 512],
-    cols=2,
-    rows=1,
-    labels=["G|G  |  mt: 0-4095  |  ch: 0,1", "R|G  |  mt: 0-4095  |  ch: 2"],
-    sum=547933,
-    max=212,
-    sha1="c12bdf5fb28317ad7abfe2aef4b8836eb7756997",
-)
-# The SP5 numbers are not the Qt window's any more: it read the file through a tttrlib that
-# took only frame marker 4 from the header and reconstructed one salvaged 1 x 7921 x 256
-# frame, mostly fly-backs. tttrlib 5d126dec3 reads the frame markers that share a record
-# with the last line stop (channel 6 = 4|2), so the file is 230 x 256 x 256 -- a cell, the
-# red channel empty as before. Re-pinned from that reconstruction (mosaic inspected).
-QT_SP5 = dict(
-    shape=[256, 512],
-    cols=2,
-    rows=1,
-    sum=2180091,
-    max=255,
-    sha1="5258d6537c943e9aceda951d46f4b9d397e056d2",
-)
-QT_TIFF = {
-    "Leica_SP5_G-G.tiff": ([230, 256, 256], 3037446),  # re-pinned, see QT_SP5
-    "Leica_SP5_R-G.tiff": ([230, 256, 256], 0),
-    "Leica_SP8_G-G.tiff": ([93, 512, 512], 2710575),
-    "Leica_SP8_R-G.tiff": ([93, 512, 512], 0),
-}
+GREEN, RED = [0, 1], [2]
+
+
+def clsm_stack(name, channels):
+    """The (frames, lines, pixels) image of *channels* as tttrlib reconstructs it from the file."""
+    import tttrlib
+
+    data = tttrlib.TTTR(str(REPO / "test" / "data" / "clsm" / name))
+    return np.asarray(tttrlib.CLSMImage(tttr_data=data, channels=channels, fill=True).intensity)
+
+
+def scaled_tile(image):
+    """A frame sum min-max scaled to uint8 (all zero when the image is flat)."""
+    a = image.astype(float)
+    lo, hi = a.min(), a.max()
+    if hi <= lo:
+        return np.zeros(a.shape, np.uint8)
+    return ((a - lo) / (hi - lo) * 255.0).clip(0, 255).astype(np.uint8)
+
+
+def expected_mosaic(name):
+    """Green and red tiles side by side, every tile shrunk so the mosaic is at most 512 wide."""
+    tiles = [scaled_tile(clsm_stack(name, chs).sum(axis=0)) for chs in (GREEN, RED)]
+    side = tiles[0].shape[1]
+    step = max(1, (2 * side) // 512)  # 512 px tiles shrink by 2, 256 px tiles stay
+    return np.hstack([t[::step, ::step] for t in tiles])
 
 
 def sha(a):
     return hashlib.sha1(np.ascontiguousarray(a).tobytes()).hexdigest()
-
-
-@pytest.fixture(scope="module")
-def qt():
-    """What the retired Qt tool computed and did on the photon folder (``qt_reference.json``)."""
-    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 
 def model_on(folder, setup=True):
@@ -81,22 +72,23 @@ def rows(entries):
 
 
 # 1. the file list ---------------------------------------------------------------------------------------------------
-def test_the_file_list_is_what_the_qt_list_showed(qt, photon_folder):
+def badge(path):
+    """A row's size badge: the file size in MiB to one decimal."""
+    return f"{path.stat().st_size / 2**20:.1f} MB"
+
+
+def test_the_file_list_is_the_folders_photon_files(photon_folder):
     model = model_on(photon_folder)
-    assert rows(model.file_entries()) == [tuple(r) for r in qt["entries_flat"]]
-    assert [r[0] for r in rows(model.file_entries())] == ["corrupt.ptu", "Leica_SP8.ptu"]
+    flat = ["corrupt.ptu", "Leica_SP8.ptu"]
+    assert rows(model.file_entries()) == [(n, badge(photon_folder / n), 0) for n in flat]
     model.set_recursive(True)
-    assert rows(model.file_entries()) == [tuple(r) for r in qt["entries_recursive"]]
-    assert [r[0] for r in rows(model.file_entries())] == [
-        "corrupt.ptu",
-        "sub/Leica_SP5.ptu",
-        "Leica_SP8.ptu",
-    ]
+    deep = ["corrupt.ptu", "sub/Leica_SP5.ptu", "Leica_SP8.ptu"]
+    assert rows(model.file_entries()) == [(n, badge(photon_folder / n), 0) for n in deep]
 
 
-def test_the_info_line_says_what_the_qt_info_panel_said(qt, photon_folder):
+def test_the_info_line_counts_the_listed_images(photon_folder):
     model = model_on(photon_folder)
-    assert f"<i>{model.info_text()}</i>" == qt["info_flat"] == "<i>2 image(s) in imgs</i>"
+    assert model.info_text() == "2 image(s) in imgs"
     assert model_on(photon_folder, setup=False).info_text() == "2 image(s) in imgs"
 
 
@@ -105,53 +97,41 @@ def test_a_text_file_is_never_listed(photon_folder):
 
 
 # 2. the mosaics ----------------------------------------------------------------------------------------------------
-@pytest.mark.parametrize(
-    "name,pinned,key",
-    [("Leica_SP8.ptu", QT_SP8, "mosaic_SP8"), ("sub/Leica_SP5.ptu", QT_SP5, "mosaic_SP5")],
-)
-def test_the_mosaic_equals_the_qt_mosaic(qt, photon_folder, name, pinned, key):
+@pytest.mark.parametrize("name", ["Leica_SP8.ptu", "sub/Leica_SP5.ptu"])
+def test_the_mosaic_is_the_files_scaled_detector_images(photon_folder, name):
     model = model_on(photon_folder)
     model.set_recursive(True)
     model.select_file(str(photon_folder / name))
     got = model.load_current()
     assert got is not None
-    mosaic = got["mosaic"]
-    for field, value in pinned.items():
-        if field in ("shape",):
-            assert list(mosaic.shape) == value, field
-        elif field == "sum":
-            assert int(mosaic.sum()) == value
-        elif field == "max":
-            assert int(mosaic.max()) == value
-        elif field == "sha1":
-            assert sha(mosaic) == value
-        elif field in ("cols", "rows"):
-            assert got[field] == value
-        else:
-            assert got[field] == value
-    # ... and the live Qt tool agrees on the same copy of the file
-    live = qt[key]
-    assert list(mosaic.shape) == live["shape"] and sha(mosaic) == live["sha1"]
-    assert got["labels"] == live["labels"] and model.image_labels() == live["tile_labels"]
+    expected = expected_mosaic(pathlib.Path(name).name)
+    assert got["mosaic"].shape == expected.shape == (256, 512)
+    np.testing.assert_array_equal(got["mosaic"], expected)
+    assert (got["cols"], got["rows"]) == (2, 1)
+    # name | micro-time range (resolved against the file) | routing channels
+    assert [(lab.split("  |  ")[0], lab.split("  |  ")[-1]) for lab in got["labels"]] == [
+        ("G|G", "ch: 0,1"),
+        ("R|G", "ch: 2"),
+    ]
+    assert got["mosaic"][:, 256:].max() == 0  # red: channel 2 holds no photons
 
 
-def test_tile_labels_sit_where_the_qt_labels_sat(photon_folder):
+def test_tile_labels_sit_in_the_corner_of_each_tile(photon_folder):
     model = model_on(photon_folder)
     model.select_file(str(photon_folder / "Leica_SP8.ptu"))
-    model.load_current()
-    assert model.image_labels() == [
-        {"x": 3, "y": 3, "text": QT_SP8["labels"][0]},
-        {"x": 259, "y": 3, "text": QT_SP8["labels"][1]},
+    labels = model.load_current()["labels"]
+    assert model.image_labels() == [  # 3 px into each 256 px tile
+        {"x": 3, "y": 3, "text": labels[0]},
+        {"x": 259, "y": 3, "text": labels[1]},
     ]
     model.show_labels = False
     assert model.tile_labels() == []
 
 
-def test_a_file_without_an_image_has_no_mosaic_and_says_why(qt, photon_folder):
+def test_a_file_without_an_image_has_no_mosaic_and_says_why(photon_folder):
     model = model_on(photon_folder)
     model.select_file(str(photon_folder / "corrupt.ptu"))
     assert model.load_current() is None
-    assert qt["mosaic_corrupt"] is None
     assert model.current_image() is None
     assert "no image could be reconstructed" in model.image_error()
     assert "corrupt.ptu" in model.file_info()
@@ -176,43 +156,51 @@ def test_the_draw_loop_never_reads_a_photon_file(photon_folder):
 
 
 # 3. display lists ---------------------------------------------------------------------------------------------------
-def test_colormaps_and_filters_are_the_qt_lists(qt):
+def test_the_default_colormap_is_one_of_the_choices():
     from chisurf.plugins.tttr.tttr_image_browser.gui.model import ImageBrowserModel
 
     model = ImageBrowserModel()
-    assert model.colormap_options() == qt["colormaps"]
-    assert model.colormap == qt["colormap_default"] == "magma"
-    assert model.rating_filter_options() == qt["rating_filters"]
+    assert model.colormap == "magma" and "magma" in model.colormap_options()
+    assert model.rating_filter_options()[0] == "All"
 
 
 # 4. rating, annotation, filters -------------------------------------------------------------------------------------
-def test_rating_and_annotation_write_the_file_the_qt_tool_wrote(qt, photon_folder):
+def test_rating_and_annotation_are_written_beside_the_files(photon_folder):
     model = model_on(photon_folder)
     path = str(photon_folder / "Leica_SP8.ptu")
     model.select_file(path)
     model.rate_2()
     model.set_note(path, "good cell, bleached after frame 3")
     on_disk = json.loads((photon_folder / ".image_browser_meta.json").read_text())
-    assert (
-        on_disk
-        == qt["meta"]
-        == {"Leica_SP8.ptu": {"rating": 2, "annotation": "good cell, bleached after frame 3"}}
-    )
-    assert rows(model.file_entries()) == [tuple(r) for r in qt["entries_rated"]]
+    assert on_disk == {
+        "Leica_SP8.ptu": {"rating": 2, "annotation": "good cell, bleached after frame 3"}
+    }
+    sp8 = photon_folder / "Leica_SP8.ptu"
+    assert rows(model.file_entries()) == [
+        ("corrupt.ptu", badge(photon_folder / "corrupt.ptu"), 0),
+        ("Leica_SP8.ptu", badge(sp8) + "  ★★", 2),
+    ]
     assert model.rating_of(path) == 2 and model.current_rating == 2
     # a new model on the same folder reads the rating back
     again = model_on(photon_folder)
     assert again.rating_of(path) == 2 and again.note_of(path).startswith("good cell")
 
 
-def test_the_rating_filters_list_what_the_qt_filters_listed(qt, photon_folder):
+def test_the_rating_filters_list_the_files_with_those_stars(photon_folder):
     model = model_on(photon_folder)
     model.select_file(str(photon_folder / "Leica_SP8.ptu"))
-    model.rate_2()
-    for text, expected in qt["filters"].items():
+    model.rate_2()  # SP8 has two stars, corrupt.ptu none
+    filters = {
+        "All": ["corrupt.ptu", "Leica_SP8.ptu"],
+        "≥ 1★": ["Leica_SP8.ptu"],
+        "≥ 2★★": ["Leica_SP8.ptu"],
+        "≥ 3★★★": [],
+        "Only 0★": ["corrupt.ptu"],
+    }
+    assert model.rating_filter_options() == list(filters)
+    for text, expected in filters.items():
         model.set_rating_filter(text)
         assert [e["label"] for e in model.file_entries()] == expected, text
-    assert qt["filters"]["≥ 2★★"] == ["Leica_SP8.ptu"]
 
 
 def test_rows_carry_name_size_and_stars(photon_folder):
@@ -228,7 +216,7 @@ def test_rows_carry_name_size_and_stars(photon_folder):
 
 
 # 5. exports ---------------------------------------------------------------------------------------------------------
-def test_copy_raw_files_copies_the_bytes_the_qt_export_copied(qt, photon_folder, tmp_path):
+def test_copy_raw_files_copies_the_source_bytes(photon_folder, tmp_path):
     model = model_on(photon_folder)
     model.set_recursive(True)
     model.selected_files = [e["id"] for e in model.file_entries()]
@@ -238,13 +226,14 @@ def test_copy_raw_files_copies_the_bytes_the_qt_export_copied(qt, photon_folder,
         p.name: hashlib.md5(p.read_bytes()).hexdigest()
         for p in sorted((tmp_path / "copy").rglob("*.ptu"))
     }
-    assert got == qt["copy"]
-    # the paths below the opened folder are kept (the Qt tool flattened them: two files of one name would collide)
+    sources = {p.name: p for p in photon_folder.rglob("*.ptu")}
+    assert got == {n: hashlib.md5(p.read_bytes()).hexdigest() for n, p in sorted(sources.items())}
+    # the paths below the opened folder are kept: two files of one name do not collide
     assert (tmp_path / "copy" / "sub" / "Leica_SP5.ptu").is_file()
     assert "Copied 3 raw file(s)" in model.status_line
 
 
-def test_tiff_stacks_equal_the_qt_stacks(qt, photon_folder, tmp_path):
+def test_tiff_stacks_are_the_files_detector_images(photon_folder, tmp_path):
     from chisurf.core.fio.image import imread
 
     model = model_on(photon_folder)
@@ -259,10 +248,13 @@ def test_tiff_stacks_equal_the_qt_stacks(qt, photon_folder, tmp_path):
         p.name: [list(imread(p).shape), int(imread(p).sum())]
         for p in sorted((tmp_path / "tiff").iterdir())
     }
-    assert got == qt["tiff"]
-    assert {k: (v[0], v[1]) for k, v in got.items()} == {
-        k: (v[0], v[1]) for k, v in QT_TIFF.items()
-    }
+    expected = {}
+    for stem in ("Leica_SP5", "Leica_SP8"):
+        for tag, chs in (("G-G", GREEN), ("R-G", RED)):
+            stack = clsm_stack(stem + ".ptu", chs)
+            expected[f"{stem}_{tag}.tiff"] = [list(stack.shape), int(stack.sum())]
+    assert got == expected
+    assert got["Leica_SP8_G-G.tiff"][0] == [93, 512, 512]  # 93 frames of 512 x 512
     assert "Wrote 4 TIFF stack(s)" in model.status_line
 
 
@@ -288,8 +280,8 @@ def test_the_magma_lut_exists_on_this_matplotlib():
     assert lut[0].max() < 10 and lut[255].min() > 180  # black to pale yellow
 
 
-def test_the_docx_report_has_what_the_qt_report_wrote(photon_folder, tmp_path):
-    """Qt (python-docx, absent here): heading, ``Rating: n``, ``Annotation: text``, the magma mosaic at 6 in, per listed file."""
+def test_the_docx_report_lists_rating_annotation_and_mosaic_per_file(photon_folder, tmp_path):
+    """Heading, then per listed file: its name, ``Rating: n``, ``Annotation: text`` and the magma mosaic."""
     from chisurf.plugins.tttr.tttr_image_browser.core.image import get_magma_lut
 
     model = model_on(photon_folder)
@@ -312,7 +304,7 @@ def test_the_docx_report_has_what_the_qt_report_wrote(photon_folder, tmp_path):
     ]
     assert [k for k, _ in items].count(
         "image"
-    ) == 1  # the empty file has no picture (Qt skipped it too)
+    ) == 1  # the empty file has no picture
     from PIL import Image
 
     picture = np.asarray(Image.open(io.BytesIO(media["word/media/image1.png"])))
@@ -323,7 +315,7 @@ def test_the_docx_report_has_what_the_qt_report_wrote(photon_folder, tmp_path):
 
 
 # 6. toolbar, hand-off, caches, drop ---------------------------------------------------------------------------------
-def test_next_hands_the_image_to_the_pipeline_as_the_qt_tool_did(qt, photon_folder):
+def test_next_hands_the_image_to_the_intensity_step(photon_folder):
     from chisurf.plugins.tttr.tttr_image_browser.gui.app import TTTRImageBrowserApp
 
     calls = []
@@ -343,58 +335,50 @@ def test_next_hands_the_image_to_the_pipeline_as_the_qt_tool_did(qt, photon_fold
     app.model.select_file(str(photon_folder / "Leica_SP8.ptu"))
     del calls[:]
     app.next_step()
-    # the Qt tool also announced the selection to the pipeline when it was picked (observer); Next repeats it once
-    assert (
-        calls
-        == qt["next_calls"]
-        == [
-            ["set_pipeline", {"source": "Leica_SP8.ptu"}],
-            ["goto_role", "pixel_intensity"],
-            ["autorun_role", "pixel_intensity"],
-        ]
-    )
+    # picking already announced the selection; Next announces it once more, then moves on
+    assert calls == [
+        ["set_pipeline", {"source": "Leica_SP8.ptu"}],
+        ["goto_role", "pixel_intensity"],
+        ["autorun_role", "pixel_intensity"],
+    ]
 
 
-def test_clear_caches_removes_the_cache_folders_the_qt_tool_removed(qt, photon_folder):
+def test_clear_caches_removes_every_cache_folder(photon_folder):
     model = model_on(photon_folder)
     model.set_recursive(True)
     before = sorted(
         str(p.relative_to(photon_folder)) for p in photon_folder.rglob(".tttr_image_cache")
     )
-    assert before == qt["cache_dirs_before"] == [".tttr_image_cache", "sub/.tttr_image_cache"]
+    assert before == [".tttr_image_cache", "sub/.tttr_image_cache"]
     model.select_file(str(photon_folder / "Leica_SP8.ptu"))
     model.load_current()
     model.clear_caches()
-    assert sorted(photon_folder.rglob(".tttr_image_cache")) == [] and qt["cache_dirs_after"] == []
+    assert sorted(photon_folder.rglob(".tttr_image_cache")) == []
     assert model.current_image() is None  # the in-memory mosaic went too
     assert model.status_line == "Image caches cleared."
 
 
-def test_clear_empties_the_list_but_deletes_nothing(qt, photon_folder):
+def test_clear_empties_the_list_but_deletes_nothing(photon_folder):
     model = model_on(photon_folder)
     model.select_file(str(photon_folder / "Leica_SP8.ptu"))
     model.rate_1()
     model.clear()
-    assert (
-        model.file_entries() == []
-        and model.current_file is None
-        and qt["entries_after_clear"] == []
-    )
+    assert model.file_entries() == [] and model.current_file is None
     assert (photon_folder / "Leica_SP8.ptu").is_file()
     assert (photon_folder / ".image_browser_meta.json").is_file()
 
 
-def test_picked_images_open_their_folder_listing_exactly_them(qt, photon_folder):
-    """The Qt tool's dropped folder became the workspace's picked images: their folder, only them."""
+def test_picked_images_open_their_folder_listing_exactly_them(photon_folder):
+    """Images picked in the workspace open their folder, listing only them."""
     model = model_on(photon_folder)
     model.open_files([str(photon_folder / "sub" / "Leica_SP5.ptu")])
-    assert [e["label"] for e in model.file_entries()] == qt["drop_folder"] == ["Leica_SP5.ptu"]
+    assert [e["label"] for e in model.file_entries()] == ["Leica_SP5.ptu"]
     assert model.current_folder == str(photon_folder / "sub")
     assert model.current_file == str(photon_folder / "sub" / "Leica_SP5.ptu")
     assert not hasattr(model, "on_drop")
 
 
-def test_every_qt_toolbar_action_is_a_drawn_emtk_button(qt):
+def test_every_toolbar_action_is_drawn():
     from emtk.testing import RecordingPainter
 
     from chisurf.plugins.tttr.tttr_image_browser.gui.app import make_app
@@ -404,20 +388,17 @@ def test_every_qt_toolbar_action_is_a_drawn_emtk_button(qt):
         painter = RecordingPainter()
         app.draw(painter, 0, 0, 1200, 800)
     strings = list(painter.strings)
-    assert len(qt["toolbar"]) == 8
-    mapping = {
-        "Open": "Use selected",  # the Input section of the workspace's images
-        "Clear": "Clear",
-        "Caches": "Clear caches",
-        "Export": "Copy raw files",
-        "TIFF": "TIFF",
-        "DOCX": "DOCX",
-        "Next": "Next → Intensity",
-        "Help": action_caption("help"),
-    }
-    for text in qt["toolbar"]:
-        word = next(w for w in mapping if w in text)
-        assert mapping[word] in strings, (text, mapping[word])
+    for caption in (
+        "Use selected",  # the Input section of the workspace's images
+        "Clear",
+        "Clear caches",
+        "Copy raw files",
+        "TIFF",
+        "DOCX",
+        "Next → Intensity",
+        action_caption("help"),
+    ):
+        assert caption in strings, caption
     assert "Include subfolders" in strings and action_caption("guide") in strings
 
 
@@ -603,13 +584,13 @@ def test_every_spec_key_exists_on_the_model():
     }
 
 
-def test_the_rating_filter_choice_carries_the_qt_values_with_spaced_labels():
+def test_the_rating_filter_choice_carries_the_model_values_with_spaced_labels():
     from chisurf.plugins.tttr.tttr_image_browser.gui.model import ImageBrowserModel
 
     section = next(s for s in spec_sections() if s.get("attr") == "rating_filter")
     assert (
         section["options"] == ImageBrowserModel().rating_filter_options()
-    )  # the values are the Qt filter strings
+    )  # the values are the model's filter strings
     assert [l.replace(" ", "") for l in section["labels"]] == [
         o.replace(" ", "") for o in section["options"]
     ]  # same words, a gap before the stars
@@ -628,8 +609,8 @@ def test_every_spec_section_column_and_button_has_a_description():
             assert button.get("description"), button
 
 
-def test_every_spec_field_is_declared_like_the_qt_one():
-    """Ranges and decimals of the fields the Qt image dock and the spin boxes had; defaults of the model equal the spec's."""
+def test_every_spec_field_is_declared_with_its_range():
+    """Gamma and the 8-bit display levels have their ranges; the default colormap is one of the choices."""
     by_attr = {s["attr"]: s for s in spec_sections() if s.get("attr")}
     assert (by_attr["gamma"]["minimum"], by_attr["gamma"]["maximum"]) == (0.1, 5.0)
     assert (by_attr["level_low"]["minimum"], by_attr["level_high"]["maximum"]) == (0.0, 255.0)
@@ -696,20 +677,17 @@ def test_the_app_draws_empty_and_populated_at_both_sizes(size, photon_folder):
 
 
 # 11. the levels and the colours --------------------------------------------------------------------------------------
-def test_the_level_range_and_histogram_describe_the_qt_image(qt, photon_folder):
-    """The Qt level bar spanned 0 to the mosaic's maximum (212 for the SP8 file); the histogram counts every pixel."""
+def test_the_level_range_and_histogram_describe_the_image(photon_folder):
+    """Auto levels span 0 to the mosaic's maximum; the histogram counts every pixel."""
     model = model_on(photon_folder)
     model.select_file(str(photon_folder / "Leica_SP8.ptu"))
     model.load_current()
     mosaic = model.current_image()
-    assert model.level_range() == (0.0, float(qt["mosaic_SP8"]["max"])) == (0.0, 212.0)
+    top = int(mosaic.max())
+    assert model.level_range() == (0.0, float(top))
     counts = model.histogram()
-    assert (
-        len(counts) == 256
-        and int(counts.sum()) == mosaic.size
-        and counts[212] > 0
-        and counts[213:].sum() == 0
-    )
+    np.testing.assert_array_equal(counts, np.bincount(mosaic.ravel(), minlength=256))
+    assert len(counts) == 256 and int(counts.sum()) == mosaic.size and counts[top + 1 :].sum() == 0
     model.auto_levels, model.level_low, model.level_high = False, 20.0, 120.0
     assert model.level_range() == (20.0, 120.0)
 
@@ -718,7 +696,7 @@ def test_the_level_range_and_histogram_describe_the_qt_image(qt, photon_folder):
 def test_the_drawn_colours_are_the_colormap_of_the_value_between_the_levels(
     photon_folder, colormap
 ):
-    """What pyqtgraph's image view did: value -> (value - low) / (high - low) -> colormap (gamma 1, auto levels 0..max)."""
+    """A drawn pixel's colour: value -> (value - low) / (high - low) -> colormap (gamma 1, auto levels 0..max)."""
     from matplotlib import colormaps
 
     from chisurf.emtk.image_canvas import ImageCanvas

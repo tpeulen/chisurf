@@ -211,7 +211,7 @@ def test_tiff_writes_the_stacks_of_the_selected_file(app, drv, shown, tmp_path):
 def test_docx_writes_a_report_to_the_typed_name(app, drv, shown, tmp_path):
     drv.click("export_docx")
     assert dialog_open(drv) and app.dialog_kind == "docx"
-    assert app.dialog.filename == "imgs.docx"  # the Qt tool wrote <folder>.docx into the folder
+    assert app.dialog.filename == "imgs.docx"  # <folder>.docx into the folder
     app.dialog.directory = str(tmp_path)
     drv.draw(2)
     # the file-name field is the one with the keyboard after a click on it
@@ -269,7 +269,7 @@ def test_next_hands_the_image_to_the_pipeline(photon_folder, hermetic):
     assert (
         "set_pipeline",
         SP8,
-    ) in calls  # picking a file already told the pipeline (the Qt tool did too)
+    ) in calls  # picking a file already told the pipeline
     del calls[:]
     drv.click("next_step")
     drv.draw(2)

@@ -1,6 +1,6 @@
 {
   "window": {"width": 1200, "height": 800},
-  "_comment": "TTTR Image Browser, emtk version. The windows of gui/app.py: 'toolbar' (the Qt toolbar: Clear, Caches, Export, TIFF, DOCX, Next, Subfolders, Help), 'files' (the Qt left column: rating filter, file list with filter box, rating, info, annotation), 'display' (the controls of the Qt image dock: colormap, levels) and 'check' (the detector gates held against the file shown, drawn under 'display' above the mosaic). The image, its level histogram and the annotation box are drawn by gui/app.py (a plot and a text editor cannot be a spec). Every attr / call / action is a method or attribute of gui/model.py.",
+  "_comment": "TTTR Image Browser, emtk version. The windows of gui/app.py: 'toolbar' (Clear, Caches, Export, TIFF, DOCX, Next, Subfolders, Help), 'files' (the left column: rating filter, file list with filter box, rating, info, annotation), 'display' (the image's display controls: colormap, levels) and 'check' (the detector gates held against the file shown, drawn under 'display' above the mosaic). The image, its level histogram and the annotation box are drawn by gui/app.py (a plot and a text editor cannot be a spec). Every attr / call / action is a method or attribute of gui/model.py.",
   "title": "TTTR Image Browser",
   "sections": [
     {

@@ -16,8 +16,7 @@ An interactive browser for folders of TTTR (time-tagged time-resolved) scan file
 
 ## Usage
 
-- Open the plugin from the ChiSurf **Imaging → Tools → Image Browser** menu (the emtk window; the Qt tool in
-  `gui/tool.py` is kept until it is removed).
+- Open the plugin from the ChiSurf **Imaging → Tools → Image Browser** menu.
 - The **Detector setup** tab is the shared setup editor; **Use setup and continue** applies it. Without a setup the
   browser lists every supported file type and draws one tile with all channels.
 - Open or drop a folder, pick a file, inspect, rate, annotate and export.
