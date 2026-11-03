@@ -9,7 +9,7 @@ from __future__ import annotations
 from emtk.events import LEFT_BUTTON
 from emtk.testing import Driver
 
-from chisurf.emtk.tool_hub import RAIL_FOLD, RAIL_FOLDED, RAIL_GRIP
+from chisurf.emtk.side_rail import FOLD as RAIL_FOLD, FOLDED as RAIL_FOLDED, GRIP as RAIL_GRIP
 
 from .test_emtk_native_hub import files, hub  # noqa: F401 - fixtures
 
@@ -30,9 +30,9 @@ def test_the_rail_edge_drags_from_either_side_folds_and_is_saved(hub):  # noqa: 
     drv.draw(4)
     left = hub.rail_width_now(1200)
     _drag(drv, left + RAIL_GRIP / 2, 100)  # grabbed over the tool
-    assert hub.rail_width == left + 100 and not hub.rail_folded
+    assert hub.rail.width == left + 100 and not hub.rail_folded
     _drag(drv, left + 100 - RAIL_GRIP / 2, -60)  # grabbed over the rail
-    assert hub.rail_width == left + 40
+    assert hub.rail.width == left + 40
     assert hub.export_settings()["rail_width"] == left + 40
     _drag(drv, left + 40, -(left + 40 - RAIL_FOLD) - 40)
     assert hub.rail_folded and hub.rail_width_now(1200) == RAIL_FOLDED

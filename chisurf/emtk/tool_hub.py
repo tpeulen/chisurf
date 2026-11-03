@@ -31,6 +31,7 @@ from emtk.i18n import tr
 
 from chisurf.emtk.background_build import BackgroundBuild, draw_opening
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.side_rail import SideRail
 from chisurf.plugins.emtk_layout import action_button, window_size
 
 PLUGINS = Path(__file__).resolve().parents[1] / "plugins"
@@ -38,13 +39,8 @@ PLUGINS = Path(__file__).resolve().parents[1] / "plugins"
 HEADER = 62.0
 #: Height of the status bar with Back / Next.
 BAR = 30.0
-#: The rail (the steps): its width until the user drags its edge, the width below which it folds
-#: to a strip of icons (as a dock folds to its title), and the strip's width.
+#: The rail's (the steps') width until the user drags its edge (:class:`~chisurf.emtk.side_rail.SideRail`).
 RAIL_WIDTH = 230.0
-RAIL_FOLD = 150.0
-RAIL_FOLDED = 44.0
-#: The grip on the rail's right edge that resizes it.
-RAIL_GRIP = 6.0
 
 
 def plugin_factory(panel: dict) -> tuple[Callable[[], Any] | None, str]:
@@ -197,9 +193,8 @@ class ToolHubApp(ImApp):
         #: in the rail only in Advanced; every tool hears the mode (``set_advanced``) and shows
         #: only its essential inputs in Simple.
         self.advanced = False
-        #: The rail's width as the user dragged it (``None``: the default); below
-        #: :data:`RAIL_FOLD` it folds to the icons (:meth:`rail_width_now`).
-        self.rail_width: float | None = None
+        #: The rail: resized by its edge, folded to its icons when narrow.
+        self.rail = SideRail("hub_rail", lambda total: min(RAIL_WIDTH, total * 0.26))
         #: Set by Finish (after the user confirmed): the shell closes the hub.
         self.close_requested = False
         from emtk.message_dialog import MessageDialogs
@@ -663,64 +658,17 @@ class ToolHubApp(ImApp):
 
     @property
     def rail_folded(self) -> bool:
-        """The rail is narrower than :data:`RAIL_FOLD`: only the icons of the steps show."""
-        return self.rail_width is not None and self.rail_width < RAIL_FOLD
+        """The rail is folded: only the icons of the steps show."""
+        return self.rail.folded
 
     def rail_width_now(self, width: float) -> float:
-        """The rail's width in a window *width* wide: the dragged width (at most 60 % of the
-        window), the icon strip when folded, else the default."""
-        if self.rail_folded:
-            return RAIL_FOLDED
-        if self.rail_width is None:
-            return min(RAIL_WIDTH, width * 0.26)
-        return max(RAIL_FOLD, min(float(self.rail_width), width * 0.6))
-
-    def _rail_grip(self, left: float, width: float, height: float) -> None:
-        """The rail's right edge drags its width; below :data:`RAIL_FOLD` the rail folds to
-        its icons and dragged out again it unfolds. A double click restores the default.
-
-        A window of its own, drawn over the others and centred on the edge: inside the rail
-        window the grip's half right of the edge belonged to the tool's window and could not
-        be hit, and nothing showed where to grab."""
-        flags = (
-            im.WindowFlags.NO_DECORATION
-            | im.WindowFlags.NO_BACKGROUND
-            | im.WindowFlags.NO_MOVE
-            | im.WindowFlags.NO_SAVED_SETTINGS
-            | im.WindowFlags.NO_SCROLLBAR
-            | im.WindowFlags.NO_SCROLL_WITH_MOUSE
-            | im.WindowFlags.NO_NAV
-        )
-        box = (left - RAIL_GRIP, 0.0, 2.0 * RAIL_GRIP, height)
-        im.set_next_window_pos(box[:2], im.Cond.ALWAYS)
-        im.set_next_window_size(box[2:], im.Cond.ALWAYS)
-        if im.begin(f"{self.title} rail grip", flags=flags):
-            changed, new_left, _ = im.splitter_behavior(
-                box, im.get_id("##rail_grip"), im.Axis.X, left, width - left, RAIL_FOLDED - 8.0, 300.0
-            )
-            if changed:
-                self.rail_width = float(new_left)
-            hovered = im.is_mouse_hovering_rect(box[:2], (box[0] + box[2], box[3]))
-            held = changed or (hovered and im.is_mouse_down(0))
-            colour = im.get_style().color(
-                im.Col.SEPARATOR_ACTIVE if held else im.Col.SEPARATOR_HOVERED if hovered else im.Col.SEPARATOR
-            )
-            bar = 3.0 if hovered or held else 1.0
-            im.get_window_draw_list().add_rect_filled(
-                (left - bar / 2.0, 0.0), (left + bar / 2.0, height), colour
-            )
-            if hovered:
-                im.set_tooltip(
-                    tr("Drag to resize the steps; narrow, they fold to their icons. Double click: default width.")
-                )
-                if im.is_mouse_double_clicked(0):
-                    self.rail_width = None
-        im.end()
+        """The rail's width in a window *width* wide."""
+        return self.rail.width_now(width)
 
     def render(self):
         width, height = im.get_main_viewport().size
-        left = self.rail_width_now(width)
-        folded = self.rail_folded
+        left = self.rail.width_now(width)
+        folded = self.rail.folded
         im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
         im.set_next_window_size((left, height), im.Cond.ALWAYS)
         if im.begin(self.title, flags=im.WindowFlags.NO_RESIZE):
@@ -819,7 +767,7 @@ class ToolHubApp(ImApp):
             im.end()
         if self._pending_next or self._ff_queue:
             self._advance()
-        self._rail_grip(left, width, height)
+        self.rail.draw_grip(left, 0.0, height, width)
         self.help.draw((0, 0, width, height))
         self.dialogs.draw((0, 0, width, height))
         if self.child_help:
@@ -897,18 +845,12 @@ class ToolHubApp(ImApp):
                 continue
             enabled = self.panel_enabled(panel["role"])
             im.begin_disabled(not enabled)
-            if im.selectable(
-                "##" + panel["role"],
-                self.selected == panel["role"],
-                size=(left - 8, 28),
-                icon=panel.get("icon") or tr(panel["name"])[:2],
-            ):
+            name = tr(panel["name"]) + _marker(panel)
+            if not enabled:
+                name += " " + self.disabled_reason(panel["role"])
+            if self.rail.item(name, self.selected == panel["role"], panel["role"], panel.get("icon")):
                 self.select(panel["role"])
             im.end_disabled()
-            tip = tr(panel["name"]) + _marker(panel)
-            if not enabled:
-                tip += " " + self.disabled_reason(panel["role"])
-            im.set_item_tooltip(tip)
             self.item_rects["nav." + panel["role"]] = im.get_item_rect()
 
     # ── input: the child gets what lands on it ────────────────────────────
@@ -932,7 +874,7 @@ class ToolHubApp(ImApp):
 
     def _inside(self, x, y):
         bx, by, bw, bh = self.child_box
-        if abs(x - bx) <= RAIL_GRIP:  # the rail's grip on the edge, not the tool
+        if self.rail.on_grip(x):  # the rail's grip on the edge, not the tool
             return False
         return bx <= x < bx + bw and by <= y < by + bh
 
@@ -1023,8 +965,8 @@ class ToolHubApp(ImApp):
             if callable(export):
                 children[role] = export()
         state = {"selected": self.selected, "children": children, "advanced": self.advanced}
-        if self.rail_width is not None:
-            state["rail_width"] = float(self.rail_width)
+        if self.rail.export() is not None:
+            state["rail_width"] = self.rail.export()
         if self.uses_setup:
             state["setup"] = json.loads(
                 json.dumps(self.setup_model.get_settings(), default=lambda value: value.tolist())
@@ -1033,8 +975,7 @@ class ToolHubApp(ImApp):
 
     def restore_settings(self, state):
         self.advanced = bool((state or {}).get("advanced", self.advanced))
-        if isinstance((state or {}).get("rail_width"), (int, float)):
-            self.rail_width = float(state["rail_width"])
+        self.rail.restore((state or {}).get("rail_width"))
         setup_state = (state or {}).get("setup") if self.uses_setup else None
         dropped_setup = False
         if (

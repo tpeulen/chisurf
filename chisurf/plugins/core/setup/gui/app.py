@@ -15,6 +15,7 @@ from emtk.keys import KEY_ENTER, KEY_RETURN
 from chisurf.emtk.background_build import BackgroundBuild, draw_opening
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.plugin_icons import entry_icon
+from chisurf.emtk.side_rail import SideRail
 from chisurf.emtk.typed_field import parse_number, typed_number_field
 from chisurf.plugins.emtk_layout import action_button, action_caption, button_width, window_size
 
@@ -39,6 +40,13 @@ LANGUAGES = [
     ("ru", "\u0420\u0443\u0441\u0441\u043a\u0438\u0439"),
 ]
 SIDEBAR_WIDTH = 200.0
+
+
+def _default_rail_width(width: float) -> float:
+    """200 px like the Qt list; narrower windows give the hosted panel the room (the longest label
+    needs ~140 px), plus the rows' icon slot."""
+    left = SIDEBAR_WIDTH if width >= 1100 else (180.0 if width >= 900 else 152.0)
+    return left + im.selectable_icon_width()
 HEADER_HEIGHT = 34.0
 STATUS_HEIGHT = 34.0
 READY = "Ready"
@@ -483,6 +491,8 @@ class UnifiedSettingsApp(ImApp):
         self.filter = ""
         self.item_rects = {}
         self.child_box = (SIDEBAR_WIDTH, HEADER_HEIGHT, 700.0, 500.0)
+        #: The destinations: resized by their edge, folded to their icons when narrow.
+        self.rail = SideRail("settings_rail", _default_rail_width)
         self._painter = None
         self._child_focus = False
         self._press_in_child = False
@@ -654,17 +664,23 @@ class UnifiedSettingsApp(ImApp):
     def render(self):
         vp = im.get_main_viewport()
         width, height = vp.size
-        # 200 px like the Qt list; narrower windows give the hosted panel the room (the longest label needs
-        # ~140 px), plus the rows' icon slot
-        left = SIDEBAR_WIDTH if width >= 1100 else (180.0 if width >= 900 else 152.0)
-        left += im.selectable_icon_width()
+        left = self.rail.width_now(width)
         body = max(1.0, height - STATUS_HEIGHT)
         flags = im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE | im.WindowFlags.NO_MOVE
         self.item_rects["destinations"] = (0.0, 0.0, left, body)
 
         im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
         im.set_next_window_size((left, body), im.Cond.ALWAYS)
-        if im.begin("Settings destinations", flags=flags):
+        opened = im.begin("Settings destinations", flags=flags)
+        if opened and self.rail.folded:
+            for panel in visible_panels(self.panels, ""):
+                if self.rail.item(
+                    panel.label, self.selected == panel.key, panel.key,
+                    entry_icon(panel, panel.plugin, panel.entry), height=26,
+                ):
+                    self.choose(panel.key)
+                self.item_rects["dest_" + panel.key] = im.get_item_rect()
+        elif opened:
             # The list scrolls under the search field, which stays in sight.
             changed, self.filter = im.begin_filtered_list(
                 "destination_list",
@@ -760,6 +776,7 @@ class UnifiedSettingsApp(ImApp):
             # A hosted panel's own Close button: the window stays, the panel says so instead of doing nothing.
             self.child.close_requested = False
             self.status = "Close the Settings window to leave this panel."
+        self.rail.draw_grip(left, 0.0, body, width)
         if self.fast_forward:
             self._ff_step()
         self.help.draw((0, 0, width, height))
@@ -768,6 +785,8 @@ class UnifiedSettingsApp(ImApp):
     # -- input: hosted children get region-relative events ------------------------------------------------------- #
     def _inside(self, x, y):
         bx, by, bw, bh = self.child_box
+        if self.rail.on_grip(x):  # the destinations' grip on the edge, not the panel
+            return False
         return bx <= x < bx + bw and by <= y < by + bh
 
     def _local(self, x, y):
@@ -855,10 +874,14 @@ class UnifiedSettingsApp(ImApp):
         for key, child in self.children.items():
             if callable(getattr(child, "export_settings", None)):
                 children[key] = child.export_settings()
-        return {"selected": self.selected, "children": children}
+        state = {"selected": self.selected, "children": children}
+        if self.rail.export() is not None:
+            state["rail_width"] = self.rail.export()
+        return state
 
     def restore_settings(self, state):
         keys = {p.key for p in self.panels}
+        self.rail.restore(state.get("rail_width"))
         self.pending_state = {k: v for k, v in state.get("children", {}).items() if k in keys}
         selected = state.get("selected", DEFAULT_PANEL)
         self.select(selected if selected in keys else DEFAULT_PANEL)

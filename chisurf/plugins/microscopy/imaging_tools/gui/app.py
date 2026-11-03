@@ -24,6 +24,7 @@ from emtk.i18n import tr
 from chisurf.emtk.background_build import BackgroundBuild, draw_opening
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.plugin_icons import entry_icon
+from chisurf.emtk.side_rail import SideRail
 from chisurf.plugins.core.setup_channel_definition.gui.model import default_settings
 from chisurf.plugins.emtk_layout import window_size
 
@@ -154,6 +155,8 @@ class ImagingToolsApp(ImApp):
         self.children = {}
         self.error = ""
         self.child_box = (220.0, 80.0, 700.0, 550.0)
+        #: The tools list: resized by its edge, folded to its icons when narrow.
+        self.rail = SideRail("imaging_rail", lambda total: min(LIST_MAX_W, max(215.0, total * 0.24)))
         self.item_rects: dict[str, tuple] = {}
         self._painter = None
         self._builder = BackgroundBuild(wake=self.request_frame)
@@ -592,9 +595,11 @@ class ImagingToolsApp(ImApp):
             "pipeline": dict(self._pipeline),
             "calibration": copy.deepcopy(self._calibration),
             "children": states,
+            **({"rail_width": self.rail.export()} if self.rail.export() is not None else {}),
         }
 
     def restore_settings(self, data):
+        self.rail.restore(data.get("rail_width"))
         self._saved_children = copy.deepcopy(data.get("children", {}))
         self.search = str(data.get("search", ""))
         self.set_setup(data.get("setup", self.setup))
@@ -660,11 +665,17 @@ class ImagingToolsApp(ImApp):
     def render(self):
         vp = im.get_main_viewport()
         width, height = vp.size
-        left = min(LIST_MAX_W, max(215.0, width * 0.24))
+        left = self.rail.width_now(width)
         self.item_rects.clear()
         im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
         im.set_next_window_size((left, height), im.Cond.ALWAYS)
-        if im.begin(label("Imaging Tools"), flags=im.WindowFlags.NO_RESIZE):
+        opened = im.begin(label("Imaging Tools"), flags=im.WindowFlags.NO_RESIZE)
+        if opened and self.rail.folded:
+            for entry in self.entries:
+                if self.rail.item(label(entry.label), self.selected == entry.id, entry.id, entry.icon):
+                    self.goto_role(entry.id)
+                self.item_rects["entry:" + entry.id] = im.get_item_rect()
+        elif opened:
             # The steps scroll under the search field; Back/Next below keep their measured room.
             _, self.search = im.begin_filtered_list(
                 "imaging_steps",
@@ -791,6 +802,7 @@ class ImagingToolsApp(ImApp):
         if self.child:
             self.draw_child(self._painter, self.child, *self.child_box, local_coordinates=True)
         self.draw_opening()
+        self.rail.draw_grip(left, 0.0, height, width)
         self.help.draw((0, 0, width, height))
         self.tour.draw(width, height)
         self._fast_forward_tick()
@@ -799,6 +811,8 @@ class ImagingToolsApp(ImApp):
     # -- events: the shown step gets the pointer inside its box, every key, the wheel and file drops ------------- #
     def _inside(self, x, y):
         bx, by, bw, bh = self.child_box
+        if self.rail.on_grip(x):  # the list's grip on the edge, not the tool
+            return False
         return bx <= x < bx + bw and by <= y < by + bh
 
     def pointer_press(self, x, y, button, modifiers=0, clicks=1):

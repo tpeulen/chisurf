@@ -30,6 +30,7 @@ from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.side_rail import SideRail
 from chisurf.emtk.node_editor.control import GraphControl, NodeContentRenderer
 from chisurf.emtk.node_editor.document import GraphDocument
 from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
@@ -121,6 +122,8 @@ class MMFDBAdminApp(ImApp):
         self.top_h = 64.0
         #: Fraction of an entity panel (and of the Spectra panel) given to the table.
         self.splits = {"entity": 0.5, "spectra": 0.42, "spectra_plot": 0.45, "provenance": 0.62}
+        #: The panel list: resized by its edge, folded to its icons when narrow.
+        self.rail = SideRail("mmfdb_rail", lambda total: min(RAIL_W, total * 0.26))
         self.graph = GraphControl(
             read_only=True, content=ProvenanceContent(), on_select=self._graph_selected
         )
@@ -180,10 +183,11 @@ class MMFDBAdminApp(ImApp):
             model.select(model.selected)
         width, height = im.get_main_viewport().size
         self._draw_top(width)
-        rail_w = min(RAIL_W, width * 0.26)
+        rail_w = self.rail.width_now(width)
         body_h = max(1.0, height - self.top_h - BAR_H)
         self._draw_rail((0.0, self.top_h, rail_w, body_h))
         self._draw_panel((rail_w, self.top_h, width - rail_w, body_h))
+        self.rail.draw_grip(rail_w, self.top_h, body_h, width)
         self._draw_status((0.0, height - BAR_H, width, BAR_H))
         frame = (0.0, 0.0, width, height)
         self._draw_dialogs(frame)
@@ -309,6 +313,17 @@ class MMFDBAdminApp(ImApp):
         model = self.model
         x, y, w, h = box
         im.begin("##mmfdb_rail", box)
+        if self.rail.folded:
+            for kind, value in model.rail():
+                if kind == "panel":
+                    if self.rail.item(
+                        model.panel_name(value), model.selected == value, "nav_" + value,
+                        model.panel_icon(value) or None, height=24.0,
+                    ):
+                        model.select(value)
+                    self.remember_item("nav." + value)
+            im.end()
+            return
         # The panel list scrolls under the search field, which stays in sight.
         _, model.search = im.begin_filtered_list(
             "mmfdb_rail",
@@ -784,11 +799,13 @@ class MMFDBAdminApp(ImApp):
             "host": model.host,
             "port": model.port,
             "user": model.user,
+            **({"rail_width": self.rail.export()} if self.rail.export() is not None else {}),
         }
 
     def restore_settings(self, settings: dict) -> None:
         settings = settings or {}
         model = self.model
+        self.rail.restore(settings.get("rail_width"))
         if settings.get("selected") in model.panel_keys():
             model.selected = settings["selected"]
         for key, value in (settings.get("splits") or {}).items():
