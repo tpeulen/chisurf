@@ -3,9 +3,8 @@
 :class:`UserEditorModel` is the shared :class:`~.view_model.UserEditorViewModel`
 (the accounts, the edited copy, validation, save and delete through the MMFDB
 client) plus what only the painted window needs: a table source that keeps its
-identity between frames, the confirmations the Qt tool asked through message
-boxes (revert, delete, forced delete), the password prompt, the messages the Qt
-tool showed in warning dialogs (here: the status line), calls to the server on
+identity between frames, the in-window confirmations (revert, delete, forced
+delete), the password prompt, refusals and errors on the status line, calls to the server on
 the app's :class:`~chisurf.emtk.jobs.SnapshotJob`, and the table's CSV text.
 """
 
@@ -39,7 +38,7 @@ SPECIAL_CHARACTERS = "!@#$%^&*()_+-=[]{}|;':\",./<>?"
 
 
 def password_strength(text: str) -> tuple[int, list[str]]:
-    """The password-strength rule of the Qt password dialog.
+    """The password-strength rule: one point per requirement met.
 
     Parameters
     ----------
@@ -70,7 +69,7 @@ def password_strength(text: str) -> tuple[int, list[str]]:
 
 
 def strength_label(text: str) -> str:
-    """The word the Qt dialog shows for *text*: none, Weak, Medium or Strong."""
+    """The strength word for *text*: none, Weak (0-2), Medium (3-4) or Strong (5)."""
     score, _ = password_strength(text)
     if not text:
         return "Enter a password"
@@ -175,7 +174,7 @@ class UserEditorModel(UserEditorViewModel):
         """Whether Save has anything to write: edited fields or a staged password.
 
         A password can be set on its own, so a staged one counts even when no
-        field was edited (the Qt tool's Save is always enabled).
+        field was edited.
         """
         return self.dirty or self.password_staged
 
@@ -200,7 +199,7 @@ class UserEditorModel(UserEditorViewModel):
     # -- the status line -------------------------------------------------
 
     def status_text(self) -> str:
-        """The status line: a refused action first, then the Qt tool's text."""
+        """The status line: a refused action first, then the account count and who is signed in."""
         text = super().status_text()
         if self.busy:
             text = f"Working... {text}" if text else "Working..."
@@ -232,7 +231,7 @@ class UserEditorModel(UserEditorViewModel):
     # -- loading ---------------------------------------------------------
 
     def start_loading(self) -> None:
-        """Fetch the list once, in the background; what the Qt tool did on first show."""
+        """Fetch the list once, in the background, when the window is first drawn."""
         if not self._loaded:
             self._loaded = True
             self._dispatch("reload")
@@ -335,8 +334,7 @@ class UserEditorModel(UserEditorViewModel):
         """Delete the selected account, after the user confirms.
 
         Refuses, with a message, when nothing is selected, for a built-in account
-        and for the account ChiSurf is using: the cases the Qt tool refused in a
-        warning dialog.
+        and for the account ChiSurf is using.
         """
         self.notice = ""
         row = self.selected
@@ -444,7 +442,7 @@ class UserEditorModel(UserEditorViewModel):
         return self.password_score / 5.0
 
     def password_strength_text(self) -> str:
-        """Strength word for the bar, as the Qt dialog's label."""
+        """Strength word for the bar (see :func:`strength_label`)."""
         return strength_label(self.password_new)
 
     def password_feedback(self) -> str:
@@ -461,8 +459,8 @@ class UserEditorModel(UserEditorViewModel):
     def password_set(self) -> None:
         """Check the two entries and stage the password for the next Save.
 
-        The Qt dialog refused a mismatch and, for an administrator, a score
-        under 4; an empty password is refused here too.
+        Refuses an empty password, a mismatch and, for an administrator, a
+        score under 4.
         """
         password, confirm = self.password_new, self.password_confirm
         if not password:

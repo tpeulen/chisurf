@@ -1,4 +1,4 @@
-"""The native user editor against the Qt tool: rows, fields, edits, drawing, no Qt.
+"""The emtk user editor: rows, fields, edits, drawing, no Qt.
 
 Hermetic: the settings folder and the MMFDB database live in a temporary
 directory (``seeded_db.use_folder``), never in ``~/.chisurf``. The tests that need
@@ -197,55 +197,64 @@ def shown(app):
     return [r["username"] for r in records]
 
 
-# ── 1. rows and fields equal the Qt tool's ──────────────────────────────
+# ── 1. rows and fields are the seeded accounts ──────────────────────────
 
 
-QT = json.loads((Path(__file__).parent / "qt_reference.json").read_text())
-
-
-def test_rows_fields_and_status_match_the_qt_widget(temp_db):
-    """The same seeded accounts give the retired Qt table's cells, the form's fields and status."""
+def test_rows_fields_and_status_are_the_seeded_accounts(temp_db):
+    """Each account seeded through the RPC API shows its own cells, fields and flags."""
     from chisurf.plugins.core.user_editor.gui.model import TABLE_COLUMNS
 
-    titles, qt_cells = QT["titles"], QT["cells"]
     app = loaded_app(temp_db)
     rows, columns = app.displayed()
-    assert [title for _k, title in columns] == [t for _k, t in TABLE_COLUMNS]
-    emtk_cells = [[str(r[key]) for key, _t in columns] for r in rows]
-    shared = [t for _k, t in TABLE_COLUMNS]
-    assert titles[: len(shared)] == shared
-    assert emtk_cells == [row[: len(shared)] for row in qt_cells]
-    assert len(emtk_cells) == 11 and "alice" in [r[1] for r in emtk_cells]
-    assert app.model.status_text() == QT["status"] == ("11 user(s). Signed in as 'admin'.")
+    assert columns == list(TABLE_COLUMNS)
+    by_name = {r["username"]: r for r in rows}
+    assert app.model.status_text() == f"{len(rows)} user(s). Signed in as 'admin'."
+    assert by_name["admin"]["active"] == "★"
 
-    # select the same account as the Qt tool did and compare every field
-    click_row(app, QT["selected_key"])
-    draw(app)
-    assert QT["edits"] == [str(getattr(app.model, name)) for name in FIELDS]
-    assert QT["boxes"] == [app.model.is_admin, app.model.allow_autologin]
-    assert app.model.details_text() == QT["details"] == "### Bob Baker\n"
+    for user_id, fields in seeded_db.SEED:
+        row = by_name[user_id]
+        assert row["user"] == fields["display_name"]
+        assert row["role"] == fields.get("role", "Generic")
+        assert row["admin"] == ("yes" if fields.get("is_admin") else "")
+        assert row["autologin"] == ("yes" if fields.get("allow_passwordless_login") else "")
+        assert row["active"] == ""
 
-    # an administrator and a passwordless account carry their flags
-    for key in ("alice", "carol"):
-        click_row(app, key)
-        assert [app.model.is_admin, app.model.allow_autologin] == QT["flags_" + key]
-    assert app.model.is_admin is False and app.model.allow_autologin is True
+        click_row(app, user_id)
+        draw(app)
+        expected = {name: str(fields.get(name, "")) for name in FIELDS}
+        expected["user_id"], expected["role"] = user_id, fields.get("role", "Generic")
+        assert {name: str(getattr(app.model, name)) for name in FIELDS} == expected
+        assert app.model.is_admin is bool(fields.get("is_admin"))
+        assert app.model.allow_autologin is bool(fields.get("allow_passwordless_login"))
+        assert app.model.details_text().startswith(f"### {fields['display_name']}\n")
 
 
-def test_password_rule_matches_the_qt_dialog():
+#: The five password requirements, in the order the strength rule lists what is missing.
+REQUIREMENTS = (
+    (lambda t: len(t) >= 8, "At least 8 characters"),
+    (lambda t: any(c.islower() for c in t), "At least one lowercase letter"),
+    (lambda t: any(c.isupper() for c in t), "At least one uppercase letter"),
+    (lambda t: any(c.isdigit() for c in t), "At least one number"),
+    (lambda t: any(c in "!@#$%^&*" for c in t), "At least one special character"),
+)
+
+
+@pytest.mark.parametrize(
+    "text", ["", "a", "abcdefgh", "Abcdefgh", "Abcdefg1", "Abcdef1!", "ABC123!!", "aA1!"]
+)
+def test_password_strength_counts_the_requirements_met(text):
+    """Score = requirements met (of five); 0-2 Weak, 3-4 Medium, 5 Strong."""
     from chisurf.plugins.core.user_editor.gui.model import (
         password_strength,
         strength_label,
     )
 
-    for text, (qt_score, qt_label, qt_feedback) in QT["password"].items():
-        score, missing = password_strength(text)
-        assert score == qt_score, text
-        assert strength_label(text).replace("Strength: ", "") == qt_label.replace(
-            "Strength: ", ""
-        ), text
-        if text and score < 5:
-            assert qt_feedback == "Requirements: " + ", ".join(missing)
+    met = [check(text) for check, _ in REQUIREMENTS]
+    score, missing = password_strength(text)
+    assert score == sum(met)
+    assert missing == [m for ok, (_c, m) in zip(met, REQUIREMENTS) if not ok]
+    word = "Weak" if score <= 2 else "Medium" if score <= 4 else "Strong"
+    assert strength_label(text) == ("Enter a password" if not text else f"Strength: {word}")
 
 
 # ── 2. the table: rows, empty state, errors ─────────────────────────────
@@ -290,12 +299,15 @@ def test_an_unreachable_server_says_so_and_invents_nothing():
     assert not app.model.enabled("do_save") and not app.model.enabled("ask_delete")
 
 
-def test_permission_denied_from_the_real_server_matches_the_qt_message(temp_db):
-    """A plain account may not list users: the retired Qt window said the same."""
+def test_permission_denied_from_the_real_server_names_the_needed_role(temp_db):
+    """A plain account may not list users: the window says an administrator is needed."""
     plain = seeded_db.admin_client(seeded_db.PLAIN_USER)
     app = loaded_app(plain)
     assert app.model.users == [] and shown(app) == []
-    assert app.model.status_text() == QT["denied_status"]
+    assert app.model.status_text() == (
+        "Listing users requires an administrator account. "
+        "Sign in as an administrator, then press Reload."
+    )
     # the server answered "Permission denied": that is a permission, not an unreachable server
     assert app.model.status_text().startswith("Listing users requires an administrator account")
     assert "Could not reach" not in app.model.status_text()
@@ -383,7 +395,7 @@ def test_selecting_a_row_fills_the_form_with_that_account():
 
 
 def test_a_role_stored_by_another_tool_is_listed_and_kept():
-    """The Qt combo is editable; here the stored role is a choice, never shown as Generic."""
+    """A role outside the pick list is added to the choices, never shown as Generic."""
     app = loaded_app()
     click_row(app, "dave")
     draw(app)
@@ -647,7 +659,7 @@ def test_new_creates_the_account_in_the_temporary_database(temp_db):
     assert model.selected_key == "frank" and "frank" in shown(app) and not model.dirty
     stored = {u["user_id"]: u for u in seeded_db.admin_client().list_users()}["frank"]
     assert stored["display_name"] == "Frank Fischer" and stored["role"] == "Technician"
-    # an existing name is refused before the server (the same rule as the Qt tool)
+    # an existing name is refused before the request reaches the server
     model.new_user()
     model.user_id, model.display_name = "frank", "Second Frank"
     model.do_save()

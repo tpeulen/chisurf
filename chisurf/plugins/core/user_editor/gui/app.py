@@ -46,7 +46,7 @@ class UserEditorApp(ImApp):
         self.job = SnapshotJob(self.model)
         self.model.runner = self.start_job
         self.model.displayed_provider = self.displayed
-        #: Fetch the accounts on the first frame, as the Qt tool does when first shown.
+        #: Fetch the accounts on the first frame.
         self.autoload = autoload
         spec = json.loads((HERE / "users_emtk.view.json").read_text(encoding="utf-8"))
         self.window_size = window_size(spec, (1200, 800))
