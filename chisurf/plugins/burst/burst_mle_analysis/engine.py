@@ -170,22 +170,24 @@ def window_bins(
     """Per-polarisation ``(vv_start, vv_stop, vh_start, vh_stop)`` in binned channels.
 
     ``micro_time_ranges`` mean what they mean in the step-0 setup: the detector's gates, for all of its
-    channels. The fit window is the window *micro_time_range* (Window start / stop, in bins) inside the
-    first gate: the gate says which photons are the detector's (PIE), the window which of them are
-    fitted, so narrowing it narrows the fit. Without gates the window alone applies. *n_channels* is
-    accepted for call-site symmetry and not used.
+    channels. The fit window *micro_time_range* (Window start / stop, in bins) is what is fitted, as the
+    user set it: it may reach past the gate. A window not set (``stop <= start``, the default
+    ``(-1, -1)``) is the first gate, and without gates every channel. *n_channels* is accepted for
+    call-site symmetry and not used.
     """
     sb, eb = int(micro_time_range[0]), int(micro_time_range[1])
+    if eb > sb >= 0:
+        return (sb, eb, sb, eb)
     ranges = [r for r in (detector_ranges or []) if r is not None and len(r) >= 2]
     if not ranges:
-        return (sb, eb, sb, eb)
+        return (0, ALL_BINS, 0, ALL_BINS)
     b = max(1, int(binning))
     lo, hi = int(ranges[0][0] // b), int(ranges[0][1] // b)
-    if eb > sb:
-        lo, hi = max(lo, sb), min(hi, eb)
-        if hi <= lo:  # a window outside the gate: the gate (an empty fit says nothing)
-            lo, hi = int(ranges[0][0] // b), int(ranges[0][1] // b)
     return (lo, hi, lo, hi)
+
+
+#: The stop of a window that keeps every channel (histograms clip it to their length).
+ALL_BINS = 1 << 30
 
 
 def vv_vh_histogram(
@@ -273,9 +275,10 @@ def process_irf(
     threshold_vv: float = -1.0,
     threshold_vh: float = -1.0,
 ) -> np.ndarray:
-    """The IRF as the fit sees it: VH rolled, sub-bin shifted, windowed and thresholded."""
+    """The IRF as the fit sees it: VH rolled, sub-bin shifted, clipped and its background level taken off."""
     if arr is None:
-        length = max(2, (micro_time_range[1] // binning) * 2)
+        stop = int(micro_time_range[1]) if int(micro_time_range[1]) > 0 else 4096
+        length = max(2, (stop // max(1, int(binning))) * 2)
         arr = np.zeros(length, dtype=np.float64)
         arr[0] = 1.0
         arr[length // 2] = 1.0
@@ -294,10 +297,13 @@ def process_irf(
         sp[stop + 1 :] = 0
     if stop >= 0 and stop + 1 < ss.size:
         ss[stop + 1 :] = 0
-    if threshold_vv > 0 and sp.size and sp.max() > 0:
-        sp[sp < threshold_vv * sp.max()] = 0
-    if threshold_vh > 0 and ss.size and ss.max() > 0:
-        ss[ss < threshold_vh * ss.max()] = 0
+    # The thresholds are each polarisation's background level, a fraction of its peak: what lies
+    # at or below it is background, so it is taken off every bin (not only the bins under it,
+    # which left the floor under the prompt and a step at its foot).
+    for part, level in ((sp, threshold_vv), (ss, threshold_vh)):
+        if level > 0 and part.size and part.max() > 0:
+            part -= level * part.max()
+            np.clip(part, 0.0, None, out=part)
     return np.hstack([sp, ss])
 
 
@@ -334,103 +340,6 @@ def select_fit_range(decay: np.ndarray | None, lo_frac: float = 0.02) -> tuple[i
     if last - onset < 4:
         return None
     return onset, last
-
-
-def irf_fwhm_channels(tttr: Any, chs: list[int], burst_idx: np.ndarray) -> int | None:
-    """FWHM (raw channels) of the scatter prompt of the photons outside the bursts, or ``None``."""
-    if tttr is None or not chs or np.asarray(burst_idx).size == 0:
-        return None
-    try:
-        from chisurf.core.fio.micro_time import channels_per_period
-
-        n_full = int(channels_per_period(tttr))
-    except Exception:
-        return None
-    if n_full <= 0:
-        return None
-    non_burst = np.ones(len(tttr), dtype=bool)
-    non_burst[np.asarray(burst_idx, dtype=int)] = False
-    sel = non_burst & channel_mask(tttr.routing_channels, chs)
-    micro = np.asarray(tttr.micro_times)[sel]
-    micro = micro[(micro >= 0) & (micro < n_full)]
-    if micro.size == 0:
-        return None
-    hist = np.bincount(micro, minlength=n_full)[:n_full].astype(float)
-    return peak_fwhm_channels(hist)
-
-
-def peak_fwhm_channels(hist: np.ndarray) -> int | None:
-    """Width (channels) of the contiguous run above half maximum around the histogram's peak.
-
-    The run may wrap round the period's end (a pulse at its last channels decays into the first).
-    Measuring from the first to the last channel above half maximum anywhere -- as this did --
-    spans the gap between two PIE pulses, or a pulse and its wrapped decay: the "IRF" came out
-    thousands of channels wide, and the binning chosen from it left ~15 bins per period, so sparse
-    bursts fitted to tau ~ 0.
-    """
-    hist = np.asarray(hist, dtype=float)
-    n = hist.size
-    if n == 0:
-        return None
-    peak = int(np.argmax(hist))
-    half = 0.5 * hist[peak]
-    if half <= 0:
-        return None
-    width = 1
-    for step in (-1, 1):
-        i = peak
-        for _ in range(n - 1):
-            i = (i + step) % n
-            if hist[i] < half or width >= n:
-                break
-            width += 1
-    return int(min(width, n))
-
-
-def select_binning(
-    tttr: Any,
-    chs: list[int],
-    burst_idx: np.ndarray,
-    choices: list[int],
-    *,
-    target_counts_per_bin: float = 10.0,
-    irf_oversample: float = 8.0,
-) -> int | None:
-    """A micro-time binning that is neither too fine (sparse bins) nor finer than the IRF resolves.
-
-    Returns one of *choices*, or ``None`` when the photon count cannot be determined.
-    """
-    burst_idx = np.asarray(burst_idx, dtype=int)
-    if tttr is None or not chs or burst_idx.size == 0:
-        return None
-    counts = int(
-        channel_mask(np.asarray(tttr.routing_channels)[burst_idx], chs).sum()
-    )
-    try:
-        from chisurf.core.fio.micro_time import channels_per_period
-
-        n_full = int(channels_per_period(tttr))
-    except Exception:
-        return None
-    if counts <= 0 or n_full <= 0:
-        return None
-    need_stat = target_counts_per_bin * 2.0 * n_full / counts
-    fwhm = irf_fwhm_channels(tttr, chs, burst_idx)
-    need_irf = (fwhm / irf_oversample) if (fwhm and irf_oversample > 0) else 0.0
-    need = max(need_stat, need_irf)
-    # Lifetimes need resolution: never fewer than MIN_BINS_PER_PERIOD bins across the laser period,
-    # whatever the statistics ask for (a sparse decay is the fit's job, not the binning's).
-    coarsest = max(1, n_full // MIN_BINS_PER_PERIOD)
-    ordered = sorted(int(c) for c in choices)
-    allowed = [c for c in ordered if c <= coarsest] or ordered[:1]
-    for c in allowed:
-        if c >= need:
-            return c
-    return allowed[-1]
-
-
-#: The coarsest automatic binning keeps at least this many micro-time bins per laser period.
-MIN_BINS_PER_PERIOD = 64
 
 
 def burst_result_columns(color: str, model: str, param_names) -> list:
@@ -679,10 +588,6 @@ IRF_MODELS = [
     ("skewed", "Skewed Gaussian"),
     ("experimental", "Experimental"),
 ]
-
-#: The binnings the detector page offers.
-BINNING_CHOICES = [1, 2, 4, 8, 16, 32, 64, 128, 256]
-
 
 def read_burst_analysis(
     paris_path: Path, pattern: str = "**/*.bur"
@@ -1040,8 +945,9 @@ class MleSettings:
     irf_stop: int = -1
     irf_threshold_vv: float = 0.02
     irf_threshold_vh: float = 0.02
-    micro_time_start: int = 0
-    micro_time_stop: int = 4096
+    #: The fit window in bins; ``-1, -1``: not set, the detector's gate (:func:`window_bins`).
+    micro_time_start: int = -1
+    micro_time_stop: int = -1
     micro_time_binning: int = 1
     min_photons: int = 5
     p2s_twoIstar: bool = True
@@ -1128,7 +1034,12 @@ class MleSession:
     current_detector: str = ""
     current_index: int = 0
     irf_np: dict[str, np.ndarray] = field(default_factory=dict)
+    #: The background the fit takes: always the photons outside the bursts of the measurement (the
+    #: reverse burst selection), whatever the IRF came from (:meth:`extract_irf_background`).
     bg_np: dict[str, np.ndarray] = field(default_factory=dict)
+    #: Measured buffer histograms (the background files, counts per second): they correct a scatter
+    #: IRF for its background (:meth:`irf_pattern`); the fit's background is :attr:`bg_np`.
+    buffer_np: dict[str, np.ndarray] = field(default_factory=dict)
     decay: np.ndarray | None = None
     outcome: FitOutcome | None = None
     status: str = ""
@@ -1217,10 +1128,16 @@ class MleSession:
         return out
 
     def set_binning(self, binning: int) -> None:
-        """The micro-time binning is global: every detector's histograms and IRF share it."""
-        self.template.micro_time_binning = int(binning)
+        """The micro-time binning is global: every detector's histograms and IRF share it.
+
+        A window set in bins of another binning no longer says where it was: it goes back to the
+        detector's gate (until it is set again)."""
+        binning = int(binning)
+        self.template.micro_time_binning = binning
         for st in self.det_settings.values():
-            st.micro_time_binning = int(binning)
+            if int(st.micro_time_binning) != binning:
+                st.micro_time_start, st.micro_time_stop = -1, -1
+            st.micro_time_binning = binning
 
     # -- inputs ------------------------------------------------------------------------------------------------ #
     def set_detectors(self, detectors: dict, file_type: str | None = None) -> None:
@@ -1237,6 +1154,8 @@ class MleSession:
         reading = settings.get("tttr_reading") or {}
         new = [d for d in (settings.get("detectors") or {}) if d not in self.det_settings]
         self.set_detectors(settings.get("detectors", self.detectors), reading.get("file_type"))
+        # the micro-time binning is the setup's (Detector setup), as in Burst Selection
+        self.set_binning(max(1, int(reading.get("micro_time_binning") or 1)))
         self.tttrs.set_setup(self.definition)
         # a detector seen for the first time starts with the model its role calls for; a model the
         # user chose stays
@@ -1500,15 +1419,6 @@ class MleSession:
         return pair[1] if pair is not None and pair[0] is decay else None
 
     # -- IRF / background -------------------------------------------------------------------------------------- #
-    def auto_binning(self) -> int | None:
-        tttr = self.current_tttr()
-        return select_binning(
-            tttr,
-            self.detector.get("chs", []),
-            self.burst_index_array(),
-            BINNING_CHOICES,
-        )
-
     def extract_irf_background(self) -> int:
         """IRF and background from the photons outside the bursts, at the current binning; returns the detectors done.
 
@@ -1542,10 +1452,37 @@ class MleSession:
                     else:  # too few to show a prompt: the last resort, the decay itself
                         self.irf_np[det] = self.blind_irf(det)
                         self.irf_source[det] = "the burst decay (blind estimate, skewed Gaussian)"
-                if not self.bg_files.get(det):
-                    self.bg_np[det] = np.asarray(pat["bg"], dtype=float)
+                # the background is the photons outside the bursts, whatever the IRF came from
+                self.bg_np[det] = np.asarray(pat["bg"], dtype=float)
                 n += 1
         return n
+
+    def ensure_background(self) -> list[str]:
+        """The background of every detector that has none yet, from the photons outside the bursts
+        (the reverse burst selection): the fit's background whatever the IRF came from. Returns
+        the detectors given one."""
+        from chisurf.core.fluorescence.burst import extract_mle_irf_background
+
+        missing = [d for d in self.detectors if np.asarray(self.bg_np.get(d, [])).size == 0]
+        tttr = self.current_tttr()
+        if not missing or tttr is None or not self.burst_index_array().size:
+            return []
+        in_burst = np.zeros(len(tttr), dtype=bool)
+        in_burst[self.burst_index_array()] = True
+        patterns = extract_mle_irf_background(
+            tttr,
+            {d: self.detectors[d] for d in missing},
+            micro_time_binning=self.settings.micro_time_binning,
+            mask=~in_burst,
+            min_photons=max(2, int(self.settings.min_photons)),
+            irf_model=self.settings.irf_model,
+        )
+        done = []
+        for det, pat in patterns.items():
+            if det in missing:
+                self.bg_np[det] = np.asarray(pat["bg"], dtype=float)
+                done.append(det)
+        return done
 
     def _background_prompt_photons(self, tttr: Any, det: str, outside: np.ndarray) -> int:
         """Photons outside the bursts on *det*'s channels and in its gate: what the background
@@ -1686,8 +1623,8 @@ class MleSession:
             if dye is not None:
                 groups.setdefault(dye["name"], []).append(p)
         buffer = None
-        if self.bg_files.get(det) and det in self.bg_np:
-            buffer = np.asarray(self.bg_np[det], dtype=float)  # counts per second, VV | VH
+        if self.bg_files.get(det) and det in self.buffer_np:
+            buffer = np.asarray(self.buffer_np[det], dtype=float)  # counts per second, VV | VH
 
         candidates: list[tuple[float, np.ndarray, str]] = []
         if scatter:
@@ -1794,11 +1731,11 @@ class MleSession:
         if kind == "irf":
             return self.irf_files, self.irf_np, 2, self.irf_one_for_all
         if kind == "bg":
-            return self.bg_files, self.bg_np, 3, self.bg_one_for_all
+            return self.bg_files, self.buffer_np, 3, self.bg_one_for_all
         raise ValueError(f"Unknown pattern kind {kind!r}: use 'irf' or 'bg'.")
 
     def auto_extract(self) -> None:
-        """One click: binning, IRF / background, fit window, fit."""
+        """One click: IRF / background, fit window, fit (the binning is the setup's)."""
         tttr = self.current_tttr()
         if tttr is None:
             self.status = "Load bursts first: no data to extract an IRF from"
@@ -1806,11 +1743,9 @@ class MleSession:
         if not self.burst_index_array().size:
             self.status = "No burst photons found for the selected file"
             return
-        pick = self.auto_binning()
-        if pick is not None and int(pick) != int(self.settings.micro_time_binning):
-            self.set_binning(int(pick))
-            self.refresh_pattern_files()  # measured patterns read at the old binning
         self.extract_irf_background()
+        # the window is picked on the decay in the detector's gate, not in the window it replaces
+        self.settings.micro_time_start, self.settings.micro_time_stop = -1, -1
         self.build_decay()
         window = select_fit_range(self.decay)
         if window is not None:
@@ -1870,6 +1805,7 @@ class MleSession:
 
     def fit(self) -> FitOutcome | None:
         """Fit the current decay (``update_fit`` without the plots); ``None`` with the reason in :attr:`status`."""
+        self.ensure_background()
         reason = self.blocked_reason()
         if reason is not None:
             self.status = f"Cannot fit: {reason}"
@@ -1980,8 +1916,6 @@ class MleSession:
         dt, period = self.timing_ns(tttr, st.micro_time_binning)
         dt, period = (1.0 if dt is None else dt), (1.0 if period is None else period)
         sb, eb = st.micro_time_start, st.micro_time_stop
-        if eb <= sb:
-            sb, eb = self.micro_time_range
         irf = (
             process_irf(
                 self.irf_np.get(det),
@@ -2069,6 +2003,7 @@ class MleSession:
             raise ValueError("No burst data loaded.")
         det_order = list(self.detectors)
         binning = int(self.settings.micro_time_binning)
+        self.ensure_background()
         configs = {det: self.batch_config(det) for det in det_order}
         # one polarisation's histogram length: the IRF's -- or, for a model without one (the tail
         # fit), one excitation period of the measurement at this binning
@@ -2390,7 +2325,14 @@ class MleSession:
         burst = tttr[first : last + 1]
         return {
             det: burst_histogram(
-                burst, info.get("chs", []), self.micro_time_range, self.settings.micro_time_binning
+                burst,
+                info.get("chs", []),
+                window_bins(
+                    info.get("micro_time_ranges"),
+                    (self.settings_of(det).micro_time_start, self.settings_of(det).micro_time_stop),
+                    self.settings_of(det).micro_time_binning,
+                )[:2],
+                self.settings_of(det).micro_time_binning,
             )
             for det, info in self.detectors.items()
         }

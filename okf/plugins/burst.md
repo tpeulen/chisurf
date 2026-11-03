@@ -27,6 +27,32 @@ timestamp: '2026-07-05T00:00:00Z'
    floor, so a period under ~5 tau lifts it (a 16 ns period gave 3.4 ns for 4 ns); (d) the buffer
    correction of a scatter uses the buffer's counts/s pattern, which sums several buffer files
    instead of averaging them.
+0a. **Burst MLE window, binning, background, threshold; hub rail; edits during a job** (2026-11-03).
+   Done: the fit window the user sets is fitted as set, also past the detector's gate (`window_bins`;
+   unset = `-1, -1` = the gate, and the fields show the edges it falls back to). Before, a window
+   past the gate was clamped to it and the green line snapped back. The binning is the setup's
+   `tttr_reading.micro_time_binning` (`MleSession.set_definition`); the MLE's Binning field and auto
+   pick (`select_binning`) are gone, and a binning change resets a window set in bins. The fit's
+   background is always the non-burst photons (reverse burst selection), whatever the IRF came from;
+   background files are only the buffer that corrects a scatter IRF (`MleSession.buffer_np`). The VV/VH
+   IRF thresholds are background levels: taken off every bin, then clipped at zero (`process_irf`;
+   owner's choice over auto-setting the clip from the floor). Opt searches them in 0-0.05 only (a
+   larger level shaves the IRF into whatever the decay wants). On the synthetic demo, 2I* stays
+   below 1 across ~1-4 bins of VH shift, so the Opt test checks the shift's direction, not the bin;
+   BH m000 at binning 32: tau 2.0390 -> 2.0408 ns. The demo setup declares binning 2 (what the old
+   auto pick chose for it).
+   The per-burst lifetime histogram is removed: rebuilt from 15,693 result rows each frame, it took a
+   frame from 11 ms to 120 ms (cProfile on DNA13bp_3); `lifetime_rows` is cached, and a frame after the
+   fit is now ~22 ms. Hub rail (`chisurf/emtk/tool_hub.py`): its right edge drags its width
+   (`rail_width`, saved), below `RAIL_FOLD` it folds to the step icons, and a double click restores it.
+   The grip is a window of its own over the edge (`_rail_grip`): inside the rail window its half over
+   the tool could not be hit, and the user's drag in the shell did nothing.
+   `SnapshotJob` (`chisurf/emtk/jobs.py`) replays the form edits made while a job runs
+   (`emtk.view_form.listen_to_edits`) after merging the job's copy back, which used to undo them, in
+   every tool. Open: values entered into Burst MLE's own fields while its job runs still go to a
+   throw-away copy (they are disabled then); the user saw fields revert in the running shell, but the
+   replay (Simple mode, same settings) did not reproduce it beyond the window. If it recurs, record
+   which field and whether a job was running.
 0b. **Background: estimated with the bursts, one name** (2026-11-03). Done: when the bursts arrive
    Burst Analysis runs the Background step (`_estimate_background` in `burst_analysis/gui/native.py`,
    Simple and Advanced) and stores the per-detector rates in the measurement's analysis container

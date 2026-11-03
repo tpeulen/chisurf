@@ -30,6 +30,7 @@ def physical_model(tmp_path):
     session = engine.MleSession(template=engine.MleSettings(irf_model="gaussian", fix_gamma=True))
     session.set_detectors(CHANNEL_SETTINGS["detectors"], "SPC-130")
     session.add_burst_files([target / BURST_TABLE])
+    session.set_binning(32)  # the setup's binning for this sample (Burst MLE has none of its own)
     session.auto_extract()
     assert session.outcome is not None
     return MleViewModel(session)
@@ -84,11 +85,13 @@ def test_fit23_matches_frozen_physical_preview_and_finite_exports(physical_model
     from chisurf.core.datastore import take_rows
 
     session = physical_model.session
-    # Real measured baseline captured before the chooser/model-vector changes.
+    # Real measured baseline captured before the chooser/model-vector changes; x and curve taken
+    # again when the IRF thresholds became background levels taken off every bin (tau 2.0390 ->
+    # 2.0408 ns at the same binning 32 and window 14-116; the decay is unchanged).
     hashes_before = {
-        "x": "cdfa56c66f297e44cea8ed532a9dfa098920aaad2b197896f73184201b1a8984",
+        "x": "94ed284dae1bcffa0a14c5e6cdc9f9338cc4966a8953a4975a2dfda8e0753581",
         "data": "09509f246e6479db7ab7783f309cadfa2e2f37e756041a92bf84c0b81365da37",
-        "curve": "ec959cbfe226a77a4dc0abae7b62c24ad78ff5babe28938a00dd6ace7858c75d",
+        "curve": "36e9d8a3b8d281a3fd11f48d17d16baca7b16f513be017b79aa15a5e6eafd1ae",
     }
     for key, actual in [
         ("x", session.outcome.x),
@@ -104,8 +107,8 @@ def test_fit23_matches_frozen_physical_preview_and_finite_exports(physical_model
     hashes = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in written}
     assert hashes == {
         # the detector names G|G / R|G in the header: the rows are those of the green/red export
-        "m000.bg4": "62812f9c2c9aef2d754b447e48dc4e4958fadfd7abe0dc9478085f5fa966656d",
-        "m000.br4": "84b687af8e305f4c4cc3f4b0191e8811c98e108351cb9ca798d731bbda95fa3b",
+        "m000.bg4": "d9a57c518779e0fb4e9b2b786b1d5e06957512bcce1f45fb96767894ca333c8a",
+        "m000.br4": "d7335807a37d8e4aa3b837a169f76cc0bf871be14939a70b6cd6cd8a4e24a736",
     }
 
 
@@ -508,6 +511,7 @@ def test_explicit_saved_timing_override_reaches_real_fit_and_settings(physical_m
             "override_timing": True,
             "micro_time_resolution": 25.0,
             "macro_time_resolution": 102.4,
+            "micro_time_binning": model.binning,  # the setup's binning is Burst MLE's
             "future_reading_metadata": {"units": "preserved"},
         },
     }

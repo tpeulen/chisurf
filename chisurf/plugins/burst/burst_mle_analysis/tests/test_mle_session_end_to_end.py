@@ -72,11 +72,11 @@ def test_fit_produces_a_plausible_lifetime(fitted):
     assert 0.1 < tau < 10.0, f"implausible / non-fit tau={tau}"
 
 
-def test_auto_extract_coarsens_the_sparse_default_binning(fitted):
-    # The bug: at the sparse default binning (1) the ~8.6k burst photons are ~1 count/bin over the 2x4096
-    # histogram, and the maximum-likelihood fit rails tau to the excitation period. Auto-selection must coarsen
-    # the axis so the bins carry counts (and not below the IRF resolution).
-    assert fitted.settings.micro_time_binning > 1
+def test_the_binning_is_the_setups(fitted):
+    # Burst MLE has no binning of its own: the detector setup's micro-time binning, as Burst Selection
+    # uses it (the automatic pick that coarsened it is gone).
+    reading = fitted.definition.get("tttr_reading") or {}
+    assert fitted.settings.micro_time_binning == max(1, int(reading.get("micro_time_binning") or 1))
 
 
 def test_auto_extract_restricts_the_fit_window_to_the_filled_region(fitted):

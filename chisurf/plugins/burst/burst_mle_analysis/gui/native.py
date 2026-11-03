@@ -44,7 +44,6 @@ from . import fit_view
 from .model import MleViewModel
 
 HERE = Path(__file__).parent
-REGION_FILL = (46, 117, 182, 60)
 #: The decay plot's highlighted ranges: the fit window, and the IRF range the IRF clip keeps.
 FIT_FILL = (90, 170, 90, 50)
 IRF_FILL = (220, 150, 60, 50)
@@ -127,8 +126,6 @@ class MleNativeApp(TourTarget, ImApp):
         self.dialog = None
         self.dialog_action = ""
         self._dialog_window: Any = None
-        self.gate_min: float | None = None
-        self.gate_max: float | None = None
         self._editor_read_only_before_job: bool | None = None
 
         # The inputs come from the Datasets workspace: the burst runs, and measured IRF and
@@ -186,7 +183,6 @@ class MleNativeApp(TourTarget, ImApp):
         add("detectors", "Detector setup", self._detectors, dock="controls", closable=False)
         add("decay", "Decay and fit", self._decay, dock="plots_a", closable=False)
         add("inspect", "Inspected burst", self._inspect, dock="plots_a", closable=False)
-        add("lifetimes", "Burst lifetimes", self._lifetimes, dock="plots_b", closable=False)
         add("results", "Lifetime table", self._results, dock="plots_b", closable=False)
         super().__init__(gui=self._render)
 
@@ -443,8 +439,12 @@ class MleNativeApp(TourTarget, ImApp):
         if getattr(self, "pipeline", False):
             # In the pipeline the bursts are Burst Selection's: no Input to pick from.
             files = self.model.session.bur_files
-            im.text(f"Bursts: {Path(str(files[0])).name if files else 'none yet'} from Burst Selection")
-            im.set_item_tooltip("The bursts of step 2; run another search there to fit other bursts.")
+            im.text(
+                tr("Bursts: {run} from Burst Selection").format(
+                    run=Path(str(files[0])).name if files else tr("none yet")
+                )
+            )
+            im.set_item_tooltip(tr("The bursts of step 2; run another search there to fit other bursts."))
         else:
             im.begin_disabled(running)
             self._draw_input("bursts")
@@ -760,7 +760,7 @@ class MleNativeApp(TourTarget, ImApp):
         im.set_item_tooltip(
             tr(
                 "The IRF as measured or estimated (thin) and after the VH shift, the clip and the "
-                "thresholds (thick): what the fit convolves with. Drag the lines to clip it."
+                "background levels taken off (thick): what the fit convolves with. Drag the lines to clip it."
             )
         )
 
@@ -769,8 +769,9 @@ class MleNativeApp(TourTarget, ImApp):
         running = self.job.busy
         im.text_wrapped(
             tr(
-                "Measured IRF and background files replace the estimate from the non-burst photons "
-                "for the detectors they are set for."
+                "Measured IRF files replace the estimate from the non-burst photons for the "
+                "detectors they are set for; buffer files correct a scatter IRF. The background of "
+                "the fit is always the photons outside the bursts."
             )
         )
         target = self.model.values_snapshot() if running else self.model
@@ -796,7 +797,7 @@ class MleNativeApp(TourTarget, ImApp):
                     "enabled": bool(self.model.bg_file_rows()) and not running,
                     "tip": str(
                         tr(
-                            "Forget the measured background files; Auto IRF/background estimates the background again."
+                            "Forget the buffer files; a scatter IRF is then corrected by its flat floor only."
                         )
                     ),
                 },
@@ -928,38 +929,8 @@ class MleNativeApp(TourTarget, ImApp):
         origin = self.model.inspected_file_name()
         im.text(f"burst {self.model.nav_burst} of {bursts}" + (f" - {origin}" if origin else ""))
 
-    def _lifetimes(self, box=None) -> None:
-        self.remember("distribution", box)
-        histograms = fit_view.lifetime_histograms(
-            fit_view.burst_lifetimes(self.model.burst_results)
-        )
-        if not histograms:
-            im.text_wrapped(
-                tr(
-                    "No burst lifetimes yet: press Fit bursts. The histogram of the fitted lifetimes appears here."
-                )
-            )
-            return
-        everything = [
-            v for h in fit_view.burst_lifetimes(self.model.burst_results).values() for v in h
-        ]
-        if self.gate_min is None or self.gate_max is None:
-            self.gate_min, self.gate_max = float(min(everything)), float(max(everything))
-        peak = max(float(counts.max()) for _, _, counts, _ in histograms)
-        if implot.begin_plot("Fitted lifetime histogram", (-1, -1)):
-            implot.setup_axes("Lifetime tau (ns)", "Bursts")
-            for label, centres, counts, width in histograms:
-                implot.plot_bars(label, centres, counts, bar_size=width * 0.9)
-            rect = implot.drag_rect(
-                502, self.gate_min, 0.0, self.gate_max, max(peak, 1.0), REGION_FILL
-            )
-            if rect.modified:
-                self.gate_min, self.gate_max = rect.x_min, max(rect.x_min, rect.x_max)
-            implot.end_plot()
-        inside = sum(1 for v in everything if self.gate_min <= v <= self.gate_max)
-        im.text(f"{inside} of {len(everything)} lifetimes inside the gate")
-
     def _results(self, box=None) -> None:
+        self.remember("results", box)
         if not self.model.burst_results:
             im.text_wrapped(tr("No lifetime table yet: press Fit bursts."))
             return

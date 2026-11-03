@@ -143,8 +143,10 @@ The **Decay and fit** plot shows the whole decay of the burst photons: every
 micro-time channel, VV then VH, split by a vertical line. That includes the
 channels outside the fit window, which the fit leaves out. Two shaded bands mark
 the ranges on each half. **Fit window** (green) is where the decay is fitted:
-**Window start** / **Window stop** (in bins) inside the detector's gate. The
-model is drawn only there. **IRF range** (orange) is where the IRF the fit
+**Window start** / **Window stop**, in bins of the setup's micro-time binning
+(**Detector setup**; Burst MLE has no binning of its own). Until you set it,
+the window is picked from the decay inside the detector's gate; what you set is
+what is fitted, also past the gate. The model is drawn only there. **IRF range** (orange) is where the IRF the fit
 convolves with is not zero, inside the IRF clip (**IRF start** / **IRF stop**).
 Every edge is a line you can drag, in either half. Letting go of a line writes
 its field and fits again. Changing a field moves its line, so the plot always
@@ -161,8 +163,10 @@ IRF** and press **Use selected**; **Use the estimate** switches back. The plot
 shows VV and VH over one period, zoomed onto the IRF: thin lines are the IRF as
 loaded, thick lines what the fit uses after the cleanup. The cleanup is
 **VH shift**, the clip (**IRF start** / **IRF stop**, also draggable in the plot)
-and the **VV** / **VH thresholds**, which zero the counts below that fraction of
-the peak.
+and the **VV** / **VH background levels**: the level, as a fraction of that
+polarisation's peak, at and below which the IRF counts as background. It is
+taken off every bin and what falls below zero is zero, so no floor stays under
+the prompt and its foot has no step.
 
 Select **Fit model** before running the preview or batch:
 
@@ -216,17 +220,19 @@ names the source of the selected detector. The scatter fraction **gamma** is
 fitted, not fixed: on DNA13bp_3.ptu a fixed gamma of 0.1 gave 2I* = 570 and a
 free one 133. With the IRF from Rh110, 2I* was 87.
 
-#### Measured IRF and background, Opt, Save fit
+#### Measured IRF, buffer, Opt, Save fit
 
-The tab **IRF/BG files** replaces the estimate from the non-burst
-photons by measurements. An IRF file may be a scatter or a reference dye: a dye
+The background of the fit is always taken from the photons outside the bursts
+(the reverse burst selection) of the measurement itself, whatever the IRF came
+from. The tab **IRF/BG files** replaces the IRF estimate from the non-burst
+photons by measurements; background (buffer) files only correct a scatter IRF
+for its background. An IRF file may be a scatter or a reference dye: a dye
 is recognised by its name and its IRF is recovered as above. **Add IRF files** and **Add background files** take any
 TTTR measurement; each detector reads its own channels, the histograms of
 several files are summed, the IRF is normalised to one per polarisation and the
-background to counts per second. With **one for all** the files serve every
+buffer to counts per second. With **one for all** the files serve every
 detector, without it only the selected one. **Auto IRF/background** keeps a
-measured pattern and estimates only the other one; a new binning re-reads the
-files. **Save VV/VHs** writes each file's VV|VH histogram beside it
+measured IRF; a new binning in the setup re-reads the files. **Save VV/VHs** writes each file's VV|VH histogram beside it
 (`<file>_<channels>.dat`). **IRF model** (Skewed Gaussian, the default; Gaussian; Experimental) is the
 shape that **Auto IRF/background** estimates; changing it re-estimates.
 
@@ -313,7 +319,7 @@ fits to zero here — no evidence for a second lifetime.
 
 **Load example** (16 synthetic bursts, 2 ns input lifetime), then **Auto
 IRF/background** and **Fit bursts** with Fit23: the decay fit gives 1.918 ns,
-the per-burst lifetimes (bottom) spread over 1.82–2.06 ns. Finite counts, the fit
+the per-burst lifetimes spread over 1.82–2.06 ns. Finite counts, the fit
 window and the estimated IRF keep the recovery from being exact.
 ```
 

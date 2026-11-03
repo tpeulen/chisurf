@@ -26,7 +26,9 @@ SETUP: dict[str, Any] = {
         "file_type": "PTU",
         "micro_time_resolution": 32.0,
         "macro_time_resolution": 32.768,
-        "micro_time_binning": 1,
+        # 1024 channels of 32 ps: two per bin keep the synthetic bursts' bins filled (Burst MLE
+        # takes its binning from the setup)
+        "micro_time_binning": 2,
         "override_timing": False,
     },
     "apply_lut": False,

@@ -119,7 +119,6 @@ def test_burst_lifetimes_reads_the_columns_of_the_rows_and_nothing_else():
     np.testing.assert_array_equal(got["G|G"], [2.0, 2.5])
     np.testing.assert_array_equal(got["S0 G|G"], [1.0, 1.5])
     assert fit_view.burst_lifetimes(None) == {} and fit_view.burst_lifetimes([]) == {}
-    assert fit_view.lifetime_histograms({}) == []
 
 
 # ------------------------------------------------------------------------------------------------------------------

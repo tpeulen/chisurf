@@ -72,7 +72,6 @@ def test_auto_extract_gives_a_consistent_decay_irf_and_fit(session):
     session.auto_extract()
     outcome = session.outcome
     assert outcome is not None, session.status
-    assert session.settings.micro_time_binning in engine.BINNING_CHOICES
     start, stop = session.micro_time_range
     for det in ("G|G", "R|G"):
         for half in _halves(session.irf_np[det]):  # a prompt in each polarisation
@@ -118,12 +117,14 @@ def test_pure_steps_handle_the_edge_cases():
     assert engine.select_fit_range(d) == (2, 8)
     assert engine.header_time_ns(None, 1) is None
     assert engine.window_bins(None, (5, 50), 2) == (5, 50, 5, 50)
-    # the setup's gates (step 0): the first bounds both polarisations, and Window start / stop
-    # (bins) narrow the fit inside it -- every input the panel shows changes the fit
-    assert engine.window_bins([[40, 80]], (5, 50), 4) == (10, 20, 10, 20)
-    assert engine.window_bins([[0, 64], [64, 128]], (5, 50), 4, 2) == (5, 16, 5, 16)
+    # a window the user set is fitted as set, also past the setup's gate (step 0): before, the gate
+    # clamped it and the dragged line snapped back
+    assert engine.window_bins([[40, 80]], (5, 50), 4) == (5, 50, 5, 50)
     assert engine.window_bins([[0, 64]], (2, 9), 4) == (2, 9, 2, 9)
-    assert engine.window_bins([[40, 80]], (30, 40), 4) == (10, 20, 10, 20)  # outside: the gate
+    # a window not set (-1, -1) is the first gate, in bins; without gates every channel
+    assert engine.window_bins([[40, 80]], (-1, -1), 4) == (10, 20, 10, 20)
+    assert engine.window_bins([[0, 64], [64, 128]], (-1, -1), 4, 2) == (0, 16, 0, 16)
+    assert engine.window_bins(None, (-1, -1), 4)[:2] == (0, engine.ALL_BINS)
     arr = np.arange(16, dtype=float)
     rolled = engine.process_background(arr, 2, np.zeros(16))
     np.testing.assert_array_equal(rolled[8:], np.roll(arr[8:], 2))
@@ -191,8 +192,8 @@ def test_session_settings_round_trip():
     s = engine.MleSession()
     s.set_detectors(CHANNEL_SETTINGS["detectors"], "SPC-130")
     s.current_detector = "R|G"
+    s.set_binning(16)  # first: a window is set in bins of the binning (a new one resets it)
     s.settings.tau, s.settings.fix_gamma, s.settings.micro_time_stop = 2.5, False, 99
-    s.set_binning(16)
     other = engine.MleSession()
     other.apply_settings_payload(s.settings_payload())
     assert other.settings_of("R|G").tau == 2.5 and other.settings_of("R|G").fix_gamma is False
@@ -202,25 +203,13 @@ def test_session_settings_round_trip():
     assert other.file_type == "SPC-130" and list(other.detectors) == ["G|G", "R|G"]
 
 
-def test_the_irf_width_is_the_peak_not_the_span_between_pulses():
-    """Two PIE pulses (or a pulse and its wrapped decay) used to read as one IRF thousands of
-    channels wide; the binning chosen from it left ~15 bins per period and sparse bursts fitted
-    to tau ~ 0."""
-    hist = np.zeros(4000)
-    hist[3990:4000] = 12.0
-    hist[0:5] = 11.0  # the pulse wraps round the period's end
-    hist[2000:2010] = 10.0  # the second PIE pulse
-    assert engine.peak_fwhm_channels(hist) == 15
-
-
-def test_the_automatic_binning_keeps_lifetime_resolution(monkeypatch):
-    class Header:
-        number_of_micro_time_channels = 4096
-
-    class Tttr:
-        header = Header()
-        routing_channels = np.zeros(200, dtype=np.int8)
-
-    monkeypatch.setattr(engine, "irf_fwhm_channels", lambda *a: 4000)  # a hopeless IRF estimate
-    pick = engine.select_binning(Tttr(), [0], np.arange(20), engine.BINNING_CHOICES)
-    assert 4096 // pick >= engine.MIN_BINS_PER_PERIOD
+def test_the_irf_thresholds_are_background_levels_taken_off_every_bin():
+    """VV / VH background level: a fraction of the polarisation's peak, subtracted from every bin
+    and clipped at zero -- no floor left under the prompt, no step at its foot."""
+    vv = np.array([1.0, 1.0, 5.0, 11.0, 5.0, 1.0, 1.0, 1.0])
+    vh = vv * 2.0
+    out = engine.process_irf(
+        np.hstack([vv, vh]), micro_time_range=(0, 8), binning=1, threshold_vv=0.1, threshold_vh=0.0
+    )
+    np.testing.assert_allclose(out[:8], np.clip(vv - 1.1, 0.0, None))
+    np.testing.assert_allclose(out[8:], vh)  # a level of zero takes nothing off

@@ -73,7 +73,7 @@
       ]
     },
     {
-      "description": "Detector, micro-time binning and fit window (bins), and minimum photons per burst.",
+      "description": "Detector, fit window (in bins of the setup's micro-time binning) and minimum photons per burst.",
       "type": "panel",
       "title": "Detector and window",
       "collapsed": false,
@@ -95,18 +95,11 @@
           "maximum": 100000
         },
         {
-          "type": "choice",
-          "attr": "binning",
-          "label": "Binning",
-          "options_source": "binning_options",
-          "description": "Micro-time binning factor: raw channels per bin. Too fine leaves bins empty, finer than the IRF resolves nothing. Auto picks one."
-        },
-        {
           "type": "value",
           "attr": "micro_time_start",
           "label": "Window start [bin]",
           "kind": "int",
-          "description": "First micro-time bin of the fit window (after binning). Leave out the empty bins before the prompt.",
+          "description": "First micro-time bin of the fit window, in bins of the setup's micro-time binning. Drag the green line or type it; until set, the window is the detector's gate. It may reach past the gate.",
           "minimum": 0,
           "maximum": 100000
         },
@@ -115,7 +108,7 @@
           "attr": "micro_time_stop",
           "label": "Window stop [bin]",
           "kind": "int",
-          "description": "Micro-time bin after the last bin of the fit window. Leave out the noisy tail.",
+          "description": "Micro-time bin after the last bin of the fit window. Leave out the noisy tail. Until set, the window is the detector's gate; it may reach past the gate.",
           "minimum": 1,
           "maximum": 100000
         },
@@ -134,7 +127,7 @@
       "type": "panel",
       "title": "Measured IRF and background",
       "collapsed": false,
-      "description": "Measured instrument response and background files instead of the estimate from the non-burst photons.",
+      "description": "Measured IRF files instead of the estimate from the non-burst photons, and buffer files that correct a scatter IRF for its background. The background of the fit is always the photons outside the bursts (the reverse burst selection), whatever the IRF came from.",
       "sections": [
         {
           "type": "choice",
@@ -183,13 +176,13 @@
           "type": "toggle",
           "attr": "bg_one_for_all",
           "label": "Background: one for all",
-          "description": "The background files serve every detector; each detector reads its own channels from them. Off: files are set for the selected detector only."
+          "description": "The buffer files serve every detector; each detector reads its own channels from them. Off: files are set for the selected detector only."
         },
         {
           "type": "custom",
           "key": "data_table",
           "title": "",
-          "description": "Measured background files of the selected detector (histograms in counts per second, summed). Delete removes a file.",
+          "description": "Buffer measurements of the selected detector (histograms in counts per second, summed): they correct a scatter (water, Ludox) IRF for its background. The background of the fit is always the photons outside the bursts. Delete removes a file.",
           "options": {
             "source": "bg_file_rows",
             "row_key": "path",
@@ -284,9 +277,9 @@
         {
           "type": "value",
           "attr": "irf_threshold_vv",
-          "label": "VV threshold",
+          "label": "VV background level",
           "kind": "float",
-          "description": "IRF bins below this fraction of the parallel IRF maximum are zeroed (removes the noise floor).",
+          "description": "The level, as a fraction of the parallel IRF's peak, at and below which it counts as background: it is taken off every bin of the IRF and what falls below zero is zero.",
           "decimals": 3,
           "minimum": 0.0,
           "maximum": 1.0
@@ -294,9 +287,9 @@
         {
           "type": "value",
           "attr": "irf_threshold_vh",
-          "label": "VH threshold",
+          "label": "VH background level",
           "kind": "float",
-          "description": "IRF bins below this fraction of the perpendicular IRF maximum are zeroed.",
+          "description": "The level, as a fraction of the perpendicular IRF's peak, at and below which it counts as background: it is taken off every bin of the IRF and what falls below zero is zero.",
           "decimals": 3,
           "minimum": 0.0,
           "maximum": 1.0

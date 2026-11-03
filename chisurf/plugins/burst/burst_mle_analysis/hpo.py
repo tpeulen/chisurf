@@ -57,8 +57,10 @@ def default_bounds(session: Any) -> dict[str, tuple[float, float, str]]:
         "shift_ss": (-5.0, 5.0, "float"),
         "irf_start": (*start, "int"),
         "irf_stop": (*stop, "int"),
-        "irf_threshold_vv": (0.0, 0.5, "float"),
-        "irf_threshold_vh": (0.0, 0.5, "float"),
+        # background levels taken off every IRF bin: an IRF whose floor is a twentieth of its peak
+        # is a bad measurement, and a larger level shaves the IRF into whatever the decay wants
+        "irf_threshold_vv": (0.0, 0.05, "float"),
+        "irf_threshold_vh": (0.0, 0.05, "float"),
     }
 
 

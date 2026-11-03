@@ -223,23 +223,6 @@ def test_without_header_timing_the_declared_ps_calibration_is_used_in_nanosecond
 SOURCE = Path(__file__).resolve().parents[5] / "test/data/tttr/BH/132/BH_SPC132.spc"
 
 
-@pytest.mark.skipif(not SOURCE.exists(), reason="BH SPC-132 test measurement missing")
-def test_auto_binning_uses_the_declared_choices_and_photon_counts():
-    """The same statistical floor chooses a legal bin without inspecting any control."""
-    import tttrlib
-
-    stream = tttrlib.TTTR(str(SOURCE), "SPC-130")
-    everything = np.arange(len(stream))
-    choices = [1, 2, 4, 8, 16, 32, 64, 128]  # and 256
-    assert set(choices) <= set(engine.BINNING_CHOICES)
-    pick = lambda target: engine.select_binning(  # noqa: E731
-        stream, [8, 0, 3], everything, choices, target_counts_per_bin=target, irf_oversample=0
-    )
-    assert pick(200) == 16
-    # however sparse, the binning keeps lifetime resolution: >= MIN_BINS_PER_PERIOD bins per period
-    assert pick(100000) == 4096 // engine.MIN_BINS_PER_PERIOD
-
-
 def test_the_native_app_freezes_its_inputs_while_a_job_runs(hermetic_env):
     """While a batch runs, the tool must not change underneath it.
 

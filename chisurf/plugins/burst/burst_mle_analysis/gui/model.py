@@ -503,9 +503,6 @@ class MleViewModel(RunPickerMixin):
         self.session.build_decay()
         self.refit()
 
-    def binning_options(self) -> list[int]:
-        return list(engine.BINNING_CHOICES)
-
     # -- measured IRF and background -------------------------------------------------------------------------- #
     def _refresh_measured(self) -> None:
         """Re-read the measured IRF / background files after the binning or the channels changed."""
@@ -657,7 +654,7 @@ class MleViewModel(RunPickerMixin):
         self._clear_pattern("irf")
 
     def clear_bg_files(self) -> None:
-        """Forget the measured background files; Auto IRF/background estimates the background again."""
+        """Forget the buffer files (a scatter IRF is then corrected by its flat floor only)."""
         self._clear_pattern("bg")
 
     def _clear_pattern(self, kind: str) -> None:
@@ -884,7 +881,13 @@ class MleViewModel(RunPickerMixin):
         )
 
     def lifetime_rows(self) -> list[dict]:
-        """One row per detector series of the last batch: bursts fitted, median and mean lifetime."""
+        """One row per detector series of the last batch: bursts fitted, median and mean lifetime.
+
+        Kept with the results it summarises: the table is drawn every frame, and reading the
+        lifetimes of thousands of result rows each time made the window crawl after a fit."""
+        held = self.__dict__.get("_lifetime_rows")
+        if held is not None and held[0] is self.burst_results:
+            return held[1]
         rows = []
         for label, values in sorted(fit_view.burst_lifetimes(self.burst_results).items()):
             rows.append(
@@ -895,6 +898,7 @@ class MleViewModel(RunPickerMixin):
                     "mean": f"{values.mean():.3f}",
                 }
             )
+        self._lifetime_rows = (self.burst_results, rows)
         return rows
 
     def input_status(self) -> tuple[bool, int]:
@@ -968,7 +972,7 @@ class MleViewModel(RunPickerMixin):
         session = self.session
         parts = [
             f"{det}: IRF from {session.irf_source.get(det, 'nowhere yet')}"
-            + ("; measured background" if session.bg_files.get(det) else "")
+            + "; background from the photons outside the bursts"
             for det in session.detectors
         ]
         return ". ".join(parts) + "." if parts else ""
@@ -1121,7 +1125,6 @@ class MleViewModel(RunPickerMixin):
             setattr(ns, name, getattr(self, name))
         for method in (
             "detector_names",
-            "binning_options",
             "fit_model_options",
             "fit_model_choices",
             "model_availability",
@@ -1146,3 +1149,30 @@ class MleViewModel(RunPickerMixin):
 
 for _name, (_kind, _rebuild) in SETTING_ATTRS.items():
     setattr(MleViewModel, _name, _setting_property(_name, _kind, _rebuild))
+
+
+def _window_property(name: str, index: int):
+    """Window start / stop as fitted: a window not set shows the detector's gate it falls back to."""
+    plain = _setting_property(name, int, True)
+
+    def getter(self):
+        value = int(getattr(self.session.settings, name))
+        if self.session.settings.micro_time_stop > self.session.settings.micro_time_start >= 0:
+            return value
+        edge = int(self.session.window_ranges()[index])
+        decay = self.session.decay
+        return min(edge, np.asarray(decay).size // 2) if decay is not None else min(edge, 100000)
+
+    def setter(self, value):
+        settings = self.session.settings
+        if not settings.micro_time_stop > settings.micro_time_start >= 0:
+            # one edge set: the other keeps the edge it showed (the gate's)
+            settings.micro_time_start = self.micro_time_start
+            settings.micro_time_stop = self.micro_time_stop
+        plain.fset(self, value)
+
+    return property(getter, setter)
+
+
+MleViewModel.micro_time_start = _window_property("micro_time_start", 0)
+MleViewModel.micro_time_stop = _window_property("micro_time_stop", 1)

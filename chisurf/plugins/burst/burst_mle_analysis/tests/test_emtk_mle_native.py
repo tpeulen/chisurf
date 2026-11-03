@@ -26,7 +26,7 @@ from .conftest import BURST_TABLE, CHANNEL_SETTINGS
 from .test_emtk_mle_no_invented_data import PlotSpy, texts
 
 GUI = Path(__file__).parents[1] / "gui"
-TABS = ("Decay and fit", "Inspected burst", "Burst lifetimes", "Lifetime table")
+TABS = ("Decay and fit", "Inspected burst", "Lifetime table")
 
 
 def feed(app, *paths) -> bool:
@@ -99,7 +99,6 @@ def test_empty_state_draws_no_data_at_both_sizes(monkeypatch, app):
     text = " ".join(shown)
     for message in (
         "No fit yet",
-        "No burst lifetimes yet",
         "No bursts loaded",
         "No lifetime table yet",
         "Add burst tables (.pto) to begin",
@@ -227,22 +226,13 @@ def batch(fitted):
     return window, drv
 
 
-def test_fit_bursts_click_gives_the_engines_rows_histogram_and_table(monkeypatch, batch, fitted):
+def test_fit_bursts_click_gives_the_engines_rows_and_table(batch, fitted):
+    """No lifetime histogram (it cost ~0.1 s a frame over thousands of bursts): the table."""
     window, drv = batch
     rows = window.model.burst_results
     lifetimes = fit_view.burst_lifetimes(rows)
     assert {"G|G", "R|G"} <= set(lifetimes) and lifetimes["G|G"].size > 100
-    spy = PlotSpy(monkeypatch)
-    drv.click_text("Burst lifetimes")
-    for _ in range(2):
-        spy.clear()
-        drv.draw(1)
-    bars = [c for c in spy.calls if c[0] == "plot_bars"]
-    assert [c[1] for c in bars] == sorted(lifetimes)
-    everything = np.concatenate(list(lifetimes.values()))
-    edges = np.linspace(everything.min(), everything.max(), fit_view.LIFETIME_BINS + 1)
-    for call in bars:
-        np.testing.assert_array_equal(call[2][1], np.histogram(lifetimes[call[1]], bins=edges)[0])
+    assert not any(t[5] == "Burst lifetimes" for t in drv.draw(1).texts)
     table = {r["series"]: r for r in window.model.lifetime_rows()}
     assert table["G|G"]["median"] == f"{np.median(lifetimes['G|G']):.3f}"
     drv.click_text("Lifetime table")
@@ -364,7 +354,7 @@ def test_guide_targets_are_drawn_and_the_awaited_steps_are_released_by_presses(a
         key = app.tour._target_key(step.get("target"))
         if key and key not in (
             "decay",
-            "distribution",
+            "results",
             "irf_measurement:workspace_input_rows",
         ):  # in the plot tabs / the files tab
             assert key in app.item_rects or key in app.form.rects, key
