@@ -154,7 +154,6 @@ def _grab_burst_selection_guides():
     # 35: the ten files and their burst counts, the bursts of all of them pooled in one histogram
     app.model.window_length_s = 0.0
     app.model.load_diagnostics()
-    app.model.pool_files = True
     app.model.hist_feature = "Proximity Ratio"
     app.docks.focus("histogram")
     render(app, "35_burst_selection_files.png", size=(1400, 860), driver=driver)

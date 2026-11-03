@@ -39,7 +39,7 @@ provenance survives pooling. Background is a separate step
 
 Burst Selection on ten repeats of a double-labelled DNA measurement
 (`m000.spc` … `m009.spc`, BH SPC-130): the file list with the bursts found in
-each (71–134 per file, 1130 in total) and, with **Pool all files** on, the
+each (71–134 per file, 1130 in total) and the
 proximity-ratio histogram of all of them together — 1.79 M photons searched,
 the bursts of all ten repeats in one histogram. The **Histogram** tab then fits
 them together ([FRET-histogram fitting](29_fret_histogram_fitting.md)).

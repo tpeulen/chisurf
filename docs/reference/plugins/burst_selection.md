@@ -79,9 +79,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Window start | `window_start_s` | float |  | 0.0 … 100000.0 | Start of the visible window in the active file. The plots and the preview are computed for this slice only. |
 | Window length | `window_length_s` | float |  | 0.0 … 100000.0 | Length of the visible window; 0 shows the whole file. |
 | MCS bin width | `trace_bin_ms` | float |  | 0.05 … 9999.0 | Bin width of the count-rate trace. |
-| Decay coarsening | `decay_bins` | int |  | 1 … 9999 | Micro-time channels summed per decay bin. |
-| Burst bins | `burst_bins` | int |  | 3 … 999 | Bins of the burst-duration histogram. |
-| Pool all files | `pool_files` | bool |  |  | The burst table, histogram, scatter and summary show the bursts of every searched file together instead of the active file only. The diagnostic plots always show the active file. |
 
 ### Histogram
 

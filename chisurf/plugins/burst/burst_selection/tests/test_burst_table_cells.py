@@ -129,7 +129,6 @@ def test_a_fitted_mixture_keeps_its_legend_off_the_histogram(tmp_path, monkeypat
         drv = Driver(app, size)
         assert feed(drv.app, *paths)
         app.model.run()
-        app.model.pool_files = True
         app.model.gmm_components = 3
         app.model.fit_gmm()
         painter = drv.draw(3)

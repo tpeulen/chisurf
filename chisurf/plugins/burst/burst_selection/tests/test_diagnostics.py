@@ -100,16 +100,6 @@ def test_histogram_data_uses_computed_proximity_ratio() -> None:
     assert diag.histogram_data_from_frame(frame, "Proximity Ratio").tolist() == [0.2, 3 / 10]
 
 
-def test_burst_durations_use_macro_time_resolution_ms() -> None:
-    """Burst duration values should be reported in milliseconds."""
-    entry = {
-        "tttr": _Tttr([0, 5, 8, 20], resolution=0.002),
-        "start_stop": np.array([[0, 1], [1, 3]]),
-    }
-    assert diag.burst_durations_ms(entry).tolist() == [10.0, 30.0]
-    assert diag.burst_durations_ms({}).size == 0
-
-
 def test_a_count_rate_is_a_rate_not_counts_per_bin() -> None:
     """The trace is drawn as a count *rate* in Hz, not as counts per bin.
 

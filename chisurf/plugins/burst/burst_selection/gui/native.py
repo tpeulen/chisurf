@@ -850,7 +850,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         self.remember("histogram", box)
         m = self.model
         simple = self.pipeline and not getattr(m, "advanced", True)
-        if simple:  # Simple: which feature; bins, range and GMM are Advanced
+        if simple:  # Simple: which feature and its bins; range and GMM are Advanced
             draw_sections(self._feature_sections(), m, self.form)
         else:
             draw_sections(self.hist_sections, m, self.form)
@@ -922,11 +922,11 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             draw_sections(self.gmm_table, m, self.form)
 
     def _feature_sections(self) -> list:
-        """The histogram's feature choice alone (Simple)."""
+        """The histogram's feature choice and its bins (Simple)."""
         def pick(sections):
             out = []
             for sec in sections:
-                if sec.get("attr") == "hist_feature":
+                if sec.get("attr") in ("hist_feature", "hist_bins"):
                     out.append(sec)
                 out.extend(pick(sec.get("sections", [])))
             return out

@@ -6,7 +6,7 @@ without importing Qt. Nothing in this module imports a toolkit.
 
 from __future__ import annotations
 
-from pathlib import Path
+
 from typing import Any
 
 import numpy as np
@@ -30,8 +30,6 @@ from .adapter import (
 #: Display defaults (the retired Qt tool's, kept so the numbers on screen are the ones users knew).
 DEFAULT_HISTOGRAM_BINS = 61
 DEFAULT_TRACE_BIN_WIDTH_MS = 0.25
-DEFAULT_DECAY_BINS = 8
-DEFAULT_BURST_BINS = 51
 DEFAULT_PLOT_MAX = 100000
 HISTOGRAM_FEATURES = [*UI_COLUMNS, PROXIMITY_RATIO_COLUMN]
 
@@ -127,24 +125,6 @@ def delta_macro_time_ms(tttr: Any, offset_ticks: float = 0.0) -> np.ndarray:
     return d_t * tttr.header.macro_time_resolution * 1000.0
 
 
-def burst_durations_ms(diag: dict[str, Any]) -> np.ndarray:
-    """Burst durations in milliseconds for one diagnostic entry."""
-    tttr = diag.get("tttr")
-    start_stop = diag.get("start_stop")
-    if tttr is None or start_stop is None:
-        return np.array([], dtype=float)
-    macro_times = np.asarray(tttr.macro_times)
-    if macro_times.size == 0:
-        return np.array([], dtype=float)
-    resolution_ms = float(tttr.header.macro_time_resolution) * 1000.0
-    durations = [
-        float(macro_times[stop] - macro_times[start]) * resolution_ms
-        for start, stop in np.asarray(start_stop, dtype=int).reshape(-1, 2)
-        if 0 <= start < stop < macro_times.size
-    ]
-    return np.asarray(durations, dtype=float)
-
-
 def gate_mismatch_warning(tttr, detectors) -> str | None:
     """Warn when the detector gates cannot match the photons at all (an unconverted micro-second ALEX file).
 
@@ -209,14 +189,11 @@ def display_frame(frames: list, file_indices: list[int] | None = None):
 
 
 __all__ = [
-    "DEFAULT_BURST_BINS",
-    "DEFAULT_DECAY_BINS",
     "DEFAULT_HISTOGRAM_BINS",
     "DEFAULT_PLOT_MAX",
     "DEFAULT_TRACE_BIN_WIDTH_MS",
     "HISTOGRAM_FEATURES",
     "as_count_rate_hz",
-    "burst_durations_ms",
     "delta_macro_time_ms",
     "display_frame",
     "gate_mismatch_warning",

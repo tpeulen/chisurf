@@ -75,7 +75,7 @@ The **Filter settings** tab holds:
 | **Channel selection** → **Detector**, **Micro-time window** | All | Detector and PIE-window gate applied before the search. |
 | **Macro time interval** | upper bound 0.15 ms, merge gap 3 | Accepted inter-photon times dT (**Use min dT** / **Use max dT**); gaps of up to **Merge gap** photons are bridged (**Fill gaps**). |
 | **Filter** → **Filter on** / **Invert**, **Min photons**, **Count-rate photons** | on / off, 60, 5 | Apply the search; **Invert** keeps the photons it rejects. |
-| **Display** | window 10 s | The count-rate trace is in kHz. The **histogram** shows the bursts of the visible window (its title gives their number); burst duration is one of its features, so there is no separate duration tab. A range set for another feature resets to the data. The visible window of the active file (**Window start**, **Window length**), the plot bin widths (**MCS bin width**, **Decay coarsening**, **Burst bins**) and **Pool all files**. |
+| **Display** | window 10 s | The count-rate trace is in kHz. The **histogram** shows the bursts of the visible window (its title gives their number); burst duration is one of its features, so there is no separate duration tab. A range set for another feature resets to the data. The visible window of the active file (**Window start**, **Window length**) and the count-rate bin width (**MCS bin width**). The decay is binned as the setup reads the micro times (its micro-time binning); the histogram's **Bins** sit in the **Histogram** panel. |
 
 The **Burst Selection** tab lists the inputs and says where results go. The destination
 follows the input: vendor files get a `bi4_bur/` folder beside them
@@ -206,10 +206,10 @@ walks it through the file; a length of 0 draws the whole file. Select another
 file in the file list to look at that one. The bursts of the window are previewed
 before any search has run; **Run** searches every photon of every file.
 
-**Pool all files** (also in **Display**) makes the burst table, the histogram, the
-scatter plot and the summary show the bursts of every searched file together, which
-is what fitting the proximity-ratio histogram of a whole measurement needs
-([FRET-histogram fitting](29_fret_histogram_fitting.md)); the diagnostic plots
+The burst table, the histogram, the scatter plot and the summary always show the
+bursts of every searched file together: the files are one measurement, and that
+is what fitting its proximity-ratio histogram needs
+([FRET-histogram fitting](29_fret_histogram_fitting.md)). The diagnostic plots
 stay on the active file.
 
 The count-rate trace is a **count rate**, in Hz, not counts per bin — so changing the

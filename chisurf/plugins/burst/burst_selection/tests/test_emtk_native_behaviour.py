@@ -349,15 +349,18 @@ def test_a_preview_still_shows_the_table_it_already_has(model):  # noqa: F811
 
 
 def test_frames_stay_paired_with_their_files(model):  # noqa: F811
-    """Selecting another file shows that file's burst table, never the previous one's."""
+    """Each file keeps its own bursts: the table holds both files' rows, each with its file."""
+    from chisurf.core.datastore import numeric_column
+
     model.run()
     first = [r["bursts"] for r in model.file_rows()]
     assert first == ["71", "127"]
+    files = numeric_column(model.display_frame, "File Idx").tolist()
+    assert files.count(0) == 71 and files.count(1) == 127
     model.select_file(1)
     assert model.active_file.name == "m001.spc"
-    assert len(model.burst_rows()) == 127
     model.select_file({"path": str(model.files[0])})
-    assert model.active_file.name == "m000.spc" and len(model.burst_rows()) == 71
+    assert model.active_file.name == "m000.spc"
     model.select_file(99)
     assert model.active_file.name == "m000.spc", "an index outside the list changes nothing"
 
@@ -557,21 +560,6 @@ def test_the_decay_curves_compute_only_the_enabled_layers(model):  # noqa: F811
     assert y.tolist() == [1.0] and x.tolist() == [1.0e9]
 
 
-def test_the_burst_durations_histogram_is_in_milliseconds(model):  # noqa: F811
-    tttr = _Trace(n=4)
-    tttr.header = _Header(0.002)
-    tttr.macro_times = np.array([0, 5, 8, 20])
-    model.diagnostic = {
-        "tttr": tttr,
-        "start_stop": np.array([[0, 1], [1, 3]]),
-        "selected": np.ones(4, bool),
-    }
-    model.burst_bins = 3
-    centres, counts, width = model.duration_histogram()
-    assert counts.sum() == 2 and 10.0 <= centres.min() and centres.max() <= 30.0
-    assert width == pytest.approx(20.0 / 3)
-
-
 def test_the_feature_list_survives_a_refresh_with_the_same_columns(model):  # noqa: F811
     """Re-reading a table with the same column count must not compare Column objects.
 
@@ -652,39 +640,36 @@ def test_constructing_the_model_and_the_app_opens_no_mmfdb_connection(hermetic, 
 # --- pooling the files ---------------------------------------------------------------------------------------
 
 
-def test_pooling_the_files_stacks_every_files_bursts_for_the_histogram_and_the_table(model):  # noqa: F811
+def test_the_table_and_histogram_show_every_searched_file_together(model):  # noqa: F811
     """Fitting the histogram of a whole measurement needs the bursts of all its files together.
 
-    The Qt tool stacked the tables of all selected files (guides 29 and 35 pool ten repeats); the emtk app shows the
-    active file unless "Pool all files" is on. The diagnostic plots stay on the active file either way.
+    The Qt tool stacked the tables of all selected files (guides 29 and 35 pool ten repeats); the
+    emtk app always does, with no switch to forget. The diagnostic plots stay on the active file.
     """
     from chisurf.core.datastore import numeric_column
 
     model.run()
-    assert model.pool_files is False
-    assert len(model.burst_rows()) == 71 and model.histogram() is not None
+    assert len(model.burst_rows()) == 198
+    assert numeric_column(model.display_frame, "File Idx").tolist().count(1) == 127
     model.hist_feature, model.hist_bins, model.hist_min, model.hist_max = (
         "Proximity Ratio",
         61,
         0.0,
         1.0,
     )
-    single = model.histogram()[1].sum()
-    model.pool_files = True
-    assert len(model.burst_rows()) == 198
-    assert numeric_column(model.display_frame, "File Idx").tolist().count(1) == 127
-    assert model.histogram()[1].sum() == 198 > single
+    assert model.histogram()[1].sum() == 198
     model.gmm_components = 2
     assert model.fit_gmm()["n"] == 2
-    # the pool follows the active file's selection only for the diagnostics
+    # choosing a file changes only the diagnostics
     model.select_file(1)
     assert len(model.burst_rows()) == 198 and model.active_file.name == "m001.spc"
-    # and it survives a round trip of the settings
-    other = type(model)()
-    other.import_settings(model.export_settings())
-    assert other.pool_files is True
-    model.pool_files = False
-    assert len(model.burst_rows()) == 127
+
+
+def test_the_decay_is_binned_as_the_setup_reads_the_micro_times(model):  # noqa: F811
+    model.set_setup({"detectors": {}, "windows": {}, "tttr_reading": {"micro_time_binning": 4}})
+    assert model.decay_bins == 4
+    model.set_setup({"detectors": {}, "windows": {}, "tttr_reading": {}})
+    assert model.decay_bins == 1
 
 
 def test_the_summary_reports_the_mean_photons_per_burst_in_each_detector(model):  # noqa: F811

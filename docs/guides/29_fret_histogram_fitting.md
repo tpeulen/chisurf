@@ -41,15 +41,14 @@ search (**Run**), then open the **Histogram** tab:
 
 The histogram is built from every burst of the file on show (not only those of the
 visible time window: the **Burst duration** tab above is the one that follows the
-window, and says so). Tick **Pool all files** (**Display** section of **Filter
-settings**) to histogram and fit the bursts of every searched file together, which
-is what the whole measurement needs.
+window, and says so). The bursts of every searched file are histogrammed and
+fitted together, which is what the whole measurement needs.
 
 ```{figure} figures/29_burst_selection_gmm.png
 :name: fig-29-burst-selection-gmm
 :width: 100%
 
-Burst Selection, **Histogram** tab with **Pool all files** on: the proximity ratio of all 1130 bursts
+Burst Selection, **Histogram** tab: the proximity ratio of all 1130 bursts
 from ten BH SPC-130 files of a double-labelled DNA sample, fitted with three
 Gaussians. The donor-only peak sits at PR = 0.031 (σ = 0.016, weight 0.35),
 the FRET population at PR = 0.428 (σ = 0.063, weight 0.47); the third

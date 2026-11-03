@@ -227,18 +227,17 @@ def test_preview_then_plots_histogram_gmm_and_exports(model, tmp_path):
     assert curves["selected"][1].max() > 0
     assert set(model.dt_curves()) == {"all", "selected"}
     assert set(model.decay_curves()) == {"all", "selected"}
-    assert model.duration_histogram() is not None
     model.show_all_photons = False
     assert set(model.trace_curves()) == {"selected"}
     model.hist_feature = "Number of Photons"
     model.auto_range()
     centres, counts, _w = model.histogram()
-    assert counts.sum() == len(model.burst_rows()) == 71
+    assert counts.sum() == len(model.burst_rows()) == 198  # both files: one measurement
     model.gmm_components = 2
     result = model.fit_gmm()
     assert result["n"] == 2 and len(model.gmm_rows()) == 2
     xy = model.scatter()
-    assert xy is not None and len(xy[0]) == 71
+    assert xy is not None and len(xy[0]) == 198
     model.set_metadata("pH", "7.4")
     cif = model.export_flr_cif(tmp_path / "out.cif")
     text = cif.read_text()
