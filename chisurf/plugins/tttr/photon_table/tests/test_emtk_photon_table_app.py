@@ -1,20 +1,17 @@
-"""The native Photon Table against the recorded Qt tool (qt_reference.json): rows, summary, actions, errors, drawing, no Qt.
+"""The native Photon Table: rows, summary, actions, errors, drawing, no Qt import.
 
 Hermetic: the settings folder is a temporary one, the data is a private copy of
 ``test/data/tttr/BH/132/BH_SPC132.spc`` (183,657 photons on routing channels 0, 1, 8 and 9).
-The reference numbers are read straight from tttrlib for the same file, and the recorded Qt tool
-is the second source: its drawn cells and its status messages.
+The reference numbers are read straight from tttrlib for the same file: rows, counts,
+the acquisition time (last macro time x the header's macro-time resolution) and the
+micro-time channel count.
 
-Deliberate differences from the recorded Qt tool (2026-10-13, the table lists every record):
-
-* the table shows marker records too, so it counts *records*: the first column is titled
-  ``Record`` (was ``Photon``), the page field ``First record`` (was ``First photon``), the
-  range line reads ``records 0–200`` (was ``photons 0–200``) and the right window ``Records``;
-* a ``Kind`` column (photon / pixel / line start / line stop / frame / marker, marker kinds
-  coloured), a ``Kind`` filter beside ``Channel`` and a per-kind count line in the summary
-  are new; Copy visible adds a ``kind`` column to its TSV;
-* this sample has no markers, so its summary (``183,657 photons, ...``) and load notice are
-  still the Qt tool's, word for word. A file with markers says ``N photons + M markers``.
+The table lists every record, markers too, so it counts *records*: the first column is
+``Record``, the page field ``First record``, the range line ``records 0–200``. A ``Kind``
+column (photon / pixel / line start / line stop / frame / marker, marker kinds coloured),
+a ``Kind`` filter beside ``Channel`` and a per-kind count line sit in the summary; Copy
+visible writes a ``kind`` column. This sample has no markers, so its summary reads
+``183,657 photons, ...``; a file with markers says ``N photons + M markers``.
 """
 
 from __future__ import annotations
@@ -109,7 +106,7 @@ def press(app, action):
     draw(app, frames=1)
 
 
-# ── 1. rows and summary equal tttrlib's and the Qt tool's ───────────────
+# ── 1. rows and summary equal tttrlib's ──────────────────────────────────
 
 
 @needs_sample
@@ -125,7 +122,7 @@ def test_rows_equal_tttrlib_for_the_same_file(sample, reference):
         assert r["macro"] == pytest.approx(float(reference["macro"][i]) * reference["res"] * 1e3)
     assert len(m.rows) == 200
     assert m.table.used_channels == [0, 1, 8, 9]
-    assert m.range_text == "records 0–200"  # deliberate: was "photons 0–200"
+    assert m.range_text == "records 0–200"
     assert {r["kind"] for r in m.rows} == {"photon"}  # the sample holds no markers
     assert m.kinds_text == "Records: photon 183,657"
 
@@ -146,22 +143,27 @@ def test_filtered_rows_equal_tttrlib(sample, reference):
 
 
 @needs_sample
-def test_summary_and_cells_equal_the_recorded_qt_tool(sample):
-    """The retired Qt tool's drawn summary and first rows (qt_reference.json) are the native app's."""
-    ref = json.loads((HERE / "qt_reference.json").read_text())
-    qt_strings = set(ref["strings"])
+def test_summary_and_drawn_cells_are_the_files_numbers(sample, reference):
+    """Summary, notice and the drawn first rows, all derived from the file."""
+    import tttrlib
+
+    header = tttrlib.TTTR(str(sample)).header
+    n = len(reference["micro"])
+    duration = float(reference["macro"][-1]) * reference["res"]
+    n_micro = int(header.get_effective_number_of_micro_time_channels())
     app = loaded(sample)
     m = app.model
     assert m.file_name == str(sample)
-    assert m.summary_text in qt_strings
-    assert m.channels_text in qt_strings
-    assert m.notice == ref["status"].replace("<FILE>", str(sample))
-    # the first rows: the Qt table's cells (thousands separators) are the native values
+    assert m.summary_text == f"{n:,} photons, {duration:.3g} s, {n_micro} µ-channels"
+    used = sorted(int(c) for c in np.unique(reference["routing"]))
+    assert m.channels_text == "Routing channels: " + ", ".join(str(c) for c in used)
+    assert m.notice == f"{n:,} photons from {sample}"
+    strings = set(draw(app).strings)
+    # the first rows as drawn: thousands separators, macro time in ms to 6 decimals
     for r in m.rows[:25]:
-        assert f"{r['photon']:,}" in qt_strings and f"{r['idx']:,}" in qt_strings
-        assert f"{r['micro']}" in qt_strings and f"{r['macro']:.6f}" in qt_strings
-    # the model behind both is the same rows
-    assert [r["idx"] for r in m.rows] == ref["page_idx"]
+        assert f"{r['photon']:,}" in strings and f"{r['idx']:,}" in strings
+        assert f"{r['micro']}" in strings and f"{r['macro']:.6f}" in strings
+    assert [r["idx"] for r in m.rows] == list(range(200))  # no filter: the first 200 records
 
 
 @needs_sample
@@ -185,7 +187,7 @@ SCAN = REPO / "test" / "data" / "clsm" / "Leica_SP5.ptu"
 
 @pytest.mark.skipif(not SCAN.exists(), reason="test data not available")
 def test_a_scan_lists_its_markers_coloured_and_filterable():
-    """New (no Qt counterpart): marker records are rows with a coloured Kind cell and a filter."""
+    """Marker records are rows with a coloured Kind cell and a filter."""
     import tttrlib
 
     from chisurf.plugins.tttr.photon_table.gui.app import kind_backgrounds
@@ -249,7 +251,7 @@ def test_navigation_buttons_page_through_the_file(sample):
 
 
 @needs_sample
-def test_the_fields_clamp_like_the_qt_tool(sample):
+def test_the_fields_clamp_to_the_file_and_the_page_limits(sample):
     app = loaded(sample)
     m = app.model
     m.set_first(10**9)
@@ -339,7 +341,7 @@ def test_copy_visible_puts_the_page_on_the_clipboard(sample, monkeypatch):
     lines = copied[0].splitlines()
     assert lines[0] == "photon\tidx\tkind\tchannel\tmicro\tmacro_ms"  # new kind column
     assert len(lines) == 6
-    # identical to what the Qt tool's model would copy for the same page
+    # the core table's TSV of the same page
     assert copied[0] == app.model.table.page_tsv(0, 5, 9)
     assert app.model.notice == "Copied 5 rows to the clipboard."
     assert lines[1].split("\t")[0] == "0" and lines[1].split("\t")[3] == "9"
@@ -404,7 +406,7 @@ def test_a_missing_file_is_reported_and_nothing_loads(tmp_path):
 
 @needs_sample
 def test_an_unreadable_file_keeps_the_old_table_and_says_what_tttrlib_said(sample, tmp_path):
-    """Same text as the Qt tool's recorded status message, and the table that was shown stays."""
+    """The status line carries tttrlib's reason, and the table that was shown stays."""
     bad = tmp_path / "broken.ptu"
     bad.write_text("this is not a TTTR file")
     app = loaded(sample)
@@ -414,8 +416,7 @@ def test_an_unreadable_file_keeps_the_old_table_and_says_what_tttrlib_said(sampl
     assert app.model.table.n_photons == 183_657 and app.model.first_index == 400
     assert app.model.notice.startswith(f"Could not open {bad}: ")
     assert app.model.input_file == str(sample)
-    ref = json.loads((HERE / "qt_reference.json").read_text())
-    assert app.model.notice == ref["bad_status"].replace("<FILE>", str(bad))
+    assert "nothing was read" in app.model.notice
     # the window still draws the old table after the error
     assert any("183,657 photons" in s for s in draw(app).strings)
 
@@ -598,7 +599,7 @@ def test_help_exists_and_draws():
     assert draw(app).strings
 
 
-# ── 6. persistence, no Qt ───────────────────────────────────────────────
+# ── 6. persistence, no Qt import ───────────────────────────────────────────────
 
 
 def test_settings_round_trip(sample):

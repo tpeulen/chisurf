@@ -1,12 +1,12 @@
 """Native ALEX Creator: convert ALEX macro-time modulation into micro-time, single, batch or merged.
 
-The left window is the Qt tool's controls as a spec form (``alex_emtk.view.json``, drawn by ``emtk.view_form`` with
+The left window is the controls as a spec form (``alex_emtk.view.json``, drawn by ``emtk.view_form`` with
 this app as the model): the file row, the input / output formats, the Period and Shift spin fields, and the batch
 queue (a ``data_table``) with its output folder. The right window shows the live histogram and editable neutral
 excitation-phase candidates at the configured period (typed, or measured from the data with Detect period), including transition warnings and wrapped range overlays.
 Candidates never filter the converted photon stream. Loading,
 the preview, saving and the batch run are workers (one at a time) published on the UI thread; the conversion itself
-is the plugin's Qt-free :mod:`core` / :mod:`api`, shared with the Qt tool, the CLI and the RPC backend.
+is the plugin's Qt-free :mod:`core` / :mod:`api`, shared with the CLI and the RPC backend.
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ from .view_model import AlexViewModel
 HERE = Path(__file__).parent
 EXTENSIONS = {".sm", ".ptu", ".ht3", ".spc", ".hdf", ".h5", ".raw"}
 FILTERS = TTTR_FILE_FILTER
-#: The model attributes kept between sessions (the Qt tool kept only its window geometry).
+#: The model attributes kept between sessions.
 FIELDS = (
     "input_format",
     "output_format",
@@ -63,7 +63,7 @@ FIELDS = (
 PERIOD_LIMITS = (1, 65536)
 SHIFT_LIMITS = (-1000000, 1000000)
 ERROR_COLOUR = (235, 100, 90, 255)
-#: The histogram's line (data colour; the Qt plot drew the same blue).
+#: The histogram's line (data colour).
 HISTOGRAM_COLOUR = (68, 136, 255, 255)
 
 #: Spec keys whose text is shown to the user (translated when the spec is loaded, again when the locale changes).
@@ -154,7 +154,7 @@ class AlexApp(TourTarget, ImApp):
             pass
         super().__init__(gui=self.render, continuous=False)
 
-    # -- the form's model: the Qt view model's fields -------------------------------------------------------- #
+    # -- the form's model: the view model's fields ----------------------------------------------------------- #
     input_file = _model_field("input_file")
     input_format = _model_field("input_format")
     output_format = _model_field("output_format")
@@ -248,7 +248,7 @@ class AlexApp(TourTarget, ImApp):
         self.message, self.message_is_error = text, False
 
     def used(self, name):
-        """A field was committed or an action pressed: the tour is told, a committed path loads (Qt: editingFinished)."""
+        """A field was committed or an action pressed: the tour is told, a committed path loads."""
         self.guide.notify_used("timing" if name in ("alex_period", "period_shift") else name)
         if name == "input_file":
             path = str(self.model.input_file).strip()

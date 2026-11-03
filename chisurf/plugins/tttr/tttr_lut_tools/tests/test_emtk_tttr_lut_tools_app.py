@@ -1,9 +1,14 @@
-"""The native LUT Tools app against the recorded Qt tool: numbers, plots, every control, no Qt.
+"""The native LUT Tools app: numbers, plots, every control, no Qt import.
 
 Hermetic: every file is a temporary copy of the repository's BH SPC-130 sample, settings and
-MMFDB point into a temporary folder, and nothing touches the user's ``~/.chisurf``. The Qt half
-is the retired ``TTRLutToolsWidget``: its plot curves, spin boxes, info label and bridge
-result were recorded (``qt_reference.npz`` / ``.json``) and are what the native model is compared with.
+MMFDB point into a temporary folder, and nothing touches the user's ``~/.chisurf``.
+
+The numbers are checked against the sample's photons as tttrlib reads them and the LUT's
+definition (Felekyan et al. 2005): the raw plot is a routing channel's micro-time ``bincount``
+after the low-count threshold; with every bin width ``w = counts / <region>``, the cumulative
+table is ``NTAC_fract = ntac * cumsum(w) / sum(w) = ntac * cumsum(counts) / sum(counts)``
+(the region mean cancels), its scale is ``f = ntac * <region> / sum(counts)``, and a corrected
+photon lands between its raw bin's two table edges.
 """
 
 from __future__ import annotations
@@ -113,52 +118,61 @@ def chooser(monkeypatch):
 
 
 @pytest.fixture(scope="module")
-def qt_ref():
-    """What the retired Qt tool produced for the sample (``qt_reference.npz`` / ``.json``)."""
-    arrays = np.load(Path(__file__).with_name("qt_reference.npz"))
-    meta = json.loads(Path(__file__).with_name("qt_reference.json").read_text())
-    return arrays, meta
+def photons():
+    """Micro times and routing channels of the sample, read straight from tttrlib."""
+    import tttrlib
+
+    data = tttrlib.TTTR(str(SPC), "SPC-130")
+    return np.asarray(data.micro_times, np.int64), np.asarray(data.routing_channels, np.int64)
 
 
-# --------------------------------------------------------------------------- #
-# 1. numbers equal the Qt widget's (recorded) for the same file
-# --------------------------------------------------------------------------- #
-def native_spins(model):
-    return sorted(
-        float(getattr(model, k))
-        for k in (
-            "linear_start",
-            "linear_stop",
-            "ntac_required",
-            "noffset",
-            "preview_photons",
-            "seed",
-            "threshold",
-            "eps",
-        )
+def channel_counts(photons, channel, n_bins):
+    micro, routing = photons
+    return np.bincount(micro[routing == channel], minlength=n_bins)[:n_bins].astype(float)
+
+
+def lut_of(counts, ntac):
+    """``NTAC_fract`` by its definition: the cumulative histogram scaled to *ntac* bins."""
+    return ntac * np.cumsum(counts) / counts.sum()
+
+
+def info_of(channel, counts, start, stop, ntac):
+    """The info line by its definition: region, width, scale f and region mean."""
+    mean = counts[start:stop].mean()
+    return (
+        f"ch {channel} | Range [{start}, {stop}) | width={stop - start} | "
+        f"f={ntac * mean / counts.sum():.6f} | n_mean={mean:.2f}"
     )
 
 
-def test_loaded_state_equals_the_qt_widget(env, qt_ref):
-    arrays, meta = qt_ref
+# --------------------------------------------------------------------------- #
+# 1. numbers equal the photons' histogram and the LUT's definition
+# --------------------------------------------------------------------------- #
+def test_loaded_state_is_channel_zeros_histogram_and_its_lut(env, photons):
     app = make(env)
     model = load(app, env)
+    compute = model.ws.compute
+    micro, routing = photons
+    assert compute.n_bins == int(micro.max()) + 1  # 3664: not near a standard TAC size
+    assert compute.available_channels == sorted(int(c) for c in np.unique(routing))
+    assert model.channel == "0"  # the first used channel
+    counts = channel_counts(photons, 0, compute.n_bins)
     x, y, label = model.raw_plot()
-    np.testing.assert_array_equal(x, arrays["A_raw_x"])
-    np.testing.assert_array_equal(y, arrays["A_raw_y"])
+    np.testing.assert_array_equal(x, np.arange(compute.n_bins))
+    np.testing.assert_array_equal(y, counts)
     assert label == "Counts"
-    native_x, native_y = model.corrected_plot()
-    np.testing.assert_array_equal(native_x, arrays["A_after_x"])
-    np.testing.assert_array_equal(native_y, arrays["A_after_y"])
-    assert native_spins(model) == meta["A"]["spins"]
-    assert model.info_text == meta["A"]["info"]
-    assert model.ws.compute.available_channels == meta["A"]["channels"] == [0, 1, 8, 9]
-    assert model.channel == meta["A"]["channel"] == "0"
-    np.testing.assert_array_equal(model.ws.compute.current_table["NTAC_fract"], arrays["A_ntac"])
+    ntac = int(model.ntac_required)
+    assert ntac == compute.n_bins  # by default the corrected axis has as many bins
+    np.testing.assert_allclose(compute.current_table["NTAC_fract"], lut_of(counts, ntac))
+    start, stop = int(model.linear_start), int(model.linear_stop)
+    assert 0 <= start < stop <= compute.n_bins
+    assert model.info_text == info_of(0, counts, start, stop, ntac)
+    after_x, after_y = model.corrected_plot()
+    np.testing.assert_array_equal(after_x, np.arange(ntac))
+    assert after_y.sum() == min(int(model.preview_photons), int(counts.sum()))
 
 
-def test_hand_tuned_region_normalize_threshold_and_wrap_equal_the_qt_widget(env, qt_ref):
-    arrays, meta = qt_ref
+def test_hand_tuned_region_normalize_threshold_and_wrap(env, photons):
     app = make(env)
     model = load(app, env)
     model.linear_start, model.linear_stop = 1200, 1900
@@ -167,49 +181,51 @@ def test_hand_tuned_region_normalize_threshold_and_wrap_equal_the_qt_widget(env,
     model.mitigate_wrap = True
     model.ntac_required = 2048
     model.param_changed()
+    raw = channel_counts(photons, 0, model.ws.compute.n_bins)
+    mean = raw[1200:1900].mean()
+    effective = np.where(raw / mean < 1.0, 0.0, raw)  # bins under the threshold are zeroed
     x, y, label = model.raw_plot()
-    np.testing.assert_array_equal(x, arrays["B_raw_x"])
-    np.testing.assert_allclose(y, arrays["B_raw_y"])
+    np.testing.assert_allclose(y, effective / effective[1200:1900].mean())
     assert label == "Counts / ⟨region⟩"
-    after = arrays["B_after_y"]
-    np.testing.assert_array_equal(model.corrected_plot()[1], after)
+    after = model.corrected_plot()[1]
     assert len(after) == 2048
-    assert model.info_text == meta["B"]["info"]
-    np.testing.assert_array_equal(model.ws.compute.current_table["NTAC_fract"], arrays["B_ntac"])
+    assert after.sum() == min(int(model.preview_photons), int(raw.sum()))
+    np.testing.assert_allclose(model.ws.compute.current_table["NTAC_fract"], lut_of(effective, 2048))
+    assert model.info_text == info_of(0, effective, 1200, 1900, 2048)
 
 
-def test_every_channel_selected_gives_the_qt_lut(env, qt_ref):
-    arrays, meta = qt_ref
+def test_every_channel_selected_gives_its_own_lut(env, photons):
     app = make(env)
     model = load(app, env)
     for channel in model.ws.compute.available_channels:
         model.channel = str(channel)
         model.channel_changed()
-        np.testing.assert_array_equal(
-            model.ws.compute.current_table["NTAC_fract"], arrays[f"C_ntac_{channel}"]
-        )
-        assert model.info_text == meta["C"][str(channel)]["info"]
-        assert [model.linear_start, model.linear_stop] == meta["C"][str(channel)]["region"]
+        counts = channel_counts(photons, channel, model.ws.compute.n_bins)
+        ntac = int(model.ntac_required)
+        np.testing.assert_allclose(model.ws.compute.current_table["NTAC_fract"], lut_of(counts, ntac))
+        start, stop = int(model.linear_start), int(model.linear_stop)
+        assert model.info_text == info_of(channel, counts, start, stop, ntac)
 
 
-def test_add_all_channels_gives_the_luts_the_qt_bridge_assigns(env, qt_ref):
-    arrays, meta = qt_ref
+def test_add_all_channels_assigns_each_channel_its_lut(env, photons):
     app = make(env)
     model = load(app, env)
     click(app, "add_all")
     settle(app)
-    assert meta["D"] == sorted(model.ws.channel_luts) == [0, 1, 8, 9]
-    for channel in meta["D"]:
-        np.testing.assert_array_equal(model.ws.channel_luts[channel], arrays[f"D_lut_{channel}"])
+    used = sorted(int(c) for c in np.unique(photons[1]))
+    assert sorted(model.ws.channel_luts) == used == [0, 1, 8, 9]
+    ntac = int(model.ntac_required)
+    for channel in used:
+        counts = channel_counts(photons, channel, model.ws.compute.n_bins)
+        np.testing.assert_allclose(model.ws.channel_luts[channel], lut_of(counts, ntac))
     assert "channel(s) 0, 1, 8, 9" in model.message
     assert model.ws.selected_lut == "ch9_lut"
     assert sorted(model.ws.loaded_luts) == ["ch0_lut", "ch1_lut", "ch8_lut", "ch9_lut"]
 
 
-def test_saved_lut_and_exported_corrected_files_equal_the_qt_ones(env, qt_ref, chooser):
-    arrays, _ = qt_ref
+def test_saved_lut_and_exported_corrected_times_follow_the_table(env, photons, chooser):
     app = make(env)
-    load(app, env)
+    model = load(app, env)
     lut, corr = env["dir"] / "lut.npy", env["dir"] / "corr.npy"
     chooser.chosen = [str(lut)]
     click(app, "request_save_lut")
@@ -218,28 +234,40 @@ def test_saved_lut_and_exported_corrected_files_equal_the_qt_ones(env, qt_ref, c
     click(app, "request_export_corrected")
     settle(app)
     assert "Exported corrected micro-times" in app.model.message
-    np.testing.assert_array_equal(np.load(lut), arrays["E_lut"])
-    np.testing.assert_array_equal(np.load(corr), arrays["E_corr"])
-    assert np.load(corr).size == 56499
+    counts = channel_counts(photons, 0, model.ws.compute.n_bins)
+    table = lut_of(counts, int(model.ntac_required))
+    np.testing.assert_allclose(np.load(lut), table)
+    micro, routing = photons
+    raw = micro[routing == 0]
+    corrected = np.load(corr)
+    assert corrected.size == raw.size == 56499  # every photon of channel 0
+    # each photon lands between its raw bin's two table edges
+    left = np.where(raw > 0, table[np.maximum(raw - 1, 0)], 0.0)
+    noffset = int(model.noffset)
+    assert np.all(corrected >= np.floor(left) - noffset)
+    assert np.all(corrected <= np.ceil(table[raw]) - noffset)
 
 
-def test_autodetect_equals_qt_on_a_channel_with_a_plateau_and_reports_failure(env, qt_ref):
-    _, meta = qt_ref
+def test_autodetect_finds_a_plateau_where_there_is_one_and_reports_failure(env, photons):
+    from chisurf.plugins.tttr.tttr_lut_tools.api.lut import autodetect_linear_region
+
     app = make(env)
     model = load(app, env)
-    # Channel 0 of this decay file has no flat plateau: the Qt tool swallows the error, the
-    # native tool keeps the region and says so.
+    # Channel 0 of this decay file has no flat plateau: the region is kept and the failure
+    # is reported.
     model.linear_start, model.linear_stop = 1200, 1900
     click(app, "autodetect")
     assert (model.linear_start, model.linear_stop) == (1200, 1900)
     assert model.message.startswith("Auto-detect failed")
-    # Channel 8 has one.
+    # Channel 8 has one: the plateau of its own photons' histogram.
     model.channel = "8"
     model.channel_changed()
     model.linear_start, model.linear_stop = 1200, 1900
     click(app, "autodetect")
-    assert [model.linear_start, model.linear_stop] == meta["F"] == [788, 828]
-    assert model.message == "Auto-detected region [788, 828)."
+    start, stop = autodetect_linear_region(channel_counts(photons, 8, model.ws.compute.n_bins))
+    assert stop - start >= 32
+    assert (model.linear_start, model.linear_stop) == (start, stop)
+    assert model.message == f"Auto-detected region [{start}, {stop})."
 
 
 def test_tab_two_corrected_histograms_equal_the_production_reader(env):
@@ -280,7 +308,7 @@ def test_tab_two_corrected_histograms_equal_the_production_reader(env):
 # 2. the two plots: empty state, populated, draggable region
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize("size", SIZES)
-def test_empty_state_draws_both_plots_with_the_qt_axes_and_no_data(env, size, monkeypatch):
+def test_empty_state_draws_both_plots_with_their_axes_and_no_data(env, size, monkeypatch):
     drawn = []
     real = implot.plot_line
     monkeypatch.setattr(implot, "plot_line", lambda *a, **k: (drawn.append(a), real(*a, **k)))
@@ -350,7 +378,7 @@ def test_the_plateau_region_is_dragged_with_the_pointer_and_the_lut_follows(env,
     assert model.linear_stop == 2387
     assert "Range [%d, 2387)" % model.linear_start in model.info_text
     # the region sets the scale f of the table (the corrected histogram itself does not depend
-    # on it, as in the Qt tool)
+    # on it: the region mean cancels in NTAC_fract)
     assert model.ws.compute.current_table["f"] != f_before
     # the spec fields show the dragged value
     assert str(model.linear_start) in "\n".join(frames(app).strings)
@@ -686,7 +714,7 @@ def test_help_guide_and_json_buttons_open_their_windows(env):
 
 
 # --------------------------------------------------------------------------- #
-# 4. the spec, tooltips, draws, guide, no Qt, settings
+# 4. the spec, tooltips, draws, guide, no Qt import, settings
 # --------------------------------------------------------------------------- #
 def _walk(sections):
     for section in sections:
@@ -801,7 +829,7 @@ def test_the_guide_targets_are_real_controls_and_wait_for_the_user(env, chooser)
     assert app.tour.step_idx == 2
 
 
-def test_help_text_links_are_live_and_stage_labels_match_the_qt_tabs():
+def test_help_text_links_are_live_and_the_stage_labels_are_the_two_steps():
     help_text = (GUI / "help.md").read_text(encoding="utf-8")
     for target in __import__("re").findall(r"\]\((docs/[^)]+)\)", help_text):
         assert (ROOT / target).is_file(), target

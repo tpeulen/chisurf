@@ -34,7 +34,7 @@ READING_ROUTINES = (
     ("SPC-600_4096", 4),
     ("PHOTON-HDF5", 5),
 )
-#: Parameters of tab 1, forwarded to the compute view-model (the Qt tool's names).
+#: Parameters of tab 1, forwarded to the compute view-model under the same names.
 _PARAMS = (
     "linear_start",
     "linear_stop",
@@ -128,7 +128,7 @@ class LutToolModel:
     # -- stage -------------------------------------------------------------- #
     @property
     def stage_name(self):
-        """Name of the shown tab; the choice that replaces the Qt tab bar."""
+        """Name of the shown tab (the stage choice at the top)."""
         return STAGES[self.stage]
 
     @stage_name.setter
@@ -266,7 +266,7 @@ class LutToolModel:
     # -- status ---------------------------------------------------------------- #
     @property
     def info_text(self):
-        """One-line summary of the current LUT (what the Qt label under the plots shows)."""
+        """One-line summary of the current LUT (the label under the plots)."""
         return self.ws.compute.info_text()
 
     flow_hint = FLOW_HINT
@@ -438,7 +438,7 @@ class LutToolModel:
             compute.linear_start, compute.linear_stop = _lut.autodetect_linear_region(
                 compute.counts
             )
-        except Exception as error:  # noqa: BLE001 - the Qt tool swallows this silently
+        except Exception as error:  # noqa: BLE001 - reported in the status line, not raised
             self.message = f"Auto-detect failed: {error}"
             return
         compute.compute()
@@ -496,7 +496,7 @@ class LutToolModel:
 
     # -- plot data ---------------------------------------------------------------------- #
     def raw_plot(self):
-        """``(x, y, y_label)`` of the raw TAC plot, as the Qt plot draws it, or ``None``.
+        """``(x, y, y_label)`` of the raw TAC plot, or ``None``.
 
         ``y`` is the histogram after the low-count threshold, divided by the region mean
         when *Normalize by region mean* is on.

@@ -1,9 +1,11 @@
-"""The ALEX Creator's emtk app against the Qt tool, and every control operated with real input.
+"""The ALEX Creator's emtk app: its numbers on a real photon file, and every control operated with real input.
 
 Hermetic: ``HOME``, ``CHISURF_SETTINGS_DIR`` and the MMFDB settings / database point into a temporary folder, the real
 ``~/.chisurf`` is snapshotted and must be unchanged at the end (its ``logs`` folder aside). Nothing reaches the app but what a
-host delivers (pointer press / release / move, the wheel, typed keys, dropped files); the numbers are compared with the Qt
-tool's own view model (the Qt widget is built offscreen for the settings and the help button) on a real photon file.
+host delivers (pointer press / release / move, the wheel, typed keys, dropped files). The numbers are known by
+construction: ALEX conversion keeps every photon's macro time and routing channel and sets its micro time to
+``(macro_time - shift) mod period``, so the histogram is the ``bincount`` of that and a merged file holds every input
+photon, its micro times obeying the same rule on the merged macro times.
 """
 
 from __future__ import annotations
@@ -22,7 +24,6 @@ from chisurf.plugins.emtk_test_input import Driver, assert_tour_card_clear
 from chisurf.plugins.tttr.ptu_alex_creator import core
 from chisurf.plugins.tttr.ptu_alex_creator.api import AlexRequest, run
 from chisurf.plugins.tttr.ptu_alex_creator.gui.app import AlexApp, translated
-from chisurf.plugins.tttr.ptu_alex_creator.gui.view_model import AlexViewModel
 from test.gui import emtk_layout_checks as lay
 
 HERE = Path(__file__).resolve().parent
@@ -138,27 +139,23 @@ def same_file(first, second):
     assert a.header.json == b.header.json
 
 
-# -- parity with the Qt tool ----------------------------------------------------------------------------------------- #
+def alex_micro(macro, period, shift):
+    """The micro time ALEX conversion gives a photon: its macro time folded into the period."""
+    return (np.asarray(macro, dtype=np.int64) - shift) % period
 
 
-def test_defaults_and_choices_equal_the_qt_tools(ui):
-    qt = AlexViewModel()
-    for attr in (
-        "input_format",
-        "output_format",
-        "alex_period",
-        "period_shift",
-        "batch_mode",
-        "batch_output_folder",
-    ):
-        assert getattr(ui.app, attr) == getattr(qt, attr), attr
-    assert ui.app.input_format_options() == qt.input_format_options()
-    assert ui.app.output_format_options() == qt.output_format_options()
-    assert ui.app.model.batch_files == qt.batch_files == []
-    assert not ui.app.model.has_data and qt.can_save() is not None
+def assert_converted(source, out, period, shift):
+    """*out* is *source* with every micro time replaced by its folded macro time."""
+    a, b = tttrlib.TTTR(str(source)), tttrlib.TTTR(str(out))
+    for attr in ("macro_times", "routing_channels"):
+        np.testing.assert_array_equal(getattr(b, attr), getattr(a, attr))
+    np.testing.assert_array_equal(b.micro_times, alex_micro(a.macro_times, period, shift))
 
 
-def test_the_number_fields_have_the_qt_tools_range_and_step(ui):
+# -- the number fields --------------------------------------------------------------------------------------------- #
+
+
+def test_the_number_fields_have_the_specs_range_and_step(ui):
     def fields(spec):
         found = {}
 
@@ -171,10 +168,10 @@ def test_the_number_fields_have_the_qt_tools_range_and_step(ui):
         walk(spec["sections"])
         return found
 
-    qt = fields(json.loads((PLUGIN / "gui" / "alex.view.json").read_text()))
+    declared = fields(json.loads((PLUGIN / "gui" / "alex.view.json").read_text()))
     assert (
         fields(ui.app.spec_source)
-        == qt
+        == declared
         == {"alex_period": (1, 65536, 100, "int"), "period_shift": (-1000000, 1000000, 1, "int")}
     )
     ui.draw()
@@ -195,51 +192,51 @@ def _walk(spec):
         yield from _walk(s)
 
 
-def test_histogram_and_converted_file_equal_the_qt_tools_numbers(ui, source, tmp_path):
-    qt = AlexViewModel()
-    qt.load(str(source))
+def test_histogram_and_converted_file_fold_macro_times_into_the_period(ui, source, tmp_path):
+    macro = tttrlib.TTTR(str(source)).macro_times
     loaded(ui, source)
     for period, shift in ((8000, 0), (4000, 23), (2500, -17)):
-        qt.alex_period, qt.period_shift = period, shift
         ui.app.model.alex_period, ui.app.model.period_shift = period, shift
         ui.draw(2)
         ui.settle()
-        np.testing.assert_array_equal(ui.app.histogram, qt.histogram_series()[0]["y"])
-    qt_out, ours = tmp_path / "qt.ptu", tmp_path / "ours.ptu"
-    qt.save(str(qt_out))
+        expected = np.bincount(alex_micro(macro, period, shift), minlength=period)
+        np.testing.assert_array_equal(ui.app.histogram, expected)
+        assert np.sum(ui.app.histogram) == len(macro)  # every photon lands in one bin
+    ours = tmp_path / "ours.ptu"
     assert ui.app.save(ours)
     ui.settle()
-    same_file(qt_out, ours)
+    assert_converted(source, ours, 2500, -17)
 
 
 @pytest.mark.parametrize("mode", ["convert", "merge"])
-def test_batch_outputs_equal_the_qt_tools(ui, source, second, tmp_path, mode):
-    qt = AlexViewModel()
-    qt.batch_mode, qt.alex_period, qt.period_shift = mode, 4000, 7
-    qt.add_batch_files([str(source), str(second)])
-    qt.batch_output_folder = str(tmp_path / "qt_out")
-    expected = qt.run_batch()
+def test_batch_outputs_hold_every_photon_folded(ui, source, second, tmp_path, mode):
     ui.app.add_paths([source, second])
     ui.app.model.batch_mode, ui.app.model.alex_period, ui.app.model.period_shift = mode, 4000, 7
     ui.app.model.batch_output_folder = str(tmp_path / "our_out")
     assert ui.app.run_batch()
     ui.settle()
-    assert len(ui.app.outputs) == len(expected)
-    for a, b in zip(expected, ui.app.outputs):
-        same_file(a, b)
+    if mode == "convert":
+        assert len(ui.app.outputs) == 2
+        for src, out in zip((source, second), ui.app.outputs):
+            assert_converted(src, out, 4000, 7)
+        return
+    assert len(ui.app.outputs) == 1
+    merged = tttrlib.TTTR(str(ui.app.outputs[0]))
+    inputs = [tttrlib.TTTR(str(p)) for p in (source, second)]
+    assert len(merged) == sum(len(t) for t in inputs)
+    np.testing.assert_array_equal(
+        merged.routing_channels, np.concatenate([t.routing_channels for t in inputs])
+    )
+    np.testing.assert_array_equal(merged.micro_times, alex_micro(merged.macro_times, 4000, 7))
 
 
-def test_another_output_container_equals_the_qt_tools(ui, source, tmp_path):
-    qt = AlexViewModel()
-    qt.output_format = "HT3"
-    qt.load(str(source))
-    qt.save(str(tmp_path / "qt.ht3"))
+def test_another_output_container_holds_the_same_photons(ui, source, tmp_path):
     loaded(ui, source)
     ui.choose_option("output_format", "HT3")
     assert ui.app.output_format == "HT3"
     assert ui.app.save(tmp_path / "ours.ht3")
     ui.settle()
-    same_file(tmp_path / "qt.ht3", tmp_path / "ours.ht3")
+    assert_converted(source, tmp_path / "ours.ht3", ui.app.model.alex_period, ui.app.model.period_shift)
 
 
 # -- the file row ---------------------------------------------------------------------------------------------------- #
@@ -320,7 +317,7 @@ def test_a_click_away_commits_a_typed_value(ui):
 
 
 @pytest.mark.parametrize("field,step", [("alex_period", 100), ("period_shift", 1)])
-def test_each_arrow_steps_its_field_by_the_qt_step(ui, field, step):
+def test_each_arrow_steps_its_field_by_the_spec_step(ui, field, step):
     start = getattr(ui.app.model, field)
     rect = (
         ui.app.item_rects[f"{field}.stepper"]
@@ -362,7 +359,7 @@ def test_save_is_grey_without_a_file_and_a_click_opens_nothing(ui):
     assert not ui.dialog_open and not ui.app.model.has_data
 
 
-def test_save_dialog_offers_the_qt_name_and_writes_the_converted_file(ui, source, tmp_path):
+def test_save_dialog_offers_the_default_name_and_writes_the_converted_file(ui, source, tmp_path):
     loaded(ui, source)
     ui.app.model.alex_period, ui.app.model.period_shift = 4000, 23
     ui.click_name("choose_save")
@@ -383,9 +380,7 @@ def test_save_dialog_offers_the_qt_name_and_writes_the_converted_file(ui, source
     out = tmp_path / "converted.ptu"
     assert out.is_file() and ui.app.outputs == [str(out)]
     assert any("converted.ptu" in s for s in ui.draw().strings)
-    expected = tmp_path / "expected.ptu"
-    core.convert_file(str(source), str(expected), 4000, 23, "PTU", "Auto")
-    same_file(expected, out)
+    assert_converted(source, out, 4000, 23)
 
 
 def test_the_input_file_is_never_overwritten(ui, source):

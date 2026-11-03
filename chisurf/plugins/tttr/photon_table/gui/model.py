@@ -5,8 +5,7 @@ photons and marker records -- paged, channel- and kind-filtered) with what the
 window edits: the first record shown, the page size, the channel and kind
 filters, the status line, the request of the Copy button and the Input section (the
 workspace's photon streams; files enter ChiSurf by the shell's drop, never here). The
-numbers come from the core model, unchanged, so the Qt tool and this app show
-the same rows for the same file.
+numbers come from the core model, unchanged.
 """
 
 from __future__ import annotations
@@ -84,7 +83,7 @@ class PhotonTableViewModel(WorkspaceInputMixin):
     def summary_text(self) -> str:
         """Photon count (and marker count), acquisition time and micro-time channels.
 
-        A file without markers reads as the Qt tool showed it.
+        A file without markers reads ``N photons, T s, K µ-channels``.
         """
         t = self.table
         text = f"{t.n_photons:,} photons"
@@ -226,7 +225,7 @@ class PhotonTableViewModel(WorkspaceInputMixin):
         self.request = "copy"
 
     def copy_text(self) -> str:
-        """The visible rows as tab-separated text (the Qt tool's 'Copy visible')."""
+        """The visible rows as tab-separated text (the Copy visible button's text)."""
         return self.table.page_tsv(
             self.first_index, self.rows_per_page, self.channel_filter, self.kind_filter
         )

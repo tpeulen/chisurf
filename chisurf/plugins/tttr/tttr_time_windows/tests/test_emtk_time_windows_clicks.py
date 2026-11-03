@@ -3,8 +3,8 @@
 Every control (toolbar Process / Clear / Help, the Input section of the workspace's photon
 streams with Use selected, the queue with Remove, the duration and output fields, Browse, the
 preview and the log) is used the way a person uses it, and each test asserts what the next frame
-shows. The Qt tool's Files / Folder / Database buttons and its drop are gone: the input is the
-Datasets workspace.
+shows. There are no Files / Folder / Database buttons and no drop: the input is the Datasets
+workspace.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from emtk.events import CONTROL_MODIFIER
 from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.tttr.tttr_time_windows.gui.controller import create_app
 from chisurf.plugins.tttr.tttr_time_windows.tests.pointer import KEY_ESCAPE, Pointer
-from chisurf.plugins.tttr.tttr_time_windows.tests.test_emtk_time_windows_parity import _FakeClient
+from chisurf.plugins.tttr.tttr_time_windows.tests.test_emtk_time_windows_app import _FakeClient
 
 
 class _SlowClient(_FakeClient):
@@ -197,7 +197,7 @@ def test_time_window_field_takes_typed_text_and_the_preview_follows(ui):
     ui.client.previews = []
     set_time_window(ui, "25")
     assert ui.app.tool.time_window_ms == 25.0 and ui.drawn("25.000")
-    set_time_window(ui, "0")  # the Qt spin box's range
+    set_time_window(ui, "0")  # below the field's minimum: clamped
     assert ui.app.tool.time_window_ms == 0.001
     set_time_window(ui, "99999999")
     assert ui.app.tool.time_window_ms == 3_600_000.0

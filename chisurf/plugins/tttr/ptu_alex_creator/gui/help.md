@@ -7,8 +7,8 @@ micro-time phase. Period and shift are in macro-time units, not seconds. **Detec
 the loaded photons (the two busiest detector groups alternate) and sets Period; a stream that does not alternate is
 refused with its contrast and Period is kept.
 
-Save as writes a new converted file through the same conversion API used by
-the Qt tool. The input file is preserved. Photon channels, events and header
+Save as writes a new converted file through the plugin's conversion API (the one
+the CLI and the batch run use). The input file is preserved. Photon channels, events and header
 metadata follow that API's format conversion rules.
 
 For batch processing, select files in the batch's **Input** table and press **Use selected**. Convert each requires

@@ -1,13 +1,14 @@
-"""The native time-window app at parity with the Qt TTTRTimeWindowTool.
+"""The native time-window app: processing, status line, layout, persistence and the queue.
 
-Reference: the Qt tool as committed (HEAD ``gui/tool.py``) processed
-``test/data/clsm/Leica_SP5.ptu`` with a 10 000 ms window into 16 windows and wrote
-``Leica_SP5.bst``, 246 bytes, sha256 prefix ``4e4d0add2e46ce4f``.
+Processing a real file is checked against the file: windows of a fixed duration
+cut the measurement (last macro time x the header's macro-time resolution) into
+``ceil(duration / window)`` windows that tile the photon stream without a gap
+or a shared photon.
 """
 
 from __future__ import annotations
 
-import hashlib
+import math
 import re
 import sys
 from pathlib import Path
@@ -20,7 +21,6 @@ from chisurf.plugins.tttr.tttr_time_windows.gui.controller import create_app
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 PTU = REPO / "test" / "data" / "clsm" / "Leica_SP5.ptu"
-QT_BST_SHA256_PREFIX = "4e4d0add2e46ce4f"
 PICTOGRAM = re.compile("[\U0001f000-\U0001ffff☀-➿️]")
 
 
@@ -39,19 +39,15 @@ def app():
     app.close()
 
 
-# 1. processing writes the Qt tool's file, byte for byte
-def test_process_writes_the_qt_tools_windows(app, tmp_path):
-    """Same tool, same answers as the Qt one -- now as a run in the container.
-
-    The Qt tool wrote a ``.bst`` whose sha256 was pinned here; the inclusive
-    first/last rows it held are the rows the ``time_window`` run carries.
-    """
+# 1. processing cuts the measurement into windows that tile every photon
+def test_process_writes_windows_that_tile_the_photon_stream(app, tmp_path):
+    """The ``time_window`` run in the container: one inclusive first/last row per window."""
     import numpy as np
 
     from chisurf.core.datastore import row_count
     from chisurf.core.fio.fluorescence.burst_tree import read_burst_table
 
-    pytest.importorskip("tttrlib")
+    tttrlib = pytest.importorskip("tttrlib")
     if not PTU.exists():
         pytest.skip("sample PTU not available")
     # work on a copy: the tool writes the container beside the input, and the
@@ -69,18 +65,22 @@ def test_process_writes_the_qt_tools_windows(app, tmp_path):
         _draw(app, times=1)
         if not tool.job.running and not tool.process_pending:
             break
+    data = tttrlib.TTTR(str(PTU))
+    duration_s = float(data.macro_times[-1]) * data.header.macro_time_resolution
+    n_windows = math.ceil(duration_s / 10.0)  # 150.1 s in 10 s windows: 16
     container = ptu.with_suffix(".pto")
     assert container.is_file()
     table = read_burst_table(container)
-    assert table is not None and row_count(table) == 16
+    assert table is not None and row_count(table) == n_windows
     rows = np.asarray(
         [tuple(r) for r in zip(table["first photon"], table["last photon"])],
         dtype=np.int64,
     ).reshape(-1, 2)
     # inclusive on both ends, and consecutive windows tile without sharing a photon
     assert (rows[1:, 0] == rows[:-1, 1] + 1).all()
+    assert rows[0, 0] == 0 and rows[-1, 1] == len(data) - 1  # every photon is in a window
     assert not sorted(tmp_path.rglob("*.bst")), "no loose .bst any more"
-    assert any("16 windows" in line for line in tool._log_lines)
+    assert any(f"{n_windows} windows" in line for line in tool._log_lines)
 
 
 # 2. a status message is a line in the window, not a window over it
@@ -134,7 +134,7 @@ def test_every_control_has_a_tooltip():
     assert inv["controls_without_tooltip"] == []
 
 
-# 8. persistence: the dock layout (the Qt tool's QSettings "dock_layout"), only when changed
+# 8. persistence: the dock layout, written only when it changed
 def test_dock_layout_is_kept_only_when_changed(tmp_path, monkeypatch):
     import chisurf.core.settings as settings
 
@@ -156,7 +156,7 @@ def test_dock_layout_is_kept_only_when_changed(tmp_path, monkeypatch):
 
 
 def test_window_boundaries_are_drawn_only_when_they_can_be_told_apart(app, monkeypatch):
-    """15 014 boundaries (10 ms over 150 s) filled the preview and hid the trace (Qt and emtk)."""
+    """15 014 boundaries (10 ms over 150 s) filled the preview and hid the trace."""
     import numpy as np
     from emtk import implot
 

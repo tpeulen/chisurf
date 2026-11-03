@@ -29,7 +29,6 @@ optimize ALEX period and shift parameters for specific experiments.
 ## Requirements
 
 - Python packages:
-  - PyQt5
   - numpy
   - tttrlib
   - chisurf core modules
@@ -69,13 +68,13 @@ This plugin was created as part of the ChiSurf project.
 
 ## Native EMTK
 
-The manifest exposes `gui.app:make_app`. The native tool uses the same
-Qt-free core/API as Qt for phase preview, single-file conversion, batch
+The manifest exposes `gui.app:make_app`. The tool uses the plugin's
+Qt-free core/API for phase preview, single-file conversion, batch
 conversion and merge. It adds native file/database pickers, asynchronous work,
 queue context removal, help/guide, six-language labels/tooltips and saved
 settings/dock layout. Remembered files are loaded explicitly.
 
 `test/test_native.py` compares real photon arrays and header JSON against the
-shared core/API. `test/native-parity.json` records screenshots and outstanding
-verification limits. The current Qt plugin is an ALEX converter, not a
-synthetic photon generation wizard or detector preset editor.
+shared core/API; `test/test_emtk_alex_app.py` checks the converted files against
+the ALEX rule (micro time = (macro time - shift) mod period). The plugin is an
+ALEX converter, not a synthetic photon generation wizard or detector preset editor.

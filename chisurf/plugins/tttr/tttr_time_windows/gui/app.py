@@ -37,7 +37,7 @@ ACCENT_RED = (214, 80, 80, 255)
 BOUNDARY_COLOUR = (140, 140, 150, 200)
 
 
-#: The time-window duration, as a form field (typed, clamped to the Qt spin box's range).
+#: The time-window duration, as a form field (typed, clamped to its range).
 TIME_WINDOW_FIELD = [
     {
         "type": "value",
@@ -244,7 +244,7 @@ class TimeWindowGui(TourTarget):
         im.separator()
 
         # A typeable field (the view spec's ``value``): ``input_float`` is a drag field, which
-        # takes no typed number, and the Qt tool's spin box did.
+        # takes no typed number, and the duration must be typeable.
         draw_sections(TIME_WINDOW_FIELD, tool, self.form)
         if "time_window_ms" in self.form.rects:
             self.item_rects["time_window"] = self.form.rects["time_window_ms"]
@@ -270,7 +270,7 @@ class TimeWindowGui(TourTarget):
             if callable(self.on_browse):
                 self.on_browse()
         self.remember("output")
-        # The status line (the Qt window's status bar): what was loaded, done or failed.
+        # The status line: what was loaded, done or failed.
         if tool.message:
             im.separator()
             im.text_wrapped(tool.message)
@@ -314,7 +314,7 @@ class TimeWindowGui(TourTarget):
                 if tw_s > 0 and time_axis[-1] > 0:
                     bounds = np.arange(tw_s, time_axis[-1] + tw_s, tw_s)
                     # Thousands of lines (10 ms over minutes) fill the plot and hide
-                    # the trace, as they did in the Qt tool; draw them only when
+                    # the trace; draw them only when
                     # they can be told apart.
                     if 0 < len(bounds) <= MAX_BOUNDARY_LINES:
                         implot.plot_inf_lines(

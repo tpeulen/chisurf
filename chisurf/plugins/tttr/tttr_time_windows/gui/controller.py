@@ -171,7 +171,7 @@ class TimeWindowController(WorkspaceInputMixin):
 
     def _process_all(self):
         if self.job.running:
-            # The Qt tool processed synchronously, so Process always ran; here a
+            # Process must always run once pressed, but a
             # preview load (started by adding a file) may hold the single worker.
             if self._job_kind == "preview":
                 self.process_pending = True
@@ -254,7 +254,7 @@ class TimeWindowController(WorkspaceInputMixin):
 
 
 def _layout_store():
-    """The dock arrangement, in the settings folder (the Qt tool kept it in QSettings)."""
+    """The dock arrangement, in the settings folder."""
     try:
         from chisurf.core.settings import chisurf_settings_path
     except Exception:  # noqa: BLE001 - no settings folder: the layout is not kept

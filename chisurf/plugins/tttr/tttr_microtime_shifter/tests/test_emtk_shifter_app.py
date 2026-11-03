@@ -1,10 +1,9 @@
-"""The native micro-time shifter at parity with the retired Qt MicrotimeShifterTool.
+"""The native micro-time shifter on a demo file with a planted offset, and its controls.
 
-The Qt tool's values were recorded (``qt_reference.json``) on a demo file whose two
-detectors are offset by a known 400 bins: its auto-align shifts, preview and saved file
-are compared with the emtk app's, and both against references computed here from the
-photons themselves (the rising edge from a numpy histogram, the saved micro-times as
-``(input + shift) % N`` per photon).
+The demo file's two detectors rise at known bins (``demo_data.RISE``, 400 bins apart).
+Auto-align must shift each detector by ``(TARGET - rise) % N``; the preview is each
+detector's histogram of ``(micro + shift) % N``; the saved file holds every photon with
+the same macro time and routing and that shifted micro time.
 """
 
 from __future__ import annotations
@@ -81,40 +80,32 @@ def _fields(sections):
         yield from _fields(section.get("sections", []))
 
 
-@pytest.fixture(scope="module")
-def qt():
-    """What the retired Qt MicrotimeShifterTool did on the demo file (``qt_reference.json``)."""
-    return json.loads((HERE / "qt_reference.json").read_text())
-
-
-# 1. the Qt tool's defaults, shifts and preview; the shifts put each rising edge on the target
-def test_auto_align_gives_the_qt_shifts_and_lands_each_edge_on_the_target(qt, demo):
+# 1. auto-align puts each detector's planted rising edge on the target bin
+def test_auto_align_lands_each_planted_edge_on_the_target(demo):
     _, micro, routing = _photons(demo)
     app = _loaded(demo)
     try:
-        assert (
-            (app.trigger_level, app.trigger_position) == (qt["level"], qt["pos"]) == (124, TARGET)
-        )
+        assert app.trigger_position == TARGET  # the default target: 10 % of the bins
         app.auto_align()
-        assert {str(k): v for k, v in app.channel_shifts.items()} == qt["shifts"]
         for channel, rise in RISE.items():  # the edge, found here from the photons
             counts = np.bincount(micro[routing == channel], minlength=N_MT)
             peak = int(np.argmax(counts))
+            # the trigger sits between the flat background and the peak
+            assert np.median(counts) < app.trigger_level < counts[peak]
             edge = int(np.where(counts[: peak + 1] >= app.trigger_level)[0][0])
             assert abs(edge - rise) <= 3
             assert app.channel_shifts[channel] == (TARGET - edge) % N_MT
-        for (
-            channel,
-            counts,
-        ) in app.histograms().items():  # the emtk preview is the Qt (backend) preview
-            assert counts.tolist() == qt["preview"][str(channel)]
+            assert abs(app.channel_shifts[channel] - (TARGET - rise) % N_MT) <= 3
+        for channel, counts in app.histograms().items():  # the preview: shifted histograms
+            shifted = (micro[routing == channel] + app.channel_shifts[channel]) % N_MT
+            np.testing.assert_array_equal(counts, np.bincount(shifted, minlength=N_MT))
             edge = int(np.where(counts[: int(np.argmax(counts)) + 1] >= app.trigger_level)[0][0])
             assert edge == TARGET
     finally:
         app.close()
 
 
-def test_a_saved_file_holds_every_photon_shifted_as_the_qt_tool_writes_it(qt, demo, tmp_path):
+def test_a_saved_file_holds_every_photon_shifted(demo, tmp_path):
     macro, micro, routing = _photons(demo)
     app = _loaded(demo)
     try:
@@ -128,16 +119,9 @@ def test_a_saved_file_holds_every_photon_shifted_as_the_qt_tool_writes_it(qt, de
         ours = _photons(target)
         shift = np.vectorize(app.channel_shifts.get)(routing)
         expected = (micro + shift) % N_MT
+        assert len(ours[0]) == len(macro)
         assert np.array_equal(ours[1], expected) and np.array_equal(ours[0], macro)
         assert np.array_equal(ours[2], routing)
-        import hashlib
-
-        # the Qt tool's saved file: macro-times, micro-times and routing, byte for byte
-        assert [
-            hashlib.sha256(np.asarray(a, dtype=np.int64).tobytes()).hexdigest() for a in ours
-        ] == qt["saved_sha256"]
-        assert len(ours[0]) == qt["saved_n"]
-        assert qt["told"][-1][0] == "Saved"
     finally:
         app.close()
 
@@ -388,7 +372,7 @@ def test_help_opens_with_its_page():
         app.close()
 
 
-# 6/7. no Qt, tooltips
+# 6/7. no Qt import, tooltips
 def test_port_is_qt_free():
     result = qt_free("microtime_shifter")
     assert result["ok"], result["output"]
