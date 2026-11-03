@@ -1,8 +1,8 @@
-"""The native BVA tool at parity with the retired Qt BVATool.
+"""The native BVA tool: its run, states, companions, drawing and tooltips.
 
-Both hosts drew the same ``BurstBvaApp``; what differed is the run around it -- the Qt tool's ChiSurfProgress
-worker, result cache, stamp and auto update against the emtk ``BvaController``. The Qt worker's answers on the
-two demo burst folders were recorded (``qt_reference.json``) and are compared.
+The answer is the one planted in the demo folder (``burst_2cde.tests.demo_folder.build``):
+a static burst's proximity-ratio Std is the binomial one, sqrt(p (1 - p) / n) for n photons
+per slice, and the dynamic bursts (every fourth) spread far above it.
 """
 
 from __future__ import annotations
@@ -82,27 +82,33 @@ def _std(df):
     )
 
 
-def _qt_facts(first=None, second=None):
-    """What the retired Qt BVATool's worker returned on the two demo folders (qt_reference.json)."""
-    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
+STATUS = "Done \u2013 60 bursts with Std > 0 on 60 total"
 
 
-# 1. the Qt tool's answer, and the known one; the companions it writes
-def test_a_run_gives_the_qt_tools_bva_and_writes_the_same_companions(tmp_path):
-    qt = _qt_facts()
+def assert_planted_bva(std, photons_per_slice=10):
+    """The demo's 60 bursts: static ones at the binomial Std of their acceptor fraction
+    (0.15 for odd, 0.8 for even bursts), the dynamic ones (every fourth) far above."""
+    std = np.asarray(std, float)
+    assert std.shape == (60,) and np.isfinite(std).all()
+    index = np.arange(std.size)
+    static = index % 4 != 3
+    for parity, p in ((1, 0.15), (0, 0.8)):
+        expected = np.sqrt(p * (1 - p) / photons_per_slice)
+        assert np.median(std[static & (index % 2 == parity)]) == pytest.approx(expected, abs=0.02)
+    assert np.median(std[~static]) > 2 * np.median(std[static])
+
+
+# 1. the planted answer; the companion written beside the measurement
+def test_a_run_gives_the_planted_bva_and_writes_one_companion(tmp_path):
     ours_a = build(tmp_path / "a")
     app = _app(ours_a)
     try:
         app.controller.run()
         _settle(app)
-        std = _std(app.model.df)
-        assert std == pytest.approx(np.asarray(qt["first"]), nan_ok=True)
-        assert sorted(p.name for p in ours_a.parent.glob("*.pto")) == qt["companions"]
-        assert qt["companions"] == ["m000.pto"] and not (ours_a / "bv4").exists()
-        assert app.model.status_text == qt["status"]
-        index = np.arange(len(std))
-        # dynamic bursts (every 4th) spread far above the static ones
-        assert np.nanmedian(std[index % 4 == 3]) > 2 * np.nanmedian(std[index % 4 != 3])
+        assert_planted_bva(_std(app.model.df), app.model.photons_per_slice)
+        assert sorted(p.name for p in ours_a.parent.glob("*.pto")) == ["m000.pto"]
+        assert not (ours_a / "bv4").exists()
+        assert app.model.status_text == STATUS
     finally:
         app.close()
 
@@ -127,11 +133,9 @@ def test_a_new_folder_is_computed_on_its_own_bursts(tmp_path):
         assert _std(app.model.df) == pytest.approx(expected, nan_ok=True)
     finally:
         app.close()
-    qt = _qt_facts()
-    assert np.asarray(qt["second"]) == pytest.approx(expected, nan_ok=True)  # the Qt tool too
 
 
-# 2. the run's states, as the Qt tool's
+# 2. the run's states
 def test_auto_update_recomputes_without_writing_and_run_writes(folder, monkeypatch):
     reads = []
     original = core.read_burst_analysis

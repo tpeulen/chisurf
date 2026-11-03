@@ -2,8 +2,8 @@
 
 The GUIs keep the burst table they read and recompute on it after a parameter
 change; when compute_bva appended its columns in place, that second run failed
-("both stores have a column 'Proximity Ratio Mean'") in both the Qt tool's auto
-update and the emtk controller.
+("both stores have a column 'Proximity Ratio Mean'") in the controller's auto
+update.
 """
 
 from __future__ import annotations

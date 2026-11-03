@@ -20,7 +20,7 @@ from chisurf.plugins.burst.burst_bva.core import computation as core
 from chisurf.plugins.burst.burst_bva.gui.app import create_app
 from chisurf.plugins.emtk_layout import help_close_caption
 
-from .test_emtk_bva_parity import _qt_facts, _std
+from .test_emtk_bva_app import STATUS, _std, assert_planted_bva
 
 SIZE = (1200, 800)
 SMALL = (800, 600)
@@ -172,20 +172,17 @@ def tab(app, name, size=SIZE):
 # -- the action row --------------------------------------------------------------------------------------------- #
 
 
-def test_run_click_computes_bva_as_the_qt_tool_did_and_writes_the_companions(
-    app, measurement, tmp_path
-):
-    """Folder typed into its field, Run clicked: the per-burst Std equals the Qt tool's on the same folder."""
-    qt = _qt_facts(build(tmp_path / "qt_a"), build(tmp_path / "qt_b", seed=9))
-    app.model.set_folder(measurement)  # the legacy folder the Qt tool read (the API keeps paths)
+def test_run_click_computes_the_planted_bva_and_writes_the_companion(app, measurement):
+    """Folder typed into its field, Run clicked: the per-burst Std is the demo's planted one."""
+    app.model.set_folder(measurement)  # a burst folder by path (the API keeps paths)
     assert app.model.analysis_folder == measurement
     press(app, "run")
     assert app.model.is_running and "Reading burst data …" in draw(app).strings
     settle(app)
-    assert _std(app.model.df) == pytest.approx(np.asarray(qt["first"]), nan_ok=True)
-    assert app.model.status_text == qt["status"]
-    assert "Done – 60 bursts with Std > 0 on 60 total" in draw(app).strings
-    assert sorted(p.name for p in measurement.parent.glob("*.pto")) == qt["companions"]
+    assert_planted_bva(_std(app.model.df), app.model.photons_per_slice)
+    assert app.model.status_text == STATUS
+    assert STATUS in draw(app).strings
+    assert sorted(p.name for p in measurement.parent.glob("*.pto")) == ["m000.pto"]
 
 
 def test_run_without_a_folder_says_so_in_the_window(app):
@@ -420,7 +417,7 @@ def test_each_number_field_takes_a_typed_value_and_draws_it(app, name, start, ty
         ("bins_y", 10, 500),
     ],
 )
-def test_a_typed_value_stops_at_the_range_limits_of_the_qt_tool(app, name, low, high):
+def test_a_typed_value_stops_at_the_field_range_limits(app, name, low, high):
     type_number(app, name, 0)
     assert getattr(app.model, name) == pytest.approx(low)
     type_number(app, name, 100000)

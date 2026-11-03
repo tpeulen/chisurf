@@ -1,6 +1,6 @@
 """Toolkit-free BVA execution; rendering owns polling on the UI thread.
 
-The same run as the Qt tool's (``gui/tool.py``): an explicit Run or Restart forgets
+An explicit Run or Restart forgets
 an earlier Stop and writes the result into the measurement containers; an auto-update after a parameter
 change recomputes without writing; the burst table read once is reused until the
 folder or file type changes; an unchanged run is kept and points at Restart.
@@ -45,7 +45,7 @@ class BvaController:
         model.add_observer(self._changed)
 
     def _changed(self, event):
-        """The Qt tool's auto update: recompute on a parameter change, without writing."""
+        """Auto update: recompute on a parameter change, without writing."""
         if event in ("param", "channel", "folder", "file_type") and self.model.auto_update:
             if self.model.is_running:
                 self._pending = True
@@ -139,7 +139,7 @@ class BvaController:
                 )
             except InterruptedError:
                 raise
-            except Exception as exc:  # the result stands, as in the Qt tool
+            except Exception as exc:  # the result stands; say why nothing was written
                 logger.error("BVA write failed: %s", exc)
                 note = f" (could not write the BVA result: {exc})"
             analysis_cache.write_stamp(
@@ -184,7 +184,7 @@ class BvaController:
                 self.run(write_output=False, explicit=False)
 
     def clear(self):
-        """Clear the plot (the Qt tool's Clear)."""
+        """Clear the plot."""
         self.stop()
         self._pending = False
         self._cache.invalidate()
@@ -210,7 +210,7 @@ class BvaController:
             self.model.data_folder = self.model.analysis_folder = Path(values["last_folder"])
 
     def save_settings(self):
-        """Save the current settings as the defaults (the Qt tool's INI, same keys)."""
+        """Save the current settings as the defaults (the plugin's INI)."""
         import configparser
 
         config = configparser.ConfigParser()
@@ -227,7 +227,7 @@ class BvaController:
 
     # -- save plot ----------------------------------------------------------- #
     def write_window_png(self, app, path, size):
-        """Write a picture of the window to *path* (the Qt tool saved a grab of its host)."""
+        """Write a picture of the window to *path*."""
         from emtk.export import save_png
 
         try:
@@ -263,7 +263,7 @@ class BvaController:
             self.dialog = None
 
     def set_folder(self, path):
-        """Take a burst folder or container as the input (auto update recomputes, as in Qt)."""
+        """Take a burst folder or container as the input (auto update recomputes)."""
         from chisurf.core.fio.fluorescence import burst_tree
 
         p = Path(path)

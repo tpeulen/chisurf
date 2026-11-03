@@ -1,4 +1,4 @@
-"""Action parity for the EMTK controls replacing the hidden Qt toolbar."""
+"""Clear, save, defaults and picture: each action has an emtk control."""
 
 from unittest.mock import patch
 
@@ -139,7 +139,7 @@ def test_native_defaults_restore_and_png_export(tmp_path):
 
         app = create_app()
         try:
-            ctrl.write_window_png(app, png, (640, 480))  # a picture of the window, as the Qt grab
+            ctrl.write_window_png(app, png, (640, 480))  # a picture of the window
         finally:
             app.close()
         assert png.read_bytes().startswith(b"\x89PNG")

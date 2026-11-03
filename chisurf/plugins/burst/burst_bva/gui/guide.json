@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour for Burst Variance Analysis. The tool is hand-built Qt around a DockArea, so steps target the shared action buttons by objectName suffix ({'name': 'run'} finds toolAction_run) and the dock pages by tab title. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "_comment": "Guided tour for Burst Variance Analysis. Steps target the action buttons by name ({'name': 'run'}) and the plot pages by title. Read by chisurf.emtk.help_guide.EmTkGuidedTour.",
   "steps": [
     {
       "title": "Compared against shot noise, never against zero",
