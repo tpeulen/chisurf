@@ -28,8 +28,8 @@ tests with them; the parity files that held new oracles are renamed `test_emtk_<
 inventory, `qt_free`, tooltip helpers; ~190 importers), `test/fluorescence/*_parity*.py`,
 `test/math/test_hmm_lattice_parity.py`, `test/ml/test_parity.py`, chimol `web_parity` / `wgsl_parity`, flc_2d
 `test_fdc_parity.py`. The slice notes below that cite `KNOWN_GAPS` and the `shell_s*_qt_inventory.json` files are
-history: those tests and recordings are gone. Open: `burst_bva` (rewrite in the working tree, waits on another
-lane's uncommitted `tests/test_emtk_bva_clicks.py`); Qt wording in files other lanes hold uncommitted (trace_browser
+history: those tests and recordings are gone. `burst_bva` landed as 19cf6c55f and the burst_selection / burst_h2mm model wording as b87f60fc6
+(Qt hunks only; the other lanes' edits in those files stay uncommitted). Open: Qt wording in files other lanes hold uncommitted (trace_browser
 `gui/app.py`, burst_2cde `gui/`, fcs_filter_calculator `gui/`, `imaging_emtk/pixel_model.py`, img_coloc
 `gui/model.py`, and the coloc tooltip in the `.ts` catalogues); ~20 `visual-verdict.json` outside the touched
 plugins. `test/test_no_qt_imports.py` is red on `chisurf/plugins/core/acq/live/cmc_light/gui.py:2391` (`run()`
