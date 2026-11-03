@@ -96,27 +96,8 @@ STAMP = "2026-09-01T10:00:00"
 CAL = {"G|G": (1.7, 0.1, 0.2), "R|G": (0.9, 0.3, 0.4)}
 
 
-def new_names(record):
-    """A frozen record of the retired Qt tool (historic detector names green / red / yellow) under
-    the detector names the tool stores now (G|G / R|G / R|R): keys, values and channel names
-    ``<window>_<detector>``."""
-    from chisurf.core.fluorescence import detector_names as dn
-
-    def name(text):
-        window, _, detector = text.rpartition("_")
-        if window and detector in dn.LEGACY:
-            return f"{window}_{dn.LEGACY[detector]}"
-        return dn.LEGACY.get(text, text)
-
-    if isinstance(record, dict):
-        return {name(k) if isinstance(k, str) else k: new_names(v) for k, v in record.items()}
-    if isinstance(record, list):
-        return [new_names(v) for v in record]
-    return name(record) if isinstance(record, str) else record
-
-
 def norm(setup):
-    """The fields both implementations store, in one comparable shape."""
+    """The fields a stored setup holds, in one comparable shape."""
     reading = setup.get("tttr_reading", {})
     return {
         "windows": {k: [int(a) for a in v] for k, v in sorted(setup.get("windows", {}).items())},

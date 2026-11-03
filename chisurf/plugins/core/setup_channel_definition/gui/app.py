@@ -1,6 +1,6 @@
 """Native emtk Setup:Channel Definition tool.
 
-One window with the page of the Qt tool: the shared editor
+One window holding the shared editor
 :class:`chisurf.emtk.channel_definition.ChannelDefinitionWidget` (Setup row, TTTR Reading routine, PIE Windows,
 Detectors, LUT handling, Optical Setup) under a thin strip with the host's Guide and Help buttons. The editor,
 its Setup row (:class:`~chisurf.emtk.channel_setup_bar.SetupToolbar`), its tables and its floating windows are the
@@ -75,8 +75,8 @@ class SetupChannelDefinitionApp(ImApp):
         self.page.on_used = self.tour.notify_used
         self.docks = DockManager(Region("setup"), name="setup_channel_definition")
         self.docks.add_window("setup", TITLE, self._draw_window, dock="setup", closable=False)
-        #: The Qt tool lists the saved setups when it opens and opens the last used one; so does this one, on its
-        #: first frame (the last used one only when it was not given a definition to show).
+        #: The tool lists the saved setups when it opens and opens the last used one, on its first frame (the last
+        #: used one only when it was not given a definition to show).
         self.autoload = autoload
         self.open_last_used = fresh if open_last_used is None else open_last_used
         super().__init__(gui=self._render, continuous=True)
@@ -118,7 +118,7 @@ class SetupChannelDefinitionApp(ImApp):
         self.page.draw()
 
     def _draw_strip(self) -> None:
-        """The host's Guide and Help buttons, at the right above the page (as the Qt settings window has them)."""
+        """The host's Guide and Help buttons, at the right above the page."""
         if not self.page.is_visible("help"):
             return
         width = (

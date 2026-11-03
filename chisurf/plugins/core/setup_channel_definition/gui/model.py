@@ -2,7 +2,7 @@
 
 The page is the shared :class:`chisurf.emtk.channel_definition.ChannelDefinitionWidget`; the state of its Setup
 row (Save, Rename, Delete, Public, Calibration and their prompts) is :class:`~chisurf.emtk.channel_setup_bar.SetupToolbar`,
-re-exported here. What a fresh tool shows is :data:`DEFAULT_SETTINGS`, as in the Qt tool.
+re-exported here. What a fresh tool shows is :data:`DEFAULT_SETTINGS`.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from chisurf.emtk.channel_setup_bar import (
     SetupToolbar,
 )
 
-#: What a fresh tool shows, as in the Qt tool: three detectors (G|G, R|G, R|R), two PIE windows, SPC-130 timing.
+#: What a fresh tool shows: three detectors (G|G, R|G, R|R), two PIE windows, SPC-130 timing.
 DEFAULT_SETTINGS: dict[str, Any] = {
     "windows": {"prompt": [0, 2048], "delayed": [2048, 4095]},
     "detectors": {

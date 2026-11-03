@@ -1,9 +1,8 @@
-"""Run the emtk toolbar through the setup workflow, MMFDB mode, next to the frozen Qt observations.
+"""Run the emtk toolbar through the setup workflow in MMFDB mode.
 
-Run as ``python reference.py <tmp_dir>``; the environment is
-pointed at the temporary folder *before* anything of ChiSurf is imported, so neither the user's
-settings, their MMFDB nor their keyring is touched. Prints one JSON document with, for each of
-the two implementations, the stored setups after every step. The test compares the two halves.
+Run as ``python mmfdb_session.py <tmp_dir>``; the environment is pointed at the temporary folder
+*before* anything of ChiSurf is imported, so neither the user's settings, their MMFDB nor their
+keyring is touched. Prints one JSON document with the stored setups after every step.
 """
 
 import json
@@ -17,13 +16,12 @@ os.environ["CHISURF_SETTINGS_DIR"] = str(tmp / "settings")
 os.environ["MMFDB_SETTINGS_DIR"] = str(tmp / "mmfdb")
 (tmp / "settings").mkdir(parents=True, exist_ok=True)
 (tmp / "mmfdb").mkdir(parents=True, exist_ok=True)
-QT_DB, EMTK_DB = str(tmp / "qt.sqlite"), str(tmp / "emtk.sqlite")
+EMTK_DB = str(tmp / "emtk.sqlite")
 
 from chisurf.plugins.core.setup_channel_definition.test.driver import (  # noqa: E402
     CAL,
     DATA,
     STAMP,
-    new_names,
     norm,
 )
 
@@ -82,15 +80,6 @@ def add_calibration(db_path, name):
     db.close()
 
 
-def run_qt():
-    """Return the immutable original Qt/MMFDB observations with their independent provenance."""
-    fixture = new_names(
-        json.loads((Path(__file__).parent / "fixtures/detector_page_legacy.json").read_text())
-    )
-    assert fixture["provenance"]["normal_exit"] is True
-    return fixture["mmfdb_qt"]
-
-
 def run_emtk():
     from mmfdb.repository import MFDatabase
 
@@ -143,4 +132,4 @@ def run_emtk():
 
 
 if __name__ == "__main__":
-    print("RESULT " + json.dumps({"qt": run_qt(), "emtk": run_emtk()}))
+    print("RESULT " + json.dumps(run_emtk()))

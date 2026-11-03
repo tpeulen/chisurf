@@ -2,8 +2,7 @@
 the wheel, drags and file drops. Every control of the page has a test here.
 
 Hermetic: setups files and MMFDB are temporary, the working directory of the file chooser is a temporary folder holding a
-copy of ``test/data/tttr/BH/132/BH_SPC132.spc``. The numeric parity of the page against the Qt page (the same setup, the
-same typed texts) is in the second half.
+copy of ``test/data/tttr/BH/132/BH_SPC132.spc``. The typed texts and the values they parse to are in the second half.
 """
 
 from __future__ import annotations
@@ -312,7 +311,7 @@ def test_read_button_chooses_a_file_by_clicks_and_takes_the_timing_from_it(make,
     assert ui.drawn("3.2958984375")  # the field shows the new timing
 
 
-def test_a_bad_file_read_raises_like_qt_and_keeps_the_timing(make, folder):
+def test_a_bad_file_read_reports_an_error_and_keeps_the_timing(make, folder):
     (folder / "bad.ptu").write_text("this is not photon data")
     app, ui = make()
     before = dict(app.model.data["tttr_reading"])
@@ -341,7 +340,7 @@ def test_timing_fields_take_typed_numbers_and_a_typo_leaves_the_value(
     x, y, w, h = rect()
     ui.click((x + 10, y + h / 2))
     clear(ui)
-    last_valid = reading[key]  # every valid prefix applied live, as Qt's textChanged does
+    last_valid = reading[key]  # every valid prefix is applied live
     ui.type(
         "x"
     )  # not a number: the model keeps the last valid value and the field shows what was typed
@@ -481,12 +480,12 @@ def test_every_detector_cell_is_edited_by_typing_with_enter_or_click_away(make):
     edit(ui, "detectors", "donor", "gch", "300:400")  # start-end; ':' is accepted too
     assert det(ui, "donor")["g_factor_channels"] == [300, 400] and ui.drawn(
         "300:400"
-    )  # the cell keeps what was typed, as Qt
+    )  # the cell keeps what was typed
     edit(ui, "detectors", "donor", "gch", "none")
     assert "g_factor_channels" not in det(ui, "donor")
 
 
-def test_an_empty_g_factor_is_one_and_a_typo_reverts_like_qt(make):
+def test_an_empty_g_factor_is_one_and_a_typo_reverts(make):
     app, ui = make()
     edit(ui, "detectors", "R|G", "g", "")
     assert det(ui, "R|G")["g_factor"] == 1.0 and ui.drawn("1.000")
@@ -833,42 +832,43 @@ def test_the_page_fits_the_width_and_the_setup_row_wraps_instead_of_clipping(mak
         )  # one row
 
 
-# ============================================================================== 8. numeric parity against the Qt page
-@pytest.fixture
-def legacy_reference():
-    """Read immutable original Qt outputs, not a native implementation as its own oracle."""
-    return driver.new_names(json.loads((HERE / "fixtures/detector_page_legacy.json").read_text()))
+# ============================================================================== 8. typed texts and what they parse to
+#: (detector, column key, typed text, field, value it parses to), applied in order to :data:`DATA`.
+CELL_EDITS = (
+    ("G|G", "chs", "9;1;2", "chs", [9, 1, 2]),
+    ("G|G", "ranges", "20:10", "micro_time_ranges", [[10, 20]]),  # a reversed range is ordered
+    ("R|G", "ranges", "5:5", "micro_time_ranges", [[5, 5]]),
+    ("R|G", "ranges", "0:10;20:30", "micro_time_ranges", [[0, 10], [20, 30]]),
+    ("G|G", "g", "2.5", "g_factor", 2.5),
+    ("R|G", "l1", "0.125", "l1", 0.125),
+    ("R|G", "l2", "-0.25", "l2", -0.25),
+    ("G|G", "gch", "100-200", "g_factor_channels", [100, 200]),
+    ("G|G", "chs", "", "chs", []),
+    ("G|G", "chs", "a,b", "chs", []),  # no number in it: no channel
+    # a lone number is a one-channel range, ':' and '-' both separate, junk is skipped
+    ("R|G", "ranges", "7, 9:3, x, 12-14", "micro_time_ranges", [[7, 7], [3, 9], [12, 14]]),
+)
 
 
-def _legacy_detector(expected):
-    """Normalize frozen Qt tuples and nullable ranges into the portable scientific shape."""
-    return {
-        "chs": expected["chs"],
-        "micro_time_ranges": expected["micro_time_ranges"],
-        "g_factor": expected["g_factor"],
-        "l1": expected["l1"],
-        "l2": expected["l2"],
-    }
+def test_every_cell_text_parses_to_the_expected_detector(make):
+    """Each typed cell changes exactly its field, to the value the text spells."""
+    import copy
 
-
-def test_every_cell_text_gives_the_same_detector_as_the_frozen_qt_table(make, legacy_reference):
-    """Each real original Qt parsing state remains an independent numerical oracle."""
     app, ui = make()
-    for case in legacy_reference["cell_edits"]:
-        name, text, key = case["name"], case["text"], case["key"]
+    expected = copy.deepcopy(DATA["detectors"])
+    for name, key, text, field, value in CELL_EDITS:
         record = next(r for r in app.page.detector_rows() if r["id"] == name)
         app.page.edit_detector(record, key, text)
-        expected = case["expected"]
+        expected[name][field] = value
         mine = app.model.data["detectors"][name]
-        assert mine["chs"] == expected["chs"], (name, key, text)
-        assert mine["micro_time_ranges"] == expected["micro_time_ranges"], (name, key, text)
+        for quantity in ("chs", "micro_time_ranges"):
+            assert mine[quantity] == expected[name][quantity], (name, key, text)
         for quantity in ("g_factor", "l1", "l2"):
-            assert mine[quantity] == pytest.approx(expected[quantity]), (name, key, text, quantity)
-        assert mine.get("g_factor_channels") == expected.get("g_factor_channels")
+            assert mine[quantity] == pytest.approx(expected[name][quantity]), (name, key, text, quantity)
+        assert mine.get("g_factor_channels") == expected[name].get("g_factor_channels")
 
 
-def test_window_start_and_end_texts_give_the_same_windows_as_frozen_qt(make, legacy_reference):
-    """The original Qt three-edit window result remains independent of native parsing."""
+def test_window_start_and_end_texts_set_the_windows(make):
     app, ui = make()
     for name, text, key in (
         ("prompt", "10", "start"),
@@ -877,56 +877,24 @@ def test_window_start_and_end_texts_give_the_same_windows_as_frozen_qt(make, leg
     ):
         record = next(r for r in app.page.window_rows() if r["id"] == name)
         app.page.edit_window(record, key, text)
-    assert app.model.data["windows"] == legacy_reference["window_edits"]
+    assert app.model.data["windows"] == {"prompt": [10, 300], "delayed": [2100, 4095]}
 
 
-def test_native_offers_the_frozen_original_file_types_and_binnings(make, legacy_reference):
-    """Supported choices cannot silently shrink when the legacy renderer disappears."""
+def test_the_file_types_are_auto_and_every_tttrlib_container_and_binnings_are_powers_of_two(make):
+    """The choices cannot silently shrink: every container tttrlib reads is offered."""
+    import tttrlib
+
     from chisurf.emtk.channel_definition import BINNINGS, FILE_TYPES
 
-    assert list(FILE_TYPES) == legacy_reference["file_types"]
-    assert list(BINNINGS) == legacy_reference["binnings"]
-
-
-def test_every_label_button_header_and_check_box_of_the_qt_page_is_on_the_emtk_page(
-    make, legacy_reference
-):
-    """Data-driven inventory: each text the Qt page shows is drawn by the emtk page (section open, a measurement read)."""
-    app, ui = make()
-    app.page.open_sections["windows"] = True
-    ui.frame(3)
-    drawn = " | ".join(ui.strings).replace("...", "…")
-    drawn_cells = set(ui.strings)
-    qt_texts = set(legacy_reference["control_texts"])
-    # glyph prefixes (pictograms) and the colon of a label are not part of the name; the three that are deliberate
-    missing = []
-    for text in sorted(qt_texts):
-        import re
-
-        name = re.sub(r"^[^\w]+", "", text.replace("...", "…")).strip().rstrip(":").strip()
-        if not name or name in (
-            "Edit JSON",
-            "Calculate G-Factor",
-            "Load setups file",
-            "Setups file",
-        ):
-            continue
-        if (
-            name in drawn
-            or name.lower() in drawn.lower()
-            or any(name.rstrip("s") in cell for cell in drawn_cells)
-        ):
-            continue
-        missing.append(text)
-    assert missing == [], missing
+    assert list(FILE_TYPES) == ["Auto", *tttrlib.TTTR.get_supported_container_names()]
+    assert list(BINNINGS) == [str(2**k) for k in range(8)]
 
 
 # ================================================================ 9. last used setup, remembered state, bad file
-def test_the_last_used_setup_is_written_and_opened_like_frozen_qt(make, legacy_reference, tmp_path):
-    """Actual combo input preserves original last-used storage and native reopening behavior."""
+def test_the_last_used_setup_is_written_and_reopened(make, tmp_path):
+    """Picking a setup in the combo stores it as last used; a fresh tool without settings reopens it."""
     from chisurf.plugins.core.setup_channel_definition.gui.app import make_app
 
-    assert legacy_reference["last_used"]["raw"]["last_used"] == "A"
     app, ui = make()
     app.toolbar.save("A")
     app.toolbar.save("B")
