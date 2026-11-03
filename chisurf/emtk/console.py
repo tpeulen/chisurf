@@ -5,9 +5,8 @@ The emtk shell's Console dock hosts the Terminal app
 carries the dock's ``?`` and *Guide*.
 
 The console is the Qt-free engine :mod:`chisurf.core.console` (the interpreter, magics, completion,
-history and output capture that chinsole draws in the Qt shell) under an emtk view. What it does is
-what the Qt console does, behaviour for behaviour (the parity test drives both with the same keys,
-``test/native_emtk/test_emtk_shell_console.py`` against ``shell_s4_qt_inventory.json``):
+history and output capture) under an emtk view. Its behaviours are driven with keys in
+``test/native_emtk/test_emtk_shell_console.py``:
 
 * **Run**: Enter runs the input when it is a complete statement and opens an indented continuation
   line when it is not (``for x in y:``); a blank continuation line ends a block. Shift+Enter always

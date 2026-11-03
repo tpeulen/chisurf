@@ -234,10 +234,10 @@ The loop:
    different width reflows the layout and confounds the comparison.
 3. Diff the control inventories, read both PNGs, and accept only on parity.
 
-`test/gui/migration_parity.py` provides the pieces: `capture(widget, name, phase)`
-writes `<name>.{before,after}.png`; `control_inventory` extracts the comparable
-content; `compare_inventories` reports what was lost or gained; `layout_tripwire`
-catches gross failures.
+`test/gui/emtk_port_parity.py` provides the pieces for an emtk window:
+`emtk_inventory(app, size)` extracts the comparable controls and `emtk_screenshot`
+writes the PNG; diff the two inventories of the before and after window. (The Qt
+capture helpers, `test/gui/migration_parity.py`, went with the Qt tools on 2026-11-03.)
 
 **Parity is control inventory, not pixels.** An AutoForm port *deliberately*
 changes layout — a `parameter_group_table` replaces stacked labelled rows,

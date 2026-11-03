@@ -20,9 +20,21 @@ work that led up to it; item 9 is the current S6 measurement and "Merge into mct
 a recording of the retired Qt tool (`qt_reference.json`, `qt_values.json`, `QT_FACTS`, `*_parity.py`) is
 replaced by an oracle known by construction (a demo with a planted answer, the input table, the header) or
 dropped; wording that explains code by what the Qt tool did is rewritten to say what the code does; a
-guard that no Qt module is imported stays. Done: `burst_mle_analysis`, `irf_estimator`, `burst_irf_bg`
-(2026-11-03). Open: `find chisurf -name "*parity*.py"` lists the remaining test files (87 on 2026-11-03);
-`find chisurf -name "qt_reference.json" -o -name "qt_values.json"` the recordings (71).
+guard that no Qt module is imported stays. Done repo-wide on 2026-11-03: every `qt_reference.json`,
+`qt_values.json`, `qt_*.csv`, `*_qt_inventory.json`, Qt `renders/qt/` capture and `visual-verdict` judged
+against one is deleted, `test/gui/migration_parity.py` and the shell `*_whole_parity` / `settings_feature_parity`
+tests with them; the parity files that held new oracles are renamed `test_emtk_<x>[_app|_clicks].py`. The
+`*parity*.py` names left compare two live implementations and stay: `test/gui/emtk_port_parity.py` (emtk
+inventory, `qt_free`, tooltip helpers; ~190 importers), `test/fluorescence/*_parity*.py`,
+`test/math/test_hmm_lattice_parity.py`, `test/ml/test_parity.py`, chimol `web_parity` / `wgsl_parity`, flc_2d
+`test_fdc_parity.py`. The slice notes below that cite `KNOWN_GAPS` and the `shell_s*_qt_inventory.json` files are
+history: those tests and recordings are gone. Open: `burst_bva` (rewrite in the working tree, waits on another
+lane's uncommitted `tests/test_emtk_bva_clicks.py`); Qt wording in files other lanes hold uncommitted (trace_browser
+`gui/app.py`, burst_2cde `gui/`, fcs_filter_calculator `gui/`, `imaging_emtk/pixel_model.py`, img_coloc
+`gui/model.py`, and the coloc tooltip in the `.ts` catalogues); ~20 `visual-verdict.json` outside the touched
+plugins. `test/test_no_qt_imports.py` is red on `chisurf/plugins/core/acq/live/cmc_light/gui.py:2391` (`run()`
+hosts the emtk app in `emtk.qt_host.ControlHost` via qtpy). That directory is untracked, another lane's import of
+the CMC laser app; its `run()` has to open the emtk shell's own window instead before it is committed.
 
 **Migration evidence removed (owner, 2026-10-20: the migration is finished).** `okf/validation/`
 (~700 MB of release-readiness receipts, zips, PNGs) and `okf/plugins/emtk-ports/` (~260 MB: per-port
