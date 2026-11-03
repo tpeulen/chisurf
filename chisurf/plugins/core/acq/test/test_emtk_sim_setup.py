@@ -80,8 +80,8 @@ def PhotonDecoderRecord() -> int:
     return PipelineConfig().record_type
 
 
-def test_every_control_group_of_the_qt_dialog_is_present(drv):
-    """The control inventory of the Qt dialog, reachable in the emtk one."""
+def test_every_control_group_of_the_dialog_is_present(drv):
+    """Every control group of the simulation setup dialog is drawn and reachable."""
     rects = drv.app.item_rects
     for name in (
         # Acquisition
@@ -131,7 +131,7 @@ def test_every_control_group_of_the_qt_dialog_is_present(drv):
         "sim_cancel",
     ):
         assert name in rects, f"{name} is not drawn"
-    # Kinetics sits in a fold that starts closed, as in the Qt dialog; opening it shows both grids.
+    # Kinetics sits in a fold that starts closed; opening it shows both grids.
     drv.click("Kinetics.fold")
     drv.draw(2)
     assert "k_rad_table.rows" in drv.app.item_rects and "k_nrad_table.rows" in drv.app.item_rects

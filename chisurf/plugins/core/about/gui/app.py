@@ -1,4 +1,4 @@
-"""About ChiSurf using the same identity content and logo as the Qt dialog."""
+"""About ChiSurf: the version, licence, identity text and logo of the installed ChiSurf."""
 
 import json
 from pathlib import Path

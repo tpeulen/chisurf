@@ -168,7 +168,7 @@ PANELS = [
 ]
 
 
-#: The one destination that edits a settings file itself (the Qt tool's own ``SettingsEditor``).
+#: The one destination that edits a settings file itself (the settings editor, not another plugin).
 FILE_EDITOR = "chisurf"
 DEFAULT_PANEL = "boarding"
 
@@ -190,7 +190,7 @@ def resolve_factory(panel):
 
 
 def visible_panels(panels, query):
-    """The destinations whose name contains *query* (case-insensitive), as the Qt navigation filters them."""
+    """The destinations whose name contains *query* (case-insensitive)."""
     query = (query or "").strip().casefold()
     return [p for p in panels if not query or query in p.label.casefold()]
 
@@ -208,7 +208,7 @@ class SettingsDocument:
     """A YAML/JSON document with validated atomic saves.
 
     With ``merge_defaults`` the main settings file is shown as the application loads it (packaged defaults under the
-    user's values, as the Qt editor does) and a save writes only what differs from the defaults.
+    user's values) and a save writes only what differs from the defaults.
     """
 
     def __init__(self, path, merge_defaults=False):
