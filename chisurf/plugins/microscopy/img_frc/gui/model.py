@@ -1,6 +1,6 @@
 """Qt-free model of the emtk FRC window.
 
-The measurement is :class:`~.view_model.FrcViewModel` (unchanged, shared with the Qt tool); this adds the action methods the spec's buttons
+The measurement is :class:`~.view_model.FrcViewModel` ; this adds the action methods the spec's buttons
 call, a status line, the file-dialog requests, the worker hand-off and the imaging hub's adapters running off the draw thread.
 """
 
@@ -16,7 +16,7 @@ from ...imaging_emtk.model_base import EmtkModelMixin
 from .. import core as _core
 from .view_model import FrcViewModel
 
-#: Files the Browse dialogs list (the Qt data-source field's filter).
+#: Files the Browse dialogs list.
 IMAGE_FILE_FILTER = (
     "Images and photon streams (*.pto *.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)"
 )
@@ -59,8 +59,7 @@ class FrcModel(WindowsPreflightMixin, EmtkModelMixin, FrcViewModel):
     def second_channel_options(self) -> list[tuple[str, str]]:
         """The channel names, and first of all "next channel": what the measurement uses while none is chosen.
 
-        The Qt combo offered only the names, so an unset second channel showed the first name while the measurement used the channel after the
-        first one.
+        Without that entry an unset second channel would show the first name while the measurement uses the channel after the first one.
         """
         return [("", "next channel")] + [(name, name) for name in self.channel_names]
 
@@ -82,7 +81,7 @@ class FrcModel(WindowsPreflightMixin, EmtkModelMixin, FrcViewModel):
         self.request_dialog("database_second")
 
     def open_path(self, path: str) -> None:
-        """Select *path* as the acquisition: read its channels on the worker (choosing a file does not measure, as in the Qt tool)."""
+        """Select *path* as the acquisition: read its channels on the worker (choosing a file does not measure)."""
         if not path:
             return
         self.remember_folder(path)
@@ -151,7 +150,7 @@ class FrcModel(WindowsPreflightMixin, EmtkModelMixin, FrcViewModel):
 
     # -- measuring --------------------------------------------------------------- #
     def measure(self) -> None:
-        """Correlate the two halves and read the resolution off the crossing (the Qt Measure)."""
+        """Correlate the two halves and read the resolution off the crossing."""
         if not self.filename:
             self.status_line = self.status or "No image loaded."
             return
@@ -159,7 +158,7 @@ class FrcModel(WindowsPreflightMixin, EmtkModelMixin, FrcViewModel):
         self.run_job("compute_job")
 
     def compute_job(self) -> None:
-        """The worker body: measure; the status line carries the model's own message (the Qt bar said only "Measurement failed")."""
+        """The worker body: measure; the status line carries the model's own message, not a bare "Measurement failed"."""
         ok = bool(self.compute(progress=self._progress))
         self.status_line = self.status
         if ok:
@@ -169,7 +168,7 @@ class FrcModel(WindowsPreflightMixin, EmtkModelMixin, FrcViewModel):
 
     # -- export -------------------------------------------------------------------- #
     def request_export(self) -> None:
-        """Choose where to write the curve (the Qt Export CSV)."""
+        """Choose where to write the curve."""
         if self.result is None:
             self.status_line = "Nothing to export yet"
             return
@@ -189,7 +188,7 @@ class FrcModel(WindowsPreflightMixin, EmtkModelMixin, FrcViewModel):
 
     # -- sources named by the emtk spec ---------------------------------------------- #
     def ring_table_rows(self) -> list[dict]:
-        """The ring table with numbers (the Qt table held strings), so a header click sorts by value."""
+        """The ring table with numbers, so a header click sorts by value."""
         result = self._result
         if result is None:
             return []

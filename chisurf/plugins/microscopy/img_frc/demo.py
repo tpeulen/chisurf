@@ -37,7 +37,7 @@ def make_demo(folder: Path | None = None, *, overwrite: bool = False) -> Path:
 
 
 def load_into(app) -> Path:
-    """Load the example, then measure (the Qt tool measured only on demand)."""
+    """Load the example, then measure (loading alone does not measure)."""
     import time
 
     path = make_demo()

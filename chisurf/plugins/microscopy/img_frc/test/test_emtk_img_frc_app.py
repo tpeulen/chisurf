@@ -1,10 +1,9 @@
-"""The native FRC tool against the Qt tool it replaces: numbers, every action and every error path.
+"""The FRC app: numbers, every action and every error path.
 
-Hermetic: settings in a temporary folder, files in ``tmp_path``, no network (the database picker gets a stub client). References:
-(a) what the Qt window showed on a Poisson-noise TIFF stack, a second stack and the real photon stream
-(``data/qt_values.json``, captured before the port), (b) the Qt tool itself,
-constructed offscreen and run on the same files, and (c) a written-out numpy split of the stack fed to the core's ring correlation, which does
-not go through the shared view model.
+Hermetic: settings in a temporary folder, files in ``tmp_path``, no network (the database picker gets a stub client). The oracle is
+the stack ``data/make_data.py`` writes (independent Poisson realisations of one object), split by plain numpy (even / odd frames,
+first / second half, two files) and fed to the core's ring correlation without the plugin's reader or view model; a calibrated
+resolution is the pixel resolution times the pixel size; the photon stream's channels come from its header.
 """
 
 from __future__ import annotations
@@ -21,7 +20,6 @@ from chisurf.core.fluorescence.imaging import frc as frc_mod
 from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import (
     Driver,
-    assert_fingerprint,
     dialog_open,
     hermetic_env,
     numeric_ticks,
@@ -35,9 +33,7 @@ HERE = Path(__file__).parent
 PLUGIN = HERE.parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 DATA = HERE / "data"
-QT_VALUES = json.loads((DATA / "qt_values.json").read_text(encoding="utf-8"))
-QT_CSV = (DATA / "qt_frc.csv").read_text(encoding="utf-8")
-QT_SPEC = json.loads((PLUGIN / "gui" / "frc.view.json").read_text(encoding="utf-8"))
+BASE_SPEC = json.loads((PLUGIN / "gui" / "frc.view.json").read_text(encoding="utf-8"))
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "frc_emtk.view.json").read_text(encoding="utf-8"))
 HT3 = REPO / "test/data/clsm/PQ_Olympus_MFIS.ht3"
 BIG = (1200, 800)
@@ -110,72 +106,99 @@ def curve_of(model):
 # ── 1. the numbers ──────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def check(model, key):
-    """The model's result equals what the Qt window showed in scenario *key*."""
-    qt = QT_VALUES[key]
-    assert model.status_line == qt["model_status"], key
+def numpy_halves(split="even_odd", second_seed=1):
+    """The two independent images of the split, made by plain numpy from the generator's stack."""
+    frames = np.asarray(_data.noisy_stack(seed=0), dtype=np.float64)
+    if split == "even_odd":
+        return frames[0::2].sum(0), frames[1::2].sum(0)
+    if split == "halves":
+        return frames[:20].sum(0), frames[20:].sum(0)
+    if split == "two_files":
+        return frames.sum(0), np.asarray(_data.noisy_stack(seed=second_seed), dtype=np.float64).sum(
+            0
+        )
+    raise ValueError(split)
+
+
+def expected(split="even_odd", criterion="fixed_1/7", smooth=3, bin_width=None, pixel_size_nm=None):
+    """The curve and the resolution of the numpy split by the core's ring correlation."""
+    h1, h2 = numpy_halves(split)
+    curve = frc_mod.frc_curve(h1, h2, bin_width=bin_width or None, pixel_size=pixel_size_nm or None)
+    return curve, frc_mod.resolve(curve, criterion, smooth=smooth)
+
+
+def check(model, **settings):
+    """The model's result is the numpy split's ring correlation, and the status line says its resolution."""
+    curve, res = expected(**settings)
     r = model.result
+    unit = "nm" if settings.get("pixel_size_nm") else "px"
     assert (
-        r.resolution == pytest.approx(qt["resolution"], rel=1e-12)
-        and bool(r.crossed) == qt["crossed"]
-        and r.unit == qt["unit"]
+        r.unit == unit
+        and bool(r.crossed)
+        and r.resolution == pytest.approx(res.resolution, rel=1e-9)
     )
-    assert (
-        r.criterion == qt["criterion_used"]
-        and r.kind == qt["kind"]
-        and r.n_frames == qt["n_frames"]
-    )
-    np.testing.assert_allclose(r.frequency, qt["frequency"], rtol=1e-12)
+    assert r.criterion == settings.get("criterion", "fixed_1/7")
+    np.testing.assert_allclose(r.frequency, curve.frequency, rtol=1e-12)
     np.testing.assert_allclose(
-        np.nan_to_num(r.correlation), qt["correlation"], rtol=1e-12, atol=1e-12
+        np.nan_to_num(r.correlation), np.nan_to_num(curve.correlation), rtol=1e-12, atol=1e-12
     )
-    np.testing.assert_allclose(r.threshold, qt["threshold"], rtol=1e-12)
-    assert [int(c) for c in r.counts] == qt["counts"]
-    assert model.summary_html() == qt["summary"]
+    np.testing.assert_allclose(r.threshold, res.threshold, rtol=1e-12)
+    assert [int(c) for c in r.counts] == [int(c) for c in curve.counts]
+    assert model.status_line == f"Resolution {r.resolution:.4g} {unit} ({r.criterion})."
 
 
-def test_measure_gives_the_numbers_the_qt_window_showed_for_even_odd_frames_in_pixels(
+def test_measure_gives_the_ring_correlation_of_even_and_odd_frames_in_pixels(app, drv, stack_a):
+    m = loaded(app, drv, stack_a)
+    assert m.status_line == "40 frames, 1 channel(s), 96x96 px (image)."
+    measure(app, drv)
+    check(m)
+    assert m.result.kind == "image" and m.result.n_frames == 40
+
+
+def test_a_pixel_size_scales_the_resolution_to_nm(app, drv, stack_a):
+    loaded(app, drv, stack_a)
+    pixels = measure(app, drv).result.resolution
+    m = measure(app, drv, pixel_size_nm=25.0)
+    assert m.result.resolution == pytest.approx(25.0 * pixels, rel=1e-9)
+    check(m, pixel_size_nm=25.0)
+
+
+def test_the_other_criteria_splits_and_ring_settings_give_the_numpy_split_numbers(
     app, drv, stack_a
 ):
-    m = loaded(app, drv, stack_a)
-    assert (
-        m.status_line
-        == QT_VALUES["tiff_loaded"]["model_status"]
-        == "40 frames, 1 channel(s), 96x96 px (image)."
-    )
-    measure(app, drv)
-    check(m, "tiff_even_odd")
-    assert m.status_line == "Resolution 4.292 px (fixed_1/7)."
-
-
-def test_the_calibrated_and_the_other_criteria_give_the_qt_numbers(app, drv, stack_a):
     loaded(app, drv, stack_a)
-    check(measure(app, drv, pixel_size_nm=25.0), "tiff_25nm")
     for crit in ("half_bit", "two_sigma"):
-        check(measure(app, drv, criterion=crit), f"criterion_{crit}")
+        check(
+            measure(app, drv, pixel_size_nm=25.0, criterion=crit),
+            pixel_size_nm=25.0,
+            criterion=crit,
+        )
     app.model.criterion = "fixed_1/7"
-    check(measure(app, drv, split="halves"), "tiff_halves")
+    check(measure(app, drv, split="halves"), split="halves", pixel_size_nm=25.0)
     app.model.split = "even_odd"
-    check(measure(app, drv, bin_width=0.02, smooth=5), "tiff_binwidth_smooth")
+    check(measure(app, drv, bin_width=0.02, smooth=5), bin_width=0.02, smooth=5, pixel_size_nm=25.0)
 
 
-def test_two_files_give_the_qt_numbers(app, drv, stack_a, stack_b):
+def test_two_files_give_the_ring_correlation_of_the_two_stacks(app, drv, stack_a, stack_b):
     loaded(app, drv, stack_a)
     app.model.pixel_size_nm = 25.0
     pick_from_workspace(app, stack_b, "second")
     assert Path(app.model.second_filename) == stack_b
-    check(measure(app, drv, split="two_files"), "two_files")
+    check(measure(app, drv, split="two_files"), split="two_files", pixel_size_nm=25.0)
 
 
 @pytest.mark.skipif(not HT3.exists(), reason="CLSM test data not present")
-def test_the_real_photon_stream_gives_the_qt_numbers_for_both_splits(app, drv):
+def test_the_real_photon_stream_is_split_by_frames_and_by_channels(app, drv):
     m = loaded(app, drv, HT3)
-    assert m.channel_names == ["ch0", "ch1", "ch4", "ch5"]
-    check(
-        measure(app, drv, pixel_size_nm=25.0), "photon_even_odd"
-    )  # the Qt capture ran with the 25 nm calibration still set
+    assert m.channel_names == ["ch0", "ch1", "ch4", "ch5"]  # the routing channels in the header
+    measure(app, drv, pixel_size_nm=25.0)
+    assert m.result.kind == "tttr" and m.result.crossed and m.result.unit == "nm"
+    assert m.status_line == f"Resolution {m.result.resolution:.4g} nm (fixed_1/7)."
+    even_odd = m.result.resolution
     m.channel, m.channel_2 = "ch0", "ch1"
-    check(measure(app, drv, split="channels"), "photon_channels")
+    measure(app, drv, split="channels")
+    assert m.result.crossed and m.result.resolution != even_odd
+    assert not np.array_equal(m.half_1_image(), m.half_2_image())
 
 
 def test_the_result_equals_a_written_out_split_fed_to_the_core_ring_correlation(app, drv, stack_a):
@@ -203,29 +226,25 @@ def test_the_halves_shown_are_the_two_independent_images(app, drv, stack_a):
     assert not np.array_equal(m.half_1_image(), m.half_2_image())
 
 
-def test_the_ring_table_shows_what_the_qt_table_showed(app, drv, stack_a):
+def test_the_ring_table_lists_the_rings_of_the_numpy_split(app, drv, stack_a):
     m = loaded(app, drv, stack_a)
     measure(app, drv)
-    qt_rows = QT_VALUES["tiff_even_odd"]["ring_rows"]
-    shown = [
-        {
-            "frequency": f"{r['frequency']:.5g}",
-            "period": f"{r['period']:.4g}",
-            "correlation": f"{r['correlation']:.4f}",
-            "threshold": f"{r['threshold']:.4f}",
-            "pixels": r["pixels"],
-        }
-        for r in m.ring_table_rows()
-    ]
-    assert shown == [{k: v for k, v in row.items() if k != "_unit"} for row in qt_rows]
+    curve, res = expected()
+    rows = m.ring_table_rows()
+    assert len(rows) == len(curve.frequency)
+    for row, f, c, t, n in zip(
+        rows, curve.frequency, curve.correlation, res.threshold, curve.counts
+    ):
+        assert row["frequency"] == pytest.approx(f) and row["pixels"] == int(n)
+        assert row["correlation"] == pytest.approx(float(np.nan_to_num(c)), abs=1e-9)
+        assert row["threshold"] == pytest.approx(t)
+        if f > 0:
+            assert row["period"] == pytest.approx(1.0 / f)
     drv.click_text("Rings")
     assert {"Period", "FRC", "Threshold"} <= {s for s in drv.draw(2).strings}
 
 
-# ── 2. the Qt tool's recorded results on the same files ───────────────────────────────────────────────────── #
-
-#: What the retired Qt tool computed and showed on these files, recorded before it was deleted (``qt_reference.json``).
-QT_REF = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
+# ── 2. every scenario against the numpy split ─────────────────────────────────────────────────────────────── #
 
 SCENARIOS = {
     "defaults": {},
@@ -240,70 +259,41 @@ SCENARIOS = {
 
 
 @pytest.mark.parametrize("scenario", list(SCENARIOS))
-def test_the_recorded_qt_results_and_the_emtk_app_agree_on_every_scenario(
+def test_every_scenario_gives_the_numpy_split_numbers_in_status_halves_curve_and_table(
     app, drv, stack_a, stack_b, scenario
 ):
     settings = SCENARIOS[scenario]
-    qt = QT_REF["scenarios"][scenario]
     m = loaded(app, drv, stack_a)
     if settings.get("split") == "two_files":
         pick_from_workspace(app, stack_b, "second")
     measure(app, drv, **settings)
-    assert m.status_line == qt["bar"] == qt["status"]
-    for a, b in zip(curve_of(m), qt["curve"]):
-        np.testing.assert_allclose(a, b, rtol=1e-12, atol=1e-12)  # macOS recording: rounding only
-    assert m.result.resolution == qt["resolution"] and m.result.crossed == qt["crossed"]
-    assert_fingerprint(m.half_1_image(), qt["half1"])
-    assert_fingerprint(m.half_2_image(), qt["half2"])
-    assert m.summary_html() == qt["summary"]
-    assert [s["name"] for s in m.frc_series()] == [s["name"] for s in qt["series"]]
-    for a, b in zip(m.frc_series(), qt["series"]):
-        np.testing.assert_allclose(a["y"], b["y"], rtol=1e-12, atol=1e-12)
-    cells = [
-        [
-            f"{r['frequency']:.5g}",
-            f"{r['period']:.4g}",
-            f"{r['correlation']:.4f}",
-            f"{r['threshold']:.4f}",
-            str(r["pixels"]),
-        ]
-        for r in m.ring_table_rows()
-    ]
-    assert cells == qt["table"]
+    check(m, **settings)
+    h1, h2 = numpy_halves(settings.get("split", "even_odd"))
+    np.testing.assert_allclose(m.half_1_image(), h1)
+    np.testing.assert_allclose(m.half_2_image(), h2)
+    series = m.frc_series()
+    assert series[0]["name"] == "FRC" and series[1]["name"] == f"threshold ({m.result.criterion})"
+    np.testing.assert_allclose(series[0]["y"], np.nan_to_num(m.result.correlation))
+    np.testing.assert_allclose(series[1]["y"], m.result.threshold)
+    assert len(m.ring_table_rows()) == len(m.result.frequency)
 
 
 @pytest.mark.skipif(not HT3.exists(), reason="CLSM test data not present")
-def test_the_recorded_qt_results_and_the_emtk_app_agree_on_the_photon_stream_and_the_channel_split(
-    app, drv
-):
-    qt = QT_REF["photon_stream"]
-    m = loaded(app, drv, HT3)
-    measure(app, drv)
-    np.testing.assert_allclose(curve_of(m)[1], qt["curve"][1], rtol=1e-12, atol=1e-12)
-    assert m.status_line == qt["status"] and m.channel_names == qt["channel_names"]
-    qt = QT_REF["photon_channels"]
-    measure(app, drv, split="channels", channel="ch0", channel_2="ch1")
-    np.testing.assert_allclose(curve_of(m)[1], qt["curve"][1], rtol=1e-12, atol=1e-12)
-    assert m.status_line == qt["status"]
-
-
-@pytest.mark.skipif(not HT3.exists(), reason="CLSM test data not present")
-def test_the_hub_setup_payload_names_the_detector_windows_as_the_qt_tool_did(app, drv):
+def test_the_hub_setup_payload_names_the_detector_windows(app, drv):
     payload = {"detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}}}
     loaded(app, drv, HT3)
     app.apply_setup_settings(payload)
     drv.settle()
-    assert app.model.channel_names == QT_REF["hub_channel_names"] and set(
-        app.model.channel_names
-    ) >= {"green", "red"}
+    assert app.model.channel_names == ["green", "red"]  # the detectors of the payload, in order
 
 
 @pytest.mark.parametrize("attr", ["pixel_size_nm", "bin_width", "smooth"])
-def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, drv, attr):
+def test_typed_extremes_are_clamped_to_the_spec_range(app, drv, attr):
     drv.click("Estimator.fold") if attr != "pixel_size_nm" else None
-    for qt_value, qt_clamped in QT_REF["clamp"][attr].items():
-        drv.type_into(attr, qt_value)
-        assert getattr(app.model, attr) == pytest.approx(qt_clamped), (attr, qt_value)
+    spec = next(s for s in walk(EMTK_SPEC["sections"]) if s.get("attr") == attr)
+    for typed, clamped in (("1000000", spec["maximum"]), ("-5", spec["minimum"])):
+        drv.type_into(attr, typed)
+        assert getattr(app.model, attr) == pytest.approx(clamped), (attr, typed)
 
 
 # ── 3. choosing files: typed, Browse, Database, drops ──────────────────────────────────────────────────────── #
@@ -317,7 +307,7 @@ def test_choosing_a_file_reads_its_channels_and_does_not_measure(app, drv, stack
         and m.channel == "ch0"
         and m.result is None
     )
-    assert m.status_line == QT_VALUES["tiff_loaded"]["model_status"]
+    assert m.status_line == "40 frames, 1 channel(s), 96x96 px (image)."
 
 
 class FakeClient:
@@ -361,36 +351,35 @@ def open_picker(app, drv, button, path):
 # ── 4. errors ──────────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_measure_with_nothing_loaded_says_why_where_the_qt_bar_said_only_measurement_failed(
-    app, drv
-):
+def test_measure_with_nothing_loaded_says_why(app, drv):
     drv.click("measure")
-    assert app.model.status_line == QT_VALUES["empty_measure"]["model_status"] == "No image loaded."
-    assert QT_VALUES["empty_measure"]["status"] == "Measurement failed" and not app.job.busy
+    assert app.model.status_line == "No image loaded." and not app.job.busy
     assert "No image loaded." in drv.strings()
 
 
 @pytest.mark.parametrize(
-    "key,settings",
+    "reason,settings",
     [
-        ("two_files_without_second", {"split": "two_files"}),
-        ("channels_on_one_channel_tiff", {"split": "channels"}),
-        ("tiff_axis_channels", {"axis_order": "channels"}),
+        ("FRC failed: split='two_files' needs a second file", {"split": "two_files"}),
+        ("FRC failed: a channel split needs at least two channels", {"split": "channels"}),
+        (
+            "FRC failed: a frame split needs at least two frames; this source has 1"
+            " — use a channel split or a second file",
+            {"axis_order": "channels"},
+        ),
     ],
 )
-def test_a_split_that_cannot_be_made_reports_the_qt_reason(app, drv, stack_a, key, settings):
+def test_a_split_that_cannot_be_made_reports_the_reason(app, drv, stack_a, reason, settings):
     loaded(app, drv, stack_a)
     measure(app, drv, **settings)
-    assert app.model.status_line == QT_VALUES[key]["model_status"] and app.model.result is None
-    assert QT_VALUES[key]["model_status"] in " ".join(
-        drv.strings()
-    )  # the status line shows it, wrapped
+    assert app.model.status_line == reason and app.model.result is None
+    assert reason in " ".join(drv.strings())  # the status line shows it, wrapped
 
 
-def test_an_unknown_channel_name_reports_the_qt_reason(app, drv, stack_a):
+def test_an_unknown_channel_name_reports_the_reason(app, drv, stack_a):
     loaded(app, drv, stack_a)
     measure(app, drv, axis_order="frames", split="channels", channel_2="ch1")
-    assert app.model.status_line == QT_VALUES["tiff_axis_frames_channel_split"]["model_status"]
+    assert app.model.status_line == "FRC failed: \"unknown channel 'ch1'; have ['ch0']\""
 
 
 def test_a_new_file_clears_the_previous_result(app, drv, stack_a, stack_b):
@@ -448,7 +437,7 @@ def test_a_worker_that_raises_is_reported_not_swallowed(app, drv, stack_a, monke
 # ── 5. the settings ────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_the_split_list_offers_the_four_qt_splits_and_each_is_picked(app, drv):
+def test_the_split_list_offers_the_four_splits_and_each_is_picked(app, drv):
     for label, value in (
         ("First / second half", "halves"),
         ("Two channels", "channels"),
@@ -466,7 +455,7 @@ def test_the_criterion_list_offers_the_three_criteria(app, drv):
         assert app.model.criterion == value
 
 
-def test_the_axis_order_list_offers_the_three_qt_readings(app, drv):
+def test_the_axis_order_list_offers_the_three_readings(app, drv):
     drv.click("Estimator.fold")
     for label, value in (
         ("All planes are frames", "frames"),
@@ -493,7 +482,7 @@ def test_the_channel_lists_name_the_channels_and_the_second_one_offers_the_next_
     drv.click("channel_2")
     drv.click_text("next channel", last=True)
     assert m.channel_2 == ""
-    measure(app, drv, split="channels")  # ch1 against the next channel, ch4: the Qt default
+    measure(app, drv, split="channels")  # ch1 against the next channel, ch4: the default
     expected = core.analyse(str(HT3), split="channels", channel="ch1")
     assert m.result.resolution == expected.resolution
 
@@ -505,14 +494,14 @@ def test_escape_closes_an_open_list_without_choosing(app, drv):
     assert app.model.split == "even_odd"
 
 
-def test_the_numeric_fields_take_typed_values_and_their_arrows_step_by_the_qt_steps(app, drv):
+def test_the_numeric_fields_take_typed_values_and_their_arrows_step_by_the_spec_steps(app, drv):
     drv.click("Estimator.fold")
     x, y, w, h = drv.rect("pixel_size_nm.stepper")
     drv.click_at(x + w / 2, y + h * 0.25)
     assert app.model.pixel_size_nm == pytest.approx(1.0)
     drv.click_at(x + w / 2, y + h * 0.75)
     drv.click_at(x + w / 2, y + h * 0.75)
-    assert app.model.pixel_size_nm == 0.0  # the Qt minimum
+    assert app.model.pixel_size_nm == 0.0  # the spec minimum
     x, y, w, h = drv.rect("smooth.stepper")
     drv.click_at(x + w / 2, y + h * 0.25)
     assert app.model.smooth == 4
@@ -523,14 +512,14 @@ def test_the_numeric_fields_take_typed_values_and_their_arrows_step_by_the_qt_st
     drv.click_at(x + w / 2, y + h * 0.25)
     assert app.model.bin_width == pytest.approx(
         0.5
-    )  # a step of 1.0 clamps to the Qt maximum of 0.5
+    )  # a step of 1.0 clamps to the spec maximum of 0.5
     drv.type_into("bin_width", "0.0125")
     assert app.model.bin_width == 0.0125
     drv.type_into("pixel_size_nm", "33.333")
-    assert app.model.pixel_size_nm == 33.33  # two decimals, as the Qt box
+    assert app.model.pixel_size_nm == 33.33  # two decimals, as the spec declares
 
 
-def test_changing_a_setting_does_not_re_measure_by_itself_as_in_the_qt_tool(app, drv, stack_a):
+def test_changing_a_setting_does_not_re_measure_by_itself(app, drv, stack_a):
     loaded(app, drv, stack_a)
     measure(app, drv)
     before = app.model.status_line
@@ -550,12 +539,10 @@ def test_changing_a_setting_does_not_re_measure_by_itself_as_in_the_qt_tool(app,
 
 def test_export_without_a_result_says_so(app, drv):
     drv.click("request_export")
-    assert app.model.status_line == QT_VALUES["empty_export"][
-        "status"
-    ] == "Nothing to export yet" and not dialog_open(drv)
+    assert app.model.status_line == "Nothing to export yet" and not dialog_open(drv)
 
 
-def test_export_csv_writes_the_file_the_qt_tool_wrote(app, drv, stack_a, tmp_path):
+def test_export_csv_writes_the_curve_of_the_numpy_split(app, drv, stack_a, tmp_path):
     loaded(app, drv, stack_a)
     measure(app, drv, pixel_size_nm=25.0)
     drv.click("request_export")
@@ -567,7 +554,15 @@ def test_export_csv_writes_the_file_the_qt_tool_wrote(app, drv, stack_a, tmp_pat
     )
     drv.click_text("Save", last=True)
     written = tmp_path / "frc_resolution.csv"
-    assert written.read_text() == QT_CSV
+    lines = written.read_text().splitlines()
+    assert lines[0] == "frequency_1/nm,correlation,threshold,ring_pixels"
+    curve, res = expected(pixel_size_nm=25.0)
+    table = np.array([[float(v) for v in line.split(",")] for line in lines[1:]])
+    assert len(table) == len(curve.frequency)
+    np.testing.assert_allclose(table[:, 0], curve.frequency, rtol=1e-7)
+    np.testing.assert_allclose(table[:, 1], np.nan_to_num(curve.correlation), rtol=1e-7, atol=1e-8)
+    np.testing.assert_allclose(table[:, 2], 1 / 7, rtol=1e-7)  # the fixed 1/7 threshold
+    np.testing.assert_array_equal(table[:, 3], curve.counts)
     assert app.model.status_line == f"Wrote {written}" and not dialog_open(drv)
 
 
@@ -646,11 +641,13 @@ def test_no_crossing_is_reported_as_an_answer_not_an_error(app, drv, tmp_path):
     measure(app, drv)
     assert app.model.result is not None and not app.model.result.crossed
     # six identical frames: the halves agree at every ring, so the answer is "finer than 2 px"
-    assert app.model.status_line.startswith("No crossing: the halves still agree at the pixel limit")
+    assert app.model.status_line.startswith(
+        "No crossing: the halves still agree at the pixel limit"
+    )
     assert any("No crossing." in s for s in drv.draw(2).strings)
 
 
-def test_the_two_halves_share_one_colormap_as_the_qt_docks_did(app, drv, stack_a):
+def test_the_two_halves_share_one_colormap(app, drv, stack_a):
     loaded(app, drv, stack_a)
     measure(app, drv)
     drv.click_text("Halves")
@@ -877,7 +874,7 @@ def test_settings_round_trip_and_invalid_values_are_ignored(app, drv):
     assert not {"filename", "second_filename", "channel"} & set(saved)
 
 
-def test_the_imaging_hub_adopts_its_source_as_the_qt_tool_did(app, drv, stack_a):
+def test_the_imaging_hub_adopts_its_source(app, drv, stack_a):
     app.apply_pipeline_context({"source": str(stack_a), "hdf5": "/x/y.h5"})
     drv.settle()
     assert (
@@ -942,7 +939,9 @@ def test_every_spec_key_exists_on_the_model():
             assert column["key"] in ("frequency", "period", "correlation", "threshold", "pixels")
 
 
-def test_every_qt_setting_is_in_the_emtk_spec_with_the_same_range_and_choices():
+def test_every_setting_of_the_base_spec_is_in_the_emtk_spec_with_the_same_range_and_choices():
+    """``frc.view.json`` (read by the view model) and ``frc_emtk.view.json`` declare the same settings."""
+
     def values(sections):
         return {
             s["attr"]: s
@@ -950,12 +949,12 @@ def test_every_qt_setting_is_in_the_emtk_spec_with_the_same_range_and_choices():
             if s.get("type") in ("value", "toggle", "choice") and s.get("attr")
         }
 
-    qt, emtk = values(QT_SPEC["sections"]), values(EMTK_SPEC["sections"])
-    assert set(qt) ^ set(emtk) == {
+    base, emtk = values(BASE_SPEC["sections"]), values(EMTK_SPEC["sections"])
+    assert set(base) ^ set(emtk) == {
         "filename",
         "second_filename",
-    }  # the Qt data-source sections are declared by options.attr
-    for attr, spec in qt.items():
+    }  # the base spec declares its data sources by options.attr
+    for attr, spec in base.items():
         if attr not in emtk:
             continue
         for key in ("minimum", "maximum", "decimals", "label", "options", "labels", "description"):

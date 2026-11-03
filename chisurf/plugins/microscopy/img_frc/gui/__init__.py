@@ -1,6 +1,6 @@
-"""Qt front end of the FRC resolution calculator.
+"""Front end of the FRC resolution calculator.
 
-``frc.view.json`` is the whole layout, rendered by AutoForm over the Qt-free
-:class:`~.view_model.FrcViewModel`; ``tool.py`` adds only the toolbar actions and
-the background worker.
+``frc.view.json`` declares the settings over the Qt-free
+:class:`~.view_model.FrcViewModel`; ``app.py`` draws the window in emtk and
+``model.py`` adds the actions and the background worker.
 """
