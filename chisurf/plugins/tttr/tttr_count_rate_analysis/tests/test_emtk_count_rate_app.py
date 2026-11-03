@@ -1,9 +1,9 @@
-"""The native count-rate app at parity with the Qt CountRateAnalyzer.
+"""The native count-rate app: Calculate, the queue, the results table and Save.
 
-Reference numbers: the Qt tool as committed (HEAD tool.py + view_model.py)
-on ``test/data/clsm/Leica_SP5.ptu`` with one channel ``all`` holding every used
-routing channel printed ``mean_khz 44.72292671613037, std_khz 0.0,
-photons 6714549, time_s 150.13661879999998``.
+The numbers of a real file are checked against the file itself: with one
+channel ``all`` holding every used routing channel, the photon count is the
+stream's length, the measurement time is the last macro time times the header's
+macro-time resolution, and the mean rate is their ratio.
 """
 
 from __future__ import annotations
@@ -21,13 +21,6 @@ from chisurf.plugins.tttr.tttr_count_rate_analysis.gui.controller import create_
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 PTU = REPO / "test" / "data" / "clsm" / "Leica_SP5.ptu"
-QT_ROW = {
-    "channel": "all",
-    "mean_khz": 44.72292671613037,
-    "std_khz": 0.0,
-    "photons": 6714549,
-    "time_s": 150.13661879999998,
-}
 
 
 def _draw(app, size=(1200, 800), times=3):
@@ -51,9 +44,21 @@ def _wait(tool):
     tool.job.poll()
 
 
-# 1. the Calculate path gives the Qt tool's numbers
-def test_calculate_gives_the_qt_tools_row(monkeypatch):
+def _file_row():
+    """Photons, measurement time (s) and mean rate (kHz) read straight from the file."""
+    import tttrlib
+
+    data = tttrlib.TTTR(str(PTU))
+    photons = len(data)
+    time_s = float(data.macro_times[-1]) * data.header.macro_time_resolution
+    return {"channel": "all", "photons": photons, "time_s": time_s,
+            "mean_khz": photons / time_s / 1e3}
+
+
+# 1. the Calculate path gives the file's photon count, duration and rate
+def test_calculate_gives_the_files_count_duration_and_rate(monkeypatch):
     channels = _channels()
+    expected = _file_row()
     app = create_app()
     try:
         monkeypatch.setattr(app.tool, "channels", lambda: channels)
@@ -62,18 +67,23 @@ def test_calculate_gives_the_qt_tools_row(monkeypatch):
         _wait(app.tool)
         rows = app.tool._model.results_rows()
         assert len(rows) == 1
-        assert rows[0]["channel"] == QT_ROW["channel"]
-        assert rows[0]["photons"] == QT_ROW["photons"]
-        assert rows[0]["mean_khz"] == pytest.approx(QT_ROW["mean_khz"], rel=1e-9)
-        assert rows[0]["time_s"] == pytest.approx(QT_ROW["time_s"], rel=1e-9)
+        assert rows[0]["channel"] == expected["channel"]
+        assert rows[0]["photons"] == expected["photons"]
+        assert rows[0]["mean_khz"] == pytest.approx(expected["mean_khz"], rel=1e-9)
+        assert rows[0]["time_s"] == pytest.approx(expected["time_s"], rel=1e-9)
+        assert rows[0]["std_khz"] == 0.0  # one file: no spread
         painter = _draw(app)
-        for text in ("44.72", "6714549", "150.137"):  # the Qt cells' formats
+        for text in (  # the cells' formats: kHz to 2, time to 3 decimals
+            f"{expected['mean_khz']:.2f}",
+            str(expected["photons"]),
+            f"{expected['time_s']:.3f}",
+        ):
             assert text in painter.strings
     finally:
         app.close()
 
 
-# 2. Remove takes the selected file off the queue and refreshes, as the Qt list did
+# 2. Remove takes the selected file off the queue and refreshes the list
 def test_remove_selected_file(tmp_path):
     app = create_app()
     try:
@@ -102,8 +112,8 @@ def test_calculate_is_a_plain_button():
     assert "push_style_color" not in source
 
 
-# 3. the results table is the spec's data_table with the Qt columns
-def test_results_table_is_declared_with_the_qt_columns():
+# 3. the results table is the spec's data_table with the five result columns
+def test_results_table_is_declared_with_the_result_columns():
     section = app_module.RESULTS_TABLE["sections"][0]
     assert section["key"] == "data_table" and section["description"]
     titles = [c["title"] for c in section["options"]["columns"]]
@@ -215,7 +225,7 @@ def test_calculate_and_save_errors_reach_the_status_line(tmp_path):
         app.close()
 
 
-# 11. a failing read is reported, not swallowed; Save writes the Qt tool's table
+# 11. a failing read is reported, not swallowed; Save writes the results table
 def test_failing_read_is_reported_and_save_writes_the_table(tmp_path):
     channels = {"all": [{"detector_chs": [0], "micro_time_range": None, "window_range": None}]}
 
@@ -237,7 +247,7 @@ def test_failing_read_is_reported_and_save_writes_the_table(tmp_path):
         assert app.tool._model.results_rows() == []
     finally:
         app.close()
-    # the table text the Qt tool wrote, for the model both tools share
+    # Save writes a tab-separated table: kHz to 2 decimals, time to 3
     from chisurf.plugins.tttr.tttr_count_rate_analysis.gui.view_model import CountRateViewModel
 
     model = CountRateViewModel()

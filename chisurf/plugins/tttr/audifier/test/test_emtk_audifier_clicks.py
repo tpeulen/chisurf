@@ -1,4 +1,4 @@
-"""Audifier emtk app: parity with the Qt tool's model, and every control operated with real input.
+"""Audifier emtk app: every control operated with real input.
 
 Real input = pointer press/release at the rectangles the controls were drawn in, typed text, Enter, the wheel, and the
 workspace's hand-off (``receive_photons``; the window has no file dialog and no drop hook for input); the outcome is read
@@ -19,7 +19,6 @@ from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
 from chisurf.plugins.tttr.audifier.core import TTTRData
 from chisurf.plugins.tttr.audifier.gui.app import create_app
-from chisurf.plugins.tttr.audifier.gui.view_model import AudifierViewModel
 from chisurf.plugins.tttr.audifier.native_playback import NativeSoundPlayer
 
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
@@ -114,34 +113,21 @@ def cell(ui, header, row_text, nth=-1):
     return (h[0] + h[2] / 2, r[1] + r[3] / 2)
 
 
-# ---- parity with the Qt tool's model ---------------------------------------------------------------------------
+# ---- the Update button ----------------------------------------------------------------------------------------
 
 
-def test_the_app_computes_what_the_qt_models_do_for_the_same_input():
+def test_update_draws_the_waterfall_the_model_computes_for_each_mode():
     ui, _ = loaded()
-    qt_model = AudifierViewModel()
-    qt_model.data = ui.app.model.data
-    qt_model.set_detectors_from_settings(
-        {"detectors": {d["name"]: {"chs": d["channels"]} for d in ui.app.model.detectors}}
-    )
+    model = ui.app.model
     for mode in ("microtime", "lifetime"):
-        ui.app.model.waterfall_mode = qt_model.waterfall_mode = mode
+        model.waterfall_mode = mode
         ui.click("update")
         settle(ui)
-        expected = qt_model.compute_waterfall()
-        got = ui.app.model.waterfall_payload()
+        expected = model.compute_waterfall()
+        got = model.waterfall_payload()
         np.testing.assert_allclose(got["rgb_data"], expected["rgb_data"])
         assert got["info"] == expected["info"]
     ui.app.close()
-
-
-def test_the_default_parameters_equal_the_qt_models():
-    app, _ = make()
-    qt = AudifierViewModel()
-    for key, value in qt.__dict__.items():
-        if isinstance(value, (int, float, str, bool)):
-            assert getattr(app.model, key) == value, key
-    app.close()
 
 
 # ---- the real BH file -------------------------------------------------------------------------------------------

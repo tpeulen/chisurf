@@ -1,6 +1,6 @@
 """The drawn count-rate app, driven with simulated pointer and keyboard events.
 
-Every control of the Qt tool (the file list with Files / Folder / Database / Remove / Clear / drop,
+Every control (the file list with Files / Folder / Database / Remove / Clear / drop,
 Calculate, Save, the results table and plot, Help / Guide, the channel editor's section and refresh
 controls) is used the way a person uses it, and each test asserts what the next frame shows.
 """
@@ -21,6 +21,20 @@ from chisurf.plugins.tttr.tttr_count_rate_analysis.tests.pointer import KEY_ESCA
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 PTU = REPO / "test" / "data" / "clsm" / "Leica_SP5.ptu"
+
+
+def file_cells():
+    """The results row of PTU as the table prints it, read straight from the file.
+
+    One channel holding every routing channel: photons = stream length, time = last
+    macro time x the header's macro-time resolution, rate = photons / time.
+    """
+    import tttrlib
+
+    data = tttrlib.TTTR(str(PTU))
+    photons = len(data)
+    time_s = float(data.macro_times[-1]) * data.header.macro_time_resolution
+    return ["all", f"{photons / time_s / 1e3:.2f}", "0.00", str(photons), f"{time_s:.3f}"]
 ALL = {"all": [{"detector_chs": None, "micro_time_range": None, "window_range": None}]}
 
 
@@ -117,26 +131,27 @@ def test_clear_button_empties_the_queue_and_the_results(ui, monkeypatch, folder)
     real_state(ui, monkeypatch, folder)
     ui.click("Calculate")
     settle(ui)
-    assert ui.drawn("6714549")
+    assert ui.drawn(file_cells()[3])
     ui.click("Clear")
     assert (
         ui.app.tool._model.files == []
-        and not ui.drawn("6714549")
+        and not ui.drawn(file_cells()[3])
         and ui.drawn("Nothing queued: pick photon streams above (or Load example).")
     )
     assert ui.drawn("No results yet — press Calculate.")
 
 
 # -- Calculate, Save, Stop ----------------------------------------------------------------------------------
-def test_calculate_button_fills_the_table_and_the_plot_with_the_qt_tools_row(
+def test_calculate_button_fills_the_table_and_the_plot_with_the_files_row(
     ui, monkeypatch, folder
 ):
     real_state(ui, monkeypatch, folder)
     assert ui.drawn("press Calculate to draw the count rates")
     ui.click("Calculate")
     settle(ui)
-    assert ui.app.tool._model.results_rows()[0]["photons"] == 6714549
-    for cell in ("all", "44.72", "0.00", "6714549", "150.137"):  # the Qt cells' formats
+    cells = file_cells()
+    assert ui.app.tool._model.results_rows()[0]["photons"] == int(cells[3])
+    for cell in cells:
         assert ui.drawn(cell), cell
     assert not ui.drawn("press Calculate to draw the count rates") and ui.drawn("Analyzed 1 files.")
 
@@ -180,7 +195,7 @@ def test_save_button_before_and_after_a_calculation(ui, monkeypatch, folder):
     ui.click("Save", nth=-1)  # the dialog's own Save (drawn last)
     settle(ui)
     lines = (folder / "rates.txt").read_text().splitlines()
-    assert lines[0].split("\t")[0] == "Channel" and lines[1] == "all\t44.72\t0.00\t6714549\t150.137"
+    assert lines[0].split("\t")[0] == "Channel" and lines[1] == "\t".join(file_cells())
     assert ui.app.tool.message == f"Saved {folder / 'rates.txt'}" or ui.app.tool.message.startswith(
         "Saved"
     )
@@ -270,7 +285,7 @@ def test_the_editor_section_headers_fold_and_unfold(ui):
     assert editor.open_sections["reading"] is False and not ui.drawn("File Type:")
     ui.click("▶ TTTR Reading routine")
     assert ui.drawn("File Type:")
-    ui.click("▶ PIE Windows")  # folded at first, as in the Qt page
+    ui.click("▶ PIE Windows")  # folded at first
     assert editor.open_sections["windows"] is True and _window_table_drawn(ui)
 
 

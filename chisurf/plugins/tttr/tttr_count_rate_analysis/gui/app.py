@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 WINDOW_BG = (30, 32, 38, 255)
 
-#: The results table, declared (the Qt tool's Results tab, same columns).
+#: The results table, declared: one row per channel with rate, spread, photons and time.
 RESULTS_TABLE = {
     "sections": [
         {
@@ -279,7 +279,7 @@ class CountRateGui(TourTarget):
         self.draw_status()
 
     def remove_file(self, path) -> None:
-        """Take *path* off the queue and refresh, as the Qt list's Remove does."""
+        """Take *path* off the queue and refresh the file list."""
         if path in self.model.files:
             self.model.files.remove(path)
             self.model.update()
