@@ -20,7 +20,6 @@ The correlator is essential for analyzing molecular dynamics and diffusion proce
 - Python packages:
   - numpy
   - tttrlib (for TTTR file handling)
-  - PyQt5 (for GUI components)
   - matplotlib (for plotting)
 
 ## Usage

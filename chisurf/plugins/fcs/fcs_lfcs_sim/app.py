@@ -1,6 +1,6 @@
 """Native emtk surface for the lifetime-FCS simulator.
 
-The Qt widget's layout: a strip with **Simulate + Correlate**, Guide and ?, the
+The layout: a strip with **Simulate + Correlate**, Guide and ?, the
 ``lfcs_sim.view.json`` form on the left (its Run panel holds the status line) and
 the species-filtered correlations on the right (log lag axis, species 1 blue,
 species 2 red, their cross-correlation green). The simulation runs on a worker,
@@ -29,7 +29,7 @@ from .strings import install_translations
 install_translations()
 
 GUI_DIR = Path(__file__).resolve().parent / "gui"
-#: The Qt widget's pens: species 1, species 2, their cross-correlation.
+#: The pens: species 1 (blue), species 2 (red), their cross-correlation (green).
 SPECIES_COLOURS = ((31, 119, 180, 255), (214, 39, 40, 255))
 CROSS_COLOUR = (44, 160, 44, 255)
 SIMULATE = "Simulate + Correlate"
@@ -49,7 +49,7 @@ class LifetimeFcsSimApp(ImApp):
         self.message = tr("Set parameters and simulate.")
         self.spec = json.loads((GUI_DIR / "lfcs_sim.view.json").read_text())
         self.window_size = window_size(self.spec, (1100, 720))
-        for panel in self.spec["sections"]:  # the Qt form's panels fold
+        for panel in self.spec["sections"]:  # the form's panels fold
             panel["collapsible"] = True
         self.form = FormState()
         self.form.custom["lfcs_sim_controls"] = self._draw_run_panel
@@ -82,7 +82,7 @@ class LifetimeFcsSimApp(ImApp):
         return self._future is not None
 
     def simulate(self) -> None:
-        """Start a simulation with the current settings (the Qt button's slot, off the UI thread)."""
+        """Start a simulation with the current settings (on a worker, off the UI thread)."""
         if self.running:
             return
         self.message = tr("Simulating…")
@@ -97,7 +97,7 @@ class LifetimeFcsSimApp(ImApp):
         try:
             future.result()
             self.message = self.model.status()
-        except Exception as exc:  # noqa: BLE001 - shown, as the Qt tool's error dialog does
+        except Exception as exc:  # noqa: BLE001 - shown in the status line
             self.model.datasets = []
             self.message = f"{tr('Simulation failed')}: {exc}"
 
@@ -137,7 +137,7 @@ class LifetimeFcsSimApp(ImApp):
         im.end_disabled()
 
     def _draw_run_panel(self, section, model, state, width) -> None:
-        """The spec's Run panel: the status line (its button is on the strip, as in the Qt widget)."""
+        """The spec's Run panel: the status line (its button is on the strip)."""
         im.text_wrapped(self.message)
         im.set_item_tooltip(
             tr("Curves made and the filter condition number of the last simulation.")

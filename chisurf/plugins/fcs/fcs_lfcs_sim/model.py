@@ -1,4 +1,4 @@
-"""Settings and Qt-free compute of the lifetime-FCS simulator, shared by the Qt and emtk tools.
+"""Settings and Qt-free compute of the lifetime-FCS simulator.
 
 The form over it is ``gui/lfcs_sim.view.json``.
 """
@@ -72,7 +72,7 @@ class LifetimeFcsSimModel:
         return self.datasets
 
     def status(self) -> str:
-        """The status line after a run, in the Qt tool's words."""
+        """The status line after a run: the number of curves and the filter condition number."""
         n = len(self.datasets)
         return (
             f"{n} species correlation(s); filter condition number {self.condition_number:.1f}."

@@ -172,7 +172,7 @@ class FcsHubApp(ToolHubApp):
 
     def refresh_setup(self) -> None:
         """The channel step's selected setup into the workflow; a new setup drops the filter's photons (they were read
-        with the old setup's channels and LUTs), as in Qt."""
+        with the old setup's channels and LUTs)."""
         preset = self.ensure_child("channel_def")
         if preset is None:
             return

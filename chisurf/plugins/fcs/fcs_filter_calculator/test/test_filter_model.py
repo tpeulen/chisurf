@@ -1,10 +1,9 @@
 """The filter calculator's numerical workflows, driven on the emtk model (no widget).
 
-These are the scenarios the retired Qt filter-calculator widget's tests covered, run on
-``gui.model.FilterModel``: the example, unmixing, nuisance filters, fit ranges, stacked mode,
-auto-fit through real fit objects, instrument calibration. What the Qt tests asserted about
-widgets (docks, toolbar actions, list items, colour stability) is covered by the click tests
-in ``test_emtk_filter_clicks.py`` and ``test_emtk_filter_parity.py``.
+Run on ``gui.model.FilterModel``: the example, unmixing, nuisance filters, fit ranges, stacked
+mode, auto-fit through real fit objects, instrument calibration. The controls (docks, toolbar
+actions, list items, colour stability) are covered by the click tests in
+``test_emtk_filter_clicks.py`` and ``test_emtk_filter_panel.py``.
 """
 
 import numpy as np

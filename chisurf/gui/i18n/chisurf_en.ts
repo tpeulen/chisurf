@@ -60867,5 +60867,9 @@ so a run started here can be finished anywhere.
             <source>intensity</source>
             <translation>intensity</translation>
         </message>
+        <message>
+            <source>No curve ticked: the merge averages all of them.</source>
+            <translation>No curve ticked: the merge averages all of them.</translation>
+        </message>
     </context>
 </TS>

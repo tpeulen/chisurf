@@ -1,4 +1,4 @@
-"""Native FCS confocal calculator: the Qt ConfocalCalcWidget's form, Guide and ? over a Qt-free model.
+"""Native FCS confocal calculator: the form, Guide and ? over a Qt-free model.
 
 The form is ``fcs_calculator_emtk.view.json`` drawn by :func:`emtk.view_form.draw_form` over
 :class:`.model.ConfocalModel`; this app adds the Guide / Help row, the settings-file dialogs and a
@@ -162,7 +162,7 @@ class ConfocalApp(ImApp):
         spacing = im.get_style().item_spacing[0]
         im.dummy(
             max(1.0, width - sum(widths) - 2 * spacing), 1.0
-        )  # right-aligned, as the Qt toolbar
+        )  # right-aligned
         for key, action in actions:
             im.same_line()
             if action_button(key):

@@ -57,36 +57,41 @@ def test_the_port_is_qt_free():
     assert verdict["ok"], verdict["output"]
 
 
-def test_native_filters_are_bit_identical_to_the_qt_widgets_for_the_same_inputs():
-    """Same total, species, nuisance patterns and fit range give the Qt widget's filters (``qt_reference.json``).
+def test_the_filters_are_the_weighted_least_squares_solution_on_the_fit_range():
+    """The example's filters, recomputed here from the documented formula on the fit range.
 
-    The reference is what the retired Qt widget computed for its built-in example. The example differs only by its
-    detector table: the Qt widget left it empty (detector "default": width 0.2 ns, no shift) while the native example
-    fills "G|G" with the IRF the example patterns were generated with (width 0.16 ns, shift 0.03 ns), so the
-    native model is put on the Qt defaults here.
+    With the species and nuisance patterns ``D`` (each normalised to unit area on the range) and
+    ``W = diag(1 / max(total, 1))``, the filters are ``F = (D W D^T)^-1 D W``; they are zero outside the
+    range, ``F D^T`` is the identity, and the reconstruction is ``D^T (F total)`` on the range and the
+    measured decay outside it.
     """
-    import json
-    from pathlib import Path
-
     from chisurf.plugins.fcs.fcs_filter_calculator.gui.model import FilterModel
 
-    reference = json.loads((Path(__file__).parent / "qt_reference.json").read_text())
-    assert reference["detector_defaults"] == [0.2, 0.0, 0.0]
-    native = FilterModel()
-    assert (native.detectors.width("G|G"), native.detectors.shift("G|G")) == (
-        0.16,
-        pytest.approx(0.03),
+    model = FilterModel()
+    model.compute()
+    result = model._result
+    detector = model.detectors.selected[0]
+    total = np.asarray(model._total_decay([detector]), float)
+    patterns = [
+        np.asarray(model._species_item_pattern(c, total.size, [detector])[0], float)
+        for c in model.components
+        if c.enabled
+    ]
+    nuisance, _ = model._nuisance_patterns(total, patterns, detector)
+    start, stop = model._fit_bounds
+    basis = np.array(
+        [p[start:stop] / p[start:stop].sum() for p in patterns + [np.asarray(n, float) for n in nuisance]]
     )
-    native.detectors.set_width("G|G", 0.2)
-    native.detectors.set_skew("G|G", 0.0)
-    native.detectors.set_shift("G|G", 0.0)
-    native._fit_bounds = tuple(reference["fit_range"])
-    native.compute()
-    # The reference was recorded on macOS: other platforms differ by float rounding only.
-    np.testing.assert_allclose(native._result.filters, reference["filters"], rtol=1e-12, atol=1e-12)
-    np.testing.assert_allclose(
-        native._result.reconstruction, reference["reconstruction"], rtol=1e-12, atol=1e-12
-    )
+    t = total[start:stop]
+    w = np.diag(1.0 / np.maximum(t, 1.0))
+    expected = np.linalg.inv(basis @ w @ basis.T) @ basis @ w
+    filters = np.asarray(result.filters)
+    np.testing.assert_allclose(filters[:, start:stop], expected, rtol=1e-9, atol=1e-9)
+    assert not filters[:, :start].any() and not filters[:, stop:].any()
+    np.testing.assert_allclose(expected @ basis.T, np.eye(len(basis)), atol=1e-9)
+    reconstruction = np.asarray(result.reconstruction)
+    np.testing.assert_allclose(reconstruction[start:stop], basis.T @ (expected @ t), rtol=1e-9, atol=1e-6)
+    np.testing.assert_array_equal(reconstruction[:start], total[:start])
 
 
 @pytest.mark.parametrize("width", [800, 1200])

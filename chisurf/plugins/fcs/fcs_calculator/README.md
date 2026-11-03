@@ -1,6 +1,6 @@
 # FCS Confocal Calculator (ChiSurf)
 
-This plugin provides an interactive **FCS confocal diffusion/volume calculator** inside ChiSurf. It is inspired by, and partially based on, the theory implemented in **QuickFit3**'s *Diffusion Coefficient Calculator* (`calc_diffcoeff`), but reimplemented in Python/PyQt5 and integrated with ChiSurf's workflow.
+This plugin provides an interactive **FCS confocal diffusion/volume calculator** inside ChiSurf. It is inspired by, and partially based on, the theory implemented in **QuickFit3**'s *Diffusion Coefficient Calculator* (`calc_diffcoeff`), but reimplemented in Python and integrated with ChiSurf's workflow.
 
 ## Features
 

@@ -14,7 +14,7 @@ import numpy as np
 
 from .regions import TimeRegions
 
-#: Files the Files step accepts (the Qt list's extensions).
+#: Files the Files step accepts.
 #: Photon-stream inputs: the container first, then the vendor stream files the
 #: container is packed from. Legacy .bst/.bur layouts are reached through the
 #: legacy import/export plugins, never loaded here.

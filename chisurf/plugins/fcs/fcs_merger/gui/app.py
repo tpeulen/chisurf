@@ -1,9 +1,9 @@
-"""Native FCS curve merger: the Qt WizardFcsMerger page's screening table, plots and save.
+"""Native FCS curve merger: the screening table, plots and save.
 
 The controls are ``fcs_merger_emtk.view.json`` drawn by :func:`emtk.view_form.draw_form` over
 :class:`_Form` (the :class:`.model.MergerModel`'s fields and table, this app's actions). Reading
 a folder and writing the merge run on a worker; the individual curves and the merge are plotted
-in their own dock windows, as the Qt page's FCS and FCS Merged plots.
+in their own dock windows (FCS and FCS Merged).
 """
 
 from __future__ import annotations
@@ -30,12 +30,12 @@ HERE = Path(__file__).parent
 PLUGIN = HERE.parent
 ERROR = (230, 90, 90, 255)
 UNUSED = (150, 150, 150, 255)
-#: guide.json is shared with the Qt tour, which names the page's widgets by objectName.
+#: guide.json names its targets by the old widget names; they map onto this app's controls.
 TOUR_KEYS = {"lineEdit": "folder", "tableWidget": "curve_rows", "toolButton_3": "request_save"}
 
 
 def _palette():
-    """The Qt page's curve colours (ChiSurf's plot palette), as RGBA."""
+    """The curve colours (ChiSurf's plot palette), as RGBA."""
     try:
         from chisurf.core import settings
 
@@ -369,7 +369,7 @@ class MergerApp(ImApp):
         m = self.model
         if m.correlations and not any(m.use):
             im.text_disabled(
-                tr("No curve ticked: the merge averages all of them, as the Qt page does.")
+                tr("No curve ticked: the merge averages all of them.")
             )
 
     def draw_files(self, box):

@@ -76520,6 +76520,10 @@ Background (kHz): {bg}</source>
             <source>press Load example, or pick the three tables</source>
             <translation>Load example drücken oder die drei Tabellen wählen</translation>
         </message>
+        <message>
+            <source>No curve ticked: the merge averages all of them.</source>
+            <translation>Keine Kurve angehakt: die Zusammenführung mittelt alle.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

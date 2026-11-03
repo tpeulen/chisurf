@@ -1,9 +1,8 @@
-"""Qt-free state and actions of the FCS confocal calculator (the Qt ``ConfocalCalcWidget``'s logic).
+"""Qt-free state and actions of the FCS confocal calculator.
 
 The fields, the constraint, the reference dye and the shape estimator are plain attributes the
 view spec (``fcs_calculator_emtk.view.json``) reads and writes; every edit recomputes the linked
-quantities through :func:`..core.algorithms.compute_confocal`, as the Qt widget does through its
-backend client.
+quantities through :func:`..core.algorithms.compute_confocal`.
 """
 
 from __future__ import annotations
@@ -35,7 +34,7 @@ NUMBERS = (
 
 
 class ConfocalModel:
-    """The calculator's values; defaults are the Qt widget's."""
+    """The calculator's values (defaults: tau 70 µs, D 400 µm²/s, S 5, 20 °C, 1 nM)."""
 
     def __init__(self):
         self.tau_us = 70.0
@@ -63,7 +62,7 @@ class ConfocalModel:
 
     # -- the spec's hooks --------------------------------------------------------------
     def enabled(self, name):
-        """Computed fields and the water viscosity are read-only, as in the Qt widget."""
+        """Computed fields, the water viscosity and a sphere's aspect are read-only."""
         if name in CONSTRAINED.values():
             return name == CONSTRAINED[self.constraint]
         if name == "eta_mPa_s":
@@ -164,7 +163,7 @@ class ConfocalModel:
 
     # -- settings ----------------------------------------------------------------------
     def settings(self):
-        """The Qt widget's settings dict (``_collect_settings``), the JSON it exports."""
+        """The settings dict: the numbers, the constraint, the dye and the shape; what ``export_json`` writes."""
         data = {key: getattr(self, key) for key in NUMBERS}
         data.update(
             use_water_eta=bool(self.use_water_eta),
@@ -178,7 +177,7 @@ class ConfocalModel:
         return data
 
     def apply_settings(self, data):
-        """Apply a settings dict as the Qt widget does: known keys only, unknown choices ignored."""
+        """Apply a settings dict: known keys only, unknown choices ignored, dye aliases resolved."""
         for key in NUMBERS:
             if key in data:
                 setattr(self, key, float(data[key]))

@@ -1,8 +1,8 @@
-"""The emtk filter calculator equals the Qt widget where it can be compared, and its layout, tooltips and isolation hold.
+"""The emtk filter calculator's example, tables, forms, tooltips, layout and isolation.
 
-Numbers: ``test_emtk_layout.py`` pins the filters bit for bit to the Qt widget's (same inputs); here the Qt widget's default fit
-range, its instrument rows and its component list are compared, the tables are checked against the model, and every tab is drawn
-at both sizes with the clipping/overlap checker.
+Numbers: ``test_emtk_layout.py`` recomputes the filters from their formula; here the example's default fit range and
+components, the instrument rows and the tables are checked against the model, and every tab is drawn at both sizes with
+the clipping/overlap checker.
 """
 
 from __future__ import annotations
@@ -45,14 +45,19 @@ def drv():
     app.close()
 
 
-def test_the_example_starts_with_the_qt_widgets_fit_range_and_components():
-    reference = json.loads((Path(__file__).parent / "qt_reference.json").read_text())
+def test_the_example_starts_with_its_components_and_the_default_fit_range():
+    """The two example species, and the range from just past the prompt (peak + max(2, 1 % of the bins)) to 1 % short
+    of the end, from the example's own mixed decay."""
+    import numpy as np
+
     app = create_app()
     try:
-        assert [c.name for c in app.model.components] == [
-            n.split("  [")[0] for n in reference["components"]
-        ]
-        assert tuple(app.model._fit_bounds) == tuple(reference["fit_range"]) == (10, 254)
+        m = app.model
+        assert [c.name for c in m.components] == ["Fast example", "Slow example"]
+        total = np.asarray(m._total_decay(m.detectors.selected), float)
+        n = total.size
+        expected = (int(np.argmax(total)) + max(2, n // 100), n - max(1, n // 100))
+        assert tuple(m._fit_bounds) == expected
     finally:
         app.close()
 
@@ -62,16 +67,16 @@ def test_the_instrument_rows_are_the_instrument_options():
         InstrumentViewModel,
     )
 
-    qt_rows = json.loads(
+    spec_rows = json.loads(
         (Path(__file__).parents[1] / "gui_parts" / "instrument_options.view.json").read_text()
     )["sections"][0]["options"]["rows"]
-    assert [r["attr"] for r in INSTRUMENT_ROWS] == [r["attr"] for r in qt_rows]
+    assert [r["attr"] for r in INSTRUMENT_ROWS] == [r["attr"] for r in spec_rows]
     app = create_app()
     try:
         rows = app.panel.instrument_rows()
         model = InstrumentViewModel()
-        assert [r["name"] for r in rows] == [r["label"] for r in qt_rows]
-        assert [r["value"] for r in rows] == [float(getattr(model, r["attr"])) for r in qt_rows]
+        assert [r["name"] for r in rows] == [r["label"] for r in spec_rows]
+        assert [r["value"] for r in rows] == [float(getattr(model, r["attr"])) for r in spec_rows]
     finally:
         app.close()
 

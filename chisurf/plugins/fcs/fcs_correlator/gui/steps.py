@@ -1,7 +1,7 @@
 """The native FCS correlator steps: Files & Steps, Photon / Burst Filter and Correlator, as emtk apps.
 
-Each step draws its Qt-free model (:mod:`..filter_model`, :mod:`..correlator_model`) from the same ``view.json`` the Qt
-AutoForm panel draws; the Qt-only custom sections are drawn here. The hand-over between the steps is
+Each step draws its Qt-free model (:mod:`..filter_model`, :mod:`..correlator_model`) from its ``view.json``; the
+spec's custom sections are drawn here. The hand-over between the steps is
 :class:`..workflow.FcsWorkflow`'s, called by the workflow rail when a step is opened (:mod:`.app`).
 """
 

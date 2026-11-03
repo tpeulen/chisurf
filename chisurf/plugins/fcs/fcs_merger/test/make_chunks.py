@@ -16,7 +16,7 @@ SPC = REPO / "test/data/tttr/BH/132/BH_SPC132.spc"
 def build(out_dir, n_chunks=6, seconds=10.0, *, legacy_seconds=False):
     """Write ``n_chunks`` correlated ``seconds``-long chunks as ``chnk-NNNN.cor`` into *out_dir*; return it.
 
-    ``legacy_seconds`` keeps the lag axis in seconds, the unit the Qt-era oracle was recorded in.
+    ``legacy_seconds`` keeps the lag axis in seconds, the unit chunks written before the switch to ms carry (for the unit-repair tests).
     """
     import tttrlib
 

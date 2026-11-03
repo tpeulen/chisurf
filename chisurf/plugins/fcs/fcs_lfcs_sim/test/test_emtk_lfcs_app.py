@@ -1,13 +1,13 @@
-"""The native lifetime-FCS simulator at parity with the Qt LifetimeFcsSimWidget.
+"""The native lifetime-FCS simulator: a run, its curves, status, pens and controls.
 
-The Qt widget's button slot was run once and recorded (``qt_reference.json``);
-its curves, status line and pens are compared with the emtk app's for the same
-settings, and both against the committed Qt model's run written out here.
+The oracle is the simulator's own planted sample (two lifetimes, known diffusion and
+exchange, a fixed seed) put through the documented pipeline step by step here
+(simulate, lifetime filters, correlate); the curves must also show what diffusion
+implies: bunching at short lags and G = 1 once the molecules have left the focus.
 """
 
 from __future__ import annotations
 
-import json
 import sys
 import time
 from pathlib import Path
@@ -65,19 +65,8 @@ def _settle(app, timeout=120.0):
     _draw(app, n=1)
 
 
-#: What the Qt ``LifetimeFcsSimWidget``'s button produced for ``SETTINGS`` (curves, status line, pens),
-#: recorded before the Qt widget was deleted.
-_QT_FACTS = json.loads((HERE / "qt_reference.json").read_text())
-
-
-@pytest.fixture(scope="module")
-def qt():
-    assert _QT_FACTS["settings"] == SETTINGS
-    return _QT_FACTS
-
-
 def _reference():
-    """The committed Qt model's run (before the model moved to model.py), written out."""
+    """The documented pipeline run step by step: simulate, build the filters, correlate."""
     from chisurf.core.fluorescence.fcs.filtered import calc_ffcs_filters, filter_condition_number
     from chisurf.core.fluorescence.fcs.simulate import simulate_lifetime_fcs
     from chisurf.plugins.fcs.fcs_correlator.core import filtered_correlation_datasets
@@ -103,44 +92,39 @@ def _reference():
     return datasets, filter_condition_number(sim.total_decay, sim.reference_decays)
 
 
-# 1. the same curves and status as the Qt widget's button, and as the committed model
-def test_a_simulation_gives_the_qt_widgets_curves_and_status(qt):
+# 1. a press gives the species pairs of the planted two-lifetime sample, as the pipeline computes them
+def test_a_simulation_gives_the_species_curves_and_status():
+    reference, condition = _reference()
     app = _app()
     try:
         app.simulate()
         _settle(app)
         ours = app.model.datasets
-        assert [d["name"] for d in ours] == [c["name"] for c in qt["curves"]]
-        for d, c in zip(ours, qt["curves"]):
-            assert (d["species_a"], d["species_b"]) == (c["a"], c["b"])
-            assert np.asarray(d["y"], float) == pytest.approx(np.asarray(c["y"]), nan_ok=True)
-            assert np.asarray(d["x"], float) == pytest.approx(np.asarray(c["x"]))
-        assert app.message == qt["status"]
+        assert [(d["name"], d["species_a"], d["species_b"]) for d in ours] == [
+            ("τ=1 ns × τ=1 ns", 0, 0),
+            ("τ=4 ns × τ=4 ns", 1, 1),
+            ("τ=1 ns × τ=4 ns", 0, 1),
+        ]
+        for d, r in zip(ours, reference, strict=True):
+            assert np.asarray(d["x"], float) == pytest.approx(np.asarray(r["x"], float))
+            assert np.asarray(d["y"], float) == pytest.approx(np.asarray(r["y"], float), nan_ok=True)
+        assert app.message == (
+            f"3 species correlation(s); filter condition number {condition:.1f}."
+        )
+        for d in ours[:2]:  # diffusion: bunched at short lags, uncorrelated (G = 1) by 1-100 ms
+            x, y = np.asarray(d["x"], float), np.asarray(d["y"], float)
+            plateau = y[(x > 1.0) & (x < 100.0)]
+            assert np.mean(plateau) == pytest.approx(1.0, abs=0.05)
+            assert np.mean(y[(x > 0.0) & (x < 0.01)]) > 5.0
     finally:
         app.close()
 
 
-def test_the_model_runs_what_the_committed_qt_model_ran():
-    model = LifetimeFcsSimModel()
-    for key, value in SETTINGS.items():
-        setattr(model, key, value)
-    model.run()
-    reference, condition = _reference()
-    assert model.condition_number == pytest.approx(condition)
-    for d, r in zip(model.datasets, reference, strict=True):
-        assert d["name"] == r["name"]
-        assert np.asarray(d["y"], float) == pytest.approx(np.asarray(r["y"], float), nan_ok=True)
-
-
-# 1. the Qt pens: species 1 blue, species 2 red, the cross-correlation green
-def test_curves_carry_the_qt_widgets_colours(qt, monkeypatch):
+# 1. species 1, species 2 and their cross-correlation each have their own pen, drawn in that order
+def test_curves_carry_the_species_colours(monkeypatch):
     from emtk import implot
 
-    def rgb(hex_colour):
-        return tuple(int(hex_colour[i : i + 2], 16) for i in (1, 3, 5))
-
-    assert [rgb(c) for c in qt["pens"]["species"]] == [c[:3] for c in SPECIES_COLOURS]
-    assert rgb(qt["pens"]["cross"]) == CROSS_COLOUR[:3]
+    assert len({SPECIES_COLOURS[0], SPECIES_COLOURS[1], CROSS_COLOUR}) == 3
     styles = []
     monkeypatch.setattr(
         implot,
@@ -158,7 +142,7 @@ def test_curves_carry_the_qt_widgets_colours(qt, monkeypatch):
         app.close()
 
 
-def test_the_lag_axis_is_logarithmic_as_in_the_qt_plot(monkeypatch):
+def test_the_lag_axis_is_logarithmic(monkeypatch):
     from emtk import implot
 
     scales = []

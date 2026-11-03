@@ -2,7 +2,7 @@
 
 Pointer presses at the drawn controls (the hub's rail and Back / Next, the step apps' buttons, fields and tick boxes),
 typed text and the file dialog; the data are the correlator's own demo (:mod:`..demo`, molecules crossing the focus in
-0.25 ms) and BH_SPC132.spc where the Qt baseline used it. Hermetic: temp settings, MMFDB and HOME.
+0.25 ms) and BH_SPC132.spc for a real measurement. Hermetic: temp settings, MMFDB and HOME.
 """
 
 from __future__ import annotations
@@ -196,7 +196,7 @@ def test_example_correlate_and_merge(size):
     hub.click("load_example")
     files = hub.child
     assert len(files.checked_files) == 1 and files.checked_files[0].endswith("fcs_demo.spc")
-    assert not hub.app.panel_enabled("filter")  # off by default, as in Qt
+    assert not hub.app.panel_enabled("filter")  # off by default
     hub.nav("correlator")
     assert hub.app.selected == "correlator" and hub.shown("photons")
     hub.type_into("channel_a", "0")
@@ -337,8 +337,8 @@ def test_filter_calc_is_greyed_without_a_window_to_open_it_in():
     hub.app.close()
 
 
-def test_spc_correlates_like_the_qt_tool():
-    """The Qt baseline's file and settings: two chunks, the same numbers as the Qt correlator."""
+def test_spc_correlates_through_the_app_as_the_model_does():
+    """A real stream in two chunks: the pressed Correlate gives the curves the workflow and model compute directly."""
     spc = Path(__file__).resolve().parents[5] / "test/data/tttr/BH/132/BH_SPC132.spc"
     if not spc.exists():
         pytest.skip("SPC test data not available")

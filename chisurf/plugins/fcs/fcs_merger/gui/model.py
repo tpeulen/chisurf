@@ -1,9 +1,9 @@
-"""Qt-free state of the FCS curve merger (the Qt ``WizardFcsMerger`` page's logic).
+"""Qt-free state of the FCS curve merger.
 
 The curves of a correlation folder, which of them are used, the highlighted one, the
 target file and the merge. Reading and averaging are the core's
 (:mod:`chisurf.core.fluorescence.fcs.merge`); this model adds the screening table, the
-lag-grid check the average needs, and the target name the Qt page derives.
+lag-grid check the average needs, and the target name derived from the folder.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from ..api import compute_average_correlations, save_mean_correlation
 
 
 def target_for(folder) -> str:
-    """The Qt page's target: ``<parent>/<sanitised folder name>.cor``."""
+    """The default target: ``<parent>/<sanitised folder name>.cor``."""
     folder = Path(folder)
     stem = re.sub(r"[^A-Za-z0-9._-]+", "_", folder.stem)
     if not stem or stem in {".", "..", "_"}:
@@ -29,7 +29,7 @@ def target_for(folder) -> str:
 
 
 def channel_rates(curve) -> tuple[float, float]:
-    """CR A and CR B in kHz, as the Qt table computes them (half the total rate as a fallback)."""
+    """CR A and CR B in kHz: a channel's counts over the duration (half the total rate as a fallback)."""
     duration = float(curve.get("duration", 0.0))
     try:
         if duration <= 0:
@@ -44,7 +44,7 @@ def channel_rates(curve) -> tuple[float, float]:
 
 
 def read_folder(folder):
-    """``(curves, paths, skipped)`` of a folder's ``*.json.gz`` then ``*.cor`` chunks, in the Qt order."""
+    """``(curves, paths, skipped)`` of a folder's ``*.json.gz`` then ``*.cor`` chunks, each group sorted by name."""
     from chisurf.core.fio.zipped import open_maybe_zipped
 
     folder = Path(folder)
@@ -118,7 +118,7 @@ class MergerModel:
 
     # -- curves ------------------------------------------------------------------------
     def set_correlations(self, correlations, source_folder=None, paths=None, provenance=None):
-        """Show *correlations* (all used); a source folder sets the folder and the Qt target. *provenance* is the
+        """Show *correlations* (all used); a source folder sets the folder and the default target. *provenance* is the
         record of how they were computed (the correlator's), written with the merge as its settings file."""
         validate(correlations)
         self.provenance = provenance
@@ -146,7 +146,7 @@ class MergerModel:
 
     @property
     def mean_correlation(self):
-        """The average of the used curves; of all of them when none is used, as the Qt page does."""
+        """The average of the used curves; of all of them when none is used."""
         chosen = [c for c, used in zip(self.correlations, self.use) if used] or self.correlations
         return compute_average_correlations(chosen) if chosen else None
 
@@ -188,7 +188,7 @@ class MergerModel:
             self.selected = record["index"]
 
     def toggle_curve(self, record):
-        """A double click toggles a curve in or out of the merge, as in the Qt table."""
+        """A double click toggles a curve in or out of the merge."""
         if isinstance(record, dict):
             index = record["index"]
             self.use[index] = not self.use[index]

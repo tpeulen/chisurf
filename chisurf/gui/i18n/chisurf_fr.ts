@@ -76658,6 +76658,10 @@ Background (kHz): {bg}</source>
             <source>press Load example, or pick the three tables</source>
             <translation>appuyer sur Load example, ou choisir les trois tableaux</translation>
         </message>
+        <message>
+            <source>No curve ticked: the merge averages all of them.</source>
+            <translation>Aucune courbe cochée : la fusion calcule la moyenne de toutes.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

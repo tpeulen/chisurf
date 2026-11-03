@@ -1,15 +1,17 @@
-"""The native FCS confocal calculator at parity with the Qt ConfocalCalcWidget.
+"""The native FCS confocal calculator: an edit sequence checked against the confocal physics.
 
-The Qt widget replayed this edit sequence once; ``qt_reference.json`` holds, after every step,
-its settings and which fields it left editable. The
-native app replays the same sequence through the spec's commit path (``setattr``
-then the section's ``call``, as a typed value does) and through pointer presses on
-its radios, buttons and fold headers.
+The app replays an edit sequence through the spec's commit path (``setattr`` then the
+section's ``call``, as a typed value does) and through pointer presses on its radios,
+buttons and fold headers. After every step the linked quantities must satisfy the
+relations of a 3D-Gaussian focus, recomputed here independently of the engine:
+``w0² = 4 D tau``, ``Veff = pi^(3/2) w0³ S``, ``N = c Veff NA``, ``1/N`` and
+Stokes-Einstein ``rh = kT / (6 pi eta D)``; the constraint decides which field is typed.
 """
 
 from __future__ import annotations
 
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -49,12 +51,6 @@ STEPS = [
 ]
 
 
-@pytest.fixture(scope="module")
-def qt():
-    """What the Qt ConfocalCalcWidget reported for STEPS, recorded before it was retired."""
-    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
-
-
 def _sections(sections=SPEC["sections"]):
     for section in sections:
         yield section
@@ -90,15 +86,34 @@ def _click(app, key, size=(1200, 800)):
     _draw(app, size, n=1)
 
 
-def _same(native, qt_settings):
-    """The Qt spin boxes keep a value at their decimals and recompute from it; allow that rounding."""
-    for key, value in qt_settings.items():
-        mine = native[key]
-        if isinstance(value, float):
-            tolerance = 1.5 * 10 ** -DECIMALS.get(key, 6) + 2e-4 * abs(value)
-            assert mine == pytest.approx(value, abs=tolerance), key
-        else:
-            assert mine == value, key
+KB, NA = 1.380649e-23, 6.02214076e23
+
+
+def _close(a, b, rel=2e-4, decimals=6):
+    return a == pytest.approx(b, rel=rel, abs=1.5 * 10**-decimals)
+
+
+def _physics_holds(s):
+    """The settings obey the focus and Stokes-Einstein relations (to the fields' decimals)."""
+    w0_m = math.sqrt(4.0 * s["D_um2_s"] * 1e-12 * s["tau_us"] * 1e-6)
+    veff_fL = math.pi**1.5 * (w0_m * 1e6) ** 3 * s["S"]
+    assert _close(s["veff_fL"], veff_fL, decimals=DECIMALS.get("veff_fL", 6)), (s, veff_fL)
+    n = s["conc_nM"] * 1e-9 * s["veff_fL"] * 1e-15 * NA
+    assert _close(s["num_mols"], n, rel=2e-3, decimals=DECIMALS.get("num_mols", 6)), (s, n)
+    assert _close(s["invN"], 1.0 / s["num_mols"], rel=2e-3), s
+    rh_nm = KB * (s["temp_C"] + 273.15) / (6 * math.pi * s["eta_mPa_s"] * 1e-3 * s["D_um2_s"] * 1e-12) * 1e9
+    assert _close(s["rh_nm"], rh_nm, rel=2e-3, decimals=DECIMALS.get("rh_nm", 6)), (s, rh_nm)
+
+
+def _expected_editable(s):
+    typed = {"D": "D_um2_s", "rh": "rh_nm", "V": "veff_fL"}[s["fix_mode"]]
+    return {
+        "D_um2_s": typed == "D_um2_s",
+        "rh_nm": typed == "rh_nm",
+        "veff_fL": typed == "veff_fL",
+        "eta_mPa_s": not s["use_water_eta"],
+        "shape_aspect": s["shape_type"] != "Sphere",
+    }
 
 
 def _replay(model):
@@ -127,42 +142,67 @@ def _editable(model):
     }
 
 
-# 1. every step of the Qt widget's edit sequence: the same numbers and the same editable fields
-def test_the_edit_sequence_matches_the_qt_widget(qt):
+# 1. every step of an edit sequence: the typed value lands, the linked ones follow the physics,
+# the constraint decides which fields are editable
+def test_the_edit_sequence_obeys_the_confocal_physics():
+    from chisurf.core.fluorescence.dyes import get_dye
+
     app = ConfocalApp()
     m = app.model
     try:
-        assert m.dye_names() == qt["steps"][0]["dyes"]
-        _same(m.settings(), qt["steps"][0]["settings"])
-        assert _editable(m) == qt["steps"][0]["editable"]
-        for (kind, a, b), expected in zip(STEPS, qt["steps"][1:]):
+        assert DYE in m.dye_names()
+        s = m.settings()
+        assert s["fix_mode"] == "D" and s["tau_us"] == 70.0 and s["D_um2_s"] == 400.0
+        _physics_holds(s)
+        assert _editable(m) == _expected_editable(s)
+        for kind, a, b in STEPS:
             if kind == "value":
                 _commit(m, a, b)
+                if m.enabled(a) or a in ("tau_us", "S", "temp_C", "conc_nM"):
+                    assert getattr(m, a) == pytest.approx(b), a
             elif kind == "fix":
                 _click(app, f"constraint.{['D', 'rh', 'V'].index(a)}")  # the radio itself
+                assert m.constraint == a
             elif kind == "water":
                 if m.use_water_eta != b:
                     _click(app, "use_water_eta")
+                assert m.use_water_eta == b
             elif kind == "dye":
                 m.dye = DYE
                 _click(app, f"scale_dref.{0 if a else 1}")
                 _click(app, "apply_dye")
+                assert m.constraint == "D"
+                if not a:  # unscaled: the table's D at 25 C, as listed
+                    assert m.D_um2_s == pytest.approx(get_dye(DYE)["d25_um2_s"])
             elif kind == "shape":
                 app.form.folds["Molecular shape"] = True
                 m.shape_type = a
                 _commit(m, "shape_size_nm", b[0])
                 _commit(m, "shape_aspect", b[1])
                 _click(app, "apply_shape")
-            _same(m.settings(), expected["settings"])
-            assert _editable(m) == expected["editable"], (kind, a)
+                assert m.constraint == "D" and not m.error
+                if a == "Sphere":  # Stokes-Einstein with the radius half the size
+                    eta = m.eta_mPa_s * 1e-3
+                    d = KB * (m.temp_C + 273.15) / (6 * math.pi * eta * b[0] / 2 * 1e-9) * 1e12
+                    assert m.D_um2_s == pytest.approx(d, rel=1e-3)
+            s = m.settings()
+            _physics_holds(s)
+            assert _editable(m) == _expected_editable(s), (kind, a)
     finally:
         app.close()
 
 
-# 2. settings: the Qt keys; an import applies known entries, resolves aliases, ignores the rest
-def test_settings_round_trip_and_tolerant_import(qt, tmp_path):
+SETTINGS_KEYS = {
+    "tau_us", "D_um2_s", "rh_nm", "S", "veff_fL", "temp_C", "eta_mPa_s", "conc_nM", "num_mols",
+    "invN", "use_water_eta", "fix_mode", "dye", "scale_dref", "shape_type", "shape_size_nm",
+    "shape_aspect",
+}
+
+
+# 2. settings: a fixed key set; an import applies known entries, resolves aliases, ignores the rest
+def test_settings_round_trip_and_tolerant_import(tmp_path):
     m = ConfocalModel()
-    assert set(m.settings()) == set(qt["steps"][0]["settings"])
+    assert set(m.settings()) == SETTINGS_KEYS
     for kind, a, b in STEPS[:8]:
         if kind == "value":
             _commit(m, a, b)
@@ -170,28 +210,36 @@ def test_settings_round_trip_and_tolerant_import(qt, tmp_path):
             m.constraint = a
             m.recompute()
     path = m.export_json(tmp_path / "calc.json")
-    # The Qt keys, plus the schema that makes the file a workspace setup of this tool.
+    # The settings, plus the schema that makes the file a workspace setup of this tool.
     from chisurf.plugins.fcs.fcs_calculator.gui.model import SETTINGS_SCHEMA
 
     assert json.loads(path.read_text()) == {"schema": SETTINGS_SCHEMA, **m.settings()}
     restored = ConfocalModel()
     restored.import_json(path)
     assert restored.settings().keys() == m.settings().keys()
-    _same(restored.settings(), m.settings())
-    # The Qt widget recomputes an import from whichever occupancy field was typed last (hidden
-    # state), so the import is compared after the same history.
+    for key, value in m.settings().items():
+        assert restored.settings()[key] == pytest.approx(value, rel=1e-6) if isinstance(
+            value, float
+        ) else restored.settings()[key] == value, key
     other = ConfocalModel()
     _replay(other)
+    before = other.settings()
     other.apply_settings(
         dict(
-            qt["steps"][-1]["settings"],
+            before,
             fix_mode="rh",
-            dye="Rhodamine 6G (Rh6G)",
-            shape_type="Hexagon",
+            dye="Rhodamine 6G (Rh6G)",  # an alias of a listed species
+            shape_type="Hexagon",  # not a shape: ignored
             tau_us=95.0,
+            unknown_key=1.0,  # ignored
         )
     )
-    _same(other.settings(), qt["imported"])
+    s = other.settings()
+    assert s["fix_mode"] == "rh" and s["dye"] == "Rhodamine 6G"
+    assert s["shape_type"] == before["shape_type"] and s["tau_us"] == 95.0
+    assert s["rh_nm"] == pytest.approx(before["rh_nm"])  # the constrained field is kept
+    assert "unknown_key" not in s
+    _physics_holds(s)
 
 
 # 3. export through its save dialog; settings come back through the workspace (a setup row);

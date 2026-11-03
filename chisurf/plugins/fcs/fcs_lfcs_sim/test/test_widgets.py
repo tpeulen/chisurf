@@ -1,4 +1,4 @@
-"""Headless tests of the lifetime-FCS simulator's native app (the Qt widget tests, ported)."""
+"""Headless tests of the lifetime-FCS simulator's native app."""
 
 from __future__ import annotations
 

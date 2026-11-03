@@ -308,11 +308,11 @@ def test_the_fit_range_arrows_and_the_wheel(drv):
     assert model(drv)._fit_bounds[1] == 253
 
 
-def test_the_fit_range_follows_the_qt_tools_default_for_the_example(drv):
+def test_the_fit_range_starts_at_the_default_for_the_example(drv):
     assert model(drv)._fit_bounds == (
         10,
         254,
-    )  # peak + 1 % of the bins to 1 % short of the end, as the Qt tool initialises it
+    )  # peak + max(2, 1 % of the bins) to 1 % short of the end
 
 
 # -- the mixed decay ----------------------------------------------------------------------------------------------------- #

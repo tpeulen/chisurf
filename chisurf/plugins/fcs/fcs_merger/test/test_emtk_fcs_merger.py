@@ -1,10 +1,10 @@
-"""The native FCS curve merger at parity with the Qt WizardFcsMerger page.
+"""The native FCS curve merger: its table, merge, save and controls on real repeats.
 
 Real repeats: BH_SPC132.spc cut into six 10 s chunks and cross-correlated with tttrlib
-(``make_chunks.py`` beside this file). The frozen Qt oracle (``data/merger-*.json``) loaded the folder, left chunk 3 out and
-saved. The native app does the same through its controls -- a pointer press on the Use
-check box, a double click on a row -- and must show the same rows, target and merge,
-and write the same file.
+(``make_chunks.py`` beside this file). The app loads the folder, leaves chunk 3 out with a
+pointer press on its Use check box and saves. The oracle is the input itself: each chunk's
+``.cor`` file read here gives the table's rows, and the merge is their plain average
+(standard error ``std / sqrt(n)``, durations summed, count rate duration-weighted).
 """
 
 from __future__ import annotations
@@ -28,34 +28,11 @@ REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 SPEC = json.loads((HERE.parent / "gui" / "fcs_merger_emtk.view.json").read_text(encoding="utf-8"))
 
 
-@pytest.fixture(scope="module")
-def chunks(tmp_path_factory):
-    pytest.importorskip("tttrlib")
-    return build(tmp_path_factory.mktemp("qt") / "BH_SPC132", legacy_seconds=True)
-
-
-@pytest.fixture(scope="module")
-def qt(chunks):
-    """Read the committed populated legacy oracle without constructing retired Qt code."""
-    path = HERE / "data" / "merger-facts.json"
-    facts = json.loads(path.read_text())
-    inventory = json.loads(path.with_name("merger-loaded-six-repeats.json").read_text())
-    table = next(row for row in inventory if row["class"] == "QTableWidget")
-    rows = [[value.strip() for value in row[1:5]] for row in table["data"]]
-    return {
-        "rows": rows,
-        "tips": [str(chunks / (row[0] + ".cor")) for row in rows],
-        "target": str(chunks.parent / "BH_SPC132.cor"),
-        "mean": facts["mean"],
-        "saved": facts["saved"],
-    }
-
-
 @pytest.fixture
 def folder(tmp_path):
     """A fresh copy per test (saving writes beside the folder)."""
     pytest.importorskip("tttrlib")
-    return build(tmp_path / "BH_SPC132", legacy_seconds=True)
+    return build(tmp_path / "BH_SPC132")
 
 
 def _draw(app, size=(1200, 800), n=2):
@@ -126,39 +103,46 @@ def _loaded(folder, **kwargs):
     return app
 
 
-# 1. the Qt page's rows, target, merge and saved file, chunk 3 left out with the pointer
-def test_rows_merge_and_file_match_the_qt_page(qt, folder, chunks):
+def _chunk(path):
+    """A chunk's ``.cor`` columns: lag, G, and (duration, per-channel count rate) in rows 0 and 1."""
+    arr = np.loadtxt(path)
+    return {"x": arr[:, 0], "y": arr[:, 1], "duration": arr[0, 2], "count_rate": arr[1, 2]}
+
+
+# 1. the chunks' rows, the target beside the folder, the average of the used chunks and its file
+def test_rows_merge_and_file_follow_from_the_chunks(folder):
+    files = sorted(folder.glob("chnk-*.cor"))
+    chunks = [_chunk(p) for p in files]
+    assert len(chunks) == 6
     app = _loaded(folder)
     try:
-        rows = [
-            [r["file"], f"{r['cr_a']:.2f}", f"{r['cr_b']:.2f}", f"{r['duration']:.2f}"]
-            for r in app.model.curve_rows()
-        ]
-        assert rows == qt["rows"]
-        assert [Path(r["path"]).name for r in app.model.curve_rows()] == [
-            Path(t).name for t in qt["tips"]
-        ]
-        assert Path(app.model.output).name == Path(qt["target"]).name == "BH_SPC132.cor"
-        assert (
-            Path(app.model.output).parent == folder.parent
-            and Path(qt["target"]).parent == chunks.parent
-        )
+        rows = app.model.curve_rows()
+        assert [Path(r["path"]).name for r in rows] == [p.name for p in files]
+        for r, c, p in zip(rows, chunks, files):
+            assert r["file"] == p.stem
+            assert (r["cr_a"], r["cr_b"]) == (pytest.approx(c["count_rate"]),) * 2
+            assert r["duration"] == pytest.approx(c["duration"]) == pytest.approx(10.0)
+        assert Path(app.model.output) == folder.parent / "BH_SPC132.cor"
         _draw(app)
         x, y = _cell(app, 2, "use")
         _press(app, x, y)  # the Use check box of chunk 3
         assert app.model.use == [True, True, False, True, True, True]
         assert app.model.curve_rows()[2]["muted"]
+        used = [c for i, c in enumerate(chunks) if i != 2]
+        ys = np.array([c["y"] for c in used])
         mean = app.model.mean_correlation
-        for key in ("x", "y", "ey"):
-            np.testing.assert_allclose(mean[key], qt["mean"][key], rtol=1e-12)
-        assert (
-            mean["count_rate"] == pytest.approx(qt["mean"]["count_rate"])
-            and mean["count_rate"] > 1.0
-        )
-        assert mean["duration"] == qt["mean"]["duration"] == 50.0
+        np.testing.assert_allclose(mean["x"], np.mean([c["x"] for c in used], axis=0)[1:], rtol=1e-12)
+        np.testing.assert_allclose(mean["y"], ys.mean(axis=0)[1:], rtol=1e-12)
+        np.testing.assert_allclose(mean["ey"], (ys.std(axis=0) / np.sqrt(5))[1:], rtol=1e-12)
+        assert mean["duration"] == 50.0
+        assert mean["count_rate"] == pytest.approx(np.mean([c["count_rate"] for c in used]))
+        assert mean["count_rate"] > 1.0
         _click(app, "request_save")
         _wait(app)
-        assert Path(app.model.output).read_text() == qt["saved"]
+        saved = np.loadtxt(app.model.output)
+        np.testing.assert_allclose(saved[:, 0], mean["x"], rtol=1e-4)
+        np.testing.assert_allclose(saved[:, 1], mean["y"], rtol=1e-4)
+        assert saved[0, 2] == 50.0 and saved[1, 2] == pytest.approx(mean["count_rate"], rel=1e-4)
         assert "Saved the merge of 5 curves" in app.model.status
     finally:
         app.close()
@@ -184,7 +168,7 @@ def test_double_click_toggles_and_delete_removes(folder):
         app.close()
 
 
-def test_curves_carry_the_qt_pens(folder, monkeypatch):
+def test_curves_carry_their_pens(folder, monkeypatch):
     from chisurf.plugins.fcs.fcs_merger.gui import app as app_module
 
     app = _loaded(folder)
@@ -207,7 +191,7 @@ def test_curves_carry_the_qt_pens(folder, monkeypatch):
         app.close()
 
 
-# 3. no curve ticked: the merge of all, as the Qt page; errors are shown
+# 3. no curve ticked: the merge of all; errors are shown
 def test_none_ticked_merges_all_and_errors_show(folder, tmp_path):
     app = _loaded(folder)
     try:

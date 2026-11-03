@@ -22,7 +22,6 @@ The merger is useful for improving signal-to-noise ratio in FCS experiments by c
 ## Requirements
 
 - Python packages:
-  - PyQt5
   - numpy
   - matplotlib (for plotting)
   - scipy (for statistical analysis)

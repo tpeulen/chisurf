@@ -505,7 +505,7 @@ def preset_names(model: CorrelatorSettingsModel) -> list[str]:
                 str(p.get("channel_b", "")),
                 str(p.get("name", "")),
             )
-        except Exception:  # noqa: BLE001 - a malformed preset is skipped, as in the Qt combo
+        except Exception:  # noqa: BLE001 - a malformed preset is skipped
             continue
         names.append(nm or (f"{cha}x{chb}" if cha != chb else f"{cha}_ACF" if cha else "(unnamed)"))
     return names
