@@ -121,7 +121,7 @@ class RegionMleApp(ImApp):
             self.windows,
             (self._draw_analysis, self._draw_regions, self._draw_decay),
         ):
-            # Regions and Decay are tabs of one region, as in the Qt tool: the image
+            # Regions and Decay are tabs of one region: the image
             # needs the height its own controls leave, which a split cannot give it.
             dock = "analysis" if key == "analysis" else "results"
             self.docks.add_window(key, section["title"], draw, dock=dock, closable=False)

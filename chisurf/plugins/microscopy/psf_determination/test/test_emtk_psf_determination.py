@@ -1,8 +1,9 @@
-"""The native PSF determination tool against the Qt tool it replaces, every control operated with real input events.
+"""The PSF determination tool, every control operated with real input events.
 
 Hermetic through ``conftest.py`` (HOME, chisurf/MMFDB folders, QSettings in a temp folder); the last test proves the
-user's real ``~/.chisurf`` is untouched. The Qt tool and the native app share the Qt-free ``PsfViewModel``: the beads,
-the fits and the CSV of a run started from the native window must equal those of the Qt tool's model for the same stack.
+user's real ``~/.chisurf`` is untouched. Reference: the demo stack's five planted Gaussian beads (positions ``BEADS``,
+sigma 1.8 / 1.8 / 3.0 px, amplitude 800 over a flat background of 5): the beads, the fits and the CSV of a run started
+from the window must recover them.
 """
 
 from __future__ import annotations
@@ -134,37 +135,22 @@ def pick(ui, x, y):
     ui.click((px - 2, py - 2, 4, 4))
 
 
-# ───────────────────────────── numbers equal the Qt tool ───────────────────────────── #
+# ───────────────────────────── numbers are the planted beads ───────────────────────────── #
 
 
-@pytest.fixture
-def qt_model():
-    """The view-model the retired Qt tool wrapped (it held no logic of its own), on the same stack."""
-    from chisurf.plugins.microscopy.psf_determination.gui.view_model import (
-        PsfViewModel,  # noqa: F811
-    )
-
-    model = PsfViewModel()
-    model.set_stack(make_stack())
-    model.pixel_size_nm, model.z_step_nm = 100.0, 300.0
-    model.pixels_per_frame = 60  # what the demo sets, so the two detect the same five beads
-    return model
-
-
-def test_detection_fits_and_the_batch_csv_started_in_the_native_window_equal_the_qt_tools(
-    qt_model, demo, tmp_path
+def test_detection_fits_and_the_batch_csv_started_in_the_window_recover_the_planted_beads(
+    demo, tmp_path
 ):
-    qt = qt_model
-    qt.detect_beads()
-    qt.fit_all()
-    qt.export_csv(str(tmp_path / "qt.csv"))
+    import csv
+
     ui = demo
     ui.click_name("detect_beads")
     m = ui.settle()
-    assert m.detected_beads == qt.detected_beads and len(m.detected_beads) == 5
+    assert sorted((y, x) for _, y, x in m.detected_beads) == sorted((y, x) for _, y, x in BEADS)
+    assert all(abs(z - 10) <= 2 for z, _, _ in m.detected_beads)
     ui.click_name("fit_all")
     m = ui.settle()
-    assert m.results_text == qt.results_text
+    assert m.results_text.count("FWHMxy") == 5
     ui.app.last_dir = str(tmp_path)
     ui.click_name("export_csv")
     ui.click_text("psf_batch_results.csv", last=False, fx=0.3)
@@ -172,21 +158,31 @@ def test_detection_fits_and_the_batch_csv_started_in_the_native_window_equal_the
     ui.type("native.csv")
     ui.click_text("Save")
     ui.settle()
-    assert (tmp_path / "native.csv").read_text() == (tmp_path / "qt.csv").read_text()
+    with open(tmp_path / "native.csv", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    assert sorted((int(r["y_px"]), int(r["x_px"])) for r in rows) == sorted(
+        (y, x) for _, y, x in BEADS
+    )
+    for r in rows:
+        assert r["success"] == "True"
+        assert float(r["sigma_x_px"]) == pytest.approx(1.8, rel=0.03)
+        assert float(r["sigma_y_px"]) == pytest.approx(1.8, rel=0.03)
+        assert float(r["sigma_z_px"]) == pytest.approx(3.0, rel=0.03)
 
 
-def test_a_picked_bead_fit_equals_the_qt_tools_single_fit(qt_model, demo):
-    qt = qt_model
-    qt.selected_bead = (10, 20, 20)
-    fit = qt.fit_selected()
+def test_a_picked_bead_fit_recovers_the_planted_bead(demo):
     demo.app.canvas.z = 10
     demo.draw(3)
     pick(demo, 20, 20)
     m = demo.settle()
-    assert m.selected_bead == (10, 20, 20) and m.results_text == qt.results_text
-    np.testing.assert_allclose(m._fit_params, qt._fit_params)
-    assert m.fit_circle()["r"] == pytest.approx(qt.fit_circle()["r"])
-    assert fit["success"]
+    assert m.selected_bead == (10, 20, 20)
+    assert "Bead position: x=20, y=20, z=10 (pixels)" in m.results_text
+    sx, sy, sz, amplitude, offset = (m._fit_params[i] for i in (4, 5, 3, 6, 7))
+    assert (sx, sy, sz) == pytest.approx((1.8, 1.8, 3.0), rel=0.03)
+    assert amplitude == pytest.approx(800, rel=0.03) and offset == pytest.approx(5.0, abs=0.5)
+    circle = m.fit_circle()
+    assert (circle["x"], circle["y"], circle["z"]) == (pytest.approx(20, abs=0.1), pytest.approx(20, abs=0.1), 10)
+    assert circle["r"] == pytest.approx(np.sqrt(2 * np.log(2)) * 1.8, rel=0.03), "half the lateral FWHM"
 
 
 def test_the_physical_widths_of_the_known_stack_are_recovered(demo):
@@ -202,8 +198,8 @@ def test_the_physical_widths_of_the_known_stack_are_recovered(demo):
     )
 
 
-def test_the_native_forms_carry_every_field_range_and_decimal_of_the_qt_spec():
-    qt_spec = json.loads((PLUGIN / "gui" / "psf.view.json").read_text())
+def test_the_forms_carry_every_field_range_and_decimal_of_the_view_spec():
+    view_spec = json.loads((PLUGIN / "gui" / "psf.view.json").read_text())
 
     def leaves(sections, out):
         for s in sections:
@@ -212,13 +208,13 @@ def test_the_native_forms_carry_every_field_range_and_decimal_of_the_qt_spec():
             leaves(s.get("sections", []), out)
         return out
 
-    qt = {a: s for a, s in leaves(qt_spec["sections"], {}).items() if a != "results_text"}
+    fields = {a: s for a, s in leaves(view_spec["sections"], {}).items() if a != "results_text"}
     app = make_app()
     nat = {}
     for spec in app.panels.values():
         leaves(spec["sections"], nat)
-    assert set(qt) <= set(nat)
-    for attr, section in qt.items():
+    assert set(fields) <= set(nat)
+    for attr, section in fields.items():
         for key in ("minimum", "maximum", "decimals", "kind", "step"):
             if key in section:
                 assert nat[attr].get(key) == section[key], (attr, key)
@@ -369,7 +365,7 @@ def test_buttons_are_greyed_while_a_job_runs(demo, monkeypatch):
         ("min_area", "3", 3),
     ],
 )
-def test_each_field_takes_typed_values_clamped_to_the_qt_range(ui, name, typed, expected):
+def test_each_field_takes_typed_values_clamped_to_its_range(ui, name, typed, expected):
     m = type_value(ui, name, typed)
     assert getattr(m, name) == pytest.approx(expected)
 

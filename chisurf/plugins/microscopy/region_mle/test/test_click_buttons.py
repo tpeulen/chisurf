@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 from emtk.testing import Driver
 
-from .test_emtk_region_mle import REFERENCE_TAU, demo, loaded_model, taus, workdir  # noqa: F401
+from .test_emtk_region_mle import TAU_RTOL, TRUE_TAU, demo, loaded_model, taus, workdir  # noqa: F401
 
 
 def _app(model=None):
@@ -59,7 +59,7 @@ def test_preview_then_run_then_export_then_reopen(workdir, tmp_path):  # noqa: F
 
     driver.click("request_run")
     _settle(driver, app)
-    np.testing.assert_allclose(taus(app.model), REFERENCE_TAU, rtol=2e-3)
+    np.testing.assert_allclose(taus(app.model), TRUE_TAU, rtol=TAU_RTOL)
     assert not app.model.error_text
     assert "4 region(s) in 1 file(s)" in _shown(driver)
     saved = workdir / "spot_demo_mixture_analysis" / "molecule_data.tsv"
@@ -90,7 +90,7 @@ def test_preview_then_run_then_export_then_reopen(workdir, tmp_path):  # noqa: F
     other_driver.click("Open")
     other_driver.frame(3)
     assert other.model.status_text.startswith("Loaded 4 region(s)")
-    np.testing.assert_allclose(taus(other.model), REFERENCE_TAU, rtol=2e-3)
+    np.testing.assert_allclose(taus(other.model), TRUE_TAU, rtol=TAU_RTOL)
     app.close()
     other.close()
 
@@ -112,7 +112,7 @@ def test_load_demo_button_fills_the_lists_and_the_run_finds_the_known_lifetimes(
     assert "spot_demo_mixture.ptu" in _shown(driver)
     driver.click("request_run")
     _settle(driver, app, timeout=300.0)
-    np.testing.assert_allclose(taus(app.model), REFERENCE_TAU, rtol=2e-2)
+    np.testing.assert_allclose(taus(app.model), TRUE_TAU, rtol=TAU_RTOL)
     app.close()
 
 

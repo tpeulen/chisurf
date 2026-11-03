@@ -132,7 +132,7 @@ class PsfDeterminationApp(TourTarget, ImApp):
         super().__init__(self.render, continuous=False)
 
     def build_panels(self):
-        """The Qt tool's value sections (one source of truth), as spin forms."""
+        """The value sections of ``psf.view.json`` (one source of truth), as spin forms."""
         spec = json.loads((HERE / "psf.view.json").read_text())["sections"][0]["sections"][0][
             "sections"
         ]
