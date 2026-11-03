@@ -7,15 +7,12 @@ global parameter table) and a lifetime group's *Abs.* / *Norm.* / *read* / *link
 natively and write through ``model.section.call``; any parameter table opens the link menu on a
 right click. Every action is a click on the declared rectangles (``editor.*`` item rects), the
 callback a table calls, or a pick in the popup the click opened; every check reads what the shell
-shows or what the server answers. The parity test compares the Analysis dock against the Qt model
-editors recorded before the Qt shell was retired.
+shows or what the server answers.
 """
 
 from __future__ import annotations
 
-import json
 import os
-import re
 import sys
 import time
 from pathlib import Path
@@ -31,32 +28,6 @@ TCSPC = REPO / "test" / "data" / "tcspc" / "decay_fit"
 KRISTINE = REPO / "test" / "data" / "fcs" / "kristine" / "Kristine_with_error.cor"
 PDB = REPO / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
 SHOTS = Path(os.environ.get("CHISURF_NATIVE_SCREENSHOTS", "/private/tmp/chisurf-native-gpu"))
-_NUMBER = re.compile(r"^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$")
-
-#: Qt model-editor controls the emtk editor does not have yet, by model (an open ledger item each).
-#: This list only shrinks -- a control that appears is struck.
-KNOWN_GAPS: dict[str, set[str]] = {}
-#: Qt controls present under another spelling, or chrome of the Qt widgets.
-RENAMED = {
-    "true": "a ticked Fixed / Bounds cell: drawn as a check box",
-    "false": "an unticked Fixed / Bounds cell: drawn as a check box",
-    "nan": "a parameter without a value or error: the table writes N/A",
-    "inf": "an unbounded Hi: the table writes inf only where it is set",
-    "statescheme&&kinetics": "Qt's escaped '&' in a group title; the panel reads 'State Scheme & Kinetics'",
-    "➕files": "the shared emtk file list's 'Add files'",
-    "➖remove": "the shared emtk file list's 'Remove'",
-    "📁folder": "the shared emtk file list's 'Folder'",
-    "🗄️database": "the shared emtk file list's 'Database'",
-    "🗑️clear": "the shared emtk file list's 'Clear'",
-    "∥": "chitable's fit-columns button: the emtk table sizes its columns itself (fit_columns)",
-    "☑️": "chitable's column picker button: a right click on the emtk table's header",
-    "🧹": "chitable's clear-filters button: the emtk table's filter box",
-}
-#: Qt editor text that is data of the user's environment, not a control: the dye names of the
-#: ``Dye`` list come from the MMFDB repository the session reads (an isolated test session may
-#: have none), the global table's row count from the fits of the session.
-ENVIRONMENT = re.compile(r"^(2-aminopurine|alexa\d+|atto\d+\w*|cy\d|\d+rows×\d+columns)$")
-
 
 @pytest.fixture
 def shell():
@@ -428,85 +399,3 @@ def test_scalar_table_file_list_and_global_table(shell):
     rows = _section(shell, "global_parameter_table")["data"]["rows"]
     assert rows and {"row", "owner", "link_row"} <= set(rows[0])
     driver.screenshot(SHOTS / "emtk_shell_global_parameter_table.png")
-
-
-def _inventory(driver: Driver, shell) -> set[str]:
-    sys.path.insert(0, str(REPO / "test" / "gui"))
-    from migration_parity import _normalize_control_text
-
-    editor = shell.data.editor
-
-    # Every panel open, as the Qt inventory counts folded widgets too.
-    def walk(sections):
-        for section in sections:
-            if section.get("type") == "panel" and section.get("title"):
-                editor.form.folds[section["title"]] = True
-            walk(section.get("sections") or [])
-
-    walk(editor.spec.get("sections", []))
-    found: set[str] = set()
-    for _ in range(3):
-        driver.frame(2)
-        found |= {_normalize_control_text(t) for t in driver.painter.strings}
-    found |= {_normalize_control_text(t) for t in editor.inventory()}
-    for rows in editor._sources.values():
-        for row in rows:
-            for key in ("label", "name", "state"):
-                if row.get(key):
-                    found.add(_normalize_control_text(editor.plain_label(str(row[key]))))
-    from chisurf.emtk.model_editor import PARAMETER_COLUMNS
-
-    found |= {_normalize_control_text(c["label"]) for c in PARAMETER_COLUMNS}
-    return found - {""}
-
-
-# Ten editors built, filled and screenshotted at 1500x4000: about 120 s on a loaded machine,
-# so the suite's 120 s per-test budget would cut it off at random.
-@pytest.mark.timeout(360)
-def test_parity_with_the_qt_model_editors(shell):
-    """Control inventory of the Qt model editors (TCSPC with IRF and background, mixture, MaxEnt,
-    structure, FCS kinetics, PDA, global fit, ProteinMC) against the emtk Analysis dock's editor."""
-    before = json.loads(
-        Path(__file__).with_name("shell_s2_models_qt_inventory.json").read_text("utf-8")
-    )["models"]
-    driver = Driver(shell, size=(1500, 4000))
-    prompt, decay = _tcspc(driver, shell)
-    fits: dict[str, str] = {}
-    for key, model in (
-        ("tcspc_lifetime", "Lifetime"),
-        ("tcspc_fret_gaussian", "FRET: Gaussian distances"),
-        ("tcspc_mixture", "Lifetime mixture"),
-        ("tcspc_maxent_lifetime", "Lifetime: MaxEnt"),
-        ("fret_structure", "FRET: Structure fit"),
-    ):
-        fits[key] = _add_fit(driver, shell, decay, model)
-        if key != "fret_structure":
-            _show(driver, shell, fits[key])
-            for curve in ("convolve.irf", "generic.background_curve"):
-                if f"editor.curve.{curve}.pick" in shell.item_rects:
-                    _pick_curve(driver, shell, curve, prompt)
-    kristine = _load(driver, shell, KRISTINE, "FCS", "Seidel Kristine")
-    fits["fcs_kinetics"] = _add_fit(driver, shell, kristine, "FCS (kinetics)")
-    pda = _add_pda(driver, shell)
-    fits["pda_discrete"] = _add_fit(driver, shell, pda, "PDA2c-discrete")
-    fits["pda_dynamic_n"] = _add_fit(driver, shell, pda, "PDA2c-dynamic-N-state")
-    global_row = next(r for r in shell.data.datasets.datasets if r["experiment"] == "Global")
-    fits["global_fit"] = _add_fit(driver, shell, global_row, "Global fit")
-    structure = _load(driver, shell, PDB, "Modelling", "StructureReader")
-    fits["proteinmc"] = _add_fit(driver, shell, structure, "ProteinMC")
-    report = {}
-    for key, uid in fits.items():
-        _show(driver, shell, uid)
-        after = _inventory(driver, shell)
-        driver.screenshot(SHOTS / f"emtk_shell_model_{key}.png")
-        qt = set(before[key]["controls"])
-        lost = {
-            c
-            for c in qt - after
-            if not _NUMBER.match(c) and "/users/" not in c and not ENVIRONMENT.match(c)
-        }
-        unexplained = lost - KNOWN_GAPS.get(key, set()) - set(RENAMED)
-        closed = KNOWN_GAPS.get(key, set()) & after
-        if unexplained or closed:
-            report[key] = {"lost": sorted(unexplained), "closed": sorted(closed)}
-    assert not report, f"Qt controls missing from the emtk editor: {json.dumps(report, indent=1)}"

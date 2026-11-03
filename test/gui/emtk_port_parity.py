@@ -1,43 +1,22 @@
-"""Before/after evidence for a Qt -> emtk plugin port, produced one way for every plugin.
+"""Measured checks of a plugin's emtk app, produced one way for every plugin.
 
-The port reviewer cannot trust a claim ("all controls are there", "every control has
-a tooltip") that the porter typed. This module *measures* those claims, writes them
-to files a reviewer can diff, and is the only source of numbers allowed in a port
-report.
-
-Two halves
-----------
-``before``
-    Frozen evidence of the legacy Qt widget (``before.json`` / ``before.png``) committed
-    with each port. The Qt widgets are gone, so it can no longer be captured; the
-    committed record is what ``compare`` reads.
-``after``
-    The plugin's emtk app (``entrypoints.emtk``), drawn headlessly at the same
-    sizes through ``app.draw(...)`` -- never ``app.gui()``, which skips the work
-    hub apps do inside ``draw``.
-
-Parity is judged on **control inventory, not pixels**: a
-missing control is a blocker, a moved one is not.
+A reviewer cannot trust a claim ("every control has a tooltip", "it does not need
+Qt") that the porter typed. This module *measures* those claims: the plugin's emtk
+app (``entrypoints.emtk``) is drawn headlessly through ``app.draw(...)`` -- never
+``app.gui()``, which skips the work hub apps do inside ``draw`` -- while every
+control it draws and the tooltip that follows it are recorded, and :func:`qt_free`
+imports and draws it in a fresh interpreter that forbids Qt.
 
 Command line
 ------------
 ::
 
-    PYTHONPATH=. python -m test.gui.emtk_port_parity \\
-        after  <plugin_id> --out DIR
-    PYTHONPATH=. python -m test.gui.emtk_port_parity \\
-        compare <plugin_id> --out DIR
+    PYTHONPATH=. python -m test.gui.emtk_port_parity after <plugin_id> --out DIR
 
-Files written to ``--out``:
-
-* ``before.png`` / ``after_1200x800.png`` / ``after_800x600.png`` -- screenshots.
-* ``before.json`` / ``after.json`` -- control inventory (normalised text of every
-  label, button and table cell) and, for ``after``, one row per interactive control
-  with its tooltip (``controls_without_tooltip`` must be empty).
-* ``deliberate.json`` -- written by the porter: ``{"<control>": "reason and replacement"}`` for
-  each control that is deliberately not 1:1 (a table replacing stacked rows, ...).
-* ``compare.json`` -- ``lost`` (blocker: a control nobody explained), ``explained``,
-  ``gained``, ``untooltipped``, and the Qt-free import check result.
+writes ``after_1200x800.png`` / ``after_800x600.png`` (screenshots) and ``after.json``
+(the normalised text of every label, button and table cell, one row per interactive
+control with its tooltip -- ``controls_without_tooltip`` must be empty -- and the
+Qt-free import check result) to ``--out``.
 """
 
 from __future__ import annotations
@@ -325,43 +304,6 @@ print('QT-FREE OK')
 # --------------------------------------------------------------------------- #
 # compare
 # --------------------------------------------------------------------------- #
-def compare(plugin_id: str, out: pathlib.Path) -> dict:
-    """Diff ``before.json`` against ``after.json`` and write ``compare.json``.
-
-    A non-empty ``lost`` or ``untooltipped`` list, or a failed Qt-free check, means
-    the port is not done. Each deliberate loss must be listed by the porter in the
-    report's "Deliberate differences" table; this function only measures.
-    """
-    before = json.loads((out / "before.json").read_text())
-    after = json.loads((out / "after.json").read_text())
-    # Normalised again here (it is idempotent) so evidence captured by an older version of
-    # this tool, or by ``migration_parity``'s own normaliser, compares like with like.
-    before_controls = {normalize(c) for c in before["controls"]} - {""}
-    after_controls = {normalize(c) for c in after["controls"]} - {""}
-    missing = sorted(before_controls - after_controls)
-    # A difference the porter has decided on is written to ``deliberate.json`` as
-    # ``{"<control>": "why, and where it went"}`` (keys are normalised like labels). It is
-    # listed separately and never hides: ``lost`` is only what nobody explained.
-    explained_file = out / "deliberate.json"
-    explained = json.loads(explained_file.read_text()) if explained_file.exists() else {}
-    explained = {normalize(k): v for k, v in explained.items()}
-    lost = [c for c in missing if c not in explained]
-    gained = sorted(after_controls - before_controls)
-    result = {
-        "plugin": plugin_id,
-        "explained": {c: explained[c] for c in missing if c in explained},
-        "stale_explanations": sorted(set(explained) - set(missing)),
-        "lost": lost,
-        "gained": gained,
-        "untooltipped": after.get("controls_without_tooltip", []),
-        "qt_free": after.get("qt_free", {}),
-        "before_controls": len(before_controls),
-        "after_controls": len(after_controls),
-    }
-    (out / "compare.json").write_text(json.dumps(result, indent=2, ensure_ascii=False))
-    return result
-
-
 def after(plugin_id: str, out: pathlib.Path, entry: str | None = None) -> dict:
     """Render the emtk app at both sizes; write screenshots, ``after.json`` (see ``--entry``)."""
     app = build_emtk_app(plugin_id, entry)
@@ -381,30 +323,24 @@ def after(plugin_id: str, out: pathlib.Path, entry: str | None = None) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("phase", choices=("after", "compare"))
+    parser.add_argument("phase", choices=("after",))
     parser.add_argument("plugin_id")
     parser.add_argument("--out", required=True, help="evidence directory (created)")
     parser.add_argument(
         "--entry",
         default=None,
-        help="module:factory of the emtk app, for a card of a multi-card port "
-        "whose manifest has no entrypoints.emtk yet (after only)",
+        help="module:factory of the emtk app, for a card whose manifest names no entrypoints.emtk",
     )
     args = parser.parse_args(argv)
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    if args.phase == "after":
-        data = after(args.plugin_id, out, args.entry)
-        print(
-            f"after: {len(data['controls'])} controls, "
-            f"{len(data['controls_without_tooltip'])} without tooltip, "
-            f"qt-free={'yes' if data['qt_free']['ok'] else 'NO'} -> {out}"
-        )
-        return 0
-    result = compare(args.plugin_id, out)
-    print(json.dumps({k: result[k] for k in ("lost", "untooltipped")}, indent=2))
-    print("qt-free:", result["qt_free"].get("ok"))
-    blocked = bool(result["lost"] or result["untooltipped"] or not result["qt_free"].get("ok"))
+    data = after(args.plugin_id, out, args.entry)
+    print(
+        f"after: {len(data['controls'])} controls, "
+        f"{len(data['controls_without_tooltip'])} without tooltip, "
+        f"qt-free={'yes' if data['qt_free']['ok'] else 'NO'} -> {out}"
+    )
+    blocked = bool(data["controls_without_tooltip"] or not data["qt_free"]["ok"])
     return 1 if blocked else 0
 
 

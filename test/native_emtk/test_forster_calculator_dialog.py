@@ -3,18 +3,11 @@
 The dialog (:mod:`chisurf.emtk.forster_calculator`) runs over the two-dye
 scratch MMFDB of :mod:`forster_spectra_fixture`: pick donor and acceptor in the
 choice lists, edit the quantum yield, press *Apply R₀ to model*, and ``on_close``
-gets the R0 the spectra give. The parity test compares its controls with the
-inventory of the Qt ``ForsterCalculatorWidget`` in the same state
-(``forster_calculator_qt_inventory.json``, written by
-``capture_forster_calculator_qt_before.py``).
+gets the R0 the spectra give (computed here from the fixture's Gaussian spectra).
 """
 
 from __future__ import annotations
 
-import json
-import os
-import sys
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -34,24 +27,7 @@ from test.native_emtk.forster_spectra_fixture import (  # noqa: E402
     opener,
 )
 
-REPO = Path(__file__).resolve().parents[2]
-QT_INVENTORY = Path(__file__).with_name("forster_calculator_qt_inventory.json")
-SHOTS = Path(os.environ.get("CHISURF_FORSTER_AFTER_DIR", "/tmp/w9_s2c"))
 SIZE = (760, 520)
-
-#: Qt controls the emtk dialog shows differently, and where they went.
-DELIBERATE = {
-    # The Qt result label is one line; the dialog shows R0 in a read-only field
-    # (label "R₀", value "33.1 Å") and J on the line under it.
-    "r₀=33.1åj=7.687e+13m⁻¹cm⁻¹nm⁴": ("r₀", "33.1å", "j=7.687e+13m⁻¹cm⁻¹nm⁴"),
-    # Qt draws the ε_max subscript as rich text; the canvas writes it with an underscore.
-    "acceptorεmax": ("acceptorε_max",),
-    # Row numbers of the Qt combo boxes' completer popups (item views), not controls.
-    "1": (),
-    "2": (),
-    "3": (),
-}
-
 
 def _expected_r0(qy: float) -> float:
     donor = DYES["Dye488"]
@@ -155,35 +131,3 @@ def test_unavailable_mmfdb_is_said_and_blocks_the_choices():
     driver.frame(3)
     assert "MMFDB is unavailable; spectra selection requires MMFDB." in driver.painter.strings
     assert not dialog.model.enabled("donor") and not dialog.model.enabled("apply")
-
-
-def test_control_parity_with_the_qt_calculator(calculator):
-    sys.path.insert(0, str(REPO / "test" / "gui"))
-    from migration_parity import _normalize_control_text
-
-    driver, dialog, _closed = calculator
-    _choose_pair(driver, dialog)
-    driver.frame(3)
-    SHOTS.mkdir(parents=True, exist_ok=True)
-    driver.screenshot(SHOTS / "emtk_forster_calculator.png")
-
-    found = {_normalize_control_text(text) for text in driver.painter.strings}
-    for options in (dialog.model.donor_options(), dialog.model.acceptor_options()):
-        found |= {_normalize_control_text(label) for _value, label in options}
-    found.discard("")
-
-    qt = json.loads(QT_INVENTORY.read_text(encoding="utf-8"))
-    missing = []
-    for control in qt["controls"]:
-        if control in found:
-            continue
-        if control in DELIBERATE:
-            missing += [f"{control} -> {alt}" for alt in DELIBERATE[control] if alt not in found]
-            continue
-        missing.append(control)
-    assert not missing, (
-        f"Qt controls absent from the emtk dialog: {missing}; drawn: {sorted(found)}"
-    )
-    # The state, too: the same pair, the same R0.
-    assert qt["state"]["donor"] == "Dye488" and qt["state"]["acceptor"] == "Dye594"
-    assert f"{dialog.model.r0:.1f}" in qt["state"]["result"]

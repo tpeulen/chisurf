@@ -1,18 +1,13 @@
-"""The emtk shell's ribbon, plugin menus and Tools tree (W9 S5) against the Qt ribbon.
+"""The emtk shell's ribbon, plugin menus and Tools tree (W9 S5).
 
-The before-half is ``shell_s5_qt_inventory.json`` (``capture_shell_s5_qt_before.py``): every Qt
-ribbon tab, group and button in order, with its tooltip and whether it has an icon, and the
-controls in the ribbon's corner. The emtk ribbon is built from the same manifests through the
-same placement rules (:mod:`chisurf.core.plugin.ribbon_layout`), so the comparison is tab for
-tab and group for group. Buttons are pressed the way a user presses them, through
-:class:`emtk.testing.Driver`.
+The ribbon is built from the plugin manifests through the placement rules of
+:mod:`chisurf.core.plugin.ribbon_layout`. Buttons are pressed the way a user presses them,
+through :class:`emtk.testing.Driver`.
 """
 
 from __future__ import annotations
 
-import json
 import os
-import re
 import time
 from pathlib import Path
 
@@ -22,31 +17,8 @@ from emtk.testing import Driver
 from chisurf.emtk.main_app import EmtkShellApp
 
 SHOTS = Path(os.environ.get("CHISURF_NATIVE_SCREENSHOTS", "/private/tmp/chisurf-native-gpu"))
-BEFORE = json.loads(Path(__file__).with_name("shell_s5_qt_inventory.json").read_text("utf-8"))
-
-#: Qt ribbon buttons the emtk shell does not have yet; each is an open item of the ledger
-#: (``okf/subsystems/qt-retirement.md``). This list only shrinks.
-KNOWN_GAPS: dict[str, str] = {}
-#: Qt ribbon controls replaced on purpose, and by what.
-DELIBERATE: dict[str, str] = {
-    "tttrheadereditor": "the tool is called TTTR Inspector -- the header editor is one view of it",
-    "clsmgenerator": "the tool is called CLSM Simulator -- a generated scan is a simulation",
-    "fpsjsoneditor": "the labelling editor is ChiMOL's: ChiMOL, then Tools > Labelling > Positions...",
-}
-#: The Qt ribbon's corner controls, by tooltip or class, and the emtk control that replaces each.
-CORNER = {
-    "Collapse Ribbon": "ribbon.fold",
-    "Unpin ribbon (enable auto-fold)": "ribbon.pin",
-    "Open Help Plugin": "ribbon.help",
-    "QLineEdit": "ribbon.search",
-    "LanguageFlagSwitcher": "ribbon.language",
-    "QWidget": None,  # the search field's frame
-}
-
-
-def _norm(text: str) -> str:
-    text = re.sub(r"[⚠⛔️]", "", str(text).replace("&", ""))
-    return re.sub(r"\s+|\.\.\.|…", "", text).lower()
+#: The ribbon's corner controls: fold, pin, help, the tool search and the language switch.
+CORNER = ("ribbon.fold", "ribbon.pin", "ribbon.help", "ribbon.search", "ribbon.language")
 
 
 @pytest.fixture
@@ -81,35 +53,6 @@ def shell(isolated):
     app.close()
 
 
-def _built(shell) -> dict[str, dict[str, list[str]]]:
-    return {
-        tab.title: {group.title: [button.label for button in group.buttons] for group in tab.groups}
-        for tab in shell.ribbon.tabs()
-    }
-
-
-def test_parity_with_the_qt_ribbon(shell):
-    """Every Qt tab, group and button, in order, is in the emtk ribbon -- or a listed gap."""
-    built = _built(shell)
-    qt_tabs = list(BEFORE["tabs"])
-    assert list(built) == qt_tabs
-    missing, deliberate = [], []
-    for tab, groups in BEFORE["tabs"].items():
-        assert list(built[tab]) == list(groups), (tab, list(built[tab]))
-        for group, buttons in groups.items():
-            ours = [_norm(label) for label in built[tab][group]]
-            qt = [_norm(button["text"]) for button in buttons]
-            for name in qt:
-                if name in ours:
-                    continue
-                (deliberate if name in DELIBERATE else missing).append(name)
-            # The ones present come in the Qt order.
-            present = [name for name in qt if name in ours]
-            assert [name for name in ours if name in present] == present, (tab, group)
-    assert sorted(missing) == sorted(KNOWN_GAPS), "update KNOWN_GAPS: it only shrinks"
-    assert set(deliberate) <= set(DELIBERATE)
-
-
 def test_every_plugin_button_and_menu_row_carries_its_manifest_icon(shell):
     for tab in shell.ribbon.tabs():
         for group in tab.groups:
@@ -121,14 +64,10 @@ def test_every_plugin_button_and_menu_row_carries_its_manifest_icon(shell):
                 assert entry.icon, (menu, caption, entry.label)
 
 
-def test_the_corner_controls_have_their_emtk_counterparts(shell):
+def test_the_corner_controls_are_drawn(shell):
     driver = Driver(shell, size=(1440, 900))
     driver.frame(2)
-    for control in BEFORE["right"]:
-        key = CORNER.get(control["tooltip"]) or CORNER.get(control["class"], "missing")
-        if key is None:
-            continue
-        assert key in driver.ids(), control
+    assert set(CORNER) <= set(driver.ids())
 
 
 def test_pressing_a_ribbon_button_opens_its_plugin(shell):

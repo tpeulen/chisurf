@@ -1,7 +1,4 @@
-"""The port-evidence tool measures what a porter would otherwise only claim.
-
-Runs without Qt except for the ``before`` half, which is not exercised here.
-"""
+"""The port-check tool measures what a porter would otherwise only claim: tooltips, controls, no Qt."""
 
 from __future__ import annotations
 
@@ -59,54 +56,15 @@ def test_a_real_port_produces_the_evidence_files(tmp_path):
     assert (tmp_path / "after_800x600.png").stat().st_size > 2000
 
 
-def test_compare_flags_a_lost_control(tmp_path):
-    (tmp_path / "before.json").write_text(json.dumps({"controls": ["run", "stop", "save"]}))
-    (tmp_path / "after.json").write_text(
-        json.dumps(
-            {"controls": ["run", "stop"], "controls_without_tooltip": [], "qt_free": {"ok": True}}
-        )
-    )
-    result = epp.compare("x", tmp_path)
-    assert result["lost"] == ["save"]
+def test_the_command_line_writes_the_evidence_and_passes_a_clean_port(tmp_path):
+    assert epp.main(["after", "f_test", "--out", str(tmp_path)]) == 0
+    data = json.loads((tmp_path / "after.json").read_text())
+    assert data["controls_without_tooltip"] == [] and data["qt_free"]["ok"]
 
 
 def test_unknown_plugin_is_a_clear_error():
     with pytest.raises(KeyError):
         epp.manifest_of("no_such_plugin_id")
-
-
-def _evidence(tmp_path, before, after, deliberate=None):
-    (tmp_path / "before.json").write_text(json.dumps({"controls": before}))
-    (tmp_path / "after.json").write_text(
-        json.dumps({"controls": after, "controls_without_tooltip": [], "qt_free": {"ok": True}})
-    )
-    if deliberate is not None:
-        (tmp_path / "deliberate.json").write_text(json.dumps(deliberate))
-
-
-def test_a_deliberate_difference_is_explained_not_hidden(tmp_path):
-    _evidence(
-        tmp_path, ["run", "\u03b51", "save"], ["run", "save"], {"\u03b5 1": "now a table column"}
-    )
-    result = epp.compare("x", tmp_path)
-    assert result["lost"] == []
-    assert result["explained"] == {"\u03b51": "now a table column"}
-
-
-def test_an_explanation_for_a_control_that_is_present_is_reported_stale(tmp_path):
-    _evidence(tmp_path, ["run"], ["run"], {"run": "no longer needed"})
-    assert epp.compare("x", tmp_path)["stale_explanations"] == ["run"]
-
-
-def test_an_unexplained_loss_still_blocks(tmp_path, capsys):
-    _evidence(tmp_path, ["run", "save"], ["run"], {"other": "x"})
-    assert epp.main(["compare", "x", "--out", str(tmp_path)]) == 1
-
-
-def test_compare_normalises_both_halves(tmp_path):
-    """Evidence written by an older tool (emoji glued on) still compares equal."""
-    _evidence(tmp_path, ["\U0001f4e5loadtttr", "run"], ["loadtttr", "run"])
-    assert epp.compare("x", tmp_path)["lost"] == []
 
 
 def test_entry_overrides_the_manifest_so_a_partial_port_can_be_checked(tmp_path):

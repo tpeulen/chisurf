@@ -1,8 +1,7 @@
-"""Gaps the final Qt-vs-emtk shell parity pass found.
+"""The emtk shell's system-info watermark and the controls around the workspace.
 
-The Start document shows the machine, the versions and the process's use, as the Qt workspace
-did: the Qt main window painted a watermark over its empty workspace (OS, RAM, Python, ChiSurf,
-numpy, tttrlib, the thread environment, the log level, CPU and memory).
+The workspace's background shows the machine, the versions and the process's use (OS, RAM,
+Python, ChiSurf, numpy, tttrlib, the thread environment, the log level, CPU and memory).
 """
 
 from __future__ import annotations
@@ -24,7 +23,7 @@ def test_system_info_lines_name_the_machine_and_the_versions():
 
 
 def test_the_watermark_is_drawn_in_the_workspace_background_under_the_fits():
-    """Owner, 2026-10-14: the watermark is the workspace's background, as in the Qt window --
+    """Owner, 2026-10-14: the watermark is the workspace's background --
     top-right of the workspace body, not in the Start document, and under a floating window."""
     from emtk import im
 

@@ -1,14 +1,13 @@
 """The emtk shell's post-show startup stages (W9 S5): the update check.
 
-The deleted Qt window ran ``services.d/30_gui_post_show.json`` after it was shown. Its
-window-building stages have shell equivalents of their own (history, autosave, plugin menus); the
-one that is not about the window -- ``check_updates`` -- is the shell's ``surface="emtk"``,
-``phase="post_show"`` set (``35_emtk_post_show.json``). ``warmup_imports`` has no twin: the session's own stages have
+The window-building startup stages have shell equivalents of their own (history, autosave, plugin
+menus); the one that is not about the window -- ``check_updates`` -- is the shell's
+``surface="emtk"``, ``phase="post_show"`` set (``35_emtk_post_show.json``). ``warmup_imports`` has no twin: the session's own stages have
 imported what a first fit needs before the window opens, and an import on a worker thread racing
 the frame loop is how the shell deadlocked (``test/startup/test_startup_import_race.py``). Checked here: the set
 is declared and resolvable, the stages honour the shared updater preferences and never import Qt,
 and in the shell they run once the session is adopted, show on the status strip and, when a newer
-version exists, ask the Qt window's *Update Available* question, whose *Yes* opens *Settings* on
+version exists, ask the *Update Available* question, whose *Yes* opens *Settings* on
 its *Updates* page. The question is answered through :class:`emtk.testing.Driver`, by click.
 """
 
@@ -31,8 +30,7 @@ from chisurf.emtk.main_app import EmtkShellApp
 REPO = Path(__file__).resolve().parents[2]
 SERVICES = REPO / "chisurf" / "startup" / "services.d"
 SHOTS = Path(os.environ.get("CHISURF_NATIVE_SCREENSHOTS", "/private/tmp/chisurf-native-gpu"))
-#: The post-show stages and the words they show on the status strip. The labels are the ones
-#: the deleted Qt window's ``30_gui_post_show.json`` used, pinned here now that it is gone.
+#: The post-show stages and the words they show on the status strip.
 STAGE_LABELS = {"emtk_check_updates": "Checking for updates"}
 
 

@@ -1,4 +1,4 @@
-"""The emtk shell's last Qt main-window controls, used the way a person uses them.
+"""The emtk shell's main-window controls, used the way a person uses them.
 
 Each test drives the shell with :class:`emtk.testing_realistic.RealisticDriver` (pointer travel, press and
 release in different frames, OS drops that deliver no pointer moves) and checks what the shell then shows or

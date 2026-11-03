@@ -9,7 +9,6 @@ The shell gets a real in-process server on private ports with a fresh session st
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import time
@@ -24,31 +23,6 @@ from chisurf.emtk.fit_docks import DATASETS_KEY, READ_KEY
 from chisurf.emtk.main_app import EmtkShellApp, parse_shortcut
 
 SHOTS = Path(os.environ.get("CHISURF_NATIVE_SCREENSHOTS", "/private/tmp/chisurf-native-gpu"))
-BEFORE = json.loads((Path(__file__).with_name("shell_s3_qt_inventory.json")).read_text("utf-8"))
-
-#: Qt session controls the emtk shell does not have yet; each is an open item of the ledger
-#: (``okf/subsystems/qt-retirement.md``, slice S3). This list only shrinks.
-KNOWN_GAPS: dict[str, str] = {}
-#: Qt controls present under another spelling, or replaced on purpose.
-RENAMED = {
-    "exportproject...": "Export Project… (the ellipsis character)",
-    "openproject...": "Open Project…",
-    "importproject...": "Import Project…",
-    "fretrdaaxis...": "FRET RDA axis…",
-    "dataloading...": "Data loading…",
-    "cascadefitwindows": "View ▸ Workspace ▸ Cascade Windows: cascades every workspace window, fits included",
-    "dataset": "the Docks toggle is called Read data, the dock's own title",
-    "fit": "the Docks toggle is called Analysis, the dock's own title",
-    "plot-options": "the Docks toggle is called Plot settings, the dock's own title",
-    "typehere": "Qt Designer's empty placeholder submenu, never had an item",
-    "1": "the Qt box's form-row numbering, not a control",
-    "2": "the Qt box's form-row numbering, not a control",
-}
-#: Qt shortcuts the emtk shell does not bind, and why.
-SHORTCUT_GAPS = {
-    "Load result in current fit": "Ctrl+L: a Qt-shell action with no handler and in no menu; not carried over",
-    "Close": "Ctrl+F4: Qt's MDI sub-window system menu; a fit window's × asks and removes the fit",
-}
 
 
 def _norm(text: str) -> str:
@@ -150,46 +124,29 @@ def _click_answer(driver: Driver, shell, key: str) -> None:
 # ── menus and shortcuts ───────────────────────────────────────────────────────
 
 
-def _qt_items(rows, out: list[str]) -> list[str]:
-    for row in rows:
-        if row.get("separator"):
-            continue
-        out.append(row["text"])
-        _qt_items(row.get("menu", []), out)
-    return out
-
-
-def test_the_session_menus_bind_the_qt_shortcuts(shell):
-    """Every shortcut of the Qt main window is bound to the same item, or is an explained gap."""
+def test_the_session_menus_bind_their_shortcuts_once(shell):
+    """Every shortcut a session menu item names is in the shortcut table, bound to that item alone."""
     by_label = {}
     for _menu, actions in shell.session_menus():
         for action in actions:
             if action.shortcut:
                 by_label[action.key] = action.shortcut
-    labels = {
-        action.label: action.shortcut for _m, actions in shell.session_menus() for action in actions
-    }
-    for qt_label, keys in BEFORE["shortcuts"].items():
-        if qt_label in SHORTCUT_GAPS:
-            continue
-        mine = labels.get(qt_label) or labels.get(qt_label.replace("...", "…"))
-        assert mine == keys, f"{qt_label}: Qt binds {keys}, the emtk shell {mine!r}"
     table = shell.shortcuts()
+    for key, shortcut in by_label.items():
+        assert table[parse_shortcut(shortcut)].key == key, (key, shortcut)
     assert parse_shortcut("Ctrl+Shift+S") in table and parse_shortcut("Ctrl+S") in table
     assert table[parse_shortcut("Ctrl+Shift+S")].key == "export_project"
     assert len(table) == len(by_label), "two items share a shortcut"
 
 
-def test_parity_with_the_qt_session_menus(shell):
-    """Every item of the Qt File / View / Macro / Settings menus is drawn in the emtk menus."""
+def test_every_session_menu_item_is_drawn(shell):
+    """Every item of the File / View / Macro / Settings menus, and its group caption, is drawn when the menu opens."""
     driver = Driver(shell, size=(1400, 900))
     driver.frame(2)
-    drawn: set[str] = set()
     for title, actions in shell.session_menus():
         driver.click(f"menu.{title}")
         driver.frame(2)
         strings = set(driver.painter.strings)
-        drawn |= {_norm(s) for s in strings}
         for action in actions:
             assert action.label in strings, f"{title} ▸ {action.label} is not drawn"
             if action.group:
@@ -199,19 +156,10 @@ def test_parity_with_the_qt_session_menus(shell):
         driver.screenshot(output / f"emtk_shell_menu_{_norm(title)}.png")
         driver.escape()
         driver.frame(2)
-    before = set()
-    for menu, rows in BEFORE["menus"].items():
-        before.add(_norm(menu))
-        before |= {_norm(text) for text in _qt_items(rows, [])}
-    lost = before - drawn - set(RENAMED)
-    unexplained = lost - set(KNOWN_GAPS)
-    assert not unexplained, f"Qt menu items missing in the emtk shell: {sorted(unexplained)}"
-    closed = set(KNOWN_GAPS) & drawn
-    assert not closed, f"these gaps are closed now; strike them from KNOWN_GAPS: {sorted(closed)}"
 
 
-def test_parity_with_the_qt_project_dialogs(shell, monkeypatch):
-    """The database save form, the collision question and the three guard questions offer Qt's controls."""
+def test_the_project_dialogs_draw_their_controls(shell, monkeypatch):
+    """The database save form, the collision question and the three guard questions draw their fields and answers."""
     from emtk.view_form import FormState  # noqa: F401 - the form is drawn by the shell
 
     from chisurf.core.project import storage
@@ -229,12 +177,10 @@ def test_parity_with_the_qt_project_dialogs(shell, monkeypatch):
     shell.project.save()
     driver.frame(3)
     form = controls(driver.painter.strings)
-    # A choice's other options are in its drop-down (reachable), as the Qt inventory counts combo items.
-    for section in shell.project.form.spec["sections"]:
-        form |= {_norm(label) for _value, label in section.get("options", [])}
     driver.screenshot(output / "emtk_shell_save_project_form.png")
-    qt = {_norm(c) for c in BEFORE["dialogs"]["SaveProjectDialog"]["controls"]} - set(RENAMED)
-    assert qt - form == set(), f"Save Project form lacks {sorted(qt - form)}"
+    labels = {_norm(s["label"]) for s in shell.project.form.spec["sections"] if s.get("label")}
+    assert labels and labels - form == set(), f"Save Project form lacks {sorted(labels - form)}"
+    assert {"ok", "cancel"} <= form
     driver.click(shell.project.form.rects["cancel"])
     driver.frame(2)
     assert shell.project.form is None
@@ -254,8 +200,7 @@ def test_parity_with_the_qt_project_dialogs(shell, monkeypatch):
     _settle(driver, lambda: shell.project.dialogs.modal, "the collision question")
     strings = controls(driver.painter.strings)
     driver.screenshot(output / "emtk_shell_import_collisions.png")
-    qt = {_norm(c) for c in BEFORE["dialogs"]["CollisionDialog"]["controls"] if len(c) < 40}
-    assert qt - strings == set(), f"collision question lacks {sorted(qt - strings)}"
+    assert "cancel" in strings and any(s.startswith("remap") for s in strings), strings
     assert "ds-1" in " ".join(driver.painter.strings), "the colliding ids are listed"
     _click_answer(driver, shell, "cancel")
     assert not shell.project.dialogs.modal
@@ -269,14 +214,12 @@ def test_parity_with_the_qt_project_dialogs(shell, monkeypatch):
         default="cancel",
     )
     driver.frame(2)
-    qt = {_norm(c) for c in BEFORE["dialogs"]["close_guard"]["controls"]}
-    assert qt - controls(driver.painter.strings) == set()
+    assert {"save", "don'tsave", "cancel"} <= controls(driver.painter.strings)
     shell.project.dialogs.answer(None)
     for name in ("fit_close", "quit"):
-        qt = {_norm(c) for c in BEFORE["dialogs"][name]["controls"] if c.startswith("&")}
         shell.project.dialogs.confirm("q", "?", None)
         driver.frame(2)
-        assert qt - controls(driver.painter.strings) == set(), name
+        assert {"yes", "no"} <= controls(driver.painter.strings), name
         shell.project.dialogs.answer(False)
 
 

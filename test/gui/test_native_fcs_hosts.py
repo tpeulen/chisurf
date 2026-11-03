@@ -1,4 +1,4 @@
-"""Existing FCS Qt entry points host the real native workflow and navigation."""
+"""The native FCS entry points host the real workflow and navigation."""
 
 import pytest
 
@@ -59,9 +59,12 @@ def test_burst_app_closure_cancels_real_queued_work_once(monkeypatch):
         running.result(timeout=5)
 
 
-def test_native_correlator_host_matches_frozen_real_measurement(tmp_path):
-    """Retiring the Qt wizard keeps the actual two-chunk measurements and channel counts."""
-    import json
+def test_native_correlator_host_correlates_a_real_measurement(tmp_path):
+    """The hub's correlator splits the photons in two and correlates each half as tttrlib does.
+
+    The oracle is the input file: each chunk's photon counts per channel group are counted here,
+    and each chunk is correlated here through ``tttrlib.Correlator`` selecting the channels itself.
+    """
     import shutil
     from pathlib import Path
 
@@ -83,15 +86,34 @@ def test_native_correlator_host_matches_frozen_real_measurement(tmp_path):
         model.channel_a, model.channel_b, model.n_splits = "0,1", "8,9", 2
         assert len(model._tttr) == 183657
         model.correlate_data()
-        facts = json.loads((root / "test/data/fcs/correlator-facts.json").read_text())
-        assert len(model._correlations) == len(facts["correlations"]) == 2
-        for measured, frozen in zip(model._correlations, facts["correlations"]):
-            for quantity in ("x", "y"):
-                np.testing.assert_array_equal(measured[quantity], frozen[quantity])
-            assert measured["channel_a"] == frozen["channel_a"]
-            assert measured["channel_b"] == frozen["channel_b"]
-            assert measured["correlation_settings"] == frozen["correlation_settings"]
-            assert measured["duration"] == frozen["duration"]
+        import tttrlib
+
+        assert len(model._correlations) == 2
+        tttr = tttrlib.TTTR(str(source))
+        size = len(tttr) // 2
+        settings = {"n_bins": 9, "n_casc": 20, "make_fine": False, "method": "laurence"}
+        for index, measured in enumerate(model._correlations):
+            chunk = tttr[index * size : (index + 1) * size]
+            routing = np.asarray(chunk.routing_channels)
+            for side, channels in (("channel_a", [0, 1]), ("channel_b", [8, 9])):
+                assert measured[side]["channels"] == channels
+                assert measured[side]["counts"] == np.isin(routing, channels).sum()
+            assert measured["correlation_settings"] == settings
+            dt = chunk.header.macro_time_resolution * 1000.0  # ms
+            t = np.asarray(chunk.macro_times, dtype=float)
+            duration = (np.percentile(t, 99.9) - np.percentile(t, 0.1)) * dt
+            assert measured["duration"] == pytest.approx(duration / 1000.0)
+            reference = tttrlib.Correlator(
+                channels=([0, 1], [8, 9]), tttr=chunk, n_bins=9, n_casc=20, method="laurence"
+            )
+            x = np.asarray(reference.x_axis) * 1000.0  # given the TTTR, tttrlib's lags are in s
+            y = np.asarray(reference.correlation, dtype=float)
+            y[x > duration] = 1.0  # lags past the chunk's span are flattened to G = 1
+            np.testing.assert_allclose(measured["x"], x)
+            # Weights on the whole stream vs. the channels selected by tttrlib: the two paths
+            # normalise by marginally different spans (1e-4 relative at short lags, a few 1e-3 at
+            # lags near the chunk's span, where few photon pairs remain).
+            np.testing.assert_allclose(measured["y"], y, rtol=5e-3)
     finally:
         app.close()
 

@@ -8,41 +8,20 @@ or what the server answers.
 
 from __future__ import annotations
 
-import json
 import os
-import re
-import sys
 import time
 from pathlib import Path
 
 import pytest
 from emtk.testing import Driver
 
-from chisurf.emtk.fit_docks import ANALYSIS_KEY, DATASETS_KEY, PLOT_KEY, READ_KEY, load_view
+from chisurf.emtk.fit_docks import ANALYSIS_KEY, DATASETS_KEY, PLOT_KEY, READ_KEY
 from chisurf.emtk.main_app import EmtkShellApp
 
 REPO = Path(__file__).resolve().parents[2]
 KRISTINE = REPO / "test" / "data" / "fcs" / "kristine" / "Kristine_with_error.cor"
 MODEL = "FCS (general: diffusion + bunching/anticorr)"
 SHOTS = Path(os.environ.get("CHISURF_NATIVE_SCREENSHOTS", "/private/tmp/chisurf-native-gpu"))
-
-#: Controls of the Qt docks the emtk docks do not have yet. Each is an open item of the ledger
-#: (``okf/subsystems/qt-retirement.md``, slice S2); this list only shrinks -- a control that appears is struck.
-#: Empty since the model editor, the fit controller's actions, the Code face and the global dataset landed.
-KNOWN_GAPS: set[str] = set()
-#: Qt controls that are present under another spelling or chrome the dock manager replaces.
-RENAMED = {
-    "dropfileshere.": "the File field's placeholder",
-    "datatype": "the Datasets column is Experiment now, beside the new Kind column (the data workspace)",
-    "fcs(general:diffusi...-kristine_with_error": "the fit window's tab title, not elided",
-    "−": "MDI minimise: dock windows float, tab and close instead",
-    "□": "MDI maximise: dock windows float, tab and close instead",
-    "true": "a ticked Fixed / Bounds cell: drawn as a check box, not as text",
-    "false": "an unticked Fixed / Bounds cell: drawn as a check box, not as text",
-    "nan": "a parameter without an error estimate: the table writes N/A",
-}
-_NUMBER = re.compile(r"^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$")
-
 
 @pytest.fixture
 def shell():
@@ -216,92 +195,6 @@ def test_closing_a_fit_window_keeps_the_fit(shell, monkeypatch):
     shell.data.datasets.select_fit({"uid": uid})
     driver.frame(2)
     assert uid in shell.data.windows, "selecting the fit reopens its window"
-
-
-def _emtk_inventory(driver: Driver, shell) -> set[str]:
-    """Normalised text of every dock in the S2 state, plus the options its choices offer."""
-    sys.path.insert(0, str(REPO / "test" / "gui"))
-    from migration_parity import _normalize_control_text
-
-    data = shell.data
-    found: set[str] = set()
-    # Open the reader's folded Columns panel, as the Qt inventory counts hidden rows too.
-    shell.docks.focus(READ_KEY)
-    driver.frame(2)
-    reader_app = next(iter(data._reader_apps.values()))
-    _key, _app, box = shell._drawn[f"reader.{id(reader_app)}"]
-    fx, fy, fw, fh = reader_app.form.rects["Columns (CSV only).fold"]
-    driver.click((box[0] + fx + fw / 2, box[1] + fy + fh / 2))
-    driver.frame(2)
-    for key in (READ_KEY, DATASETS_KEY, ANALYSIS_KEY, PLOT_KEY):
-        shell.docks.focus(key)
-        driver.frame(3)
-        found |= {_normalize_control_text(text) for text in driver.painter.strings}
-    reader = data.read.reader()
-    options = [
-        *data.read.experiment_names(),
-        *data.read.setup_names(),
-        *data.datasets.model_names(),
-    ]
-    noise = next(
-        s
-        for panel in load_reader_view(reader)["sections"]
-        for s in panel.get("sections", [])
-        if s.get("type") == "choice"
-    )
-    options += list(noise.get("labels") or [])
-    options += [
-        next(s for s in load_view("read_data")["sections"] if s.get("attr") == "path")["placeholder"]
-    ]
-    # The model editor's hidden panels (the inactive diffusion presets) and the controller's
-    # 2-D range pair (hidden for 1-D data): present, as the Qt inventory counts hidden widgets.
-    options += sorted(data.editor.inventory())
-    options += _labels(load_view("analysis"))
-    options += [data.analysis.dataset_options()[0][1]]
-    found |= {_normalize_control_text(text) for text in options}
-    return found - {""}
-
-
-def _labels(spec: dict) -> list[str]:
-    """Every label and title of a view spec, hidden sections included."""
-    found = []
-
-    def walk(section: dict) -> None:
-        for key in ("label", "title"):
-            if section.get(key):
-                found.append(section[key])
-        for button in section.get("buttons") or []:
-            found.append(button.get("label", ""))
-        for child in section.get("sections") or []:
-            walk(child)
-
-    walk(spec)
-    return found
-
-
-def load_reader_view(reader) -> dict:
-    from chisurf.emtk.reader_settings import native_reader_spec
-
-    return native_reader_spec(reader.view_spec())
-
-
-def test_parity_with_the_qt_docks(shell):
-    """Control inventory of the Qt Read data / Datasets / Analysis / Plot docks and fit window, against the emtk docks.
-
-    The before-half is ``shell_s2_qt_inventory.json`` (``capture_shell_s2_qt_before.py``). Numbers are values,
-    not controls. A Qt control missing here must be a known gap (an open ledger item) or a rename.
-    """
-    before = json.loads((Path(__file__).with_name("shell_s2_qt_inventory.json")).read_text("utf-8"))
-    driver = Driver(shell, size=(1500, 950))
-    _load(driver, shell, KRISTINE)
-    _add_fit(driver, shell)
-    after = _emtk_inventory(driver, shell)
-    qt = set().union(*(set(dock["controls"]) for dock in before["docks"].values()))
-    lost = {c for c in qt - after if not _NUMBER.match(c)}
-    unexplained = lost - KNOWN_GAPS - set(RENAMED)
-    assert not unexplained, f"Qt controls missing from the emtk docks: {sorted(unexplained)}"
-    closed = KNOWN_GAPS & after
-    assert not closed, f"these gaps are closed now; strike them from KNOWN_GAPS: {sorted(closed)}"
 
 
 # ── the model editor, the fit controller and the global fit (S2 continued) ─────

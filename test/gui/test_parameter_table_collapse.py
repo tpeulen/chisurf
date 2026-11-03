@@ -1,12 +1,11 @@
-"""The emtk parameter table drops columns for width in the order the Qt one did.
+"""The emtk parameter table drops whole column tiers for width, in its declared order.
 
-The retired Qt ``ParameterGroupTableWidget`` hid whole column tiers when its viewport
-is too narrow (``_ContentSizedTable.RESPONSIVE_TIERS``): the bounds (Lo, Hi,
-Bounds) first, then the error, then Fixed; the name and the value never. The
-emtk editor declares the same priorities as ``collapse_order`` on its column
-spec and emtk's data table applies them. The emtk renderer draws one lifetime fit
-(one linked parameter) across a width sweep; the sequence of column sets it passes
-through must equal the recorded Qt stages, narrowing and widening.
+The editor declares each column's priority as ``collapse_order`` on its column spec
+(``PARAMETER_COLUMNS``): the prior first, then the bounds (Lo, Hi, Bounds), then the
+error, then Fixed; the name and the value never (order 0). emtk's data table applies
+them. The renderer draws one lifetime fit (one linked parameter) across a width sweep;
+the sequence of column sets it passes through must be the tiers the declarations give,
+narrowing and widening.
 """
 
 from __future__ import annotations
@@ -16,16 +15,23 @@ import types
 import numpy as np
 import pytest
 
-#: The column sets the Qt table passes through as it narrows.
-STAGES = [
-    ("name", "value", "fixed", "bounds_lo", "bounds_hi", "bounds_on", "error"),
-    ("name", "value", "fixed", "error"),
-    ("name", "value", "fixed"),
-    ("name", "value"),
-]
 SWEEP = list(range(900, 100, -20))
-#: emtk column keys under the Qt column ids; the prior goes with the bounds and is not in Qt.
+#: Column keys under the names the assertions use; the prior has a tier of its own and is not
+#: drawn for these parameters, so it is left out of the stages.
 _EMTK_KEY = {"label": "name", "lo": "bounds_lo", "hi": "bounds_hi"}
+
+
+def _declared_stages() -> list:
+    """The column sets ``PARAMETER_COLUMNS`` gives as each ``collapse_order`` tier drops, widest first."""
+    from chisurf.emtk.model_editor import PARAMETER_COLUMNS
+
+    columns = [
+        (_EMTK_KEY.get(c["key"], c["key"]), c.get("collapse_order", 0))
+        for c in PARAMETER_COLUMNS
+        if c["key"] != "prior"
+    ]
+    tiers = sorted({order for _key, order in columns if order})
+    return [tuple(k for k, order in columns if not order or order > dropped) for dropped in [0, *tiers]]
 
 
 @pytest.fixture(scope="module")
@@ -99,19 +105,21 @@ def _emtk_columns(params, widths) -> list:
 def test_both_tables_drop_bounds_then_error_then_fixed_and_restore_in_reverse(params):
     """The emtk table, narrowed to name + value and widened again.
 
-    It walks the stages recorded from the retired Qt table (``STAGES``): bounds, error, Fixed go;
-    then Fixed, error, bounds come back.
+    It walks the declared tiers: bounds, error, Fixed go; then Fixed, error, bounds come back.
     """
+    stages = _declared_stages()
+    assert stages[0][:2] == ("name", "value") and stages[-1] == ("name", "value")
+    assert len(stages) == 4  # bounds, error, Fixed: three tiers below the full table
     widths = SWEEP + SWEEP[::-1]
     seen = _emtk_columns(params, widths)
-    assert _stages(seen) == STAGES + STAGES[-2::-1], seen
+    assert _stages(seen) == stages + stages[-2::-1], seen
 
 
-def test_the_emtk_column_declarations_carry_the_qt_priorities():
+def test_the_emtk_column_declarations_carry_the_priorities():
     """The prior (emtk only) 1, bounds 2, error 3, fixed 4; name and value never.
 
-    The prior goes first, on its own: tied with the bounds, the emtk-only column made the
-    bounds drop at a width where the Qt table still shows them (474 px, the Qt left dock).
+    The prior goes first, on its own: tied with the bounds, it made the bounds drop at a dock
+    width (474 px) where there is room for them.
     """
     from chisurf.emtk.model_editor import PARAMETER_COLUMNS, _paired
     from chisurf.emtk.model_sections import GLOBAL_COLUMNS
@@ -142,7 +150,6 @@ def test_the_emtk_column_declarations_carry_the_qt_priorities():
 
 
 def test_at_the_shell_dock_width_the_table_shows_the_bounds(params):
-    """460 px is a third of the emtk shell (474 px was the Qt dock it replaced):
-    the table still shows Lo / Hi / Bounds there (final shell parity pass, 2026-10-14)."""
+    """460 px is a third of the emtk shell: the table still shows Lo / Hi / Bounds there."""
     ((name, seen),) = (("emtk", _emtk_columns(params, [460])),)
     assert "bounds_lo" in seen[0] and "bounds_on" in seen[0], (name, seen)

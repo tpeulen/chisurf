@@ -1,16 +1,14 @@
-"""The emtk shell's status strip (W9 S5) against the Qt main window's status bar.
+"""The emtk shell's status strip (W9 S5).
 
-The before-half is ``shell_s5_status_qt_inventory.json`` (``capture_shell_s5_status_qt_before.py``):
-the controls the Qt status bar shows in five states (idle, a log message, a startup stage, an
-operation with a known size and ✕, a busy operation). Each state is driven here through the
-shell's own sources -- a log record, the session's startup stage callback, the progress-host
-contract, a call on the data docks' worker -- and the strip's drawn controls are compared
-control by control; ✕ is pressed the way a user presses it, through :class:`emtk.testing.Driver`.
+Five states -- idle, a log message, a startup stage, an operation with a known size and ✕, a busy
+operation -- are each driven through the shell's own sources (a log record, the session's startup
+stage callback, the progress-host contract, a call on the data docks' worker), and the strip must
+draw what was fed in: the text, the bar at its value and maximum, ✕ when the work can be
+cancelled. ✕ is pressed the way a user presses it, through :class:`emtk.testing.Driver`.
 """
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import threading
@@ -22,23 +20,22 @@ from emtk.testing import Driver
 from chisurf.emtk.main_app import EmtkShellApp
 
 SHOTS = Path(os.environ.get("CHISURF_NATIVE_SCREENSHOTS", "/private/tmp/chisurf-native-gpu"))
-BEFORE = json.loads(
-    Path(__file__).with_name("shell_s5_status_qt_inventory.json").read_text("utf-8")
-)
-#: The capture's texts (``capture_shell_s5_status_qt_before.py``).
+#: What each state is fed.
 MESSAGE = "The IRF file has no header; the bin width is guessed."
 STAGE = {"id": "emtk_experiments", "label": "Loading plugins", "progress": 28}
 TASK = ("Fitting fit 1…", 100, 40)
 BUSY = "Reading the fits…"
 
-#: Qt status-bar controls the strip does not have yet (ledger items); this only shrinks.
-KNOWN_GAPS: dict[str, str] = {}
-#: ``(state, kind, text)`` the strip shows differently on purpose, and how.
-DELIBERATE = {
-    ("startup", "message", "Loading plugins"): (
-        "the stage is the operation's text beside its bar; the Qt bar's showMessage hides its own "
-        "startup progress bar, so Qt shows the stage as a bare message"
-    ),
+#: ``(kind, text, value, maximum)`` of the controls each state must draw, from what it is fed.
+EXPECTED = {
+    "idle": [("label", "Ready", None, None)],
+    "message": [("message", MESSAGE, None, None)],
+    "task": [
+        ("label", TASK[0], None, None),
+        ("progress", "", TASK[2], TASK[1]),
+        ("button", "✕", None, None),
+    ],
+    "busy": [("label", BUSY, None, None), ("progress", "", 0, 0)],
 }
 
 
@@ -77,17 +74,13 @@ def _key(control: dict) -> tuple:
     return (control["kind"], control["text"], control.get("value"), control.get("maximum"))
 
 
-def _assert_parity(state: str, strip) -> None:
+def _assert_shows(state: str, strip) -> None:
     drawn = [_key(c) for c in strip.drawn]
-    missing = []
-    for control in BEFORE["states"][state]:
-        if (state, control["kind"], control["text"]) in DELIBERATE:
-            assert any(control["text"] in c[1] for c in drawn), (state, control, drawn)
-            continue
-        if _key(control) not in drawn:
-            missing.append(control)
-    missing = [c for c in missing if c["text"] not in KNOWN_GAPS]
-    assert not missing, f"{state}: Qt shows {missing}; the strip drew {drawn}"
+    if state == "startup":  # the stage is the operation's text beside its bar
+        assert any(STAGE["label"] in c[1] for c in drawn), drawn
+    else:
+        missing = [c for c in EXPECTED[state] if c not in drawn]
+        assert not missing, f"{state}: the strip drew {drawn}, not {missing}"
     # Every control the strip reports was drawn where a user can see it.
     kinds = {c["kind"] for c in strip.drawn}
     rects = strip.item_rects
@@ -106,7 +99,7 @@ def _along_the_bottom(shell, driver) -> None:
 def test_idle_shows_ready(shell):
     driver = Driver(shell, size=(1440, 900))
     driver.frame(2)
-    _assert_parity("idle", shell.status_strip)
+    _assert_shows("idle", shell.status_strip)
     _along_the_bottom(shell, driver)
     driver.screenshot(SHOTS / "emtk_status_idle.png")
 
@@ -116,7 +109,7 @@ def test_a_warning_logged_anywhere_is_the_message(shell):
     driver.frame()
     logging.getLogger("chisurf.capture").warning(MESSAGE)
     driver.frame(2)
-    _assert_parity("message", shell.status_strip)
+    _assert_shows("message", shell.status_strip)
     driver.screenshot(SHOTS / "emtk_status_message.png")
 
 
@@ -127,7 +120,7 @@ def test_an_operation_shows_text_bar_and_cancel_and_the_cancel_reaches_the_work(
     task = shell.begin_task(TASK[0], TASK[1], cancel=lambda: cancelled.append(True))
     task.setValue(TASK[2])
     driver.frame(2)
-    _assert_parity("task", shell.status_strip)
+    _assert_shows("task", shell.status_strip)
     driver.screenshot(SHOTS / "emtk_status_task.png")
     driver.click("status.cancel")
     assert cancelled == [True] and task.wasCanceled()
@@ -144,7 +137,7 @@ def test_a_call_on_the_data_worker_is_a_busy_operation(shell):
     driver.frame()
     shell.data.job = _Job(BUSY)
     driver.frame(2)
-    _assert_parity("busy", shell.status_strip)
+    _assert_shows("busy", shell.status_strip)
     assert shell.animating(), "a busy bar slides, so frames keep coming"
     driver.screenshot(SHOTS / "emtk_status_busy.png")
     shell.data.job = None
@@ -167,7 +160,7 @@ def test_the_sessions_startup_stage_is_on_the_strip(isolated):
         assert reached.wait(10)
         driver = Driver(shell, size=(1440, 900))
         driver.frame(2)
-        _assert_parity("startup", shell.status_strip)
+        _assert_shows("startup", shell.status_strip)
         task = shell.status_strip.task
         assert task is not None and task.value() == STAGE["progress"]
         driver.screenshot(SHOTS / "emtk_status_startup.png")

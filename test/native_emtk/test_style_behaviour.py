@@ -1,10 +1,7 @@
-"""Behavioural feature parity: drive the native app through each Qt feature.
+"""Behaviour of the settings panels: drive the native app through each workflow.
 
-The surface sweep (test_settings_feature_parity) proves each Qt feature has a
-native implementation path. This file goes further for the highest-risk panels:
-it *drives* the real workflow through the native app and asserts the same
-observable outcome the Qt widget produces. Panels are added here as their
-behaviour is audited; presence in the surface sweep alone does not count.
+For the highest-risk panels this *drives* the real workflow through the native
+app and asserts its observable outcome (files written, callbacks reached).
 """
 
 from __future__ import annotations
@@ -25,7 +22,7 @@ def style_app():
 
 
 def test_style_new_save_apply_reset_flow(style_app):
-    """The Qt StyleManager flow: new -> save -> load -> apply -> reset."""
+    """The style workflow: new -> save -> load -> apply -> reset."""
     app, styles_dir = style_app
     applied = []
     app.model.apply_callback = applied.append

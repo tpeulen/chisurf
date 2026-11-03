@@ -1,8 +1,7 @@
 """A new fit opens as a window inside the Workspace, by every path that makes one.
 
-Owner, 2026-10-14: "new fit windows should open as windows in workspace" -- as the Qt window's MDI
-opened a subwindow: floating inside the workspace at the next cascade place, focused, never a tab
-covering the others (unless the user keeps the fits tabbed) and never a dock elsewhere. Every path
+Owner, 2026-10-14: "new fit windows should open as windows in workspace": floating inside the
+workspace at the next cascade place, focused, never a tab covering the others (unless the user keeps the fits tabbed) and never a dock elsewhere. Every path
 that makes a fit reaches the shell as ``fit.created`` and :meth:`DataDocks.open_window`; each is
 driven here: + Analysis, the API (a macro, the console, an RPC client, a model search), and a
 reopened project.

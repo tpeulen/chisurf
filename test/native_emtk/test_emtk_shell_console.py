@@ -1,17 +1,15 @@
-"""The emtk shell's Console dock and Macro menu (W9 S4), against the Qt console's behaviours.
+"""The emtk shell's Console dock and Macro menu (W9 S4).
 
-``shell_s4_qt_inventory.json`` (made by ``capture_shell_s4_qt_before.py``) lists what the Qt console did
-when driven with keys -- run, history, completion, calltip, pager, the kill ring, ``chisurf.run``,
-macro recording and replay. ``test_parity_with_the_qt_console`` drives the emtk console through the same
-behaviours, with keys sent to the shell as a user types them (:class:`emtk.testing.Driver`), and
-requires every behaviour the Qt console had. The other tests cover what only the emtk side has to
-prove: the macro menu's file round trip, ``chisurf.run`` from a worker thread, composed (IME) input,
-the console's own session connection, and the screenshots.
+``test_every_console_behaviour_works`` drives the console with keys sent to the shell as a user
+types them (:class:`emtk.testing.Driver`) through every behaviour it offers -- run, history,
+completion, calltip, pager, the kill ring, ``chisurf.run``, macro recording and replay -- and each
+one must give the answer it was fed. The other tests cover the macro menu's file round trip,
+``chisurf.run`` from a worker thread, composed (IME) input, the console's own session connection,
+and the screenshots.
 """
 
 from __future__ import annotations
 
-import json
 import os
 import threading
 from pathlib import Path
@@ -24,11 +22,34 @@ from emtk.testing import Driver
 from chisurf.emtk.main_app import EmtkShellApp
 
 SHOTS = Path(os.environ.get("CHISURF_NATIVE_SCREENSHOTS", "/private/tmp/chisurf-native-gpu"))
-BEFORE = json.loads(Path(__file__).with_name("shell_s4_qt_inventory.json").read_text("utf-8"))
-
-#: Qt console behaviours the emtk console does not have yet; each is an open item of the ledger
-#: (``okf/subsystems/qt-retirement.md``, slice S4). This list only shrinks.
-KNOWN_GAPS: dict[str, str] = {}
+#: The behaviours :func:`_behaviours` drives, in order.
+BEHAVIOURS = [
+    "run_expression",
+    "stdout",
+    "statement_silent",
+    "stderr_traceback",
+    "continuation_indent",
+    "multiline_block",
+    "history_up",
+    "history_down",
+    "history_prefix",
+    "completion_single",
+    "completion_list",
+    "calltip",
+    "pinfo_pager",
+    "search_ctrl_r",
+    "kill_ctrl_k",
+    "yank_ctrl_y",
+    "kill_ctrl_u",
+    "magic",
+    "cs_run",
+    "cs_run_history",
+    "record_macro",
+    "replay_macro",
+    "session_log",
+    "clear_ctrl_l",
+    "interrupt_ctrl_c",
+]
 
 
 @pytest.fixture
@@ -78,7 +99,7 @@ def _chord(driver: Driver, letter: str, mods: int = CONTROL_MODIFIER) -> None:
 
 
 def _behaviours(driver: Driver, shell, tmp: Path) -> dict[str, tuple[bool, object]]:
-    """Drive the emtk console through the Qt capture's behaviours, in its order."""
+    """Drive the console through every behaviour of :data:`BEHAVIOURS`, in order; ``{name: (ok, detail)}``."""
     import chisurf
     from chisurf.history import get_history
 
@@ -217,27 +238,19 @@ def _behaviours(driver: Driver, shell, tmp: Path) -> dict[str, tuple[bool, objec
     return seen
 
 
-def test_parity_with_the_qt_console(driver, shell, isolated):
-    """Every behaviour of the Qt console works in the emtk console, or is a listed gap."""
+def test_every_console_behaviour_works(driver, shell, isolated):
+    """Every behaviour the console offers gives the answer it was driven for."""
     seen = _behaviours(driver, shell, isolated)
-    order = BEFORE["behaviour_order"]
-    assert list(seen) == order, "the emtk drive follows the capture's order"
-    lost = [name for name in order if BEFORE["behaviours"][name]["ok"] and not seen[name][0]]
-    unexplained = [name for name in lost if name not in KNOWN_GAPS]
-    assert not unexplained, {name: seen[name][1] for name in unexplained}
-    closed = [name for name in KNOWN_GAPS if seen.get(name, (False,))[0]]
-    assert not closed, f"these gaps are closed now; strike them from KNOWN_GAPS: {closed}"
+    assert list(seen) == BEHAVIOURS
+    failed = {name: detail for name, (ok, detail) in seen.items() if not ok}
+    assert not failed, failed
 
 
-def test_the_macro_menu_has_the_qt_items(driver, shell):
-    """The Qt Macro menu's Record (checkable) is there, checked while recording; Run Macro… is added."""
-    menus = dict(shell.session_menus())
-    macro = menus["Macro"]
-    labels = [action.label for action in macro]
-    for item in BEFORE["menus"]["Macro"]:
-        assert item["text"] in labels
-        action = next(a for a in macro if a.label == item["text"])
-        assert (action.checked is not None) == item["checkable"]
+def test_the_macro_menu_records_and_runs(driver, shell):
+    """The Macro menu's Record is checkable, checked while recording; Run Macro… is there too."""
+    macro = dict(shell.session_menus())["Macro"]
+    record_item = next(a for a in macro if a.label == "Record")
+    assert record_item.checked is not None
     record = next(a for a in macro if a.key == "record")
     assert record.checked() is False
     driver.click("menu.Macro")
@@ -249,13 +262,13 @@ def test_the_macro_menu_has_the_qt_items(driver, shell):
     driver.escape()
     driver.click("menu.Macro")
     driver.click("Record")
-    # Nothing ran: the Qt "Nothing was recorded." message, no save dialog.
+    # Nothing ran: a "Nothing was recorded." message, no save dialog.
     assert shell.project.file_dialog is None
     assert shell.project.dialogs.current is not None
 
 
 def test_the_console_keys_win_over_the_menu_shortcuts_while_it_has_the_keys(driver, shell):
-    """Ctrl+R searches the history in the console (Reinitialize otherwise), as in the Qt console."""
+    """Ctrl+R searches the history in the console (Reinitialize otherwise)."""
     _submit(driver, "s4_search_me = 1")
     shell.console.set_input("search_me")
     _chord(driver, "r")
@@ -386,3 +399,22 @@ def test_the_console_screenshots(driver, shell):
     driver.screenshot(SHOTS / "emtk_console_session.png")
     assert any("NameError" in line for line, _kind in shell.console.transcript.lines)
     assert "2 4" in shell.console.transcript.text()
+
+
+def test_the_console_draws_a_figure_as_a_picture():
+    """A matplotlib figure shown in the console is drawn as a picture, not as its text repr."""
+    from chisurf.emtk.console import ShellConsole
+
+    console = ShellConsole({}, history_path=False, session_file=False)
+    try:
+        console.execute("import matplotlib.pyplot as plt; plt.plot([1, 2, 3]); plt.show()")
+        transcript = console.transcript
+        images = getattr(transcript, "images", [])
+        images = images() if callable(images) else images
+        text = "".join(str(line[0]) for line in getattr(transcript, "lines", []))
+        assert images, f"no figure drawn in the emtk console; transcript ends: {text[-300:]!r}"
+        assert "<Figure" not in text and "Line2D" not in text, text[-300:]
+    finally:
+        close = getattr(console, "close", None)
+        if callable(close):
+            close()

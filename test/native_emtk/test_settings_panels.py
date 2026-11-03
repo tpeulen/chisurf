@@ -1,6 +1,6 @@
-"""Settings parity audit: every panel must open, render and persist.
+"""Settings panel audit: every panel must open, render and persist.
 
-The user-facing contract of the EMTK settings hub matches the Qt tool: every
+The user-facing contract of the EMTK settings hub: every
 panel opens without error, the selected panel's content renders, YAML
 configuration panels edit and save with their types preserved, and native
 panels round-trip their state. This audit walks all of them so a broken panel
