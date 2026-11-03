@@ -1,4 +1,4 @@
-"""The native model manager against the Qt tool: rows, filter, sort, edits, drawing, no Qt.
+"""The emtk model manager: rows, filter, sort, edits, drawing, no Qt.
 
 Hermetic: every test points the settings folder at a temporary directory, so
 Save writes there and never to the user's ``~/.chisurf``.
@@ -143,30 +143,39 @@ def shown_names(app):
     return [(r["name"], r["experiment"]) for r in records]
 
 
-# ── 1. rows and status counts equal the Qt tool's ───────────────────────
+# ── 1. rows and status counts are the registry's ────────────────────────
 
 
-def test_rows_and_status_match_the_qt_widget(fake_registry):
-    """The same registry and settings give the retired Qt table's cells and status line (recorded)."""
+def test_rows_and_status_are_the_registry_and_the_disabled_list(fake_registry):
+    """One row per registered class; disabled by display name; Shared names the other experiments."""
     from chisurf.plugins.core.model_manager.gui.model import TABLE_COLUMNS
 
-    qt = json.loads((Path(__file__).parent / "qt_reference.json").read_text())
-    titles, qt_cells = qt["titles"], qt["cells"]
-    settings = {"disabled_models": ["Lifetime", "Et-Model free"]}
-    model = make_model(settings["disabled_models"])
+    disabled = ["Lifetime", "Et-Model free"]
+    model = make_model(disabled)
     app = make_app(model)
     draw(app)
     rows, columns = app.displayed()
-    assert [title for _k, title in columns] == [t for _k, t in TABLE_COLUMNS]
-    emtk_cells = [[str(r[key]) for key, _t in columns] for r in rows]
+    assert columns == list(TABLE_COLUMNS)
 
-    assert len(emtk_cells) == len(qt_cells) == 6
-    shared = [c for c in titles if c in [t for _k, t in TABLE_COLUMNS]]
-    assert shared == [t for _k, t in TABLE_COLUMNS]
-    qt_cells_by_title = [[row[titles.index(t)] for t in shared] for row in qt_cells]
-    assert emtk_cells == qt_cells_by_title
-    assert model.status_text() == qt["status"]
-    assert "1 disabled name(s) match no model" in model.status_text()
+    registry = _fake_registry()
+    experiments_of = {}
+    for exp in registry.values():
+        for cls in exp.model_classes:
+            experiments_of.setdefault(cls.name, []).append(exp.name)
+    expected = [
+        [
+            cls.name,
+            exp.name,
+            "disabled" if cls.name in disabled else "enabled",
+            "none",
+            "spec-driven",
+            ", ".join(e for e in experiments_of[cls.name] if e != exp.name),
+        ]
+        for exp in registry.values()
+        for cls in exp.model_classes
+    ]
+    assert [[str(r[key]) for key, _t in columns] for r in rows] == expected
+    assert model.status_text() == "6 models · 1 disabled · 1 disabled name(s) match no model"
 
 
 def test_rows_status_and_counts_for_a_known_registry(fake_registry):

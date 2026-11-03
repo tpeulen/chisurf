@@ -3,7 +3,7 @@
 :class:`ModelManagerModel` is the shared :class:`~.view_model.ModelManagerViewModel`
 (registry rows, the disabled list, save and revert) plus what only the painted
 window needs: a record list for the table that keeps its identity between
-frames, the two confirmations the Qt tool asked through message boxes, a
+frames, the two in-window confirmations (revert, drop stale entries), a
 background rescan, and the table's CSV text for Copy and Export.
 """
 
