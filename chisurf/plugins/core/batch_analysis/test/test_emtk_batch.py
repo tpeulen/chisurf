@@ -1,9 +1,9 @@
-"""The native Batch Analysis wizard against the Qt wizard: same steps, same selection, same numbers, same files.
+"""The Batch Analysis wizard app: steps, selection, run numbers, written files, drawing, settings.
 
-The Qt side is the shared view model (steps, texts, completion) and, for the run, ``qt_reference.json``: what the
-retired Qt ``run`` wrote and showed (CSV, DOCX, ZIP, progress labels, message boxes) on the same fakes
-(``fakes.FakeSession``), recorded once from the live Qt code before it was deleted. Everything runs on temporary
-settings; the real ``~/.chisurf`` is checked unchanged.
+The run's expected numbers are known by construction: ``fakes.FakeSession`` answers the k-th fit with
+``tau = 1 + 0.5 k`` and ``chi2r = 1 + 0.05 k`` (see ``planted_rows``). The texts and the selection are
+compared with :class:`~.view_model.BatchViewModel`, the base class :class:`BatchModel` extends. Everything
+runs on temporary settings; the real ``~/.chisurf`` is checked unchanged.
 """
 
 from __future__ import annotations
@@ -66,17 +66,17 @@ def strip_md(md: str) -> str:
 # -- the steps ----------------------------------------------------------------------------------------------------------- #
 
 
-def qt_steps():
+def spec_steps():
     spec = json.loads((PLUGIN / "batch.view.json").read_text())
     return spec["sections"][0]["steps"]
 
 
-def test_the_steps_are_the_qt_wizards_steps_in_order_with_titles_subtitles_and_conditions():
-    qt = qt_steps()
-    assert [s.title for s in STEPS] == [s["title"] for s in qt]
-    assert [s.subtitle for s in STEPS] == [s["subtitle"] for s in qt]
+def test_the_steps_follow_the_wizard_spec_in_order_with_titles_subtitles_and_conditions():
+    spec = spec_steps()
+    assert [s.title for s in STEPS] == [s["title"] for s in spec]
+    assert [s.subtitle for s in STEPS] == [s["subtitle"] for s in spec]
     assert [s.complete_when for s in STEPS] == [
-        (s.get("complete_when") or {}).get("attr") for s in qt
+        (s.get("complete_when") or {}).get("attr") for s in spec
     ]
     assert len(STEPS) == 5
 
@@ -104,9 +104,9 @@ def test_every_spec_reference_resolves_on_the_model():
     walk(spec["sections"])
 
 
-def test_the_completion_marks_follow_the_qt_conditions(monkeypatch):
+def test_the_completion_marks_follow_the_view_model_conditions(monkeypatch):
     session = FakeSession()
-    qt, native = BatchViewModel(), BatchModel(session=session)
+    base, native = BatchViewModel(), BatchModel(session=session)
     monkeypatch.setattr(BatchViewModel, "_fit_client", lambda self: session.client)
 
     def marks(m):
@@ -119,37 +119,37 @@ def test_the_completion_marks_follow_the_qt_conditions(monkeypatch):
         False,
         True,
     ]  # a fit exists (Files & fit), no results yet (Run)
-    assert qt.fit_selected and native.fit_selected
-    native.selected_fit_name = qt.selected_fit_name = "nope"
+    assert base.fit_selected and native.fit_selected
+    native.selected_fit_name = base.selected_fit_name = "nope"
     native.refresh_completion()
-    assert not qt.fit_selected and not native.fit_selected and native.step_complete(2) is False
-    assert qt.has_results is False and native.has_results is False
+    assert not base.fit_selected and not native.fit_selected and native.step_complete(2) is False
+    assert base.has_results is False and native.has_results is False
 
 
-def test_the_welcome_text_is_the_qt_text():
-    qt, native = BatchViewModel(), BatchModel(session=FakeSession())
+def test_the_welcome_text_is_the_view_models_text():
+    base, native = BatchViewModel(), BatchModel(session=FakeSession())
     numbered = lambda s: re.sub(r"\s\d\.\s", " ", s)  # noqa: E731  (the list numbers are markup in both)
-    assert numbered(strip_md(native.welcome_md())) == numbered(strip_html(qt.welcome_html()))
+    assert numbered(strip_md(native.welcome_md())) == numbered(strip_html(base.welcome_html()))
 
 
-def test_the_selection_summary_equals_the_qt_summary(tmp_path):
+def test_the_selection_summary_equals_the_view_models_summary(tmp_path):
     session = FakeSession()
-    qt, native = BatchViewModel(), BatchModel(session=session)
-    qt.imported_datasets = lambda: list(session.datasets)
-    for model in (qt, native):
+    base, native = BatchViewModel(), BatchModel(session=session)
+    base.imported_datasets = lambda: list(session.datasets)
+    for model in (base, native):
         model.files = make_files(tmp_path)
         model.selected_dataset_indices = [0, 2]
         model.selected_fit_name = "Template fit"
     native.reload_files()
-    q, n = strip_html(qt.selection_html()), strip_md(native.selection_md())
+    q, n = strip_html(base.selection_html()), strip_md(native.selection_md())
     assert q == n
 
 
-# -- loaded datasets: the Qt check list ---------------------------------------------------------------------------------- #
+# -- loaded datasets: the check list -------------------------------------------------------------------------------------- #
 
 
-def test_the_dataset_rows_are_the_qt_lists_items_and_a_tick_selects_the_same_indices():
-    """The retired Qt list showed "1. A" ...; ticking row 1 selected index [1] and unticking cleared it."""
+def test_the_dataset_rows_are_numbered_and_a_tick_selects_that_index():
+    """The rows read "1. A" ...; ticking row 1 selects index [1] and unticking clears it."""
     session = FakeSession(datasets=("A", "B", "C", "Global Dataset"))
     native = BatchModel(session=session)
     assert [r["label"] for r in native.dataset_rows()] == ["1. A", "2. B", "3. C"]
@@ -169,10 +169,10 @@ def test_refresh_keeps_the_ticks_of_datasets_that_are_still_there():
     assert native.selected_dataset_indices == [] and len(native.dataset_rows()) == 2
 
 
-# -- files: the Qt path list --------------------------------------------------------------------------------------------- #
+# -- files: the path list ------------------------------------------------------------------------------------------------- #
 
 
-def test_adding_files_and_folders_gives_the_qt_path_lists_result(tmp_path):
+def test_adding_files_and_folders_expands_sorted_and_skips_repeats_and_misses(tmp_path):
     folder = tmp_path / "data"
     (folder / "sub").mkdir(parents=True)
     for name in ("b.sm", "a.sm", "sub/c.sm"):
@@ -180,7 +180,7 @@ def test_adding_files_and_folders_gives_the_qt_path_lists_result(tmp_path):
     loose = tmp_path / "loose.sm"
     loose.write_text("x")
     native = BatchModel(session=FakeSession())
-    # what the retired Qt path list held after each add (a folder expands sorted; repeats and misses add nothing)
+    # the list after each add: a folder expands sorted; repeats and misses add nothing
     expected = [
         ["loose.sm"],
         ["loose.sm", "a.sm", "b.sm", "c.sm"],
@@ -199,23 +199,30 @@ def test_adding_files_and_folders_gives_the_qt_path_lists_result(tmp_path):
         assert [Path(p).name for p in native.files] == names
 
 
-def test_remove_and_clear_match_the_qt_buttons(tmp_path):
+def test_remove_and_clear(tmp_path):
     files = make_files(tmp_path, ("a.sm", "b.sm", "c.sm"))
     native = BatchModel(session=FakeSession())
     native.add_paths(files)
     native.select_file(native.file_rows()[1])
     native.remove_selected()
-    assert native.files == [files[0], files[2]]  # the Qt remove button left the same two
+    assert native.files == [files[0], files[2]]
     native.clear_files()
     assert native.files == []
 
 
-# -- the run: the same numbers and files as the Qt run ------------------------------------------------------------------- #
+# -- the run: numbers planted by the fake session ------------------------------------------------------------------- #
 
-#: The retired Qt run (``BatchViewModel.run``: progress dialog, save dialog, message boxes), recorded once from the live
-#: Qt code on these fakes before it was deleted: files ``run_01.sm``/``run_02.sm``, datasets [0, 2], fit "Template fit".
-#: ``<tmp>`` stands for the test's ``tmp_path``; the Qt run wrote into ``<tmp>/qt``.
-QT = json.loads((Path(__file__).parent / "qt_reference.json").read_text(encoding="utf-8"))
+
+def planted_rows(labels):
+    """The result rows ``FakeSession`` makes: the k-th run gives ``tau = 1 + 0.5 k``, ``chi2r = 1 + 0.05 k``."""
+    rows = []
+    for k, label in enumerate(labels):
+        chi2r = 1.0 + 0.05 * k
+        for name, value, fixed in (("tau", 1.0 + 0.5 * k, "No"), ("amplitude", 0.5, "No"), ("offset", 0.0, "Yes")):
+            rows.append(
+                {"Run": str(k + 1), "Filename": label, "Parameter": name, "Fixed": fixed, "Value": value, "Chi2r": chi2r}
+            )
+    return rows
 
 
 def native_run(tmp_path, session, files, indices, save):
@@ -247,75 +254,64 @@ def native_run(tmp_path, session, files, indices, save):
     return native, shown
 
 
-def test_a_batch_writes_the_same_csv_zip_and_rows_as_the_qt_run(tmp_path):
+def test_a_batch_writes_the_planted_rows_to_csv_zip_and_docx(tmp_path):
+    import csv
+
     files = make_files(tmp_path)
     (tmp_path / "nat").mkdir()
     session = FakeSession()
-    native, progress = native_run(
-        tmp_path, session, files, [0, 2], tmp_path / "nat" / "results.csv"
-    )
-    tmp = lambda text: text.replace(str(tmp_path), "<tmp>")  # noqa: E731
+    out = tmp_path / "nat"
+    native, progress = native_run(tmp_path, session, files, [0, 2], out / "results.csv")
     assert native.message == "Batch complete" and native.message_ok and not native.running
-    assert [
-        {k: tmp(v) if isinstance(v, str) else v for k, v in r.items()} for r in native.result_rows()
-    ] == QT["rows"]
-    assert tmp((tmp_path / "nat" / "results.csv").read_text()) == QT["csv"]
-    assert (
-        sorted(zipfile.ZipFile(tmp_path / "nat" / "results_fit_results.zip").namelist())
-        == QT["zip_names"]
-    )
-    assert (tmp_path / "nat" / "results.docx").exists() == QT["docx_written"]
-    assert [name for name, _ in session.log] == QT["dispatched"]
-    assert [[p.name, p.value, p.fixed] for p in session.fits[0].model.parameters_all] == QT[
-        "parameters_after"
+    # datasets 0 and 2 of the session, then the two files
+    expected = planted_rows(["Sample A", "Sample C", files[0], files[1]])
+    assert native.result_rows() == expected
+    with open(out / "results.csv", newline="") as handle:
+        written = list(csv.DictReader(handle))
+    assert written == [{k: str(v) for k, v in row.items()} for row in expected]
+    assert sorted(zipfile.ZipFile(out / "results_fit_results.zip").namelist()) == [
+        "001_Sample_A.csv",
+        "002_Sample_C.csv",
+        "003_run_01.csv",
+        "004_run_02.csv",
     ]
-    # the Qt progress dialog's label, step by step, is the text over the native progress bar
-    assert progress == QT["progress_labels"]
-    # the Qt "Batch complete" box listed the CSV, the DOCX when written and the ZIP; the window lists the same lines
-    ((kind, title, text),) = QT["boxes"]
-    assert (kind, title) == ("information", native.message)
-    mine = [tmp(line).replace("/nat/", "/qt/") for line in native.outputs]
-    assert mine == text.splitlines()
-    rows = native.result_rows()
-    assert [r["Filename"] for r in rows[::3]] == ["Sample A", "Sample C", files[0], files[1]]
-    assert [r["Run"] for r in rows[::3]] == ["1", "2", "3", "4"]
-    assert [r["Value"] for r in rows if r["Parameter"] == "tau"] == [
-        1.0,
-        1.5,
-        2.0,
-        2.5,
-    ]  # restored to the template each run
-
-
-def test_the_results_table_cells_equal_the_qt_results_html(tmp_path):
-    files = make_files(tmp_path)
-    native, _ = native_run(tmp_path, FakeSession(), files, [0, 2], tmp_path / "o2.csv")
-    flat = [
-        str(r[c]).replace(str(tmp_path), "<tmp>")
-        for r in native.result_rows()
-        for c in runner.FIELDNAMES
+    assert (out / "results.docx").exists()
+    # a selected dataset is set and run; a file is added first
+    assert [name for name, _ in session.log] == ["fit.set_dataset", "fit.run"] * 2 + [
+        "dataset.add",
+        "fit.set_dataset",
+        "fit.run",
+    ] * 2
+    # the template keeps the last run's fitted tau and its own fixed flags
+    assert [[p.name, p.value, p.fixed] for p in session.fits[0].model.parameters_all] == [
+        ["tau", 1.0 + 0.5 * 3, False],
+        ["amplitude", 0.5, False],
+        ["offset", 0.0, True],
     ]
-    assert flat == QT["results_html_cells"]
+    assert progress == ["1/4: Sample A", "2/4: Sample C", "3/4: run_01.sm", "4/4: run_02.sm"]
+    assert native.outputs == [
+        f"CSV: {out / 'results.csv'}",
+        f"DOCX: {out / 'results.docx'}",
+        f"Per-run exports (ZIP): {out / 'results_fit_results.zip'}",
+    ]
 
 
-def test_no_data_no_fit_and_a_missing_csv_are_the_qt_warnings_as_lines_and_a_chooser():
-    (no_data, no_fit) = QT["warnings"]
+def test_no_data_no_fit_and_a_missing_csv_are_lines_and_a_chooser():
     native = BatchModel(session=FakeSession())
     native.run()
-    assert native.message == ": ".join(no_data) and not native.message_ok
+    assert native.message == "No data: Select datasets or add files first." and not native.message_ok
     native2 = BatchModel(session=FakeSession(fits=()))
     native2.files = ["/x/a.sm"]
     native2.run()
-    assert native2.message == ": ".join(no_fit)
+    assert native2.message == "No fit: Select a template fit first."
     native3 = BatchModel(session=FakeSession())
     native3.files = ["/x/a.sm"]
-    native3.run()  # no CSV path: the Qt tool opened a "Save results" CSV dialog
-    assert QT["save_dialog"][0][0] == "Save results"
+    native3.run()  # no CSV path: the results chooser is asked for
     assert native3.dialog_request == "results" and not native3.running
 
 
 def test_each_runs_picture_is_drawn_on_the_polling_thread_and_goes_into_the_docx(tmp_path):
-    """The Qt run grabbed the fit sub-window between two fits; the worker hands each capture to the window's thread."""
+    """A picture is taken between two fits; the worker hands each capture to the window's thread."""
     import threading
 
     from emtk.testing import png_encode
@@ -344,7 +340,7 @@ def test_each_runs_picture_is_drawn_on_the_polling_thread_and_goes_into_the_docx
 
 
 def test_the_default_picture_is_the_template_fit_window(monkeypatch, tmp_path):
-    """Without an injected session the model draws the template fit's emtk window (the Qt run grabbed its sub-window)."""
+    """Without an injected session the model draws the template fit's emtk window."""
     from ..gui import model as model_module
 
     session = FakeSession()
@@ -363,7 +359,7 @@ def test_the_default_picture_is_the_template_fit_window(monkeypatch, tmp_path):
     assert model_module.fit_window_png(object(), str(tmp_path / "x.png")) == ""
 
 
-def test_a_failing_fit_is_reported_in_the_window_as_the_qt_error_box_reported_it(tmp_path):
+def test_a_failing_fit_is_reported_in_the_window(tmp_path):
     session = FakeSession()
     session.dispatch = lambda name, payload: (_ for _ in ()).throw(
         RuntimeError("fit server is gone")

@@ -1,22 +1,19 @@
 """Qt-free state of the batch-analysis wizard drawn by :mod:`.app`.
 
-The Qt wizard is an AutoForm ``wizard`` section over :class:`~.view_model.BatchViewModel`: five steps (Welcome, Loaded
-data, Files & fit, Run, Results), a check mark for every completed step and a Back / Next / Finish bar. This model is that
-wizard without a toolkit. It extends :class:`BatchViewModel`, which holds the selection (datasets, files, template fit, the
-CSV path), the completion booleans and the fit / dataset resolution, so the two wizards cannot drift apart, and it drives
-the same :mod:`..core.runner` for the numbers.
+The wizard has five steps (Welcome, Loaded data, Files & fit, Run, Results), a check mark for every completed step and a
+Back / Next / Finish bar. This model extends :class:`~.view_model.BatchViewModel`, which holds the selection (datasets,
+files, template fit, the CSV path), the completion booleans and the fit / dataset resolution, and it drives
+:mod:`..core.runner` for the numbers. On top of the view model:
 
-What differs from the Qt model is what a Qt-free app must do differently:
-
-* the run goes through a worker thread and reports ``i/total: name`` in a progress bar instead of a modal progress dialog,
-  and every message the Qt run showed in a message box (no data, no fit, batch complete, failure) is a line in the window;
+* the run goes through a worker thread and reports ``i/total: name`` in a progress bar, and every message (no data, no
+  fit, batch complete, failure) is a line in the window;
 * the results CSV's chooser is a request the app answers with its in-app
   dialogs;
 * the session (datasets, fit client, action dispatcher, a per-run screenshot) is injectable, so a test runs a whole batch
-  against fakes; without one the process-global ChiSurf session is used exactly as the Qt tool uses it;
+  against fakes; without one the process-global ChiSurf session is used;
 * the per-run picture for the DOCX report is the template fit's emtk window drawn on the CPU rasteriser
-  (:func:`fit_window_png`) where the Qt run grabbed the fit sub-window. The worker hands each capture to the thread that
-  polls the model (the window's), as the Qt run grabbed between two fits, so the fit is drawn in the state its run left.
+  (:func:`fit_window_png`). The worker hands each capture to the thread that polls the model (the window's) between two
+  fits, so the fit is drawn in the state its run left.
 """
 
 from __future__ import annotations
@@ -40,7 +37,7 @@ from .view_model import BatchViewModel
 
 logger = logging.getLogger(__name__)
 
-#: Size of the per-run fit picture in the DOCX report (the Qt run grabbed the fit sub-window at its screen size).
+#: Size of the per-run fit picture in the DOCX report.
 CAPTURE_SIZE = (1000, 640)
 #: How long the worker waits for the window thread to draw one picture before it goes on without it.
 CAPTURE_TIMEOUT = 60.0
@@ -49,8 +46,7 @@ CAPTURE_TIMEOUT = 60.0
 def fit_window_png(fit: Any, path: str, size: tuple[int, int] = CAPTURE_SIZE) -> str:
     """Draw *fit*'s emtk window (its first page, as a newly opened fit window shows it) into the PNG *path*.
 
-    Returns *path*, or ``""`` when the fit could not be drawn (the report then has no picture for that run, as the Qt
-    run had none when its grab failed).
+    Returns *path*, or ``""`` when the fit could not be drawn (the report then has no picture for that run).
     """
     try:
         from emtk.export import save_png
@@ -125,10 +121,10 @@ class BatchModel(Stepper, BatchViewModel):
     ----------
     session : object, optional
         Stands in for the ChiSurf session: ``datasets`` (list), ``client`` (the fitting client) and ``dispatch(name,
-        payload)``. Without one the process-global session is read, as the Qt tool does.
+        payload)``. Without one the process-global session is read.
     capture : callable, optional
-        ``capture(out_dir, name, run_index) -> path`` grabs a picture of the fit after each run for the DOCX report (the
-        Qt tool grabs the current fit sub-window); without one the report has the table only.
+        ``capture(out_dir, name, run_index) -> path`` grabs a picture of the fit after each run for the DOCX report;
+        without one the report has the table only.
     """
 
     STEPS = STEPS
@@ -139,7 +135,7 @@ class BatchModel(Stepper, BatchViewModel):
         BatchViewModel.__init__(self)
         self.session = session
         #: ``capture(out_dir, name, run_index) -> png path`` for the DOCX report, called on the polling thread. With
-        #: the process-global session (no *session*) the default draws the template fit's window, as the Qt run did.
+        #: the process-global session (no *session*) the default draws the template fit's window.
         self.capture = (
             capture if capture is not None or session is not None else self.capture_fit_window
         )
@@ -149,7 +145,7 @@ class BatchModel(Stepper, BatchViewModel):
         self.running = False
         self.progress: tuple[int, int] = (0, 0)
         self.progress_name = ""
-        #: A line under the Run button: what the Qt tool said in a message box or a status panel.
+        #: A line under the Run button: the outcome of the last action (a warning, success or failure).
         self.message = ""
         self.message_ok = True
         #: Output files of the last run (CSV, DOCX, ZIP).
@@ -224,7 +220,7 @@ class BatchModel(Stepper, BatchViewModel):
 
     # -- loaded datasets --------------------------------------------------------------------------------------------- #
     def reload_datasets(self) -> None:
-        """Re-scan the loaded datasets, keeping the ticks of the ones still there (the Qt Refresh button)."""
+        """Re-scan the loaded datasets, keeping the ticks of the ones still there."""
         available = self.imported_datasets()
         self.selected_dataset_indices = [
             i for i in self.selected_dataset_indices if 0 <= i < len(available)
@@ -256,7 +252,7 @@ class BatchModel(Stepper, BatchViewModel):
         return self._dataset_rows
 
     def set_dataset_use(self, record: dict, key: str, value: Any) -> None:
-        """A tick in the dataset table: write it to ``selected_dataset_indices`` (the Qt list's ``_commit``)."""
+        """A tick in the dataset table: write it to ``selected_dataset_indices``."""
         if key != "use":
             return
         chosen = set(self.selected_dataset_indices)
@@ -284,7 +280,7 @@ class BatchModel(Stepper, BatchViewModel):
         self.refresh_completion()
 
     def update(self) -> None:
-        """After the file list or a tick changed (the Qt section calls ``model.update()``)."""
+        """After the file list or a tick changed."""
         self.reload_files()
         super().update()
 
@@ -298,7 +294,7 @@ class BatchModel(Stepper, BatchViewModel):
 
     @staticmethod
     def expand(paths: list[str]) -> list[str]:
-        """Files stay, a folder becomes every file below it (sorted): the Qt section's ``_expand`` without a filter."""
+        """Files stay, a folder becomes every file below it (sorted), with no filter."""
         out: list[str] = []
         for item in paths:
             p = pathlib.Path(item)
@@ -357,16 +353,16 @@ class BatchModel(Stepper, BatchViewModel):
             self.run()
 
     def cancel_dialog(self) -> None:
-        """A chooser was cancelled: a pending Run is dropped (the Qt tool returned without running)."""
+        """A chooser was cancelled: a pending Run is dropped."""
         self._run_after_dialog = False
 
     # -- texts ------------------------------------------------------------------------------------------------------- #
     def welcome_md(self) -> str:
-        """The introduction of the first step (Markdown; the Qt step shows the same text as HTML)."""
+        """The introduction of the first step (Markdown; :meth:`welcome_html` is the same text as HTML)."""
         return "\n\n".join(tr(piece) for piece in _WELCOME_PIECES) + "\n"
 
     def selection_md(self) -> str:
-        """A live summary of the selection (the Qt ``selection_html`` as Markdown)."""
+        """A live summary of the selection (``selection_html`` as Markdown)."""
         fit = self.selected_fit_name or "*none*"
         return (
             "#### Ready to run\n\n"
@@ -506,7 +502,7 @@ class BatchModel(Stepper, BatchViewModel):
             if zip_out:
                 lines.append(f"Per-run exports (ZIP): {zip_out}")
             self._events.put(("done", results, lines))
-        except Exception as exc:  # noqa: BLE001 - the Qt tool showed "Batch failed" with the text
+        except Exception as exc:  # noqa: BLE001 - reported as "Batch failed: <text>"
             logger.warning("batch run failed", exc_info=True)
             self._events.put(("failed", f"Batch failed: {exc}"))
 

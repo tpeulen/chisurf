@@ -1,11 +1,11 @@
-"""Native Batch Analysis wizard: the five steps of the Qt wizard in one window, without Qt.
+"""Native Batch Analysis wizard: five steps in one window, without Qt.
 
 Left window: the step list (a check mark for a completed step) with Back / Next / Finish and Help / Guide. Right window:
 the header of the current step and its page. Every page is a panel of the view spec ``batch_emtk.view.json`` drawn by
 :func:`emtk.view_form.draw_sections`; the three tables (loaded datasets, files, results) are ``data_table`` sections. Only
 what a spec cannot draw is drawn here: the Markdown texts, the coloured outcome line, the workspace Input section (the
-files to process) and the results CSV's save dialog. All state is in :class:`~.model.BatchModel`; the numbers are the
-Qt wizard's, from :mod:`..core.runner`. Nothing here imports Qt.
+files to process) and the results CSV's save dialog. All state is in :class:`~.model.BatchModel`; the numbers come
+from :mod:`..core.runner`. Nothing here imports Qt.
 """
 
 from __future__ import annotations
