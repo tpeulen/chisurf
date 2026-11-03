@@ -3,12 +3,12 @@
 The spec is drawn by :func:`emtk.view_form.draw_form`; the two lifetime maps, the
 three line plots and the L-curve are the spec's ``custom`` sections, drawn by
 callbacks registered in :attr:`emtk.view_form.FormState.custom`. All state and work
-is in :class:`~.model.FlcModel` (the same model the Qt tool uses); opening a stream,
+is in :class:`~.model.FlcModel`; opening a stream,
 simulating one and the analysis run on a :class:`chisurf.emtk.jobs.SnapshotJob`.
 
 The top-level sections of the spec become docked windows: *Settings* (status line,
 Open / IRF / Sim / Run and the parameters) on the left, and the result windows as
-tabs on the right, as the Qt tool showed them.
+tabs on the right.
 """
 
 from __future__ import annotations
@@ -107,8 +107,8 @@ class FlcApp(ImApp):
         )
         self.docks = DockManager(Split("v", 0.12, Region("bar"), Region("main")))
         for key, section in zip(WINDOW_KEYS, self.windows):
-            # Settings and the results are tabs of one region, as in the Qt tool's dock
-            # area; the toolbar (status line and buttons) stays above them.
+            # Settings and the results are tabs of one region; the toolbar (status line
+            # and buttons) stays above them.
             self.docks.add_window(
                 key,
                 section["title"],

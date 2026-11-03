@@ -18,8 +18,7 @@ The plugin is now split into the migrated plugin layout:
 - `core.py` and `fit/` - numerical 2D-FDC, ILT, MEM, kinetics, and simulator code.
 - `backend/services.py` - JSON-RPC handlers under the `flc2d.*` namespace.
 - `gui/client.py` - typed client used by the GUI instead of direct backend calls.
-- `gui/tool.py` - stateful docked widget shell with persistent dock layout (legacy Qt).
-- `gui/model.py` - Qt-free model: settings, stream/IRF loading, simulation, the analysis run and its results; shared by both GUIs.
+- `gui/model.py` - Qt-free model: settings, stream/IRF loading, simulation, the analysis run and its results.
 - `gui/app.py`, `gui/flc_2d_emtk.view.json` - native emtk app (`entrypoints.emtk`): toolbar, Settings and the result windows as tabs.
 - `cli/` - command-line entrypoint declared in `manifest.json`.
 
@@ -33,9 +32,8 @@ Open the tool from FCS Tools. The top toolbar uses short labels:
 - `Run` performs the active analysis.
 - `?` opens modal help with workflow, RPC, and CLI reference.
 
-The central area is a ChiSurf `DockArea`. Right-click the dock area or dock tabs
-to hide/show docks. Dock arrangement and window geometry are persisted through
-`QSettings`.
+The window is an emtk dock layout: the toolbar on top, Settings and the result
+windows as tabs below it.
 
 Longer field descriptions are kept as tooltips/descriptions in
 `gui/flc_2d.view.json`; visible labels are intentionally short.

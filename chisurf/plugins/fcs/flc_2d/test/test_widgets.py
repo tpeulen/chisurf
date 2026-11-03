@@ -1,4 +1,4 @@
-"""The 2D-FLCS plot sources of the native model (the Qt tool tests, ported)."""
+"""The 2D-FLCS plot sources of the native model."""
 
 import numpy as np
 

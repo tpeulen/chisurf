@@ -1,11 +1,10 @@
 """Qt-free model of the 2D-FLCS tool.
 
 :class:`_FlcModel` holds the settings the declarative view edits, the loaded photon
-stream and IRF, and the results the plots show. The work the Qt tool used to do in
-its button handlers (opening a stream, simulating one, running the analysis with
-the lifetime inversion, the L-curve, the species correlation and the 1D-MEM) is here
-as plain methods, so the Qt tool and the native emtk app (``gui/app.py``, which
-runs them on a :class:`chisurf.emtk.jobs.SnapshotJob`) share one implementation.
+stream and IRF, and the results the plots show. Opening a stream, simulating one and
+running the analysis (the lifetime inversion, the L-curve, the species correlation and
+the 1D-MEM) are plain methods; the native emtk app (``gui/app.py``) runs them on a
+:class:`chisurf.emtk.jobs.SnapshotJob`.
 """
 
 from __future__ import annotations
@@ -28,7 +27,7 @@ if TYPE_CHECKING:
 _GUI_DIR = pathlib.Path(__file__).parent
 logger = logging.getLogger(__name__)
 
-#: Photon-stream dialog filter (Qt-style), shared with the Qt tool.
+#: Photon-stream file-dialog filter.
 PHOTON_FILE_FILTER = TTTR_FILE_FILTER
 
 
@@ -74,8 +73,7 @@ class _FlcModel:
         self._residual_img: np.ndarray | None = None
         self._lcurve_data: LCurveData | None = None
         self._irf_preview: dict[str, np.ndarray] | None = None
-        # The loaded photon stream, the active IRF and what the analysis produced
-        # (the Qt tool kept these on the window).
+        # The loaded photon stream, the active IRF and what the analysis produced.
         self.client: FlcClient | None = None
         self.tttr: TttrData | None = None
         self.tttr_path: str | None = None
@@ -86,13 +84,13 @@ class _FlcModel:
         self.irf_path: str | None = None
         self.spectrum2d: dict[str, Any] | None = None
         self.kinetics = None
-        # Window state of a drawn (native) host; the Qt tool ignores these.
+        # Window state of the drawn host.
         self.status_text = "Pick a photon stream in the Input section to begin."
         self.error_text = ""
         self.busy = False
         self.folder = ""
         self._observers: list = []
-        #: Called with every status line (the Qt tool shows it in its status bar).
+        #: Called with every status line.
         self.on_status = None
 
     # -- observers and status -------------------------------------------- #
@@ -106,7 +104,7 @@ class _FlcModel:
             callback(event)
 
     def _status(self, text: str) -> None:
-        """Set the status line, tell the observers and the Qt status bar."""
+        """Set the status line and tell the observers and ``on_status``."""
         self.status_text = text
         self.notify("status")
         if self.on_status is not None:

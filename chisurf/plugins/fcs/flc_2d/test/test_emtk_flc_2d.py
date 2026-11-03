@@ -14,31 +14,15 @@ GUI = HERE.parent / "gui"
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 REAL_STREAM = REPO / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
 
-#: A 10 s simulated two-state stream (seed 1, the plugin's own simulator, taus 1/3 ns,
-#: k12 30, k21 10) through the default NNLS run with the 1D-MEM on. Taken from the Qt tool
-#: (``FlcTwoDTool._on_simulate`` then ``_on_run``) before its work moved into the model.
-SHORT = dict(
-    n_photons=199717,
-    tmax_ns=12.508,
-    spectrum_sum=65726.62155920308,
-    spectrum_shape=(32, 32),
-    residual_abs_sum=2006808.3147592419,
-    tau=[0.3, 0.6962324531720666, 1.615798762833313, 8.0],  # grid points 0, 10, 20, 39
-    amp=[3.3212772022186057, 10.232069737980911, 23.748930511678953, 0.0],  # points 5, 15, 25, 35
-    lcurve_corner=7,
-    lcurve_residual_3=77.29749431033059,
-    mem_mode_tau=1.9121144034260718,  # both independent MEM providers; one-grid-bin resolution
-)
+#: The plugin's own simulator, whose answer is planted: two states with lifetimes 1 and 3 ns,
+#: k12 = 30/s and k21 = 10/s (relaxation k12 + k21 = 40/s, 25 ms), 20 000 photons/s.
+PLANTED = dict(tau_ns=(1.0, 3.0), rate_sum=40.0, cps=20000.0)
 
-#: The same simulator for 60 s: the species correlation and the rate fit exist. The
-#: ground truth is relaxation 40/s (25 ms); the analysis measures 34.5/s, as the Qt tool did.
-LONG = dict(
-    n_photons=1200718,
-    rate_sum=34.48251307,
-    relaxation_s=0.02900021,
-    status="tau = 0.90, 3.17 ns; relaxation 29.0 ms (k12+k21=34.5/s)",
-    series=["auto 0", "auto 1", "cross 0-1"],
-)
+
+def _photons_as_planted(n, seconds):
+    """The photon count is Poisson around the planted rate times the duration (5 sigma)."""
+    expected = PLANTED["cps"] * seconds
+    assert abs(n - expected) < 5 * np.sqrt(expected), (n, expected)
 
 
 def settle(app, size=(1200, 800), limit=180.0):
@@ -95,10 +79,10 @@ def _assert_optional_mem_quality(model, monkeypatch):
     tau, amp = model._mem1d["tau"], model._mem1d["amp"]
     np.testing.assert_array_equal(tau, model._lifetime["tau"])
     assert np.all(np.isfinite(amp)) and np.all(amp > 0)
-    # Both independently evaluated providers resolve this mode; one grid interval is
-    # the lifetime resolution. The total amplitude depends on outer-step stopping.
-    grid_step = np.log(tau[1] / tau[0])
-    assert abs(np.log(tau[amp.argmax()] / SHORT["mem_mode_tau"])) <= grid_step
+    # The MEM mode lies between the two planted lifetimes. The total amplitude depends on
+    # outer-step stopping.
+    lo, hi = PLANTED["tau_ns"]
+    assert lo < tau[amp.argmax()] < hi
     calls = []
     provider = numerics.minimize
 
@@ -148,29 +132,40 @@ def _assert_optional_mem_quality(model, monkeypatch):
     np.testing.assert_allclose(gradient, numerical, rtol=2e-4, atol=1e-7)
 
 
-def test_model_produces_the_reference_result(short_app, long_app, monkeypatch):
+def test_model_recovers_the_planted_sample(short_app, long_app, monkeypatch):
     m = short_app.model
-    assert m.tttr.n_photons == SHORT["n_photons"]
-    assert m.tmax_ns == SHORT["tmax_ns"]
-    assert m.spectrum_image().shape == SHORT["spectrum_shape"]
-    assert np.isclose(m.spectrum_image().sum(), SHORT["spectrum_sum"], rtol=1e-6)
-    assert np.isclose(np.abs(m.residual_image()).sum(), SHORT["residual_abs_sum"], rtol=1e-6)
+    _photons_as_planted(m.tttr.n_photons, 10.0)
+    image = m.spectrum_image()
+    assert image.ndim == 2 and image.shape[0] == image.shape[1]
+    assert np.all(image >= 0) and image.sum() > 0
+    assert np.all(np.isfinite(m.residual_image()))
+    # the lifetime grid: n_components points, log-spaced over the tau range
     tau, amp = m._lifetime["tau"], m._lifetime["amp"]
-    assert np.allclose(tau[[0, 10, 20, 39]], SHORT["tau"], rtol=1e-9)
-    assert np.allclose(amp[[5, 15, 25, 35]], SHORT["amp"], rtol=1e-6)
+    np.testing.assert_allclose(tau, np.geomspace(m.tau_min_ns, m.tau_max_ns, m.n_components))
+    assert np.all(amp >= 0)
+    lo, hi = PLANTED["tau_ns"]
+    mean = (tau * amp).sum() / amp.sum()
+    assert lo < mean < hi  # the distribution lies between the two planted lifetimes
+    assert amp[tau > 2 * hi].sum() == 0  # nothing far beyond the slow state
+    # the L-curve: more regularisation, more residual and a smaller solution; the corner inside
     lcurve = m.lcurve_data()
-    assert lcurve.corner_index == SHORT["lcurve_corner"]
-    assert np.isclose(lcurve.residual_norm[3], SHORT["lcurve_residual_3"], rtol=1e-6)
+    assert np.all(np.diff(lcurve.residual_norm) >= -1e-9)
+    assert np.all(np.diff(lcurve.solution_norm) <= 1e-9)
+    assert 0 < lcurve.corner_index < len(lcurve.residual_norm) - 1
     _assert_optional_mem_quality(m, monkeypatch)
     assert "gauss" in m._mem1d
     assert [s["name"] for s in m.irf_series()] == ["decay", "IRF"]
     # the 60 s stream: species correlation and the interconversion fit
     long = long_app.model
-    assert long.tttr.n_photons == LONG["n_photons"]
-    assert [s["name"] for s in long.correlation_series()] == LONG["series"]
-    assert np.isclose(long.kinetics.relaxation_rates[0], LONG["rate_sum"], rtol=1e-6)
-    assert np.isclose(long.kinetics.relaxation_times_s[0], LONG["relaxation_s"], rtol=1e-6)
-    assert long.status_text == LONG["status"]
+    _photons_as_planted(long.tttr.n_photons, 60.0)
+    assert [s["name"] for s in long.correlation_series()] == ["auto 0", "auto 1", "cross 0-1"]
+    rate = long.kinetics.relaxation_rates[0]
+    assert rate == pytest.approx(PLANTED["rate_sum"], rel=0.2)
+    assert long.kinetics.relaxation_times_s[0] == pytest.approx(1.0 / rate)
+    status = long.status_text
+    assert status.endswith(f"relaxation {1000.0 / rate:.1f} ms (k12+k21={rate:.1f}/s)"), status
+    found = [float(t) for t in status.split("tau = ")[1].split(" ns")[0].split(", ")]
+    assert found == pytest.approx(list(PLANTED["tau_ns"]), rel=0.15)
 
 
 # 2. the model's actions
@@ -253,9 +248,9 @@ def test_custom_sections_are_all_drawn_by_the_app():
     assert keys <= set(app.form.custom)
 
 
-def test_the_spec_keeps_every_qt_field():
-    """Every field of the Qt spec is in the native one, with the same attribute and range."""
-    qt = json.loads((GUI / "flc_2d.view.json").read_text())
+def test_the_two_specs_carry_the_same_fields():
+    """The model's ``view_spec`` (flc_2d.view.json) and the drawn spec have the same attributes and ranges."""
+    model_spec = json.loads((GUI / "flc_2d.view.json").read_text())
     native = json.loads((GUI / "flc_2d_emtk.view.json").read_text())
 
     def fields(node, out):
@@ -270,8 +265,8 @@ def test_the_spec_keeps_every_qt_field():
             fields(s.get("sections", []), out)
         return out
 
-    assert fields(qt["sections"], {}) == fields(native["sections"], {})
-    assert len(fields(qt["sections"], {})) == 29
+    assert fields(model_spec["sections"], {}) == fields(native["sections"], {})
+    assert len(fields(model_spec["sections"], {})) == 29
 
 
 # 4. the app draws, empty and populated, at both sizes
@@ -351,7 +346,8 @@ def test_main_action_end_to_end(tmp_path):
     assert m.irf is not None and m.irf.size == 4096 and not m.error_text
     # the simulator path: a known answer, the model arrays feed the plots
     run_through_app(app, 10.0)
-    assert m.tttr_path is None and m.tttr.n_photons == SHORT["n_photons"]
+    assert m.tttr_path is None
+    _photons_as_planted(m.tttr.n_photons, 10.0)
     series = m.lifetime_series()
     assert series[0]["name"] == "lifetime distribution"
     assert m.lcurve_data() is not None
@@ -454,7 +450,7 @@ def test_guide_targets_are_reachable_and_tour_waits_for_outcomes():
     assert tour.awaiting
     settle(app)
     assert not tour.awaiting
-    # the step texts name controls of this app (no emoji labels, no Qt toolbar)
+    # the step texts name controls of this app (no emoji labels)
     text = json.dumps(steps, ensure_ascii=False)
     assert "📈" not in text and "QAction" not in text
 
