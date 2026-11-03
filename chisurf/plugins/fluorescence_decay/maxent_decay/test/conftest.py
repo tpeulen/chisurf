@@ -1,4 +1,4 @@
-"""Keep every test of this plugin away from the user's real settings: HOME, the chisurf and MMFDB folders, QSettings."""
+"""Keep every test of this plugin away from the user's real settings: HOME, the chisurf and MMFDB folders."""
 
 import pytest
 

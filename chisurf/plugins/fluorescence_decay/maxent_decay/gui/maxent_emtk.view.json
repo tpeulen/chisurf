@@ -1,6 +1,6 @@
 {
  "window": {"width": 1100, "height": 720},
- "_comment": "emtk forms of the MaxEnt MEM tool over MEMForm; the Qt tool builds the same fields by hand in gui/gui.py.",
+ "_comment": "emtk forms of the MaxEnt MEM tool over MEMForm.",
  "panels": {
   "mode": {
    "sections": [

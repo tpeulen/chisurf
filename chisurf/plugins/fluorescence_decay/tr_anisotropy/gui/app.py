@@ -66,11 +66,11 @@ class AnisotropyApp(ImApp):
             "steps"
         ]
         for step in self.steps:
-            step.pop("icon", None)  # the Qt wizard's pictograms: emtk draws text
+            step.pop("icon", None)  # step pictograms: emtk draws text
         if model is None:
             self.model.error(
                 self.model.restore_preferences, {}
-            )  # the stored defaults the Qt wizard starts from
+            )  # start from the stored corrections and spectra
         self.step_index = 0
         self.plot_info = {}
         self.item_rects = {}
@@ -439,7 +439,7 @@ class AnisotropyApp(ImApp):
             else:
                 self.finish_step()
         im.end_child()
-        # bottom bar: the status line, then Back / Next at the right (as the Qt wizard)
+        # bottom bar: the status line, then Back / Next at the right
         im.separator()
         back_w = im.calc_text_size(tr("Back"))[0] + 2 * im.get_style().frame_padding[0]
         status_w = max(100.0, avail_w - 2 * (back_w + 24.0) - 30.0)

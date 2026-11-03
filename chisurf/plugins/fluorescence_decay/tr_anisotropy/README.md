@@ -32,7 +32,7 @@ tr_anisotropy/
 The scientific numerics (IRF correction, spectrum persistence, the VV↔VH link
 plan) live in the Qt-free `core/` package, so they are unit-tested without a GUI
 and reused by the CLI. The genuinely interactive pieces (the draggable IRF
-background region and the component tables) are small embedded Qt widgets.
+background region and the component tables) are drawn by the emtk window (`gui/app.py`).
 
 **Fix vs. the legacy wizard:** the old component tables used opposite column
 orders in their *add* buttons versus their *load* path, so manually added

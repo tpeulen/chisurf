@@ -1,10 +1,10 @@
 {
  "window": {"width": 1100, "height": 720},
-  "_comment": "The emtk form of the anisotropy wizard: one panel per step, drawn by emtk.view_form.draw_form over NativeAnisotropyModel. The Qt wizard keeps ../anisotropy.view.json.",
+  "_comment": "The emtk form of the anisotropy wizard: one panel per step, drawn by emtk.view_form.draw_form over NativeAnisotropyModel. The step titles and subtitles come from ../anisotropy.view.json.",
   "panels": {
     "reader": {
       "sections": [
-        {"type": "panel", "title": "Reader settings", "description": "How the text decays are read: the Qt wizard used whatever reader the active setup had; here the settings are visible.", "sections": [
+        {"type": "panel", "title": "Reader settings", "description": "How the text decays are read: the column layout, the header and the channel width.", "sections": [
           {"type": "toggle", "attr": "stacked_files", "label": "Two stacked VV/VH files",
            "description": "Each IRF/data file holds both polarization channels (one IRF file, one data file); otherwise choose four separate files."},
           {"type": "toggle", "attr": "first_column_is_time", "label": "First column is time (ns)",

@@ -228,16 +228,16 @@ class MEMModel:
         generic = getattr(fit.model, "generic", None)
         if generic is not None and hasattr(generic, "background"):
             self.settings.background = float(generic.background)
-        # what the Qt tool's Refresh did next: the smallest lifetime follows the IRF width, the period the time window
+        # the smallest lifetime follows the IRF width, the period the time window
         fwhm = self.irf_fwhm()
         if fwhm:
-            self.settings.tau_min = round(fwhm, 3)  # the Qt spin box shows three decimals
+            self.settings.tau_min = round(fwhm, 3)  # three decimals, as the field shows
         span = float(self.time[-1] - self.time[0])
         if span > 0:
             self.settings.period = round(span, 2)  # and two for the period
 
     def irf_fwhm(self):
-        """Half the width at half maximum of the IRF on the decay axis (the Qt tool's estimate), or None."""
+        """Half the width at half maximum of the IRF on the decay axis, or None."""
         try:
             lamp = self.lamp()
         except ValueError:
@@ -469,7 +469,7 @@ class MEMModel:
                     return
         if not isinstance(settings, dict):
             raise ValueError("MEM preferences must be a JSON object.")
-        # Read the original Qt preferences without creating or rewriting them.
+        # Read the stored preferences file without creating or rewriting it.
         grid = settings.get("tau_grid", {})
         for source, target in (("min", "tau_min"), ("max", "tau_max"), ("bins", "tau_bins")):
             if source in grid:

@@ -1,8 +1,8 @@
-"""The native MaxEnt MEM tool against the Qt tool, every control operated with real input events.
+"""The MaxEnt MEM window, every control operated with real input events.
 
-Hermetic through ``conftest.py`` (HOME, chisurf/MMFDB folders and QSettings in a temp folder); the last test proves
-the user's real ``~/.chisurf`` is untouched. Both tools are fed the same stub live fit (a two-lifetime decay of
-1.1 / 3.6 ns with its IRF), so the numbers must agree.
+Hermetic through ``conftest.py`` (HOME, chisurf/MMFDB folders in a temp folder); the last test proves the
+user's real ``~/.chisurf`` is untouched. The window is fed a stub live fit whose answer is planted: a decay of
+0.6 x 1.1 ns + 0.4 x 3.6 ns reconvolved with a Gaussian IRF (sigma 0.12 ns) over 256 channels of 0.0323 ns.
 """
 
 from __future__ import annotations
@@ -155,49 +155,54 @@ def write_decay(path, t, y):
     return str(path)
 
 
-# ───────────────────────────── numbers equal the Qt tool ───────────────────────────── #
+# ───────────────────────────── numbers: the planted decay ───────────────────────────── #
 
 
-QT_REFERENCE = json.loads((Path(__file__).parent / "qt_reference.json").read_text(encoding="utf-8"))
+DT = 0.0323  # the stub's channel width (ns)
+IRF_SIGMA = 0.12  # the stub's Gaussian IRF (ns)
 
 
-def test_refreshing_from_a_live_fit_sets_the_same_values_as_the_qt_tool():
-    """The values the retired Qt tool showed after refreshing from the same live fit (``qt_reference.json``)."""
-    qt = QT_REFERENCE
+def test_refreshing_from_a_live_fit_takes_its_range_background_and_irf_width():
+    """Background, shift, IRF background and range come from the fit; tau_min is the IRF's HWHM, the period
+    the time window."""
     m = MEMModel()
     m.load_fit(stub_fit())
-    assert m.settings.tau_min == pytest.approx(qt["tau_min"], abs=1e-3)
-    assert m.settings.period == pytest.approx(qt["period"], abs=1e-2)
-    assert m.settings.background == pytest.approx(qt["background"])
-    assert m.settings.timeshift == pytest.approx(qt["timeshift"])
-    assert (m.settings.irf_background or 0.0) == pytest.approx(qt["irf_bg"])
-    assert m.fitrange == tuple(qt["fit_range"])
-    assert "two_lifetimes.dat" in qt["data_source"] and "two_lifetimes.dat" in m.source
-    assert "IRF.dat" in qt["irf_source"] and "IRF.dat" in m.irf_source
+    hwhm = np.sqrt(2.0 * np.log(2.0)) * IRF_SIGMA  # of the planted Gaussian
+    assert m.settings.tau_min == pytest.approx(hwhm, abs=DT)  # measured on the channel grid
+    assert m.settings.period == pytest.approx(round(255 * DT, 2))  # 256 channels span 255 widths
+    assert m.settings.background == 5.0 and m.settings.timeshift == 0.0
+    assert (m.settings.irf_background or 0.0) == 0.0
+    assert m.fitrange == (20, 255)
+    assert "two_lifetimes.dat" in m.source and "IRF.dat" in m.irf_source
 
 
-def test_the_mem_run_equals_the_qt_run():
-    qt = QT_REFERENCE["run"]
+def test_the_mem_run_recovers_the_planted_lifetimes():
     m = MEMModel()
     m.load_fit(stub_fit())
     m.settings.tau_bins, m.settings.tau_max = 32, 8.0
     result = m.run()
-    assert float(result["chisq"]) == pytest.approx(qt["chisq"], rel=1e-6)
-    np.testing.assert_allclose(result["p"], qt["p"], rtol=1e-5, atol=1e-8)
-    np.testing.assert_allclose(result["tau"], qt["tau"])
-    assert float(result["S"]) == pytest.approx(qt["S"], rel=1e-6)
+    tau, p = np.asarray(result["tau"]), np.asarray(result["p"])
+    step = tau[1] - tau[0]
+    np.testing.assert_allclose(tau, np.linspace(m.settings.tau_min, 8.0, 32))
+    assert 0.8 < float(result["chisq"]) < 1.2  # Poisson noise: chi2r near one
+    short, long_ = tau < 2.3, tau > 2.3
+    assert abs(tau[np.argmax(p * short)] - 1.1) <= step
+    assert abs(tau[np.argmax(p * long_)] - 3.6) <= step
+    assert p[short].sum() / p.sum() == pytest.approx(0.6, abs=0.05)  # the planted amplitudes 0.6 / 0.4
 
 
-def test_the_lcurve_sweep_equals_the_qt_sweep():
-    seen = QT_REFERENCE["lcurve"]
+def test_the_lcurve_sweeps_nu_around_the_setting_and_trades_fit_for_norm():
     m = MEMModel()
     m.load_fit(stub_fit())
     m.settings.tau_bins, m.settings.tau_max = 16, 8.0
     curve = execute_job({"kind": "lcurve", "snapshot": m.snapshot()})
-    # the plateau chi2 differs by 0.05 % (open item in the report): same curve shape, same nu axis
-    np.testing.assert_allclose(curve["chi2r"], seen["chi"], rtol=2e-3)
-    np.testing.assert_allclose(curve["sol_norm"], seen["sol"], rtol=2e-2)
-    np.testing.assert_allclose(10.0 ** curve["log10_nu"], seen["nu"])
+    center = np.log10(m.settings.nu)
+    np.testing.assert_allclose(
+        curve["log10_nu"], np.linspace(center - m.lcurve_left, center + m.lcurve_right, 16)
+    )
+    # more regularisation: chi2 never improves, the solution norm never grows
+    assert np.all(np.diff(curve["chi2r"]) >= -1e-9 * curve["chi2r"][0])
+    assert np.all(np.diff(curve["sol_norm"]) <= 1e-9 * curve["sol_norm"][0])
 
 
 # ───────────────────────────────────── data input ───────────────────────────────────── #
@@ -313,7 +318,7 @@ def test_refresh_lists_the_live_fits_and_fit_takes_one(ui, monkeypatch):
         ("sampling", "sample_nprocs", "2", 2),
     ],
 )
-def test_each_setting_takes_typed_values_clamped_to_the_qt_range(ui, panel, name, typed, expected):
+def test_each_setting_takes_typed_values_clamped_to_its_range(ui, panel, name, typed, expected):
     m = type_value(ui, panel, name, typed)
     value = getattr(m.settings, name) if hasattr(m.settings, name) else getattr(m, name)
     assert value == pytest.approx(expected)

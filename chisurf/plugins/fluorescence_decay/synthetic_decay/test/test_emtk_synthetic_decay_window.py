@@ -1,8 +1,8 @@
-"""The native synthetic decay generator against the Qt tool and the canonical generator.
+"""The synthetic decay generator window against the canonical generator and analytic values.
 
 Hermetic: settings in a temporary folder, IRF and spectrum files written into ``tmp_path``, the fit
 group goes to a stub sink (no session, no datasets registered). Numbers are checked against
-``core.algorithms`` (the canonical generator), against analytic expressions, and against the Qt tool.
+``core.algorithms`` (the canonical generator), and against analytic expressions.
 """
 
 from __future__ import annotations
@@ -71,7 +71,7 @@ def cell(app, source, row, key, text):
     control.commit_edit()
 
 
-# ── 1. numbers equal the canonical generator, analytic values and the Qt tool ──
+# ── 1. numbers equal the canonical generator and analytic values ──
 
 
 def test_vm_decay_equals_the_canonical_generator_and_the_analytic_shape(app):
@@ -165,7 +165,7 @@ def test_an_irf_file_smears_the_prompt_and_a_missing_one_is_an_error(app, tmp_pa
 
 
 def test_the_native_app_and_the_standalone_model_generate_the_same_numbers(app):
-    """The Qt tool hosted ``SyntheticDecayViewModel``; the standalone model and the app's agree."""
+    """The standalone ``SyntheticDecayViewModel`` and the app's model generate the same numbers."""
     from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.view_model import (
         SyntheticDecayViewModel,
     )
@@ -184,7 +184,7 @@ def test_the_native_app_and_the_standalone_model_generate_the_same_numbers(app):
     assert standalone._r == app.model._r
     assert standalone.status_text() == app.model.status_text()
     assert standalone.aniso_metadata() == app.model.aniso_metadata()
-    # the table the Qt window showed held these three (amp, tau) rows
+    # the spectrum table holds the three (amp, tau) rows the edits made
     assert [[row["amp"], row["tau"]] for row in app.model.spectrum_rows] == [
         [1.0, 0.5],
         [1.0, 4.0],
@@ -204,7 +204,7 @@ def test_generate_button_generates_and_the_status_says_so(app):
 
 
 def test_a_cell_edit_reaches_the_model_and_the_generated_decay(app):
-    """The table section's edit is wired to the model (the Qt spec's update_call is not read natively)."""
+    """The table section's edit is wired to the model (``edited_call``; the spec's update_call is not read)."""
     draw(app)
     cell(app, "spectrum_records", 0, "tau", "2.5")
     cell(app, "spectrum_records", 1, "amp", "3")
@@ -301,7 +301,7 @@ def test_save_formats_and_the_vv_vh_file_round_trip(app, tmp_path):
     assert m.status_text() == "Saved VV/VH pair (256 bins) to pair.dat."
 
 
-def test_save_and_fit_group_before_generate_say_so_like_the_qt_tool(app, tmp_path):
+def test_save_and_fit_group_before_generate_say_so(app, tmp_path):
     app.model.save(str(tmp_path / "x.csv"))
     assert app.model.status_text() == "Nothing to save — press Generate first."
     assert not (tmp_path / "x.csv").exists()
@@ -309,7 +309,7 @@ def test_save_and_fit_group_before_generate_say_so_like_the_qt_tool(app, tmp_pat
     assert app.model.status_text() == "Nothing to send — press Generate first."
 
 
-def test_load_spectrum_errors_equal_the_qt_tool(app, tmp_path):
+def test_load_spectrum_errors_leave_the_table_and_say_why(app, tmp_path):
     bad = tmp_path / "bad.csv"
     bad.write_text("a,b\nx,y\n")
     negative = tmp_path / "negative.csv"
@@ -508,12 +508,6 @@ def test_the_tour_waits_for_the_generate_press(app):
     press_action(app, "generate")
     assert not app.tour.awaiting
     assert draw(app).strings
-
-
-def test_the_qt_tool_keeps_its_own_help_and_guide():
-    guide = json.loads((GUI / "guide.json").read_text())
-    assert "🧪" in guide["steps"][-1]["await"]["hint"]
-    assert "**" in (GUI / "help.md").read_text()
 
 
 def test_help_exists_its_links_are_live_and_it_draws(app):

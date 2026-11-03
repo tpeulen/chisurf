@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour of the native generator: the Qt tool's steps (guide.json stays for it), with the emoji of the Qt button label removed from the hint.",
+  "_comment": "Guided tour of the emtk generator window: the steps of guide.json, with the emoji of the button label removed from the hint.",
   "steps": [
     {
       "title": "Data whose answer you already know",

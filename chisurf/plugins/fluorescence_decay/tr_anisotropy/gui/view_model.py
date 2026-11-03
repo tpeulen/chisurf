@@ -8,7 +8,7 @@ numerics live in :mod:`...core` (IRF correction, spectrum I/O, the VV/VH link
 plan); this class orchestrates data loading and fit construction, which are
 inherently coupled to the process-global ChiSurf session and its GUI fit models
 (imported lazily). Interactive pieces (the IRF region selector, the component
-tables) are embedded Qt widgets that read/write this model.
+tables) are drawn by the window and read/write this model.
 """
 
 from __future__ import annotations

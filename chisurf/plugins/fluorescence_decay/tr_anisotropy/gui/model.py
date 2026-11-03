@@ -43,7 +43,7 @@ class SpectrumTable:
     """One editable ``[amplitude, value]`` spectrum as the rows a ``data_table`` section reads.
 
     The rows are fresh records (``row`` is the 1-based position); an edit, a delete or an add writes the
-    model's list, so the Qt tool and the native one hold the spectra the same way.
+    model's list, so the table and the fit builder read the same spectrum.
     """
 
     def __init__(self, model, attr, new_attr):

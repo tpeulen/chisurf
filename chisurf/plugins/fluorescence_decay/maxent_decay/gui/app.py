@@ -37,7 +37,7 @@ from .controller import MEMJobs
 from .model import MEMForm, MEMModel, open_fits
 
 HERE = Path(__file__).parent
-#: Tour targets from the Qt era -> the button that answers them.
+#: The target names ``guide.json`` uses -> the button that answers them.
 ALIASES = {"maxentBtnRefresh": "refresh", "maxentBtnRun": "run", "maxentBtnLcurve": "lcurve"}
 
 
@@ -140,7 +140,7 @@ class MaxentApp(ImApp):
     def remember(self, name):
         rect = im.get_item_rect()
         self.item_rects[name] = rect
-        for alias, target in ALIASES.items():  # the Qt-era tour names
+        for alias, target in ALIASES.items():  # the guide's target names
             if target == name:
                 self.item_rects[alias] = rect
 

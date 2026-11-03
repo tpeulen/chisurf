@@ -1,9 +1,9 @@
-"""The native anisotropy wizard against the Qt wizard it replaces, every control operated with real input events.
+"""The anisotropy wizard window, every control operated with real input events.
 
 Hermetic: settings, files and the HOME folder live in a temporary folder, nothing is read from the user's
-``~/.chisurf`` and there is no network. The Qt wizard (``AutoForm`` over the shared ``AnisotropyViewModel``) is
-built offscreen with the reader the native model uses (a stub session carrying a ``TCSPCReader``), so both
-sides read the same synthetic IRFs and decays and the numbers must agree exactly.
+``~/.chisurf`` and there is no network. The numbers are checked against the input files themselves, the
+background correction against its documented formula recomputed here, and the defaults against the stored
+corrections file and the packaged ``wizard.spk.json``.
 """
 
 from __future__ import annotations
@@ -111,81 +111,75 @@ def load(ui, files):
     return m
 
 
-# ───────────────────────────── numeric parity with the Qt wizard ───────────────────────────── #
+# ───────────────────────────── numbers: the files and the formula ───────────────────────────── #
 
 
-QT_REFERENCE = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
+def corrected(y_vv, y_vh, lb, ub):
+    """The documented IRF correction, written out: subtract each channel's mean over ``[lb, ub)``, clip at
+    zero, then scale both to the mean of their two integrals."""
+    out = []
+    for y in (np.asarray(y_vv, float), np.asarray(y_vh, float)):
+        bg = y[lb:ub].mean() if ub > lb else 0.0
+        out.append(np.clip(y - bg, 0.0, None))
+    total = (out[0].sum() + out[1].sum()) / 2.0
+    return [c * (total / c.sum()) for c in out]
 
 
-def test_loading_and_the_background_correction_equal_the_qt_wizard(files):
-    """What the retired Qt wizard (the shared ``AnisotropyViewModel``) computed from the same files."""
-    qt = QT_REFERENCE
+def test_loading_reads_the_files_and_the_background_correction_follows_its_formula(files):
     native = NativeAnisotropyModel()
     native.first_column_is_time = True
     set_files(native, files)
     native.load_data()
-    assert [native.region_lb, native.region_ub] == qt["load"]["region"]
-    for key in ("irf_vv", "irf_vh", "data_vv", "data_vh", "irf_vv_bg_norm", "irf_vh_bg_norm"):
-        np.testing.assert_allclose(native.data[key].y, qt["load"][key], err_msg=key)
-    for lb, ub in ((50, 150), (10, 30), (0, 256), (120, 120)):
+    n = 256
+    assert (native.region_lb, native.region_ub) == (int(0.3 * n), int(0.8 * n))  # 30 % - 80 % of the range
+    for key in ("irf_vv", "irf_vh", "data_vv", "data_vh"):
+        np.testing.assert_allclose(native.data[key].y, np.loadtxt(files[key])[:, 1], err_msg=key)
+    raw_vv, raw_vh = (np.loadtxt(files[k])[:, 1] for k in ("irf_vv", "irf_vh"))
+    for lb, ub in ((native.region_lb, native.region_ub), (50, 150), (10, 30), (0, 256), (120, 120)):
         native.apply_region(lb, ub)
-        for key in ("irf_vv_bg_norm", "irf_vh_bg_norm"):
-            np.testing.assert_allclose(
-                native.data[key].y, qt["regions"][f"{lb},{ub}"][key], err_msg=(lb, ub, key)
-            )
+        vv, vh = corrected(raw_vv, raw_vh, lb, ub)
+        np.testing.assert_allclose(native.data["irf_vv_bg_norm"].y, vv, err_msg=(lb, ub))
+        np.testing.assert_allclose(native.data["irf_vh_bg_norm"].y, vh, err_msg=(lb, ub))
+        assert native.data["irf_vv_bg_norm"].y.sum() == pytest.approx(native.data["irf_vh_bg_norm"].y.sum())
 
 
-def test_a_crossed_region_is_swapped_where_the_qt_wizard_silently_skipped_the_subtraction(files):
-    """Deliberate difference: Qt passes (200, 100) on, an empty region, so no background is subtracted."""
+def test_a_crossed_region_is_swapped(files):
     native = NativeAnisotropyModel()
     native.first_column_is_time = True
     set_files(native, files)
     native.load_data()
     native.apply_region(200, 100)
     assert (native.region_lb, native.region_ub) == (100, 200)
-    swapped, _ = core_irf.correct_irfs(native.data["irf_vv"].y, native.data["irf_vh"].y, 100, 200)
-    np.testing.assert_allclose(native.data["irf_vv_bg_norm"].y, swapped)
-    skipped = QT_REFERENCE["regions"]["200,100"]
-    qt_vv, _ = core_irf.correct_irfs(
-        np.asarray(QT_REFERENCE["load"]["irf_vv"]),
-        np.asarray(QT_REFERENCE["load"]["irf_vh"]),
-        200,
-        100,
-    )
-    np.testing.assert_allclose(skipped["irf_vv_bg_norm"], qt_vv)
+    vv, _ = corrected(native.data["irf_vv"].y, native.data["irf_vh"].y, 100, 200)
+    np.testing.assert_allclose(native.data["irf_vv_bg_norm"].y, vv)
 
 
-def test_the_qt_wizards_step_texts_and_check_marks_are_the_natives(ui, files):
-    assert [s["title"] for s in ui.app.steps] == [t for t, _ in QT_REFERENCE["steps"]]
-    for i, (_title, subtitle) in enumerate(QT_REFERENCE["steps"]):
-        assert ui.app.steps[i].get("subtitle", "") == subtitle
-    # the Qt check marks: Data waits for the files, Components for both spectra, the rest are ticked
+def test_the_check_marks_need_the_files_on_data_and_both_spectra_on_components(ui, files):
     native = ui.app.model
-    for state, expected in zip(({}, files, {"data_vh": ""}), QT_REFERENCE["checks"]):
-        set_files(native, {**{k: "" for k in files}, **state} if state is not files else files)
-        assert [native.step_complete(i) for i in range(6)] == expected, sorted(state)
+    for state, data_ready in (
+        ({k: "" for k in files}, False),
+        (files, True),
+        ({**files, "data_vh": ""}, False),
+    ):
+        set_files(native, state)
+        assert [native.step_complete(i) for i in range(6)] == [True, data_ready, True, True, True, True]
     native.lifetime_spectrum = []
-    assert [native.step_complete(i) for i in range(6)] == QT_REFERENCE["checks"][3]
-    assert native.step_complete(4) is False
+    assert [native.step_complete(i) for i in range(6)] == [True, False, True, True, False, True]
 
 
-def test_corrections_defaults_and_spectra_files_equal_the_qt_wizard(tmp_path):
-    qt = QT_REFERENCE
-    native = (
-        make_app().model
-    )  # a fresh window starts from the same stored defaults the Qt wizard read
-    assert (native.g_factor, native.l1, native.l2) == (
-        qt["defaults"]["g"],
-        qt["defaults"]["l1"],
-        qt["defaults"]["l2"],
-    )
-    assert (native.g_factor, native.l1, native.l2) == (1.16, 0.12, 0.44)
-    assert native.lifetime_spectrum == qt["lifetime_default"]
-    assert native.rotation_spectrum == qt["rotation_default"]
+def test_corrections_come_from_the_stored_file_and_spectra_from_the_packaged_default(tmp_path):
+    native = make_app().model
+    assert (native.g_factor, native.l1, native.l2) == (1.16, 0.12, 0.44)  # what ``hermetic`` stored
+    packaged = json.loads((PLUGIN / "wizard.spk.json").read_text())
+    assert native.lifetime_spectrum == packaged["lifetime_spectrum"]
+    assert native.rotation_spectrum == packaged["rotation_spectrum"]
     native.lifetime_spectrum = [[0.4, 1.0], [0.6, 3.0]]
     native_file = tmp_path / "native.spk.json"
     native.save_spectra(native_file)
-    assert qt["spk"] == json.loads(native_file.read_text())
+    assert json.loads(native_file.read_text()) == {
+        "lifetime_spectrum": [[0.4, 1.0], [0.6, 3.0]],
+        "rotation_spectrum": packaged["rotation_spectrum"],
+    }
     fresh = NativeAnisotropyModel()
     fresh.load_spectra(str(native_file))
     assert fresh.lifetime_spectrum == [[0.4, 1.0], [0.6, 3.0]]
@@ -514,7 +508,7 @@ def field(ui, form, name):
     return ui.app.forms[form].rects[name]
 
 
-def test_the_tables_show_the_qt_default_spectra(ui):
+def test_the_tables_show_the_default_spectra(ui):
     go(ui, "Components")
     strings = [t[5] for t in ui.draw().texts]
     for value in ("0.3", "1.8", "0.7", "4.1", "0.28", "0.15", "0.1", "10"):
@@ -615,8 +609,8 @@ def test_save_spectra_asks_for_a_name_then_overwrites_silently(ui, tmp_path):
     assert "Saved spectra" in m.status
 
 
-def test_a_fresh_window_saves_to_the_stored_default_file_as_the_qt_wizard_did(tmp_path):
-    core_spectra.spk_json_path()  # the stored default file exists, as after the first Qt run
+def test_a_fresh_window_saves_to_the_stored_default_file(tmp_path):
+    core_spectra.spk_json_path()  # the stored default file exists, as after a first run
     ui = Driver(make_app())
     ui.draw()
     m = go(ui, "Components")

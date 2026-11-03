@@ -97,7 +97,7 @@ class SyntheticDecayApp(ImApp):
 
     @staticmethod
     def _bind_tables(sections):
-        """Native tables edit the model's own rows (``edited_call``); the Qt spec's ``update_call`` is not read."""
+        """Tables edit the model's own rows (``edited_call``); the spec's ``update_call`` is not read."""
         for section in sections:
             if section.get("type") == "table" and section.get("update_call"):
                 section["source"] = {
@@ -113,7 +113,7 @@ class SyntheticDecayApp(ImApp):
 
     @staticmethod
     def _plain_labels(sections):
-        """The shared spec carries the Qt buttons' emoji; the native window shows plain labels."""
+        """Strip the emoji the shared spec puts before button labels: the window shows plain labels."""
         for section in sections:
             for item in section.get("buttons", []):
                 item["label"] = re.sub(r"^[^\w(]+\s*", "", str(item.get("label", "")))
