@@ -125,7 +125,7 @@ class FretTrajectoryApp(TrajToolApp):
             im.begin_group()
             im.text(role)
             third = (column - 2 * im.get_style().item_spacing[0]) / 3.0
-            for j, caption in enumerate(("Chain", "Residue", "Atom")):  # the Qt selectors' captions
+            for j, caption in enumerate(("Chain", "Residue", "Atom")):
                 if j:
                     im.same_line(
                         j * (third + im.get_style().item_spacing[0])

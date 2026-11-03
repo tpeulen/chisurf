@@ -1,8 +1,8 @@
-"""The native potential-energy app at parity with the Qt PotentialEnergyWidget.
+"""The native potential-energy app on a small random peptide trajectory.
 
-The Qt facts (energies written by its model, the potential files its editors show)
-come from a subprocess; this process stays Qt-free. IMP-backed potentials need
-``modules/imp-tricks/src`` on the path (``IMP.cgmol``).
+The radius-of-gyration column written by Process is checked against
+``sqrt(mean |r_i - r_mean|^2)`` computed here from the frames. IMP-backed potentials
+need ``modules/imp-tricks/src`` on the path (``IMP.cgmol``).
 """
 
 from __future__ import annotations
@@ -12,15 +12,12 @@ import sys
 import time
 from pathlib import Path
 
+import numpy as np
 import pytest
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.traj.potential_energy.app import make_app
 from chisurf.plugins.traj.potential_energy.potential_specs import get_spec, make_potential
-from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import (
-    load_reference,
-    same_coordinates,
-)
 
 from .test_view_model import _peptide_trajectory
 
@@ -38,10 +35,23 @@ def trajectory(tmp_path_factory):
     return str(dcd), pdb, tmp
 
 
-@pytest.fixture(scope="module")
-def qt():
-    """The retired Qt widget's answers, recorded before it was deleted (qt_reference.json)."""
-    return load_reference(HERE)
+def check_energies(target, dcd, pdb):
+    """Check the energies file at *target*: one row per frame, the radius of gyration computed here.
+
+    The radius of gyration is ``sqrt(mean |r_i - r_mean|^2)`` of each frame's coordinates (column
+    ``Radius-Gyration``, weight 1); the clash column only has to be non-negative, since its value
+    depends on the van-der-Waals radii the environment provides.
+    """
+    from chisurf.core.structure import trajectory_data as md
+
+    header, *rows = [line.split("\t") for line in Path(target).read_text().splitlines()]
+    assert [h for h in header if h] == ["FrameNbr", "Radius-Gyration", "Clash-Potential"]
+    xyz = np.asarray(md.load(str(dcd), top=str(pdb)).xyz, dtype=float)
+    centred = xyz - xyz.mean(axis=1, keepdims=True)
+    rg = np.sqrt((centred**2).sum(axis=2).mean(axis=1))
+    assert [int(row[0]) for row in rows] == list(range(1, len(xyz) + 1))
+    assert [float(row[1]) for row in rows] == pytest.approx(rg, abs=6e-4)
+    assert all(float(row[2]) >= 0.0 for row in rows)
 
 
 def _wait(app, timeout=60.0):
@@ -52,12 +62,8 @@ def _wait(app, timeout=60.0):
     assert not app.running
 
 
-# 1. the Process button writes the Qt tool's energies (on a worker)
-def test_process_writes_the_qt_tools_energies(qt, trajectory):
-    pytest.importorskip(
-        "IMP.atom",
-        reason="the Qt capture used CHARMM radii from IMP.atom; without the IMP kernel the structure falls back to element radii (known issue: the pixi test environment builds IMP.bff without IMP)",
-    )
+# 1. the Process button writes one row of energies per frame (on a worker)
+def test_process_writes_the_radius_of_gyration_of_every_frame(trajectory):
     dcd, pdb, tmp = trajectory
     app = make_app()
     try:
@@ -71,19 +77,22 @@ def test_process_writes_the_qt_tools_energies(qt, trajectory):
         app.save(str(tmp / "second.txt"))  # one run at a time
         _wait(app)
         assert app.notice == "Processed 4 frame(s)." and app.frames_done >= 1
-        assert open(target).read() == qt["energies"]
+        check_energies(target, dcd, pdb)
         assert not (tmp / "second.txt").exists()
     finally:
         app.close()
 
 
-# 2. the potential files the Qt editors expose, with the same defaults
-def test_potential_files_match_the_qt_editors(qt):
-    for name, path in qt["files"].items():
-        params = {p.attr: p for p in get_spec(name).params if p.kind == "file"}
-        assert params, name
-        (param,) = params.values()
-        assert Path(param.default) == REPO / path, name
+# 2. the knowledge-based potentials default to the tables shipped with chisurf
+@pytest.mark.parametrize(
+    "name, table", [("H-Bond", "hb.npy"), ("Iso-UNRES", "unres.npy"), ("Miyazawa-Jernigan", "mj.npy")]
+)
+def test_potential_files_default_to_the_shipped_tables(name, table):
+    params = [p for p in get_spec(name).params if p.kind == "file"]
+    assert len(params) == 1, name
+    default = Path(params[0].default)
+    assert default == REPO / "chisurf" / "core" / "structure" / "potential" / "database" / table
+    assert default.is_file()
 
 
 # 3. the browse buttons and the save dialog Process opens
@@ -101,7 +110,7 @@ def test_browse_and_process_ask_for_files(trajectory):
         )
         app.begin_save()
         assert app.dialog.mode == "save" and app.dialog.title == "Save energies"
-        assert app.dialog.filters[0] == ("CSV-name file", ["*.txt"])  # the Qt dialog's filter
+        assert app.dialog.filters[0] == ("CSV-name file", ["*.txt"])
     finally:
         app.close()
 

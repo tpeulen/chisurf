@@ -2,7 +2,7 @@
 
 Drawn from ``remove_clashes.view.json`` by the shared trajectory-tool app; the
 spec's ``traj_remove_clashes_io`` section is the trajectory and topology rows and
-the save button, as the Qt section draws them, followed by the atom selection,
+the save button, followed by the atom selection,
 the stride and the minimum distance.
 """
 

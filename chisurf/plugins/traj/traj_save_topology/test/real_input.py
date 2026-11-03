@@ -310,7 +310,7 @@ def check_browse_row(
 
 
 def check_row_is_read_only(make_app, row, folder, size=SIZE):
-    """Typing into a path row changes nothing: the path is chosen with ``…`` or a drop only, as in Qt."""
+    """Typing into a path row changes nothing: the path is chosen with ``…`` or a drop only."""
     ui = Ui(make_app(), size)
     try:
         before = getattr(ui.app.model, next(p.attr for p in ui.app.paths if p.key == row))
@@ -439,7 +439,7 @@ def hover_tooltip(ui, key_or_rect, text, wait=0.15, frames=8):
 def clear_field(ui, key, enter=False):
     """Click a text field, select everything, delete it with Backspace and commit it.
 
-    The commit is a click on the log (the Qt box commits on focus loss); with ``enter=True`` it is Enter instead.
+    The commit is a click on the log (a field commits on focus loss); with ``enter=True`` it is Enter instead.
     """
     ui.draw(1)
     ui.click(key, fx=0.3)
@@ -467,7 +467,7 @@ def check_number_field(
 ):
     """One spin field: typed value + Enter, click-away commit, rejected text, both limits, arrows, the tooltip.
 
-    The Qt spin boxes clamp to the spec's range and step by ``step``; the arrows stop at the limits.
+    The spin fields clamp to the spec's range and step by ``step``; the arrows stop at the limits.
     """
     ui = Ui(make_app(), size)
     if prepare is not None:
@@ -483,7 +483,7 @@ def check_number_field(
         assert getattr(model, attr) == as_type(typed)
         ui.type_into(
             key, str(maximum * 10 + 1)
-        )  # above the range: the maximum, as the Qt box clamps
+        )  # above the range: clamped to the maximum
         assert getattr(model, attr) == maximum
         ui.type_into(key, str(minimum - 5))  # below it: the minimum
         assert getattr(model, attr) == minimum
@@ -495,7 +495,7 @@ def check_number_field(
         assert getattr(model, attr) == pytest.approx(minimum + 2 * step)
         ui.arrow(key, -1)
         assert getattr(model, attr) == pytest.approx(minimum + step)
-        # typing without Enter, then a click on another field commits (the Qt box commits on focus loss)
+        # typing without Enter, then a click on another field commits (focus loss commits)
         ui.draw(1)
         ui.click(key, fx=0.3)
         ui.type_text(str(typed))
@@ -524,7 +524,7 @@ def check_text_field(make_app, key, start, typed, size=SIZE):
 
 
 def enter_commits_an_emptied_field(make_app, key, typed, size=SIZE):
-    """Backspace a typed text field empty and press Enter; returns the model value (the Qt box would be empty)."""
+    """Backspace a typed text field empty and press Enter; returns the model value."""
     ui = Ui(make_app(), size)
     ui.type_into(key, typed)
     clear_field(ui, key, enter=True)
@@ -534,7 +534,7 @@ def enter_commits_an_emptied_field(make_app, key, typed, size=SIZE):
 
 
 def wheel_steps_a_number_field(make_app, key, size=SIZE):
-    """The wheel over a spin field steps it (the Qt spin boxes do); returns (before, after)."""
+    """The wheel over a spin field steps it; returns (before, after)."""
     ui = Ui(make_app(), size)
     before = getattr(ui.app.model, key)
     x, y, w, h = ui.app.item_rects[key]
@@ -548,7 +548,7 @@ def wheel_steps_a_number_field(make_app, key, size=SIZE):
 
 
 def check_log_scrolls_with_the_wheel(make_app, size=SIZE):
-    """A long log scrolls under the wheel (the Qt log is a scrolling text); returns the y of its first line as it was,
+    """A long log scrolls under the wheel; returns the y of its first line as it was,
     after a turn down and after a turn back."""
     ui = Ui(make_app(), size)
     try:

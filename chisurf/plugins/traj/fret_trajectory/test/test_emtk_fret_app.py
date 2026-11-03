@@ -1,9 +1,9 @@
-"""The native Trajectory→FRET at parity with preserved legacy numerical output.
+"""The native Trajectory→FRET tool on the hgbp1 test trajectory.
 
-The retired Qt tool's successful hgbp1 run was captured before deleting its
-selectors. Its labels, missing-input message and 116×6 table remain an immutable
-fixture. Distances, κ² and rates are also independently computed from coordinates
-(the rate as 3/2 κ² (R0/R)⁶ / τ0).
+The atom labels the pickers show are checked against the topology PDB's own records;
+every column of the written table is computed here from the coordinates: frame and
+time from the stride, the dipole-centre distance, κ, κ² and the rate as
+3/2 κ² (R0/R)⁶ / τ0.
 """
 
 from __future__ import annotations
@@ -54,12 +54,14 @@ def _loaded(dipoles=True):
     return app
 
 
-@pytest.fixture(scope="module")
-def legacy():
-    """Read the successful legacy run preserved before selector retirement."""
-    facts = json.loads((HERE / "data" / "legacy_hgbp_fret.json").read_text())
-    assert np.asarray(facts["rows"]).shape == (116, 6)
-    return facts
+def _pdb_labels(indices):
+    """Chain, residue number and atom name of the atoms at *indices*, read from the topology PDB."""
+    atoms = [
+        line for line in Path(TOP).read_text().splitlines() if line.startswith(("ATOM", "HETATM"))
+    ]
+    return [
+        [atoms[i][21].strip(), atoms[i][22:26].strip(), atoms[i][12:16].strip()] for i in indices
+    ]
 
 
 @pytest.fixture(scope="module")
@@ -79,18 +81,14 @@ def reference():
     return r, kappa, rate
 
 
-# 1. the Qt tool's pickers and table; the table is the physics
-def test_processing_writes_the_preserved_legacy_output(legacy, reference, tmp_path):
+# 1. the pickers name the topology's atoms; the table is the physics
+def test_processing_writes_the_fret_table_of_the_coordinates(reference, tmp_path):
     app = _loaded()
     try:
         _draw(app)
         index = app.atom_index()
         labels = [[*map(str, index.where(i)), index.name(i)] for i in (*DONOR, *ACCEPTOR)]
-        assert (
-            labels
-            == legacy["labels"]
-            == [["A", "1", "CA"], ["A", "3", "C"], ["B", "332", "HA"], ["B", "334", "CA"]]
-        )
+        assert labels == _pdb_labels((*DONOR, *ACCEPTOR))
         app.begin_save()
         assert (
             app.dialog.title == "Output-file" and app.dialog.filename == "hgbp1_transition_fret.csv"
@@ -101,13 +99,13 @@ def test_processing_writes_the_preserved_legacy_output(legacy, reference, tmp_pa
         assert app.dialog is None and app.running
         _settle(app)
         ours = np.loadtxt(target, skiprows=1)
-        theirs = np.asarray(legacy["rows"])
-        assert ours.shape == theirs.shape == (116, 6)
-        np.testing.assert_allclose(ours, theirs, rtol=1e-3, atol=1e-2)
+        assert ours.shape == (116, 6)  # 464 frames at stride 4
         r, kappa, rate = reference
         np.testing.assert_allclose(ours[:, 0], np.arange(116) * STRIDE)  # frame numbers
+        np.testing.assert_allclose(ours[:, 1], np.arange(116) * STRIDE * 1.0)  # time, t_step 1 ns
         np.testing.assert_allclose(ours[:, 2], r, atol=0.01)  # RDA, the dipole centres
         np.testing.assert_allclose(np.abs(ours[:, 3]), np.abs(kappa), rtol=1e-3, atol=1e-3)
+        np.testing.assert_allclose(ours[:, 4], kappa**2, rtol=2e-3, atol=1e-3)
         np.testing.assert_allclose(ours[:, 5], rate, rtol=2e-3)
         assert app.model.log_text()[-1].endswith("(116 frames)")
     finally:
@@ -130,7 +128,7 @@ def test_without_dipoles_the_first_atoms_and_two_thirds(tmp_path):
         app.close()
 
 
-# 2. either order of choosing the files; actions and errors in the Qt words
+# 2. either order of choosing the files; actions and errors
 def test_the_trajectory_may_come_before_its_topology():
     app = FretTrajectoryApp()
     try:
@@ -144,15 +142,11 @@ def test_the_trajectory_may_come_before_its_topology():
         app.close()
 
 
-def test_nothing_chosen_and_a_cancel_preserve_the_legacy_answer(legacy, tmp_path):
+def test_nothing_chosen_and_a_cancel_are_answered(tmp_path):
     app = FretTrajectoryApp()
     try:
         app.begin_save()
-        assert (
-            [app.status]
-            == [text for _title, text in legacy["told"]]
-            == ["Open a trajectory first."]
-        )
+        assert app.status == "Open a trajectory first."
         app.close()
         app = _loaded()
         app.begin_save()

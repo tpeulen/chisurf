@@ -1,13 +1,13 @@
 """emtk app for the Potential-Energy calculator: every frame of a trajectory scored by weighted potentials.
 
-Drawn from ``calculate_potential.view.json`` (the spec the Qt widget uses) by the shared trajectory-tool app: the
+Drawn from ``calculate_potential.view.json`` by the shared trajectory-tool app: the
 trajectory and topology rows, the potential editor (a type combo, the parameters of that type, the weight and
 **Add**), the stride, the table of added potentials (a double click on a row removes it), **Process** and the log.
-The editor is declared as a spec of its own from the Qt-free :mod:`~.potential_specs` registry, which mirrors the
-parameters the Qt ``potentialDict`` editors expose, so this module never imports Qt.
+The editor is declared as a spec of its own from the :mod:`~.potential_specs` registry, which names every
+potential type and its parameters.
 
-Differences from the Qt widget, on purpose: the parameters of a potential type are kept while another type is
-chosen (the Qt editor was rebuilt on every change) and the table also removes the selected row on Delete.
+The parameters of a potential type are kept while another type is chosen, and the table removes the selected
+row on a double click or Delete.
 """
 
 from __future__ import annotations
@@ -78,20 +78,20 @@ class EditorModel:
 
     # -- the button --------------------------------------------------------------------------------------- #
     def add(self) -> None:
-        """Add the potential with the editor's parameters and the model's weight (Qt: the **Add** button)."""
+        """Add the potential with the editor's parameters and the model's weight (the **Add** button)."""
         app = self._app
         name = self.potential_type
         app.tour.notify_used("add")
         try:
             potential = make_potential(name, dict(app._editor_values.get(name, {})))
             app.model.add_potential(potential, float(app.model.potential_weight), name=name)
-        except Exception as exc:  # noqa: BLE001 - shown in the window, as the Qt tool's dialog would
+        except Exception as exc:  # noqa: BLE001 - shown in the window
             app.status = f"{type(exc).__name__}: {exc}"
             return
         app.status = ""
         app._editor_values.pop(
             name, None
-        )  # the added editor belongs to the universe: a fresh one, as in Qt
+        )  # the added editor belongs to the universe: start a fresh one
 
 
 def editor_spec(name: str) -> dict:
@@ -171,7 +171,7 @@ class PotentialEnergyApp(TrajToolApp):
         )
         self.editor_form.on_used = self.tour.notify_used
         for section in self.spec["sections"]:
-            if section.get("type") == "table":  # a double click removes a row (Qt); so does Delete
+            if section.get("type") == "table":  # a double click removes a row; so does Delete
                 section.setdefault("delete_call", "remove_potential_activated")
         self._weight_spec = {
             "sections": [

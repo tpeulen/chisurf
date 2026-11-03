@@ -1,9 +1,8 @@
-"""The native Rotate/Translate tool at parity with the Qt RotateTranslateTrajectoryWidget.
+"""The native Rotate/Translate tool on the hgbp1 test trajectory.
 
-The Qt widget runs in a subprocess (this process stays Qt-free) on the hgbp1 test
-trajectory, its matrix and translation typed into its own editors: its answers with
-nothing chosen, a cancelled dialog and a save are compared with the emtk app's, and
-both files against x' = R x + t computed here.
+A planted 90-degree rotation about z and a 10 Angstrom shift along x are applied; the
+saved file is checked against x' = R x + t computed here. Nothing chosen, a cancelled
+dialog and a failed write are each answered in the log and the status line.
 """
 
 from __future__ import annotations
@@ -17,11 +16,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 from emtk.testing import PixelPainter, RecordingPainter
-
-from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import (
-    load_reference,
-    same_coordinates,
-)
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
@@ -80,14 +74,8 @@ def _read(path):
     return md.load(str(path), top=TOP)
 
 
-@pytest.fixture(scope="module")
-def qt():
-    """The retired Qt widget's answers, recorded before it was deleted (qt_reference.json)."""
-    return load_reference(HERE)
-
-
-# 1. the same file as the Qt widget; that file is R x + t of the source
-def test_a_save_writes_what_the_qt_widget_writes(qt, tmp_path):
+# 1. the saved file is R x + t of the source
+def test_a_save_writes_the_rotated_translated_trajectory(tmp_path):
     from chisurf.core.structure import trajectory_data as md
 
     app = _loaded()
@@ -104,36 +92,32 @@ def test_a_save_writes_what_the_qt_widget_writes(qt, tmp_path):
         source = np.asarray(md.load(TRAJ, top=TOP, stride=STRIDE).xyz, dtype=float)
         expected = source @ np.asarray(R).T + np.asarray(T)
         assert ours.n_frames == 116
-        assert same_coordinates(ours.xyz, qt["target"])
         assert np.asarray(ours.xyz) == pytest.approx(expected, abs=1e-3)
         x, y, z = source[0, 0]  # (10 - y, x, z), the help page's example
         assert np.asarray(ours.xyz)[0, 0] == pytest.approx([10 - y, x, z], abs=1e-3)
         assert (
             _messages(app.model.log_text())[-1] == f"Rotated/translated trajectory saved: {target}"
         )
-        assert qt["matrix"] == R
     finally:
         app.close()
 
 
-# 2. actions and errors, in the Qt widget's words
-def test_nothing_chosen_a_cancel_and_a_failure_answer_as_the_qt_widget_does(qt, tmp_path):
+# 2. actions and errors are answered in the status line and the log
+def test_nothing_chosen_a_cancel_and_a_failure_are_answered(tmp_path):
     app = RotateTranslateApp()
     try:
         app.begin_save()
-        assert [app.status] == [text for _title, text in qt["told"]] == ["Open a trajectory first."]
+        assert app.status == "Open a trajectory first."
         app.model.set_trajectory(TRAJ)
         app.model.set_topology(TOP)
         app.begin_save()
         app.dialog.draw = lambda: False
         _draw(app, n=1)
         assert app.dialog is None and "Save cancelled" in _messages(app.model.log_text())
-        assert "Save cancelled" in _messages(qt["log"])
         (tmp_path / "file").write_text("x")
         app.save(str(tmp_path / "file" / "inside_a_file.dcd"))
         _settle(app)
-        [(title, _text)] = qt["errors"]
-        assert title == "Save failed" and app.status.startswith("Save failed: ")
+        assert app.status.startswith("Save failed: ")
         assert _messages(app.model.log_text())[-1].startswith("Save failed: ")
         assert any(
             s.startswith("Save failed: ") for s in _draw(app).strings
@@ -148,7 +132,7 @@ def test_the_editors_write_the_matrix_and_translation(monkeypatch):
 
     app = RotateTranslateApp()
     try:
-        # the cells are typed fields (the Qt editors are line edits): Enter in them hands the text over
+        # the cells are typed fields: Enter in them hands the text over
         answers = {"##r01": "-1", "##r10": "1", "##r00": "0", "##r11": "0", "##t0": "10"}
         original = im.input_text
         monkeypatch.setattr(

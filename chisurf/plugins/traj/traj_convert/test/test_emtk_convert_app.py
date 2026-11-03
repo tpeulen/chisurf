@@ -1,10 +1,8 @@
-"""The native trajectory converter at parity with the Qt MDConverter widget.
+"""The native trajectory converter on the hgbp1 test trajectory.
 
-The Qt widget runs in a subprocess (this process stays Qt-free) on the hgbp1 test
-trajectory through its own sections: its answers (no trajectory, done, failed) and its
-output are compared with the emtk app's, and every output against the frames selected
-here from the source directly -- the range inclusive of its last frame, split and folder
-modes included (the three conversions guide 81 listed as broken).
+Every output is checked against the frames selected here from the source directly --
+the range inclusive of its last frame, split and folder modes included. Nothing chosen,
+no target folder and an empty frame range are each answered in the status line.
 """
 
 from __future__ import annotations
@@ -18,11 +16,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 from emtk.testing import PixelPainter, RecordingPainter
-
-from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import (
-    load_reference,
-    same_coordinates,
-)
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
@@ -84,22 +77,14 @@ def _read(path, top=TOP):
     return np.asarray(md.load(str(path), top=top).xyz)
 
 
-@pytest.fixture(scope="module")
-def qt():
-    """The retired Qt widget's answers, recorded before it was deleted (qt_reference.json)."""
-    return load_reference(HERE)
-
-
-# 1. the Qt widget's output and answers; the range includes its last frame
-def test_a_range_converts_as_the_qt_widget_does_and_keeps_its_last_frame(qt, source, tmp_path):
+# 1. the range converts the source frames and includes its last frame
+def test_a_range_converts_the_source_frames_and_keeps_its_last_frame(source, tmp_path):
     app = _run(_loaded(tmp_path))
     try:
         ours = _read(tmp_path / "frames.dcd")
-        np.testing.assert_allclose(ours, source[[10, 20, 30, 40, 50]], atol=1e-3)  # 50 included now
-        assert same_coordinates(ours, qt["target"])
-        assert app.notice == "Conversion done!" == qt["told"][-1][1]
+        np.testing.assert_allclose(ours, source[[10, 20, 30, 40, 50]], atol=1e-3)  # 50 included
+        assert app.notice == "Conversion done!"
         assert "Wrote 5 frames of 5235 atoms" in _messages(app.model.log_text())
-        assert "Wrote 5 frames of 5235 atoms" in _messages(qt["log"])
     finally:
         app.close()
 
@@ -177,12 +162,12 @@ def test_a_folder_of_pdbs_is_read_as_consecutive_frames(source, tmp_path):
         app.close()
 
 
-# 2. actions and errors, in the Qt widget's words
-def test_nothing_chosen_and_a_failure_answer_as_the_qt_widget_does(qt, tmp_path):
+# 2. actions and errors are answered in the status line
+def test_nothing_chosen_and_a_failure_are_answered(tmp_path):
     app = MDConverterApp()
     try:
         app.begin_save()
-        assert [app.status] == [qt["told"][0][1]] == ["Choose a trajectory first."]
+        assert app.status == "Choose a trajectory first."
         app.model.set_trajectory(TRAJ)
         app.begin_save()
         assert (
@@ -190,8 +175,6 @@ def test_nothing_chosen_and_a_failure_answer_as_the_qt_widget_does(qt, tmp_path)
         )  # never into the cwd
         app = _loaded(tmp_path, first=100, last=50)
         _run(app)
-        [(title, text)] = qt["errors"]
-        assert title == "Conversion failed" and app.status == f"Conversion failed: {text}"
         assert app.status == "Conversion failed: The frame range selects no frames."
         assert _draw(app).strings.count(app.status) == 1  # shown, and once
     finally:
@@ -214,7 +197,7 @@ def test_every_spec_field_is_drawn_with_its_description(monkeypatch):
         names = {"use_folder", "first_frame", "last_frame", "stride", "filename", "ending", "split"}
         assert {f["attr"] for f in fields} == names and names <= set(app.form.rects)
         assert all(f["description"] in tips for f in fields)
-        assert {"Input.fold", "Output.fold"} <= set(app.form.rects)  # the panels fold, as in Qt
+        assert {"Input.fold", "Output.fold"} <= set(app.form.rects)  # the panels fold
         _commit(app.model, next(f for f in fields if f["attr"] == "ending"), ".pdb", app.form)
         assert app.model.ending == ".pdb" and app.export_settings()["ending"] == ".pdb"
     finally:

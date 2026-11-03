@@ -1,8 +1,8 @@
-"""The native Save-Topology tool at parity with the Qt SaveTopology widget.
+"""The native Save-Topology tool on the hgbp1 test trajectory.
 
-The Qt widget runs in a subprocess (this process stays Qt-free) on the hgbp1 test
-trajectory: its save, its "no trajectory" and "cancelled" answers are compared with
-the emtk app's, and the written PDB against frame 0 of the trajectory read directly.
+The written PDB is checked against frame 0 of the trajectory read directly; nothing
+chosen, a cancelled dialog and a failed write are each answered in the log and the
+status line.
 """
 
 from __future__ import annotations
@@ -16,11 +16,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 from emtk.testing import PixelPainter, RecordingPainter
-
-from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import (
-    load_reference,
-    same_coordinates,
-)
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
@@ -65,14 +60,8 @@ def _loaded(**kw):
     return app
 
 
-@pytest.fixture(scope="module")
-def qt():
-    """The retired Qt widget's answers, recorded before it was deleted (qt_reference.json)."""
-    return load_reference(HERE)
-
-
-# 1. the same file and the same log as the Qt widget; the file is frame 0
-def test_a_save_writes_what_the_qt_widget_writes(qt, tmp_path):
+# 1. the saved file is frame 0
+def test_a_save_writes_frame_zero(tmp_path):
     from chisurf.core.structure import trajectory_data as md
 
     app = _loaded()
@@ -86,23 +75,22 @@ def test_a_save_writes_what_the_qt_widget_writes(qt, tmp_path):
         ours = md.load(str(target))
         frame0 = md.load(TRAJ, top=TOP)[0]
         assert ours.n_atoms == frame0.n_atoms == 5235
-        assert same_coordinates(ours.xyz, qt["target"], atol=1e-5)
         assert (
             np.abs(np.asarray(ours.xyz) - np.asarray(frame0.xyz)).max() < 1e-3
         )  # PDB keeps 3 decimals
         mine = _messages(app.model.log_text())
-        assert mine[-1] == "Topology saved" and _messages(qt["log"])[-1] == "Topology saved"
+        assert mine[-1] == "Topology saved"
         assert mine[-3:-1] == [f"Loading first frame: {TRAJ}", f"Saving topology to: {target}"]
     finally:
         app.close()
 
 
-# 2. actions and errors, in the Qt widget's words
-def test_nothing_chosen_and_a_cancelled_dialog_answer_as_the_qt_widget_does(qt):
+# 2. actions and errors are answered in the status line and the log
+def test_nothing_chosen_and_a_cancelled_dialog_are_answered():
     app = SaveTopologyApp()
     try:
         app.begin_save()
-        assert [app.status] == [text for _title, text in qt["told"]] == ["Open a trajectory first."]
+        assert app.status == "Open a trajectory first."
         assert app.dialog is None
         app.model.set_trajectory(TRAJ)
         app.model.set_topology(TOP)
@@ -110,10 +98,8 @@ def test_nothing_chosen_and_a_cancelled_dialog_answer_as_the_qt_widget_does(qt):
         app.dialog.draw = lambda: False
         _draw(app, n=1)
         assert app.dialog is None
-        assert "Save cancelled" in _messages(
-            app.model.log_text()
-        ) and "Save cancelled" in _messages(qt["log"])
-        assert qt["fields"] == [TRAJ, TOP]
+        assert "Save cancelled" in _messages(app.model.log_text())
+        assert (app.model.trajectory_filename, app.model.topology_filename) == (TRAJ, TOP)
     finally:
         app.close()
 

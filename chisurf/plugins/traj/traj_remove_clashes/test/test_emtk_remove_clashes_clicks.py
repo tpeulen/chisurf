@@ -93,7 +93,7 @@ def test_the_min_distance_field_is_typed_clicked_away_clamped_and_stepped_by_its
 
 
 def test_the_atom_selection_field_is_typed_and_may_be_emptied():
-    # The selection is a multi-line box: Enter starts a new line, a click away commits (as the Qt box does).
+    # The selection is a multi-line box: Enter starts a new line, a click away commits.
     ui = Ui(make_app())
     try:
         ui.draw(1)
@@ -169,7 +169,7 @@ def test_a_selection_that_is_not_a_selection_is_reported_in_the_window_and_write
         drop(ui, small_trajectory / "small.dcd", small_trajectory / "topol.pdb")
         ui.type_into(
             "atom_selection", "name"
-        )  # what the Qt parity run feeds the Qt widget: it fails
+        )  # a selection keyword without a value: it fails
         target = tmp_path / "never.dcd"
         ui.click("save")
         ui.save_dialog_type_name(str(target))

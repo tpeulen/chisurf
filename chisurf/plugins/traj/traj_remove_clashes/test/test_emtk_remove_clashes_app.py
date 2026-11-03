@@ -1,9 +1,8 @@
-"""The native Remove-Clashed-Frames tool at parity with the Qt RemoveClashedFrames widget.
+"""The native Remove-Clashed-Frames tool on the hgbp1 test trajectory.
 
-The Qt widget runs in a subprocess (this process stays Qt-free) on the hgbp1 test
-trajectory through its own section: its answers with nothing chosen, a cancelled
-dialog and a save are compared with the emtk app's, and both files against a clash
-test done here with scipy's pairwise distances.
+The saved file is checked against a clash test done here with scipy's pairwise
+distances; nothing chosen, a cancelled dialog and a bad selection are each answered in
+the status line and the log.
 """
 
 from __future__ import annotations
@@ -17,11 +16,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 from emtk.testing import PixelPainter, RecordingPainter
-
-from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import (
-    load_reference,
-    same_coordinates,
-)
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
@@ -72,12 +66,6 @@ def _loaded():
 
 
 @pytest.fixture(scope="module")
-def qt():
-    """The retired Qt widget's answers, recorded before it was deleted (qt_reference.json)."""
-    return load_reference(HERE)
-
-
-@pytest.fixture(scope="module")
 def reference():
     """The frames whose C-alpha atoms all stay >= 3.5 A apart, found here with pdist."""
     from scipy.spatial.distance import pdist
@@ -99,18 +87,14 @@ def _read(path):
     return md.load(str(path), top=TOP), read_times(str(path))
 
 
-# 1. the same frames as the Qt widget; exactly the frames without a clash, with their times
-def test_a_save_keeps_what_the_qt_widget_keeps(qt, reference, tmp_path):
+# 1. exactly the frames without a clash are kept, with their times
+def test_a_save_keeps_the_clash_free_frames(reference, tmp_path):
     source, keep = reference
     app = _loaded()
     try:
         app.begin_save()
         assert app.dialog.title == "Save clash-free trajectory"
         assert app.dialog.filters == [("DCD trajectory", ["*.dcd"])]
-        assert qt["asked"][-1] == [
-            "Save clash-free trajectory",
-            "DCD trajectory (*.dcd)",
-        ]  # the Qt dialog, fixed
         assert app.dialog.filename == "hgbp1_transition_clash_free.dcd"
         target = tmp_path / "clash_free.dcd"
         _pick(app, target)
@@ -118,39 +102,34 @@ def test_a_save_keeps_what_the_qt_widget_keeps(qt, reference, tmp_path):
         ours, our_times = _read(target)
         assert keep.sum() == ours.n_frames == 42 and len(keep) == 116
         assert np.asarray(ours.xyz) == pytest.approx(np.asarray(source.xyz)[keep], abs=1e-3)
-        assert same_coordinates(ours.xyz, qt["target"])
         assert np.asarray(our_times) == pytest.approx(
             np.asarray(source.time)[keep]
         )  # the gaps stay visible
-        assert np.asarray(our_times) == pytest.approx(np.asarray(qt["target_times"]))
         mine = _messages(app.model.log_text())
         assert mine[-2:] == [
             "Kept 42 of 116 frames (min distance 3.5 Å)",
             f"Clash-free trajectory saved: {target}",
         ]
-        assert "Kept 42 of 116 frames (min distance 3.5 Å)" in _messages(qt["log"])
     finally:
         app.close()
 
 
-# 2. actions and errors, in the Qt widget's words
-def test_nothing_chosen_a_cancel_and_a_bad_selection_answer_as_the_qt_widget_does(qt, tmp_path):
+# 2. actions and errors are answered in the status line and the log
+def test_nothing_chosen_a_cancel_and_a_bad_selection_are_answered(tmp_path):
     app = RemoveClashesApp()
     try:
         app.begin_save()
-        assert [app.status] == [text for _title, text in qt["told"]] == ["Open a trajectory first."]
+        assert app.status == "Open a trajectory first."
         app.model.set_trajectory(TRAJ)
         app.model.set_topology(TOP)
         app.begin_save()
         app.dialog.draw = lambda: False
         _draw(app, n=1)
         assert app.dialog is None and "Save cancelled" in _messages(app.model.log_text())
-        assert "Save cancelled" in _messages(qt["log"])
         app.model.atom_selection = "name"
         app.save(str(tmp_path / "clash_free.dcd"))
         _settle(app)
-        [(title, text)] = qt["errors"]
-        assert title == "Save failed" and app.status == f"Save failed: {text}"
+        assert app.status == "Save failed: a selection field needs a value"
         assert app.status in _draw(app).strings
     finally:
         app.close()

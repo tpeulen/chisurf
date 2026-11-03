@@ -1,10 +1,9 @@
-"""The native Join-Trajectories tool at parity with the Qt JoinTrajectoriesWidget.
+"""The native Join-Trajectories tool on the hgbp1 test trajectory.
 
-The Qt widget runs in a subprocess (this process stays Qt-free) on the hgbp1 test
-trajectory through its own section: its answers with too few files, a cancelled
-dialog and a save are compared with the emtk app's, and the joined files against the
-join done here with numpy. The chunk size is smaller than the trajectory on purpose:
-the old join interleaved and chunk-reversed on exactly that.
+The joined files are checked against the join done here with numpy; too few files and
+a cancelled dialog are answered in the status line and the log. The chunk size is
+smaller than the trajectory on purpose: a chunked join that interleaves or reverses
+per chunk fails exactly there.
 """
 
 from __future__ import annotations
@@ -18,11 +17,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 from emtk.testing import PixelPainter, RecordingPainter
-
-from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import (
-    load_reference,
-    same_coordinates,
-)
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
@@ -76,20 +70,14 @@ def source():
     return np.asarray(md.load(TRAJ, top=TOP).xyz)
 
 
-@pytest.fixture(scope="module")
-def qt():
-    """The retired Qt widget's answers, recorded before it was deleted (qt_reference.json)."""
-    return load_reference(HERE)
-
-
 def _read(path):
     from chisurf.core.structure import trajectory_data as md
 
     return np.asarray(md.load(str(path), top=TOP).xyz)
 
 
-# 1. the same file as the Qt widget; that file is trajectory 1, then trajectory 2 backwards
-def test_a_time_join_appends_the_whole_reversed_trajectory(qt, source, tmp_path):
+# 1. the saved file is trajectory 1, then trajectory 2 backwards
+def test_a_time_join_appends_the_whole_reversed_trajectory(source, tmp_path):
     app = _loaded()
     try:
         app.begin_save()
@@ -104,7 +92,6 @@ def test_a_time_join_appends_the_whole_reversed_trajectory(qt, source, tmp_path)
         expected = np.concatenate([source, source[::-1]])
         assert ours.shape == expected.shape == (928, 5235, 3)
         np.testing.assert_allclose(ours, expected, atol=1e-3)  # not A0-99, B99-0, A100-199, ...
-        assert same_coordinates(ours, qt["target"])
         np.testing.assert_allclose(
             ours[463], ours[464], atol=1e-3
         )  # forward and back: the turn repeats a frame
@@ -112,7 +99,6 @@ def test_a_time_join_appends_the_whole_reversed_trajectory(qt, source, tmp_path)
             "Wrote 928 frames of 5235 atoms",
             f"Joined trajectory saved: {target}",
         ]
-        assert "Wrote 928 frames of 5235 atoms" in _messages(qt["log"])
     finally:
         app.close()
 
@@ -162,23 +148,18 @@ def test_a_mismatch_stops_the_join_instead_of_truncating(mode, words, tmp_path):
         app.close()
 
 
-# 2. actions and errors, in the Qt widget's words
-def test_one_file_and_a_cancel_answer_as_the_qt_widget_does(qt):
+# 2. actions and errors are answered in the status line and the log
+def test_one_file_and_a_cancel_are_answered():
     app = JoinTrajectoriesApp()
     try:
         app.model.set_trajectory_1(TRAJ)
         app.begin_save()
-        assert (
-            [app.status]
-            == [text for _title, text in qt["told"]]
-            == ["Open two trajectories first."]
-        )
+        assert app.status == "Open two trajectories first."
         app.model.set_trajectory_2(TRAJ)
         app.begin_save()
         app.dialog.draw = lambda: False
         _draw(app, n=1)
         assert app.dialog is None and "Join cancelled" in _messages(app.model.log_text())
-        assert "Join cancelled" in _messages(qt["log"])
     finally:
         app.close()
 

@@ -3,15 +3,13 @@
 Align, Rotate/Translate, Remove Clashed, Join and Save Topology are the same
 window around different view models: file rows (a read-only path, a ``…``
 browse button, drag-drop), the fields their ``*.view.json`` declares, one save
-action and a running log. The Qt widgets render that spec with AutoForm and a
-per-tool custom section for the file rows; this app draws the same spec with
-:func:`emtk.view_form.draw_form` and draws that custom section from the
-:class:`PathField` / :class:`SaveAction` declarations a tool passes in.
+action and a running log. This app draws the spec with
+:func:`emtk.view_form.draw_form` and draws the spec's custom file-row section
+from the :class:`PathField` / :class:`SaveAction` declarations a tool passes in.
 
-Behaviour kept from the Qt section: a file row only takes a file that exists,
-the save action asks for a trajectory first, a cancelled save dialog logs
-"Save cancelled", and a failed save is reported in the window (the Qt tool
-raised a message box). The work runs on a worker thread here, so a long
+A file row only takes a file that exists, the save action asks for a
+trajectory first, a cancelled save dialog logs "Save cancelled", and a failed
+save is reported in the window. The work runs on a worker thread, so a long
 alignment does not freeze the window.
 """
 
@@ -106,11 +104,11 @@ class SaveAction:
     ``run(model, path)`` does the work; ``missing(model)`` names what has to be
     chosen first (``None`` when the action can run); ``suggest(model)`` is the
     file name the save dialog starts with; ``failure`` heads the message a
-    failed run leaves in the window (the Qt tool's error-box title) and
+    failed run leaves in the window and
     ``cancelled`` is what a closed save dialog logs. Without a
     ``dialog_title`` the action runs at once (the target comes from the
     tool's own fields) and ``run`` gets ``None``; ``done`` is said in the
-    window after a run that did not fail (the Qt tool's confirmation box):
+    window after a run that did not fail:
     a string, or a function of what ``run`` returned (a frame count).
     """
 
@@ -130,7 +128,7 @@ class SaveAction:
 
 
 def trajectory_field(**overrides) -> PathField:
-    """The trajectory row every tool has (DCD, as the Qt sections filter)."""
+    """The trajectory row every tool has (DCD files)."""
     values: dict[str, Any] = dict(
         key="trajectory",
         label="Trajectory",
@@ -175,7 +173,7 @@ class TrajToolApp(TourTarget, ImApp):
     Parameters
     ----------
     model : object
-        The tool's Qt-free view model (``log_text()``, ``append_log()``, the
+        The tool's view model (``log_text()``, ``append_log()``, the
         setters the :class:`PathField` entries name).
     folder : pathlib.Path
         The plugin folder: the spec, ``help.md`` and ``guide.json`` live there.
@@ -184,14 +182,14 @@ class TrajToolApp(TourTarget, ImApp):
     io_key : str
         The spec's custom section the file rows and the action are drawn into.
     title : str
-        The window caption: the spec panel's title, as the Qt panel shows it.
+        The window caption: the spec panel's title.
     paths : sequence of PathField
         The file rows, in order.
     action : SaveAction
         The action button under the rows.
     action_key : str, optional
         A custom section of the spec of its own for the action button (the
-        Qt converter put it under its output fields); without one the button
+        converter puts it under its output fields); without one the button
         closes the io section.
 
     A spec of one panel is drawn as that panel's sections under the window
@@ -236,7 +234,7 @@ class TrajToolApp(TourTarget, ImApp):
                 dict(s, collapsible=True) if s.get("type") == "panel" else s
                 for s in spec["sections"]
             ]
-        )  # several panels fold, as the Qt AutoForm panels do
+        )  # several panels fold
         self.spec = {"sections": [self._host_section(s) for s in top]}
         _spin_numbers(self.spec["sections"])
         self.spec = layout_spec(self.spec)
@@ -292,7 +290,7 @@ class TrajToolApp(TourTarget, ImApp):
         self.help_window.show()
 
     def set_path(self, path_field: PathField, path: str) -> bool:
-        """Put *path* into a row, as the Qt row does: only a file (or folder, for a folder row) that exists."""
+        """Put *path* into a row: only a file (or folder, for a folder row) that exists."""
         folder = path_field.takes_folder(self.model)
         exists = pathlib.Path(path).is_dir() if folder else pathlib.Path(path).is_file()
         if not path or not exists:
@@ -566,8 +564,8 @@ class TrajToolApp(TourTarget, ImApp):
         im.begin_child("##log", box[2:])
         lines = self.model.log_text()
         for line in lines:
-            im.text_wrapped(line)  # paths are long; the Qt log wrapped them too
-        if len(lines) != self._log_seen:  # follow new lines, as the Qt log does
+            im.text_wrapped(line)  # paths are long: wrap them
+        if len(lines) != self._log_seen:  # follow new lines
             self._log_seen = len(lines)
             im.set_scroll_here_y(1.0)
         im.end_child()
@@ -611,11 +609,10 @@ def _insert_before_log(sections: list, node: dict) -> bool:
 
 
 def _spin_numbers(sections) -> None:
-    """Give every number field the arrows and wheel the Qt spin boxes had.
+    """Give every number field arrows and the wheel, stepping by the spec's ``step``.
 
-    The Qt AutoForm draws ``int`` / ``float`` values as spin boxes whose arrows step by the spec's
-    ``step`` (Qt's default: 1). emtk's plain field takes typing only, so the spec is drawn with the
-    ``spin`` style and the same step.
+    ``int`` / ``float`` values are drawn as spin fields whose arrows step by the spec's ``step``
+    (default 1). emtk's plain field takes typing only, so the spec is drawn with the ``spin`` style.
     """
     for section in sections:
         if (

@@ -36,7 +36,6 @@ def test_native_state_roundtrip(tmp_path):
 
 def test_native_potential_registry_is_qt_free_and_complete():
     names = potential_names()
-    # Mirrors the Qt potentialDict registry keys.
     assert "H-Bond" in names
     assert "Go-Potential" in names
     assert "Radius of Gyration" in names
@@ -74,7 +73,7 @@ class _StubPotential:
 
 
 def test_native_process_guards():
-    """The action's preconditions, in the Qt tool's words (its information boxes), in the order it checks them."""
+    """The action's preconditions, named in the order it checks them."""
     app = PotentialEnergyApp()
     assert app.action.missing(app.model) == "Open a trajectory first."
     app.model.set_trajectory("missing.dcd")

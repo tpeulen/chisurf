@@ -2,7 +2,7 @@
 
 Only ``press`` / ``release`` / ``pointer_move`` / ``key`` / ``on_files_dropped`` reach the window (see
 ``traj_save_topology/test/real_input.py``); the assertions read what is drawn, the editor's and the model's fields,
-the table and the energies written, which are compared with what the Qt widget's model wrote.
+the table and the energies written, whose radius-of-gyration column is computed here from the frames.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from chisurf.plugins.traj.traj_save_topology.test.real_input import (
 )
 from chisurf.plugins.traj.traj_save_topology.test.workspace_pick import check_browse_row, drop
 
-from .test_emtk_traj_energy_parity import POTENTIALS
+from .test_emtk_traj_energy_app import POTENTIALS, check_energies
 from .test_view_model import _peptide_trajectory
 
 SIZE = (800, 700)
@@ -210,7 +210,7 @@ def test_the_parameters_of_a_type_survive_choosing_another_and_return_to_their_d
         assert ui.app.editor.cutoff_ca == 9.5 and ui.shown("9.50")
         ui.click("add")
         assert [r["name"] for r in ui.app.model.added_potentials()] == ["H-Bond"]
-        assert ui.app.editor.cutoff_ca == 8.0 and ui.shown("8.00")  # a fresh editor, as in Qt
+        assert ui.app.editor.cutoff_ca == 8.0 and ui.shown("8.00")  # a fresh editor
     finally:
         ui.app.close()
 
@@ -347,13 +347,9 @@ def test_process_says_what_is_missing_before_it_asks_for_a_file(folder):
         ui.app.close()
 
 
-def test_processing_through_the_ui_writes_the_energies_the_qt_widgets_model_wrote(
-    qt, trajectory, tmp_path
+def test_processing_through_the_ui_writes_the_energies_of_every_frame(
+    trajectory, tmp_path
 ):  # noqa: F811
-    pytest.importorskip(
-        "IMP.atom",
-        reason="the Qt capture used CHARMM radii from IMP.atom; without the IMP kernel the structure falls back to element radii (known issue: the pixi test environment builds IMP.bff without IMP)",
-    )
     dcd, pdb, _tmp = trajectory
     ui = _ui()
     try:
@@ -373,7 +369,7 @@ def test_processing_through_the_ui_writes_the_energies_the_qt_widgets_model_wrot
         assert not ui.dialog_open and (ui.app.running or bool(ui.app.notice or ui.app.status))
         ui.settle()
         assert ui.shown("Processed 4 frame(s).")
-        assert target.read_text() == qt["energies"]
+        check_energies(target, dcd, pdb)
     finally:
         ui.app.close()
 

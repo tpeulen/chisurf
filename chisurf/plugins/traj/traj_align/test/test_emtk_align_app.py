@@ -1,9 +1,8 @@
-"""The native Align-Trajectory tool at parity with the Qt AlignTrajectoryWidget.
+"""The native Align-Trajectory tool on the hgbp1 test trajectory.
 
-The Qt widget runs in a subprocess (this process stays Qt-free) on the hgbp1 test
-trajectory through its own section: its answers with nothing chosen, a cancelled
-dialog and a save are compared with the emtk app's, and both aligned files against a
-superposition done here directly.
+A save is checked against a superposition onto frame 0 done here directly; nothing
+chosen, a cancelled dialog, a bad selection and a failed write are each answered in
+the log and the status line.
 """
 
 from __future__ import annotations
@@ -17,11 +16,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 from emtk.testing import PixelPainter, RecordingPainter
-
-from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import (
-    load_reference,
-    same_coordinates,
-)
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
@@ -74,12 +68,6 @@ def _read(path):
 
 
 @pytest.fixture(scope="module")
-def qt():
-    """The retired Qt widget's answers, recorded before it was deleted (qt_reference.json)."""
-    return load_reference(HERE)
-
-
-@pytest.fixture(scope="module")
 def reference():
     """The source read at the stride and superposed onto frame 0 on the fitting atoms, here."""
     from chisurf.core.structure import trajectory_data as md
@@ -90,8 +78,8 @@ def reference():
     return source, aligned.superpose(frame0, frame=0, atom_indices=np.array([0, 1, 2, 3], np.int32))
 
 
-# 1. the same aligned file as the Qt widget; that file is the superposition
-def test_a_save_writes_what_the_qt_widget_writes(qt, reference, tmp_path):
+# 1. the saved file is the superposition onto frame 0
+def test_a_save_writes_the_superposed_trajectory(reference, tmp_path):
     app = _loaded()
     try:
         app.begin_save()
@@ -104,22 +92,21 @@ def test_a_save_writes_what_the_qt_widget_writes(qt, reference, tmp_path):
         ours = _read(target)
         source, aligned = reference
         assert ours.n_frames == source.n_frames == 116  # 464 frames at stride 4
-        assert same_coordinates(ours.xyz, qt["target"])
         assert np.asarray(ours.xyz) == pytest.approx(np.asarray(aligned.xyz), abs=1e-3)
         moved = np.abs(np.asarray(source.xyz) - np.asarray(aligned.xyz)).max()
         assert moved > 1.0  # the alignment did move the frames
         assert _messages(app.model.log_text())[-1] == f"Aligned trajectory saved: {target}"
-        assert _messages(qt["log"]).count(f"Aligning {TRAJ} (stride={STRIDE})") >= 1
+        assert f"Aligning {TRAJ} (stride={STRIDE})" in _messages(app.model.log_text())
     finally:
         app.close()
 
 
-# 2. actions and errors, in the Qt widget's words
-def test_nothing_chosen_a_cancel_and_a_bad_selection_answer_as_the_qt_widget_does(qt, tmp_path):
+# 2. actions and errors are answered in the status line and the log
+def test_nothing_chosen_a_cancel_and_a_bad_selection_are_answered(tmp_path):
     app = AlignTrajectoryApp()
     try:
         app.begin_save()
-        assert [app.status] == [text for _title, text in qt["told"]] == ["Open a trajectory first."]
+        assert app.status == "Open a trajectory first."
         assert app.dialog is None
         app.model.set_trajectory(TRAJ)
         app.model.set_topology(TOP)
@@ -127,25 +114,23 @@ def test_nothing_chosen_a_cancel_and_a_bad_selection_answer_as_the_qt_widget_doe
         app.dialog.draw = lambda: False
         _draw(app, n=1)
         assert app.dialog is None and "Save cancelled" in _messages(app.model.log_text())
-        assert "Save cancelled" in _messages(qt["log"])
         app.model.atom_selection = "CA, 1"
         app.save(str(tmp_path / "aligned.dcd"))
         _settle(app)
         bad = "Atom selection must be a comma-separated list of atom ids; cannot parse 'CA'"
-        assert _messages(app.model.log_text())[-1] == bad and bad in _messages(qt["log"])
+        assert _messages(app.model.log_text())[-1] == bad
         assert not (tmp_path / "aligned.dcd").exists()
     finally:
         app.close()
 
 
-def test_a_failed_alignment_is_reported_as_the_qt_widget_titles_it(qt, tmp_path):
+def test_a_failed_alignment_is_reported(tmp_path):
     (tmp_path / "file").write_text("x")
     app = _loaded()
     try:
         app.save(str(tmp_path / "file" / "inside_a_file.dcd"))
         _settle(app)
-        [(title, text)] = qt["errors"]
-        assert title == "Align failed" and app.status.startswith("Align failed: ")
+        assert app.status.startswith("Align failed: ")
         assert any(s.startswith("Align failed: ") for s in _draw(app).strings)
     finally:
         app.close()
