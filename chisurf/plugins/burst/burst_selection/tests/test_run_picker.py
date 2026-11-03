@@ -20,8 +20,13 @@ pytestmark = pytest.mark.skipif(not SPC.exists(), reason="no instrument test dat
 
 @pytest.fixture
 def model(tmp_path: Path, monkeypatch):
+    from chisurf.core.project import analysis
+
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
     (tmp_path / "settings").mkdir()
+    # a session folder of its own: the runs other tests wrote there are not this file's
+    monkeypatch.setenv("CHISURF_ANALYSIS_DIR", str(tmp_path / "analysis"))
+    monkeypatch.setattr(analysis, "_SESSION", None)
     from chisurf.core.fio.fluorescence.burst_container import container_for
     from chisurf.plugins.burst.burst_selection.api.io import write_container
     from chisurf.plugins.burst.burst_selection.gui.model import BurstSelectionModel

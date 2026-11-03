@@ -3,6 +3,7 @@
 ## 2026-11-03
 
 - 2026-11-03 — Burst Selection names the button that is there: the pipeline step's preview/empty texts say "press Next" (it has no Run button), standalone keeps "press Run" (`model.run_word`; test `test/native_emtk/test_burst_selection_names_the_run_button.py`).
+- 2026-11-03 — Datasets is a tree of results: a burst run sits under its photons and a run computed from it (a fusion) under that run, and a parent unfolds when a new result arrives. Burst Selection now records the photon dataset's uid even for files it already lists. Deleting a run removes it from the project's analysis container together with every run derived from it, after a warning that names them (`analysis.remove_run`/`run_dependents`, `DataDocks.remove_runs`). Delete on a run row used to remove its parent, the photons. Tests: `test/fio/test_remove_run.py`, `test/native_emtk/test_datasets_remove_burst_run.py`.
 
 ## 2026-11-02
 

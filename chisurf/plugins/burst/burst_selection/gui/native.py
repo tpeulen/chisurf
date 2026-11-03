@@ -310,6 +310,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         """
         wanted = [Path(p).resolve() for p in paths]
         if wanted == [Path(p).resolve() for p in self.model.files]:
+            # the same files, but the hand-off may now say which workspace dataset each is (a
+            # restored session listed them before): their runs go under that dataset
+            self._remember_sources(paths, uids)
             return False
         for index in reversed(range(len(self.model.files))):
             if Path(self.model.files[index]).resolve() not in wanted:
@@ -324,12 +327,31 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         """Add photon files from the workspace; remember which dataset each came from (its runs
         become that dataset's children)."""
         added = self.model.add_paths([Path(p) for p in paths])
-        for path, uid in zip(paths, uids):
-            if uid:
-                self.sources[str(Path(path).resolve())] = str(uid)
+        self._remember_sources(paths, uids)
         if added:
             self._diag_due = time.monotonic()
         return added
+
+    def _remember_sources(self, paths, uids=()) -> None:
+        """Record the workspace dataset of each photon file: the uid handed over, else the dataset
+        of the workspace that reads that file (a file added here, or handed over without one)."""
+        from chisurf.core.api import dataset_objects
+
+        uids = list(uids) + [""] * (len(paths) - len(uids))
+        by_address = {}
+        try:
+            datasets = list(dataset_objects())
+        except Exception:  # noqa: BLE001 - no workspace (the tool alone): the uids handed over
+            datasets = []
+        for dataset in datasets:
+            address = str(getattr(dataset, "address", "") or getattr(dataset, "filename", "") or "")
+            if address and not getattr(dataset, "result_of", ""):
+                by_address.setdefault(str(Path(address).resolve()), str(dataset.unique_identifier))
+        for path, uid in zip(paths, uids):
+            key = str(Path(path).resolve())
+            found = str(uid or "") or by_address.get(key, "")
+            if found:
+                self.sources[key] = found
 
     def _register_runs(self) -> None:
         """Show the newest burst run of each searched measurement in the workspace: a child of the

@@ -182,8 +182,9 @@ that fusion happened.
 
 The fused bursts are written as a **new run of the same container** — in a
 project, the photon dataset's analysis container — named after the source run
-and the threshold, and they appear in the Datasets workspace under the same
-photon stream:
+and the threshold, and they appear in the Datasets workspace as a child of the
+source run (which is itself a child of its photon stream). Deleting the source
+run removes the fused run with it, after a warning that names it:
 
 ```
 <source run> fused p0.70/

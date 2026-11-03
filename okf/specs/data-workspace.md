@@ -59,6 +59,11 @@ scripts and the agent need them); in the UI they degrade the UX and go.
    `setup`, so "Load settings" dialogs remain (fusion, h2mm, MLE, correlator, burst_selection); the
    Datasets view cannot yet show a run's companion tables as view-only children.
 
+7. Open: **Removing a photon dataset leaves its analysis container** in the session folder (and in the
+   project at the next save). Removing a *run* is done (2026-11-03, § The workspace view). Removing
+   the photons should ask whether to drop its container's runs too, using the same `remove_runs`
+   warning. Measure: `analysis.containers()` after Remove dataset on a photons row that has runs.
+
 ## Where it stands (recon 2026-10-26)
 
 * No photon dataset kind: TTTR readers histogram photons into a `DataCurve` and keep only
@@ -239,6 +244,20 @@ behind the API/CLI.
   stays above its list"). emtk gets a `column_filter` spec key exposing `DataTable.column_filters`.
 * Context menu **Open in…** lists the plugins that accept the row's kind; dragging a row onto any plugin
   feeds it (not only fit windows).
+* **A tree** (2026-11-03). A run is a child of its photon dataset. A run computed from another run (a
+  fusion) is a child of that run: `derived_datasets` records `source_run` from the container's
+  provenance (`analysis._run_graph`), and `sync_runs` makes it the source run's child. A parent unfolds
+  when a new result of it arrives (`DatasetsModel.expanded`, the table's `expanded_attr`).
+  Burst Selection records the photon dataset's uid for every file, even when the hand-off brings files
+  it already lists (a restored session), and otherwise falls back to the workspace dataset that reads
+  the file. Without that, its runs went into the `_` folder and showed as top-level rows.
+* **Deleting a run removes it from the container** (`analysis.remove_run`), together with every run
+  derived from it (`run_dependents`, transitive over the `derived_from` parents). It runs only after a
+  confirm that names those runs (`DataDocks.remove_runs`); their workspace rows go too. Only runs of
+  the project's analysis containers (`is_derived`) are removed from a file. A run of a dropped user
+  `.pto` is only taken out of the workspace. The space is freed when the container is next rewritten;
+  nothing is compacted under an open handle. Before this change, Delete on a run row removed its
+  *parent* (the photons).
 
 ## Plugins fed from the workspace
 

@@ -31,7 +31,9 @@ __all__ = [
     "derived_datasets",
     "is_derived",
     "project_files",
+    "remove_run",
     "restore",
+    "run_dependents",
     "session_dir",
 ]
 
@@ -135,6 +137,8 @@ def derived_datasets() -> list:
     from chisurf.core.experiments.linked import reader_for_kind
     from chisurf.core.fio.classify import container_entries
 
+    from chisurf.core.fio.analysis_path import run_path, split_container_path
+
     reader = reader_for_kind("bursts")
     if reader is None:
         return []
@@ -143,12 +147,16 @@ def derived_datasets() -> list:
         for path in paths:
             try:
                 runs = [a for kind, a in container_entries(path) if kind == "bursts"]
+                _uids, needs = _run_graph(path)
             except Exception:  # noqa: BLE001 - an unreadable container shows no runs
                 _log.exception("could not list the runs of %s", path)
                 continue
             for run in runs:
                 dataset = reader.make_dataset(run, result_of="" if uid == "_" else uid)
                 dataset.data_reader = reader
+                # a run computed from another run (a fusion of a search) is that run's child
+                of = sorted(needs.get(split_container_path(run)[1], ()))
+                dataset.source_run = run_path(path, of[0]) if of else ""
                 out.append(dataset)
     return out
 
@@ -193,13 +201,114 @@ def sync_runs() -> list:
     from chisurf.core.api import dataset_objects
     from chisurf.core.plugin.workspace_input import register_result
 
-    listed = {str(getattr(d, "address", "")) for d in dataset_objects()}
+    listed = {
+        str(getattr(d, "address", "")): str(getattr(d, "unique_identifier", ""))
+        for d in dataset_objects()
+    }
     added = []
-    for run in derived_datasets():
+    for run in derived_datasets():  # in write order: a source run is listed before its results
         address = str(getattr(run, "address", ""))
         if address and address not in listed:
+            source = str(getattr(run, "source_run", "") or "")
+            parent = listed.get(source, "") if source else ""
+            if parent:
+                run.result_of = parent
             register_result(run, result_of=str(getattr(run, "result_of", "") or ""))
-            listed.add(address)
+            # the uid the workspace gave it (the session keeps its own copy of what it loads)
+            listed[address] = next(
+                (
+                    str(getattr(d, "unique_identifier", ""))
+                    for d in dataset_objects()
+                    if str(getattr(d, "address", "")) == address
+                ),
+                "",
+            )
             added.append(run)
     return added
 
+
+
+def _run_graph(container: Path) -> tuple[dict[str, list[int]], dict[str, set[str]]]:
+    """The runs of *container*: ``{run: [object uids]}`` and ``{run: {runs it is derived from}}``.
+
+    An object belongs to the run its name starts with (``<run>/<table>``); a run depends on another
+    when one of its objects names one of the other's as a parent. Objects without an analysis
+    operation (the photons themselves) are never part of a run.
+    """
+    from chisurf.core.fio.analysis_path import split_artifact_name
+    from chisurf.core.fio.pto import Measurement
+
+    uids: dict[str, list[int]] = {}
+    run_of: dict[int, str] = {}
+    with Measurement.open(container, writable=False) as measurement:
+        objects = [
+            obj
+            for obj in measurement.artifacts()
+            if measurement.tag(obj.uid, "_mmfdb_operation.operation_type")
+        ]
+        for obj in objects:
+            run = split_artifact_name(obj.name)[0]
+            uids.setdefault(run, []).append(int(obj.uid))
+            run_of[int(obj.uid)] = run
+        parents = {int(obj.uid): measurement.parents(obj.uid) for obj in objects}
+    needs: dict[str, set[str]] = {run: set() for run in uids}
+    for uid, of in parents.items():
+        needs[run_of[uid]].update(run_of[p] for p in of if p in run_of and run_of[p] != run_of[uid])
+    return uids, needs
+
+
+def run_dependents(address: Any) -> list[str]:
+    """The runs of the same container derived from the run at *address* (directly or through
+    another run), in write order: what goes when that run is removed.
+
+    Parameters
+    ----------
+    address : str or Path
+        A run of an analysis container (``…/m.pto/<run>``).
+    """
+    from chisurf.core.fio.analysis_path import split_container_path
+
+    container, run = split_container_path(address)
+    if container is None or not container.exists():
+        return []
+    uids, needs = _run_graph(container)
+    gone = {run}
+    grew = True
+    while grew:
+        grew = False
+        for other, of in needs.items():
+            if other not in gone and of & gone:
+                gone.add(other)
+                grew = True
+    return [r for r in uids if r in gone and r != run]
+
+
+def remove_run(address: Any) -> list[str]:
+    """Remove the run at *address* and every run derived from it (:func:`run_dependents`) from
+    its container, then tell the listeners (:func:`container_changed`).
+
+    The photons and every other run stay. The space the objects took is freed when the container
+    is next rewritten; nothing is compacted under an open handle.
+
+    Returns
+    -------
+    list of str
+        The addresses of the runs removed (the run first, then its dependents).
+    """
+    from chisurf.core.fio.analysis_path import run_path, split_container_path
+    from chisurf.core.fio.pto import Measurement, PtoMfdbError
+
+    container, run = split_container_path(address)
+    if container is None or not container.exists():
+        return []
+    runs = [run, *run_dependents(address)]
+    uids, _needs = _run_graph(container)
+    with Measurement.open(container, writable=True) as measurement:
+        for name in runs:
+            for uid in uids.get(name, ()):
+                if not measurement._f.remove(uid):
+                    raise PtoMfdbError(
+                        f"could not remove {name!r} from {container}: {measurement._f.error()}"
+                    )
+    container_changed(container)
+    return [run_path(container, name) for name in runs]

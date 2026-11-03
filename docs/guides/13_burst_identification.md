@@ -178,6 +178,19 @@ the detected bursts.
 Burst identification.
 ```
 
+### The runs in the Datasets workspace
+
+Each search is a **run** in the photon dataset's analysis container, and the
+Datasets workspace shows it as a child of its photons. An analysis computed from
+a run, such as a fusion of its bursts, is a child of that run. The photons row
+unfolds when a new run arrives.
+
+Deleting a run (the **Delete** key, or **Remove** in the context menu) removes
+it from the container. Every analysis computed from it, directly or through
+another run, is removed as well. Before anything is removed, a warning names
+those analyses, and **Cancel** keeps everything. The photons are never removed
+with a run.
+
 ## Reading the diagnostic plots
 
 The plots draw a **window of the active file**, not all of it. Ten seconds by
