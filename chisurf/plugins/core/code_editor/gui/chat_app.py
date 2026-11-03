@@ -81,12 +81,36 @@ def _default_registry():
     return build_default_registry()
 
 
+def _configured_provider() -> str:
+    """The provider selected in Settings → AI (the on-device model on a fresh install)."""
+    try:
+        from chisurf.core.settings import ai_settings
+
+        return ai_settings.get_provider()
+    except Exception:  # noqa: BLE001 - unreadable settings fall back to the shipped default
+        _LOGGER.debug("could not read the AI provider", exc_info=True)
+        return "local"
+
+
+def _attach_window(context: Any) -> bool:
+    """Give the agent the ChiSurf shell it runs in as its window; ``False`` outside one."""
+    try:
+        from chisurf.emtk.agent_gui import attach_to_shell
+
+        return attach_to_shell(context)
+    except Exception:  # noqa: BLE001 - a standalone editor simply has no window to drive
+        _LOGGER.debug("no shell to attach the agent to", exc_info=True)
+        return False
+
+
 class ChatModel:
     """State and backend controller for the EMTK chat widget."""
 
     def __init__(self, editor_ref: Any = None) -> None:
         self.history = ChatHistory()
-        self.provider = "acp"
+        # The configured provider, in process: only an agent in this process can drive the
+        # window (open tools, show its fits, put its code in the editor). ACP stays a choice.
+        self.provider = _configured_provider()
         self.mode = "chisurf_tools"
         self.model_name = "default"
         self.temperature = 0.2
@@ -213,15 +237,26 @@ class ChatModel:
         except Exception as error:
             self.history.add_message("system", f"⚠️ {error}")
             return None
+        context = self.build_agent_context(mode)
+        registry = ToolRegistry() if mode is AgentMode.CHAT_ONLY else _default_registry()
+        instructions = (
+            "You are running inside the ChiSurf desktop application; the "
+            "user can see the fits you create in its windows."
+        )
+        if mode is not AgentMode.CHAT_ONLY and _attach_window(context):
+            # The agent drives the shell: fits it makes are shown, files it
+            # writes open in the editor, tools it names open.
+            from chisurf.core.agent.tools.gui import GUI_INSTRUCTIONS, build_gui_registry
+
+            for spec in build_gui_registry().tools.values():
+                registry.register(spec)
+            instructions = GUI_INSTRUCTIONS
         self._agent_session = AgentSession(
             LLMClient(settings),
-            context=self.build_agent_context(mode),
-            registry=ToolRegistry() if mode is AgentMode.CHAT_ONLY else _default_registry(),
+            context=context,
+            registry=registry,
             config=AgentConfig(max_safety=mode.safety),
-            extra_instructions=(
-                "You are running inside the ChiSurf desktop application; the "
-                "user can see the fits you create in its windows."
-            ),
+            extra_instructions=instructions,
         )
         self._agent_key = key
         return self._agent_session

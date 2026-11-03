@@ -198,6 +198,14 @@ class LLMSettings:
         runtime falls back to the text protocol.
     extra_headers : dict
         Additional HTTP headers (OpenRouter attribution, for example).
+    extra_body : dict
+        Additional request fields, sent only to servers that accept them —
+        ``top_k`` and ``repeat_penalty`` for a local llama.cpp server. Hosted
+        APIs reject unknown fields, so this stays empty for them.
+    managed_server : bool
+        Start the on-device model server
+        (:func:`chisurf.core.agent.local_model.ensure_server`) when nothing
+        answers at ``base_url``.
     """
 
     base_url: str = ""
@@ -210,6 +218,8 @@ class LLMSettings:
     max_retries: int = 3
     supports_tools: bool = True
     extra_headers: dict[str, str] = field(default_factory=dict)
+    extra_body: dict[str, Any] = field(default_factory=dict)
+    managed_server: bool = False
 
     @classmethod
     def from_provider(cls, provider: str | None = None, **overrides: Any) -> LLMSettings:
@@ -241,6 +251,23 @@ class LLMSettings:
             top_p=float(stored.get("top_p", 0.9) or 0.9),
             max_tokens=int(stored.get("max_tokens", 4096) or 4096),
         )
+        if str(stored.get("provider", "")) == "local":
+            from chisurf.core.agent import local_model
+
+            # A local server has no per-request cost, so the window is the
+            # model's own; the first request after a cold start also pays
+            # the model load.
+            settings.timeout_s = 600.0
+            settings.extra_body = {
+                key: stored[key] for key in ("top_k", "repeat_penalty") if key in stored
+            }
+            if stored.get("reasoning") is False:
+                # LFM3 (and other hybrid models) think before every turn unless
+                # the chat template is told not to.
+                settings.extra_body["chat_template_kwargs"] = {"enable_thinking": False}
+            settings.managed_server = bool(stored.get("manage_server", True)) and (
+                local_model.is_local_url(settings.base_url)
+            )
         if str(stored.get("provider", "")) == "openrouter":
             settings.extra_headers = {
                 "HTTP-Referer": "https://github.com/fluorescence-tools/chisurf",
@@ -340,6 +367,8 @@ class LLMClient:
         if tools and self.settings.supports_tools:
             payload["tools"] = list(tools)
             payload["tool_choice"] = "auto"
+        for key, value in self.settings.extra_body.items():
+            payload.setdefault(key, value)
         return payload
 
     # ── response parsing ──────────────────────────────────────────────
@@ -456,12 +485,19 @@ class LLMClient:
         url = f"{self.settings.base_url}/chat/completions"
 
         last_error: str | None = None
+        server_started = False
         for attempt in range(self.settings.max_retries + 1):
             try:
                 response = self._post(url, payload)
             except Exception as error:  # network-level failure
                 last_error = f"{type(error).__name__}: {error}"
                 logger.debug("LLM request failed (attempt %d)", attempt + 1, exc_info=True)
+                if self.settings.managed_server and not server_started:
+                    # Nothing answers at the local address: start the
+                    # on-device model and send the request again.
+                    server_started = True
+                    self._start_local_server()
+                    continue
                 if attempt >= self.settings.max_retries:
                     raise LLMError(f"cannot reach the model at {url}: {last_error}") from error
                 self._sleep(attempt)
@@ -487,6 +523,21 @@ class LLMClient:
             raise LLMError(self._explain_status(status, body))
 
         raise LLMError(f"model request failed after retries: {last_error}")
+
+    def _start_local_server(self) -> None:
+        """Start the on-device model server, raising :class:`LLMError` on failure."""
+        from chisurf.core.agent import local_model
+
+        model = self.settings.model
+        if model.startswith("hf.co/"):
+            model = model[len("hf.co/") :]
+        if "/" not in model and not model.lower().endswith(".gguf"):
+            # A bare alias (``lfm3``) names no file llama-server could fetch.
+            model = local_model.LFM3_MODEL
+        try:
+            local_model.ensure_server(self.settings.base_url, model=model)
+        except local_model.LocalModelError as error:
+            raise LLMError(f"the local model could not be started: {error}") from error
 
     def _post(self, url: str, payload: dict[str, Any]) -> Any:
         """POST *payload* to *url* and return the HTTP response object."""

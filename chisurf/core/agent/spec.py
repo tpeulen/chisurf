@@ -30,6 +30,27 @@ SAFETY_WRITE = "write"
 #: Tools that can touch anything on the machine and need explicit consent.
 SAFETY_DANGEROUS = "dangerous"
 
+#: Tools that change a fit's live model (parameters, components, IRF, range)
+#: or optimise it. The runtime runs them under the models' perturbation lock
+#: (:data:`chisurf.core.models.model.PERTURBATION_LOCK`): the desktop shell's
+#: undo/autosave capture re-evaluates every live model on another thread, and
+#: one caught mid-optimisation fails with "prediction changed after
+#: reconstruction".
+MODEL_TOOLS = frozenset(
+    {
+        "create_fit",
+        "run_fit",
+        "auto_fit_decay",
+        "fit_distance_distribution",
+        "link_parameters",
+        "unlink_parameters",
+        "set_parameter",
+        "set_components",
+        "set_irf",
+        "set_fit_range",
+    }
+)
+
 _SAFETY_ORDER = {SAFETY_READ: 0, SAFETY_WRITE: 1, SAFETY_DANGEROUS: 2}
 
 

@@ -176,6 +176,72 @@ def _default_group(model: Any) -> str:
     )
 
 
+def _name_stem(dataset: Any) -> str:
+    """Return a dataset's file name without extension, IRF hints and separators."""
+    import pathlib
+    import re
+
+    name = pathlib.Path(str(getattr(dataset, "name", "") or "")).stem.lower()
+    for hint in IRF_NAME_HINTS:
+        name = name.replace(hint, " ")
+    return re.sub(r"[^a-z0-9]+", "", name)
+
+
+def _matching_irf(context: AgentContext, fit: Any, candidates: list[int]) -> int | None:
+    """Return the one IRF candidate named like the fit's decay (``x.dat`` ↔ ``x irf.dat``)."""
+    stem = _name_stem(getattr(fit, "data", None))
+    if not stem:
+        return None
+    matches = [i for i in candidates if _name_stem(context.datasets[i]) == stem]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _decay_of(context: AgentContext, fit: Any, dataset: Any) -> Any:
+    """Return the decay dataset a call is about, or ``None`` when it is not yet known."""
+    try:
+        if dataset is not None:
+            return context.resolve_dataset(dataset)[0]
+        if fit is not None:
+            return getattr(context.resolve_fit(fit)[0], "data", None)
+    except ToolError:
+        return None
+    return None
+
+
+def _irf_index(context: AgentContext, irf: Any, decay: Any, notes: list[str]) -> int:
+    """Resolve an IRF reference to a dataset index, loading the file when it is not loaded.
+
+    "Fit it with the IRF from the same folder" names a file; asking the model to
+    load it first is one more step a small model drops. A name that is a file
+    beside the decay (or under the working directory) is loaded here.
+
+    Raises
+    ------
+    ToolError
+        When the reference is neither a loaded dataset nor a file.
+    """
+    import pathlib
+
+    from chisurf.core.agent.tools.data import load_data
+
+    try:
+        return context.resolve_dataset(irf)[1]
+    except ToolError as error:
+        if not isinstance(irf, str):
+            raise
+        candidates = [context.resolve_path(irf)]
+        folder = str(getattr(decay, "filename", "") or "")
+        if folder:
+            candidates.append(pathlib.Path(folder).parent / pathlib.Path(irf).name)
+        path = next((c for c in candidates if c.is_file()), None)
+        if path is None:
+            raise ToolError(f"{error} — and there is no file {irf!r} to load") from error
+    loaded = load_data(context, paths=[str(path)])
+    index = int(loaded["datasets"][0]["index"])
+    notes.append(f"loaded {path.name} as the IRF (dataset {index})")
+    return index
+
+
 def _only_decay_dataset(context: AgentContext) -> int:
     """Return the single dataset that is a decay rather than a reference.
 
@@ -197,7 +263,10 @@ def _only_decay_dataset(context: AgentContext) -> int:
             {"index": index, "name": str(getattr(context.datasets[index], "name", ""))}
             for index in candidates
         ]
-        raise ToolError(f"say which decay to fit with 'dataset'. Candidates: {listing}")
+        raise ToolError(
+            "several decays are loaded — pass datasets='all' to fit each of them, "
+            f"or say which decay with 'dataset'. Candidates: {listing}"
+        )
     return candidates[0]
 
 
@@ -422,6 +491,9 @@ def set_irf(
             )
         )
 
+    # A file named like the IRF beside the decay is loaded, as auto_fit_decay does.
+    loaded_notes: list[str] = []
+    irf = _irf_index(context, irf, getattr(fit_object, "data", None), loaded_notes)
     irf_object, irf_index = context.resolve_dataset(irf)
     if irf_index == context.resolve_fit(fit)[1] and irf_object is getattr(fit_object, "data", None):
         raise ToolError("the IRF cannot be the same dataset as the decay being fitted")
@@ -446,6 +518,7 @@ def set_irf(
         "fit": fit_index,
         "irf": {"index": irf_index, "name": str(getattr(irf_object, "name", ""))},
         "chi2r_before": _round(before, 4),
+        **({"notes": loaded_notes} if loaded_notes else {}),
         "next_step": "Run the fit again — the IRF changes the model, so the old result is stale.",
     }
 
@@ -557,7 +630,10 @@ def set_components(
         "but takes one step instead of ten, and it returns the whole trace so "
         "you can see how chi2 improved with each component.\n"
         "If no fit exists yet, pass the decay as 'dataset' and one is created "
-        "for you; you do not need to call create_fit first."
+        "for you; you do not need to call create_fit first. To fit every "
+        "loaded decay (a folder of samples), pass datasets='all': each sample "
+        "gets its own fit, and IRF measurements are used as references, never "
+        "fitted."
     ),
     parameters={
         "type": "object",
@@ -571,6 +647,14 @@ def set_components(
                 "description": (
                     "Decay dataset to fit, when no fit exists yet. A fit is "
                     "created for it with 'model' below."
+                ),
+            },
+            "datasets": {
+                "type": ["array", "string"],
+                "items": {"type": ["integer", "string"]},
+                "description": (
+                    "Several decays to fit, one fit each: a list of indices or "
+                    "names, or 'all' for every loaded decay that is not an IRF."
                 ),
             },
             "model": {
@@ -602,12 +686,63 @@ def auto_fit_decay(
     max_components: int = 4,
     dataset: Any = None,
     model: str | None = None,
+    datasets: Any = None,
 ) -> dict[str, Any]:
-    """Attach the IRF and grow the model until the fit stops improving."""
+    """Attach the IRF and grow the model until the fit stops improving.
+
+    With *datasets* every named decay (``"all"``: every loaded one that is not
+    an IRF) is fitted in turn, one fit each — a single call for "fit the
+    decays in this folder", which a small model otherwise tends to stop after
+    the first of.
+    """
+    if datasets is None:
+        return _auto_fit_one(context, fit, irf, max_components, dataset, model)
+    if isinstance(datasets, str) and datasets.strip().lower() == "all":
+        indices = [i for i, d in enumerate(context.datasets) if not looks_like_irf(d)]
+    else:
+        listed = datasets if isinstance(datasets, (list, tuple)) else [datasets]
+        indices = [context.resolve_dataset(reference)[1] for reference in listed]
+    if not indices:
+        raise ToolError("no decay is loaded to fit — call load_data first")
+    results = [_auto_fit_one(context, None, irf, max_components, index, model) for index in indices]
+    return {
+        "ok": True,
+        "fit_indices": [r["fit"] for r in results],
+        "fits": [
+            {
+                "fit": r["fit"],
+                "dataset": str(getattr(context.datasets[index], "name", "")),
+                "n_components": r["n_components"],
+                "chi2r": r["trace"][-1]["chi2r"] if r["trace"] else None,
+                "assessment": r["assessment"],
+                "parameters": r["parameters"],
+                "notes": r["notes"],
+            }
+            for index, r in zip(indices, results)
+        ],
+    }
+
+
+def _auto_fit_one(
+    context: AgentContext,
+    fit: Any,
+    irf: Any,
+    max_components: int,
+    dataset: Any,
+    model: str | None,
+) -> dict[str, Any]:
+    """Fit one decay with the expert protocol of :func:`auto_fit_decay`."""
     from chisurf.core.agent.tools.fitting import create_fit, run_fit
 
     steps: list[dict[str, Any]] = []
     notes: list[str] = []
+
+    # The IRF is resolved before anything is created: a call that fails on its
+    # IRF must not leave a half-made fit behind. A second fit of the same name
+    # makes every later by-name reference ambiguous, and a small model then
+    # falls back to driving the whole protocol by hand.
+    if irf is not None:
+        irf = _irf_index(context, irf, _decay_of(context, fit, dataset), notes)
 
     if fit is None and (dataset is not None or not context.fits):
         # "Fit this decay" is one instruction, not two: creating the fit here
@@ -638,6 +773,9 @@ def auto_fit_decay(
         if len(candidates) == 1:
             irf = candidates[0]
             notes.append(f"auto-detected dataset {irf} as the IRF")
+        elif len(candidates) > 1 and _matching_irf(context, fit_object, candidates) is not None:
+            irf = _matching_irf(context, fit_object, candidates)
+            notes.append(f"paired dataset {irf} as this decay's IRF by name")
         elif len(candidates) > 1:
             notes.append(
                 f"several datasets look like IRFs {candidates}; none was "

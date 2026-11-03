@@ -30,6 +30,7 @@
 - Tool hub rail grip (0b7468022): the grip is a window of its own over the rail's edge; inside the rail window its half over the tool could not be hit and the drag did nothing in the shell.
 - Navigation rails: chisurf.emtk.side_rail.SideRail (31f557c3a) gives the step hub, Settings, Imaging Tools and the MMFDB admin one rail that resizes by its edge (a grip window over the line), folds to its icons below 150 px and saves its width. emtk b1f0a83 (0.1.38): a double click on a dock tab shows that window over the whole dock area, Restore or a double click on its title brings the layout back.
 - Input section (every tool): a workspace row is also handed over by dragging it down into the tool (emtk c235291 on_table) or by the right-click Add to this tool.
+- Agent: the on-device LFM3-1.7B (llama.cpp llama-server, Metal/-ngl 999 -fa on) is the default model, started by chisurf.core.agent.local_model on first use; Liquid's sampling via extra_body; live suite 8/8 with reasoning (4/8 without, 6/8 pre-change). The agent drives the shell (tools/gui.py + emtk/agent_gui.py): fits shown, tools opened, written code in the editor; model tools run under PERTURBATION_LOCK; auto_fit_decay fits a folder in one call and loads a named IRF. See subsystems/llm-agent.md.
 
 ## 2026-11-02
 

@@ -30,14 +30,22 @@ cites the pages, and cannot change anything.
 
 ## Setting it up
 
-The assistant talks to a language-model provider over an OpenAI-compatible
-API. Configure one in **File → Setup → Settings**, panel **AI Settings**: a
-provider, a model, and an API key.
+**Out of the box there is nothing to set up.** The assistant runs Liquid AI's
+[LFM3-1.7B](https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF) on your own computer
+through llama.cpp's `llama-server`, which ships with the ChiSurf environment.
+The first question starts the server and downloads the model (about 1.1 GB,
+once, into llama.cpp's cache); after that a start takes seconds. It needs no
+account, no key and no network, runs on Linux, macOS and Windows without a
+GPU, and nothing you analyse leaves the machine.
+
+The assistant talks to every provider over the same OpenAI-compatible API. To
+use another one, open **File → Setup → Settings**, panel **AI Settings**, and
+choose a provider, a model and, for a hosted one, an API key.
 
 | Provider | Base URL | Processing location | Key from |
 | --- | --- | --- | --- |
+| On this computer (default: LFM3 via llama.cpp; Ollama, LM Studio) | `http://127.0.0.1:8080/v1` | your machine | no key needed |
 | Mistral | `https://api.mistral.ai/v1` | EU (France) | console.mistral.ai |
-| Local (Ollama, LM Studio) | `http://localhost:11434/v1` | your machine | no key needed |
 | OpenAI | `https://api.openai.com/v1` | US (unless zero-retention/EU terms) | platform.openai.com/api-keys |
 | OpenRouter | `https://openrouter.ai/api/v1` | routes to many, varies per model | openrouter.ai/keys |
 | Z.ai (GLM) | `https://api.z.ai/api/paas/v4` | outside the EEA (Zhipu AI) | z.ai/manage-apikey/apikey-list |
@@ -50,8 +58,22 @@ environment; ChiSurf accepts the usual spellings, so `MISTRAL_API_KEY`,
 
 Any model with tool-calling support works; models without it fall back to a
 text protocol and are noticeably less reliable. The defaults are
-`mistral-large-latest`, `gpt-4o`, `glm-5.3-flash` (Z.ai) and a local
-`llama3.2`.
+`LiquidAI/LFM3-1.7B-GGUF:Q4_K_M` on this computer, `mistral-large-latest`,
+`gpt-4o` and `glm-5.3-flash` (Z.ai).
+
+**Running the local model yourself.** If something already answers at the
+base URL, ChiSurf uses it and starts nothing — so a server you run yourself
+works as it is:
+
+```bash
+llama-server -hf LiquidAI/LFM3-1.7B-GGUF:Q4_K_M --jinja --port 8080 \
+    --temp 0.1 --top-k 50 --repeat-penalty 1.1
+# or Ollama: base URL http://127.0.0.1:11434/v1, model hf.co/LiquidAI/LFM3-1.7B-GGUF:Q4_K_M
+```
+
+`--jinja` matters: without it LFM3's tool calls arrive as text instead of as
+tool calls. Another GGUF works too — put its Hugging Face reference
+(`repo:quant`) or the path of a `.gguf` file in the model field.
 
 ## Things to ask it
 
@@ -104,6 +126,21 @@ offered for confirmation.
 
 Use *ChiSurf tools* for ordinary analysis; switch to *Full control* when the
 job genuinely reaches outside the program.
+
+**It works in the window you are looking at.** In the ChiSurf window the
+assistant drives the application, not a copy of it:
+
+* a fit it creates or runs opens in its own fit window and comes to the front,
+  so a global fit it links is the one on your screen;
+* asked for a tool ("open the burst browser", "I want to do FCS"), it finds the
+  tool and opens it (`list_windows`, `open_window`);
+* asked to write code, it writes the script and opens it in the code editor;
+  asked to run it, it runs it in the session (*Full control*);
+* asked to show a particular fit, it brings that window forward (`show_fit`).
+
+This needs the assistant to run inside ChiSurf, which is what every provider
+except *ACP Agent* does; an ACP agent runs in its own process and cannot reach
+the window.
 
 The transcript shows every tool call, the skill it is following, and the
 reduced chi-square as fits complete, so you can see what it did rather than
@@ -374,10 +411,10 @@ themselves are never uploaded.
 That is still personal or confidential data in many settings, and under the
 GDPR the choice of provider is a processing decision you are accountable for:
 
-* **A local model keeps everything on the machine.** Run Ollama or LM Studio
-  and select the "Local" provider. Nothing leaves at all, so no transfer,
-  no processor agreement, no residency question. This is the right default
-  for unpublished or human-subject data.
+* **A local model keeps everything on the machine** — and it is the default:
+  LFM3 on this computer. Nothing leaves at all, so no transfer, no processor
+  agreement, no residency question. This is the right choice for unpublished
+  or human-subject data.
 * **Mistral processes in the EU**, which keeps the data inside the EEA and
   avoids a third-country transfer. It is the straightforward choice for an
   EU-based lab that wants a hosted model.

@@ -109,16 +109,16 @@ def test_the_zai_default_settings_carry_a_development_model():
     assert defaults["api_key"] == "", "a key must never ship in the defaults"
 
 
-def test_a_fresh_install_starts_on_an_eu_hosted_provider(monkeypatch, tmp_path):
+def test_a_fresh_install_keeps_the_data_on_the_machine(monkeypatch, tmp_path):
     """Data residency is a default, not something a user must discover."""
     from chisurf.core.settings import ai_settings
 
     monkeypatch.setattr(ai_settings, "_get_settings_path", lambda: tmp_path / "none.json")
     settings = ai_settings.get_api_settings()
 
-    assert settings["provider"] == ai_settings.DEFAULT_PROVIDER == "mistral"
-    assert settings["base_url"] == "https://api.mistral.ai/v1"
-    assert settings["text_model"]
+    assert settings["provider"] == ai_settings.DEFAULT_PROVIDER == "local"
+    assert settings["base_url"].startswith("http://127.0.0.1:")
+    assert settings["text_model"].startswith("LiquidAI/LFM3")
 
 
 def test_a_saved_choice_is_never_overridden_by_the_default(monkeypatch, tmp_path):
@@ -137,8 +137,8 @@ def test_a_saved_choice_is_never_overridden_by_the_default(monkeypatch, tmp_path
 def test_the_provider_list_puts_data_residency_first():
     """The order is what a user sees in the settings dialog."""
     keys = [key for key, _url, _api, _env in PROVIDERS.values()]
-    assert keys[0] == "mistral"
-    assert keys.index("local") < keys.index("openai")
+    assert keys[:2] == ["local", "mistral"]
+    assert keys.index("mistral") < keys.index("openai")
 
 
 def test_every_provider_ships_a_usable_default_model():

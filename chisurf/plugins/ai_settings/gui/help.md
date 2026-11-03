@@ -11,8 +11,8 @@ can select here works everywhere. It is ordered by where your data goes:
 
 | Provider | Notes |
 |---|---|
-| **Mistral (EU)** | The default. Data stays in the EU. |
-| **Local** | Ollama, LM Studio or anything else speaking the OpenAI API on your own machine. No key needed, nothing leaves the computer. |
+| **On this computer** | The default: Liquid AI's LFM3-1.7B, run by llama.cpp on your own machine. No account, no key, works offline, nothing leaves the computer. Ollama, LM Studio or anything else speaking the OpenAI API locally works too. |
+| **Mistral (EU)** | Data stays in the EU. A much larger model: better on long, open-ended analyses. |
 | **OpenAI** | |
 | **OpenRouter** | A gateway in front of many models. |
 | **Custom** | Any OpenAI-compatible endpoint; you supply the base URL. |
@@ -38,6 +38,31 @@ choice is never saved. Enter, or a click elsewhere, saves the key and tests the
 endpoint.
 
 To stop using a key, clear the field and press **Save**.
+
+## The on-device model (LFM3)
+
+**On this computer** needs nothing set up. The first time the agent is asked
+something, ChiSurf starts `llama-server` (part of the ChiSurf environment) with
+[LFM3-1.7B](https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF) and waits for it;
+the first start downloads the model (about 1.1 GB) into llama.cpp's cache, later
+starts take a few seconds. The server listens on `127.0.0.1:8080` only, and is
+stopped when ChiSurf exits. Its output goes to `llama-server.log` in the
+ChiSurf settings directory.
+
+- **A server you run yourself is used as it is.** If something already answers
+  at the base URL — `llama-server`, Ollama (`http://127.0.0.1:11434/v1`, model
+  `hf.co/LiquidAI/LFM3-1.7B-GGUF:Q4_K_M`), LM Studio — ChiSurf starts nothing.
+- **Another model:** put a Hugging Face GGUF reference (`repo:quant`) or the
+  path of a `.gguf` file in the text model field.
+- The sampling is Liquid AI's recommendation for tool use (temperature 0.1,
+  top-k 50, repetition penalty 1.1). LFM3 reasons before it answers, so the
+  token limit covers that reasoning as well. Turning reasoning off
+  (`"reasoning": false` in the local block of `ai_api_settings.json`) makes
+  each step about three times faster but the model loses its way in
+  multi-step jobs — measured, half the routine analyses then fail.
+
+LFM3 is small. It drives the routine chains — load, fit, report — well; for a
+long open-ended analysis a hosted model is the stronger choice.
 
 ## Models
 

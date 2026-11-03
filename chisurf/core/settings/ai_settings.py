@@ -14,17 +14,22 @@ _LOG = logging.getLogger(__name__)
 #
 # Ordered by where the data is processed, not by market share. ChiSurf's users
 # are largely European labs working with unpublished measurements, so the
-# providers that keep the data in the EEA — or on the machine — come first;
-# sending it to a third country should be a deliberate choice, not the one a
-# user lands on by default.
+# model on the user's own machine comes first, then the providers that keep
+# the data in the EEA; sending it to a third country should be a deliberate
+# choice, not the one a user lands on by default.
 PROVIDERS: dict[str, tuple[str, str, str, str]] = {
+    "On this computer (LFM3, llama.cpp, Ollama, ...)": (
+        "local",
+        "http://127.0.0.1:8080/v1",
+        "",
+        "",
+    ),
     "Mistral (EU)": (
         "mistral",
         "https://api.mistral.ai/v1",
         "https://console.mistral.ai/api-keys/",
         "MISTRAL_API_KEY",
     ),
-    "Local (Ollama, LMStudio, ...)": ("local", "http://localhost:11434/v1", "", ""),
     "OpenAI (ChatGPT)": (
         "openai",
         "https://api.openai.com/v1",
@@ -102,15 +107,23 @@ DEFAULT_PROVIDER_SETTINGS = {
         "top_p": 0.9,
         "max_tokens": 4096,
     },
+    # Liquid AI's LFM3-1.7B through llama.cpp's llama-server, started by
+    # ChiSurf on first use (chisurf.core.agent.local_model). 1.1 GB, CPU-only
+    # capable, every platform; nothing leaves the machine. Sampling is Liquid
+    # AI's recommendation for tool use and agents. The model reasons before it
+    # answers, so max_tokens covers the reasoning too.
     "local": {
-        "base_url": "http://localhost:11434/v1",
-        "text_model": "llama3.2",
-        "model": "llama3.2",
+        "base_url": "http://127.0.0.1:8080/v1",
+        "text_model": "LiquidAI/LFM3-1.7B-GGUF:Q4_K_M",
+        "model": "LiquidAI/LFM3-1.7B-GGUF:Q4_K_M",
         "image_model": "",
         "api_key": "",
-        "temperature": 0.3,
+        "temperature": 0.1,
         "top_p": 0.9,
-        "max_tokens": 4096,
+        "top_k": 50,
+        "repeat_penalty": 1.1,
+        "max_tokens": 8192,
+        "manage_server": True,
     },
     "custom": {
         "base_url": "",
@@ -136,10 +149,10 @@ DEFAULT_PROVIDER_SETTINGS = {
     },
 }
 
-#: Provider a fresh install starts on.  Mistral processes in the EU, so the
-#: out-of-the-box configuration keeps measurements inside the EEA; anything
-#: else is one choice away in Settings -> AI.
-DEFAULT_PROVIDER = "mistral"
+#: Provider a fresh install starts on: the on-device LFM3 model. It needs no
+#: account or key, works offline, and keeps unpublished measurements on the
+#: machine; a hosted model is one choice away in Settings -> AI.
+DEFAULT_PROVIDER = "local"
 
 DEFAULT_SETTINGS = {
     "provider": DEFAULT_PROVIDER,
@@ -295,6 +308,10 @@ def save_api_settings(settings: dict, provider: str | None = None) -> bool:
             "max_tokens",
             "command",
             "acp_backend_provider",
+            "top_k",
+            "repeat_penalty",
+            "manage_server",
+            "reasoning",
         ]
     }
 

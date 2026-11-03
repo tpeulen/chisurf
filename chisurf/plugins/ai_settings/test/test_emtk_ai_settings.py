@@ -110,10 +110,17 @@ def make_model():
     return AISettingsModel()
 
 
-def make_app(model=None):
+def make_app(model=None, provider="mistral"):
+    """The window, switched to *provider* (a keyed one by default: most tests are about keys).
+
+    ``provider=None`` keeps what a fresh install opens on.
+    """
     from chisurf.plugins.ai_settings.gui.app import AISettingsApp
 
-    return AISettingsApp(model) if model is not None else AISettingsApp()
+    app = AISettingsApp(model) if model is not None else AISettingsApp()
+    if provider is not None and model is None and app.model.provider != provider:
+        app.model.set_provider(provider)
+    return app
 
 
 def frames(app, size=(1200, 800), n=3):
@@ -180,19 +187,19 @@ def saved():
 # --------------------------------------------------------------------------- #
 def test_provider_options_and_defaults_come_from_the_settings_module():
     """The choice offers every entry of ``PROVIDERS`` in its order, and a fresh model holds the
-    Mistral defaults of ``DEFAULT_PROVIDER_SETTINGS``."""
+    on-device LFM3 defaults of ``DEFAULT_PROVIDER_SETTINGS``."""
     from chisurf.core.settings.ai_settings import DEFAULT_PROVIDER_SETTINGS, PROVIDERS
 
-    app = make_app()
+    app = make_app(provider=None)
     assert app.model.available_providers() == [(key, label) for label, (key, *_r) in PROVIDERS.items()]
-    assert next(iter(PROVIDERS)) == "Mistral (EU)"
-    assert app.model.provider == "mistral"
-    mistral = DEFAULT_PROVIDER_SETTINGS["mistral"]
+    assert next(iter(PROVIDERS)).startswith("On this computer")
+    assert app.model.provider == "local"
+    local = DEFAULT_PROVIDER_SETTINGS["local"]
     for attr in ("base_url", "text_model", "image_model", "temperature", "top_p", "max_tokens"):
-        assert getattr(app.model, attr) == mistral[attr], attr
+        assert getattr(app.model, attr) == local[attr], attr
     assert app.model.api_key == ""
-    assert app.model.base_url == "https://api.mistral.ai/v1"
-    assert (app.model.temperature, app.model.top_p, app.model.max_tokens) == (0.3, 0.9, 4096)
+    assert app.model.base_url == "http://127.0.0.1:8080/v1"
+    assert (app.model.temperature, app.model.top_p, app.model.max_tokens) == (0.1, 0.9, 8192)
 
 
 def test_numeric_ranges_equal_the_model_view_spec():
@@ -605,7 +612,7 @@ def test_save_persists_to_the_temporary_settings_file_and_a_fresh_model_reads_it
     )
     assert (fresh.temperature, fresh.top_p, fresh.max_tokens) == (1.25, 0.5, 123)
     # and a second app on the same folder shows it, key still masked
-    again = make_app()
+    again = make_app(provider=None)
     painter = frames(again)
     assert any("gpt-test" in s for s in painter.strings)
     assert not any(FAKE_KEY in s for s in painter.strings)

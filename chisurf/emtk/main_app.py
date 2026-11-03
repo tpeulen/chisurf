@@ -52,6 +52,7 @@ from emtk.app import ImApp
 from emtk.docking import MIN_TILE, DockManager, Region, Split, tile_grid
 from emtk.i18n import mark, tr
 
+from chisurf.emtk.agent_gui import drain_frame_calls
 from chisurf.emtk.background_build import BackgroundBuild, draw_opening
 from chisurf.emtk.shell_ribbon import ACTION_ICONS
 from chisurf.emtk.shell_session import MenuAction, ShellProject
@@ -1057,6 +1058,8 @@ class EmtkShellApp(ImApp):
 
     def draw(self, painter, x, y, w, h):
         self._painter = painter
+        # What the agent asked of the window (open a tool, show a fit), from its worker thread.
+        drain_frame_calls(self)
         self._collect_builds()
         self.data.poll()
         if self.post_show is not None:

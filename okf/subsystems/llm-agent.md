@@ -9,6 +9,25 @@ timestamp: '2026-07-25T00:00:00Z'
 
 # Where to pick this up
 
+0. Measure: **the on-device model is the default, so the live suite runs on it.**
+   Start the server with ChiSurf's own command
+   (`python -c "from chisurf.core.agent import local_model as m; print(m.server_command())"`)
+   and run `CHISURF_AGENT_TEST_LIVE=1 CHISURF_AGENT_TEST_PROVIDER=local
+   CHISURF_AGENT_TEST_BASE_URL=http://127.0.0.1:8080/v1 pytest
+   test/agent/test_live_llm.py -m live_llm` — 8/8, ~17 min on an M1 Pro (each
+   turn re-reads a ~12 k-token prompt; `-np 1` keeps it cached). Trap: a server
+   started with several slots (`llama-server` default 4) splits the context and
+   loses the prompt cache between tests — 21 s of prompt processing per turn.
+   Shell end-to-end (LFM3 driving the real emtk shell offscreen, worker-thread
+   agent + frame-thread draws, `emtk.export.png_bytes` screenshots): "fit it
+   with the IRF and show me the fit" answered 3/3 in 91–143 s, "open the FCS
+   tool" and "write a script and open it in the code editor" first time. Open:
+   one run first created a fit *of the IRF* (`create_fit` warns but does not
+   refuse); refusing an IRF-named dataset there is the next small fix.
+   Open: the 46-tool catalogue is most of that prompt; deferring rarely used
+   tools (LFM3's template supports `defer_loading` / `tool_reference`) is the
+   next lever on speed.
+
 1. Measure: **The battery is the measurement, and it is not in the test suite.** Ten
    questions against a live provider, scored on *whether a page was opened and
    which one* — that is what found the fabricated citation and the answer built
@@ -439,9 +458,76 @@ parameters and tool results to whichever provider is configured — so the
 choice of provider is a data-processing decision, not a performance one.
 ChiSurf's users are largely European labs working with unpublished
 measurements, so the provider table is ordered by **where the data is
-processed**, and a fresh install starts on `mistral` (EU) rather than a
-third-country service. A saved choice is never overridden: changing the
-shipped default moves new installs only.
+processed**, and a fresh install starts on `local` — the on-device model (see
+below) — with Mistral (EU) next. A saved choice is never overridden: changing
+the shipped default moves new installs only.
+
+## The on-device default: LFM3 through llama.cpp
+
+The default model is Liquid AI's LFM3-1.7B (`LiquidAI/LFM3-1.7B-GGUF:Q4_K_M`,
+1.1 GB) served by llama.cpp's `llama-server` on `127.0.0.1:8080`; the
+conda-forge `llama.cpp` package (≥ build 11960, the first that loads LFM3) is
+the toolchain. `chisurf/core/agent/local_model.py` owns it: it finds the
+binary (the environment's own before `PATH`), builds the command line and, on
+the first refused connection, starts the server and waits for `/health`
+(`LLMSettings.managed_server`, loopback addresses only; stopped at exit). A
+server the user runs — `llama-server`, Ollama, LM Studio — is used as it is.
+
+Three things the model needs that a hosted one does not, all measured on it:
+
+- **`--jinja` is mandatory.** LFM3 writes tool calls in its own XML
+  (`<tool_call><function=name><parameter=x>…`); llama-server's template parser
+  turns that into structured `tool_calls` only with `--jinja`.
+- **Its sampling is not the hosted default**: temperature 0.1, `top_k` 50,
+  `repeat_penalty` 1.1 (Liquid AI's agent setting). `top_k`/`repeat_penalty`
+  travel in `LLMSettings.extra_body`, which only the local provider fills —
+  hosted APIs reject unknown fields.
+- **It reasons before every turn** (`reasoning_content`, ~1 k tokens), so
+  `max_tokens` is 8192 and the client timeout 600 s. **Keep reasoning on**:
+  measured 2026-11-03 on an M1 Pro (Q4_K_M, ~550 tok/s prompt, ~58 tok/s
+  generation), `test/agent/test_live_llm.py` scored 8/8 in 17 min with
+  reasoning, 4/8 in 5 min without (`reasoning: false` →
+  `chat_template_kwargs.enable_thinking=false`; three runs hit the step budget
+  looping, one repeated a failing `list_files`). The pre-change harness
+  (temperature 0.3, no top-k, `max_tokens` 4096) scored 6/8: both misses were
+  folder/decay fits where the model stopped after one `auto_fit_decay`.
+- **On the GPU.** The managed command passes `-ngl 999 -fa on`. M1 Pro,
+  `llama-bench` Q4_K_M: prompt 744–869 tok/s on Metal vs 158–178 on the CPU;
+  generation 85 tok/s with flash attention (64 without, 38–53 on the CPU). The
+  conda-forge osx-arm64 build is named `cpu_accelerate` but ships
+  `libggml-metal` and lists `MTL0` — the name does not mean CPU-only.
+- **One call per intention.** A 1.7B model drops the tail of a multi-step
+  loop, so `auto_fit_decay(datasets="all")` fits every loaded sample with the
+  IRF named like it (`x.dat` ↔ `x irf.dat`, `_matching_irf`) in a single call.
+
+# Driving the window
+
+Inside the desktop shell the agent drives the application the user is looking
+at (`chisurf/core/agent/tools/gui.py`): `list_windows`, `open_window`,
+`show_fit`, `open_in_code_editor`, plus a `GuiFollower` that, on the runtime's
+`tool.completed` events, refreshes the shell's data view and brings the fit a
+fit tool created or changed to the front, and opens a file `write_file` wrote
+in the code editor. The tools reach the window only through a `GuiHost` in
+`context.extras["gui"]`; `chisurf/emtk/agent_gui.py` is the shell's host and
+queues every call onto the frame thread (drained at the top of the shell's
+`draw`, 15 s timeout so a stalled window never hangs the agent). Without a
+host the tools are not registered, so a headless agent (CLI, MCP, tests) is
+never offered a window. Only an in-process agent can drive the window, which is
+why the agent panel starts on the configured provider rather than on ACP.
+
+Two shell-only failures found by driving the real shell offscreen with LFM3
+(measured 2026-11-03), both fixed:
+
+- the agent's model tools ran beside the shell's undo/autosave capture, which
+  re-evaluates every live model on the server thread — "prediction changed
+  after reconstruction" in the status line. The runtime now runs
+  `MODEL_TOOLS` (spec.py) under `PERTURBATION_LOCK`;
+- a decay tool that failed on its IRF argument had already created the fit; the
+  duplicate name made every later by-name reference ambiguous and the model
+  burned its step budget. The IRF is now resolved first, and a named IRF file
+  beside the decay is loaded (`_irf_index`, used by `auto_fit_decay` and
+  `set_irf`). Note the shell's session always holds a "Global Dataset" at
+  index 0, so dataset indices there start at 1.
 
 Keys are read from the environment under any of the usual spellings
 (`MISTRAL_API_KEY`, `MISTRAL_KEY`, `MISTRAL_API_TOKEN`, `MISTRAL_TOKEN`, and

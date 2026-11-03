@@ -50,6 +50,7 @@ from chisurf.core.agent.prompt import (
 )
 from chisurf.core.agent.skills import MAX_AUTO_SKILLS, SkillLibrary, session_experiments
 from chisurf.core.agent.spec import (
+    MODEL_TOOLS,
     SAFETY_DANGEROUS,
     ToolError,
     ToolRegistry,
@@ -797,7 +798,13 @@ class AgentSession:
                 )
 
         try:
-            result = call_handler(spec, self.context, call.arguments)
+            if call.name in MODEL_TOOLS:
+                from chisurf.core.models.model import PERTURBATION_LOCK
+
+                with PERTURBATION_LOCK:
+                    result = call_handler(spec, self.context, call.arguments)
+            else:
+                result = call_handler(spec, self.context, call.arguments)
         except ToolError as error:
             return self._failure(call, started, str(error))
         except Exception as error:  # noqa: BLE001 - reported back to the model

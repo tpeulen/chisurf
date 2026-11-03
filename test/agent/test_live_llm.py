@@ -46,7 +46,22 @@ DEFAULT_MODELS = {
     "zai": "glm-5.3-flash",
 }
 MODEL = os.environ.get("CHISURF_AGENT_TEST_MODEL") or DEFAULT_MODELS.get(PROVIDER, "")
+#: Endpoint override, e.g. a llama-server on another port or host.
+BASE_URL = os.environ.get("CHISURF_AGENT_TEST_BASE_URL", "")
+#: A local server needs no key; it is armed by answering, not by a secret.
+KEYLESS_PROVIDERS = {"local"}
 TCSPC = "tcspc/EasyTau300"
+
+
+def local_endpoint_reachable(base_url: str) -> bool:
+    """Return whether an OpenAI-compatible server answers at *base_url*."""
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(f"{base_url.rstrip('/')}/models", timeout=3):
+            return True
+    except Exception:
+        return False
 
 
 @pytest.fixture()
@@ -64,8 +79,13 @@ def live_session(context):
             "live LLM tests are opt-in: set CHISURF_AGENT_TEST_LIVE=1 "
             "(an ambient API key alone does not arm them)"
         )
-    settings = LLMSettings.from_provider(PROVIDER, model=MODEL or None)
-    if not settings.api_key:
+    settings = LLMSettings.from_provider(PROVIDER, model=MODEL or None, base_url=BASE_URL or None)
+    if os.environ.get("CHISURF_AGENT_TEST_REASONING", "") == "0":
+        settings.extra_body["chat_template_kwargs"] = {"enable_thinking": False}
+    if PROVIDER in KEYLESS_PROVIDERS:
+        if not local_endpoint_reachable(settings.base_url):
+            pytest.skip(f"no local model server answering at {settings.base_url}")
+    elif not settings.api_key:
         pytest.skip(
             f"no API key for provider {PROVIDER!r} (looked in {provider_key_env_names(PROVIDER)})"
         )
@@ -127,8 +147,11 @@ def test_the_model_loads_and_fits_a_folder(live_session):
     assert result.ok, f"agent stopped early: {result.stop_reason} {result.error}"
     called = result.tool_names()
     assert "load_data" in called
-    assert "create_fit" in called
-    assert "run_fit" in called, "the model must optimise, not just create fits"
+    # create_fit + run_fit by hand, or auto_fit_decay, which does both: what
+    # matters is that the fits were optimised.
+    assert "run_fit" in called or "auto_fit_decay" in called, (
+        "the model must optimise, not just create fits"
+    )
     assert len(live_session.context.datasets) == 4
 
     fitted = [
@@ -182,11 +205,14 @@ def test_the_model_reaches_a_good_decay_fit_on_its_own(live_session):
     )
     require_reachable(result)
     assert result.ok, f"agent stopped early: {result.stop_reason} {result.error}"
-    assert "set_irf" in result.tool_names(), "a decay fit without an IRF is wrong"
+    from chisurf.core.agent.tools.decay import _irf_attached, assess_fit
 
-    from chisurf.core.agent.tools.decay import assess_fit
+    # set_irf by hand or auto_fit_decay, which attaches it itself: what matters
+    # is that the fit has one.
+    fit = live_session.context.fits[0]
+    assert _irf_attached(fit.model), "a decay fit without an IRF is wrong"
 
-    verdict = assess_fit(live_session.context.fits[0])
+    verdict = assess_fit(fit)
     assert verdict["quality"] in ("good", "acceptable"), verdict
 
 

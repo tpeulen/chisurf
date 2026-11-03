@@ -255,12 +255,27 @@ def test_auto_fit_decay_says_when_no_irf_was_found(context):
     assert any("no IRF" in note for note in result["notes"])
 
 
-def test_auto_fit_decay_asks_which_irf_when_several_match(context):
+def test_auto_fit_decay_pairs_the_irf_named_like_the_decay(context):
+    """Of several IRFs, the one named like the decay (``x.dat`` ↔ ``x irf.dat``) is its own."""
     data_tools.load_data(
         context,
         paths=[DECAY_FILE, IRF_FILE, f"{TCSPC}/215-268 DA irf.dat"],
     )
     fitting_tools.create_fit(context, model_name=MODEL, datasets=[0])
+    result = decay_tools.auto_fit_decay(context, fit=0, max_components=1)
+    irf_name = str(context.datasets[1].name)
+    assert "D0 irf" in irf_name
+    assert any("paired dataset 1" in note for note in result["notes"]), result["notes"]
+
+
+def test_auto_fit_decay_asks_which_irf_when_no_name_decides(context):
+    """Two IRFs and a decay named like neither: nothing is guessed."""
+    data_tools.load_data(
+        context, paths=[f"{TCSPC}/215-268 D0 irf.dat", f"{TCSPC}/215-268 DA irf.dat"]
+    )
+    data_tools.load_data(context, paths=[DECAY_FILE])
+    context.datasets[2].name = "sample.dat"
+    fitting_tools.create_fit(context, model_name=MODEL, datasets=[2])
     result = decay_tools.auto_fit_decay(context, fit=0, max_components=1)
     assert any("several datasets look like IRFs" in note for note in result["notes"])
 
@@ -283,3 +298,50 @@ def test_plot_fit_refuses_a_path_that_is_not_png(decay_fit, tmp_path):
 def test_plot_fit_reports_a_missing_fit(context):
     with pytest.raises(ToolError, match="create_fit"):
         decay_tools.plot_fit(context, path="nope.png")
+
+
+def test_auto_fit_decay_fits_every_sample_of_a_folder_with_its_own_irf(context):
+    """'Fit the decays in this folder' is one call: each sample, its IRF, never an IRF fitted."""
+    data_tools.load_data(context, directory=TCSPC, pattern="*.dat")
+
+    result = decay_tools.auto_fit_decay(context, datasets="all")
+
+    fitted = sorted(fit["dataset"].rsplit("/", 1)[-1] for fit in result["fits"])
+    assert fitted == ["215-268 D0.dat", "215-268 DA.dat"]
+    for fit in context.fits:
+        assert decay_tools._irf_attached(fit.model)
+    for fit in result["fits"]:
+        assert any("paired dataset" in note for note in fit["notes"]), fit["notes"]
+        assert fit["assessment"]["quality"] in ("good", "acceptable"), fit
+
+
+def test_an_irf_named_but_not_loaded_is_loaded_from_the_decays_folder(context):
+    """'fit it with the IRF from the same folder': the file is loaded, not refused."""
+    data_tools.load_data(context, paths=[DECAY_FILE])
+
+    result = decay_tools.auto_fit_decay(
+        context, dataset="215-268 D0.dat", irf="215-268 D0 irf.dat", max_components=1
+    )
+
+    assert len(context.datasets) == 2
+    assert decay_tools._irf_attached(context.fits[0].model)
+    assert any("as the IRF" in note for note in result["notes"]), result["notes"]
+
+
+def test_a_call_that_fails_on_its_irf_leaves_no_fit_behind(context):
+    """A half-made fit of the same name makes every later by-name reference ambiguous."""
+    data_tools.load_data(context, paths=[DECAY_FILE])
+    with pytest.raises(ToolError, match="no file"):
+        decay_tools.auto_fit_decay(context, dataset=0, irf="nowhere irf.dat")
+    assert context.fits == []
+
+
+def test_set_irf_loads_an_irf_named_beside_the_decay(context):
+    """The same one-step rule as auto_fit_decay: naming the IRF file is enough."""
+    data_tools.load_data(context, paths=[DECAY_FILE])
+    fitting_tools.create_fit(context, model_name=MODEL, datasets=[0])
+
+    result = decay_tools.set_irf(context, irf="215-268 D0 irf.dat", fit=0)
+
+    assert result["irf"]["index"] == 1
+    assert decay_tools._irf_attached(context.fits[0].model)

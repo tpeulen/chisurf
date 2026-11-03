@@ -1318,6 +1318,7 @@ for line in sys.stdin.buffer:
     editor = EditorModel(tmp_path)
     doc = editor.open_file(path)
     chat = ChatModel(editor_ref=editor)
+    chat.provider = "acp"  # the panel starts in process now; ACP is chosen
     chat.send_prompt("Update the open buffer")
     deadline = time.monotonic() + 5
     while chat.is_generating and time.monotonic() < deadline:

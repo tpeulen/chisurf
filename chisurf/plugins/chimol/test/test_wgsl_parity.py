@@ -241,7 +241,7 @@ class TestWgslSource:
         # children, splatted. Render prelude, same shade() -- a level change
         # must not also be a change of material.
         "chunk_gauss.wgsl": "render",
-        # PRD-130 L3: the compute rasteriser for sub-pixel container rows, and its resolve.
+        # The compute rasteriser for sub-pixel container rows, and its resolve.
         "chunk_raster_cs.wgsl": "raw",
         "chunk_raster.wgsl": "render",
         "shade_atoms.wgsl": "compute",
@@ -282,7 +282,7 @@ class TestWgslSource:
         # temporal resolve and the quality-lighting post pass (full-screen,
         # their own bind layouts) -- none takes the render prelude.
         "gpu_cull.wgsl": "raw",
-        # PRD-129 N3: the mesh cluster cut and cull (compute).
+        # The mesh cluster cut and cull (compute).
         "mesh_cull.wgsl": "raw",
         "hiz_pyramid.wgsl": "raw",
         "temporal.wgsl": "raw",

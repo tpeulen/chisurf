@@ -57,6 +57,10 @@ jsonschema = "*"
 # tttrlib's bundled libtiff behind chisurf.core.fio.image. pillow is here for
 # pictures, not measurements: chimol's render export and the docs figure tooling.
 pillow = "*"
+# The agent's on-device default model (LFM3-1.7B GGUF) runs in llama.cpp's
+# llama-server, which chisurf.core.agent.local_model starts on first use.
+# Build 11960 (0.8.0) is the first that loads LFM3.
+"llama.cpp" = ">=0.8.0"
 # deprecation was dropped: chisurf.core.support.decorators.deprecated replaces it.
 # pandas was dropped: chisurf.core.datastore (tttrlib.DataStore) is the
 # storage model everywhere in the tree now, and nothing shipped imports
