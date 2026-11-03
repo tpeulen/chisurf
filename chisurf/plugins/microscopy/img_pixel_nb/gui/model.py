@@ -1,4 +1,4 @@
-"""Qt-free model of the emtk N&B window (the analysis is :class:`~.view_model.NBViewModel`, shared with the Qt tool)."""
+"""Qt-free model of the emtk N&B window (the analysis is :class:`~.view_model.NBViewModel`)."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ class NBModel(PixelModelMixin, NBViewModel):
     def artifact_name(self) -> str:
         return "nb"
 
-    # the lists of the Qt choices: a saved value outside them is ignored on restore
+    # the choice lists: a saved value outside them is ignored on restore
     def subtract_choices(self) -> list[str]:
         return ["none", "frame_mean", "pixel_mean", "moving_average"]
 
@@ -82,9 +82,9 @@ class NBModel(PixelModelMixin, NBViewModel):
         self._cross()
         self.notify("run")
 
-    # -- the demo and the analog calibration (the Qt toolbar's) ----------------------------------- #
+    # -- the demo and the analog calibration ----------------------------------- #
     def load_example(self) -> None:
-        """Write (or reuse) the monomer / dimer demo stream, load it and compute (the Qt Load demo)."""
+        """Write (or reuse) the monomer / dimer demo stream, load it and compute."""
         self.status_line = "Simulating the demo scan..."
         self.cancel_event.clear()
         self.run_job("demo_job")

@@ -1,5 +1,5 @@
 {
-  "_comment": "Number & Brightness, drawn by emtk. The Qt tool's AutoForm spec is nb.view.json.",
+  "_comment": "Number & Brightness, drawn by emtk.",
   "window": {"width": 1100, "height": 720},
   "sections": [
     {
@@ -28,7 +28,7 @@
             {
               "action": "save_container",
               "label": "Save container",
-              "description": "Write the N&B table as an nb artifact into the container beside the photon file (the Qt tool did this when it closed)."
+              "description": "Write the N&B table as an nb artifact into the container beside the photon file."
             },
             {
               "action": "open_ndx",

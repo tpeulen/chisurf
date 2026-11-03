@@ -1,8 +1,8 @@
-"""The native N&B tool against the Qt tool it replaces: numbers, every control with a real-input click test, the layout at two sizes.
+"""The N&B tool: numbers, every control with a real-input click test, the layout at two sizes.
 
 Hermetic: settings, MMFDB and its database in a temporary folder, a temporary HOME, the photon streams written into a temporary folder from a
-seed, no network (the database picker gets a stub client). References: (a) the Qt tool's own view model run on the same file, (b) the photon
-counts written into the stream, (c) an independent tttrlib CLSM image, (d) what the Qt window showed (``data/qt_values.json``).
+seed, no network (the database picker gets a stub client). References: (a) the photon counts written into the stream and their moments,
+(b) the monomer / dimer brightness and number planted in the demo, (c) an independent tttrlib CLSM image.
 """
 
 from __future__ import annotations
@@ -19,7 +19,6 @@ from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, dialog_open,
 from chisurf.plugins.microscopy.img_pixel_nb import demo
 from chisurf.plugins.microscopy.img_pixel_nb.gui.app import NBApp, make_app
 from chisurf.plugins.microscopy.img_pixel_nb.gui.model import NBModel
-from chisurf.plugins.microscopy.img_pixel_nb.gui.view_model import NBViewModel
 from test.gui.emtk_layout_checks import (
     SIZES,
     assert_disjoint,
@@ -32,10 +31,7 @@ from test.gui.emtk_layout_checks import (
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
-DATA = HERE / "data"
-QT_VALUES = json.loads((DATA / "qt_values.json").read_text(encoding="utf-8"))
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "nb_emtk.view.json").read_text(encoding="utf-8"))
-QT_SPEC = json.loads((PLUGIN / "gui" / "nb.view.json").read_text(encoding="utf-8"))
 BIG = (1200, 800)
 
 TABS = (
@@ -160,23 +156,6 @@ def test_the_maps_are_the_moments_of_the_simulated_counts(app, drv, with_demo):
     np.testing.assert_allclose(m.number_map(), mean / (b - 1.0), rtol=1e-9)
 
 
-def test_the_live_qt_view_model_gives_the_same_maps_on_the_demo(app, drv, with_demo):
-    m = run_demo(app, drv)
-    qt = NBViewModel()
-    qt.load_demo()
-    for name in (
-        "b_map",
-        "n_map",
-        "epsilon_map",
-        "number_map",
-        "intensity_map",
-        "plane_histogram",
-        "gated_intensity_map",
-    ):
-        np.testing.assert_array_equal(getattr(m, name)(), getattr(qt, name)())
-    assert set(m._columns) == set(qt._columns) and m.results_text == qt.results_text
-
-
 SETTING_SETS = [
     {"gamma": 0.3536},
     {"subtract": "pixel_mean", "add": "total_mean"},
@@ -189,50 +168,24 @@ SETTING_SETS = [
 
 
 @pytest.mark.parametrize("changes", SETTING_SETS, ids=lambda c: "+".join(sorted(c)))
-def test_every_setting_gives_what_the_qt_tool_gives_with_the_same_setting(
-    app, drv, with_demo, changes
-):
+def test_every_setting_reaches_the_computation(app, drv, with_demo, changes):
+    """Each setting set changes the brightness and number maps; the shape factor only rescales ε and n."""
     m = app.model
-    for k, v in changes.items():
-        setattr(m, k, v)
     m.select_file(str(with_demo))
     C.run(app, drv)
-    qt = NBViewModel()
+    before = {name: getattr(m, name)().copy() for name in ("b_map", "n_map", "epsilon_map", "number_map")}
     for k, v in changes.items():
-        setattr(qt, k, v)
-    qt.filename = str(with_demo)
-    assert qt.compute()
-    for name in ("b_map", "n_map", "epsilon_map", "number_map"):
-        np.testing.assert_allclose(
-            getattr(m, name)(), getattr(qt, name)(), rtol=1e-12, equal_nan=True
-        )
-
-
-def test_typed_settings_are_clamped_to_the_qt_ranges_and_the_choices_are_the_qt_lists(app, drv):
-    qt_fields = {
-        s["attr"]: s
-        for s in walk(QT_SPEC["sections"])
-        if s.get("attr") and s.get("type") in ("value", "choice")
+        setattr(m, k, v)
+    assert m.needs_recompute()
+    C.run(app, drv)
+    changed = {
+        name: not np.allclose(getattr(m, name)(), ref, equal_nan=True) for name, ref in before.items()
     }
-    emtk_fields = {
-        s["attr"]: s
-        for s in walk(EMTK_SPEC["sections"])
-        if s.get("attr") and s.get("type") in ("value", "choice")
-    }
-    for attr, spec in qt_fields.items():
-        if attr == "filename":
-            continue
-        other = emtk_fields[attr]
-        for key in (
-            "label",
-            "minimum",
-            "maximum",
-            "decimals",
-            "options",
-            "options_source",
-            "description",
-        ):
-            assert other.get(key) == spec.get(key), (attr, key)
+    if set(changes) == {"gamma"}:
+        assert changed == {"b_map": False, "n_map": False, "epsilon_map": True, "number_map": True}
+        np.testing.assert_allclose(m.epsilon_map(), before["epsilon_map"] / changes["gamma"], rtol=1e-9)
+    else:
+        assert all(changed.values()), changed
 
 
 def test_a_typed_number_is_taken_on_enter_and_changes_what_the_next_run_computes(
@@ -284,20 +237,22 @@ def test_the_stack_correction_and_detector_panels_fold_and_take_typed_values(app
     assert m.subtract == "frame_mean"
 
 
-def test_calibrate_analog_is_greyed_without_a_result_and_gives_the_qt_answer_with_one(
+def test_calibrate_analog_is_greyed_without_a_result_and_fits_the_variance_against_the_mean_with_one(
     app, drv, with_demo
 ):
     assert not app.model.enabled("calibrate_analog")
     drv.click("calibrate_analog")
     assert app.model.gain == 1.0
+    from chisurf.core.fluorescence.imaging import analog_calibration
+
     m = run_demo(app, drv)
-    qt = NBViewModel()
-    qt.load_demo()
-    qt.calibrate_analog()
+    counts = demo.simulate_counts().astype(float)
+    cal = analog_calibration(
+        counts.mean(axis=0), counts.var(axis=0, ddof=1), read_variance=float(m.read_variance)
+    )
     drv.click("calibrate_analog")
-    assert (m.gain, m.offset) == pytest.approx(
-        (qt.gain, qt.offset), rel=1e-3
-    ) and m.results_text == qt.results_text
+    assert (m.gain, m.offset) == pytest.approx((cal["gain"], cal["offset"]), rel=1e-3)
+    assert m.results_text.startswith(f"Analog calibration from {Path(m.filename).name} (ch0): S = ")
 
 
 def test_the_load_demo_failure_is_reported(app, drv, monkeypatch):
@@ -615,7 +570,7 @@ def test_the_hub_starts_the_run_through_start(app, drv, flim):
     C.hub_start_runs_the_maps(TOOL, flim, drv)
 
 
-# ── 8. static: spec, inventory, Qt-free, tooltips, layout ──────────────────────────────────────────────────── #
+# ── 8. static: spec, Qt-free, tooltips, layout ──────────────────────────────────────────────────── #
 
 
 def _labels(sections):
@@ -633,8 +588,8 @@ def _labels(sections):
     }
 
 
-def test_every_qt_control_has_an_emtk_equivalent():
-    qt, emtk = _labels(QT_SPEC["sections"]), _labels(EMTK_SPEC["sections"])
+def test_the_spec_has_every_setting_and_the_map_tabs():
+    emtk = _labels(EMTK_SPEC["sections"])
     assert {
         "TTTR file",
         "Subtract",
@@ -658,16 +613,8 @@ def test_every_qt_control_has_an_emtk_equivalent():
         "Log counts",
         "Clear gates",
         "Cross with",
-    } <= qt
-    assert qt - {""} <= emtk, sorted(qt - emtk)
-    qt_tabs = [
-        s["title"]
-        for s in walk(QT_SPEC["sections"])
-        if s.get("type") == "custom" and s.get("key") == "image"
-    ]
-    assert sorted(qt_tabs) == sorted(TABS) and [
-        p["title"] for p in EMTK_SPEC["sections"][1:]
-    ] == list(TABS)
+    } <= emtk, sorted(emtk)
+    assert [p["title"] for p in EMTK_SPEC["sections"][1:]] == list(TABS)
 
 
 def test_every_spec_attribute_and_action_exists_on_the_model():
