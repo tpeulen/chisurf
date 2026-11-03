@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-11-03
+
+- 2026-11-03 — Burst Selection names the button that is there: the pipeline step's preview/empty texts say "press Next" (it has no Run button), standalone keeps "press Run" (`model.run_word`; test `test/native_emtk/test_burst_selection_names_the_run_button.py`).
+
 ## 2026-11-02
 
 - Setups are one library: a definition without detectors is proposed from the first measurement read (ChannelDefinition.propose_from_tttr: detectors per routing channel + pre-flight windows); the burst hub proposes from the first data file so a PTU runs end to end with no stored setup; Record's setup chooser lists the Settings library ('library:<name>'). Test: burst_analysis/tests/test_ptu_setup_e2e.py.

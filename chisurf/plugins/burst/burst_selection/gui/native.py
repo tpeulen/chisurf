@@ -114,6 +114,10 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         #: them, handed over by the hub (:meth:`use_files`); this step has no Input of its own.
         self.pipeline = bool(pipeline)
         self.model.files_from_pipeline = self.pipeline  # rows are not removed here then
+        #: The button that runs the search, as the texts name it: the pipeline has no Run, its Next runs the step.
+        self.model.run_word = "Next" if self.pipeline else "Run"
+        if self.pipeline:
+            self.model.status_text = "Choose a setup and data in steps 0 and 1, then press Next."
         #: Simple / Advanced (the spec hides the expert inputs when False); standalone shows all.
         self.model.advanced = not self.pipeline
         if model is None and restore:
@@ -743,8 +747,8 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         if not m.has_processed and m.display_frame is None:
             im.text_wrapped(
                 tr(
-                    "No search yet: add TTTR files and press Run. The key figures of the run appear here."
-                )
+                    "No search yet: add TTTR files and press {run}. The key figures of the run appear here."
+                ).format(run=tr(m.run_word))
             )
             return
         draw_sections(self.summary_table, m, self.form)
@@ -947,7 +951,11 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         self.remember("bursts", box)
         m = self.model
         if m.display_frame is None:
-            self._empty("No bursts yet: press Run (or wait for the preview of the visible window).")
+            self._empty(
+                tr("No bursts yet: press {run} (or wait for the preview of the visible window).").format(
+                    run=tr(m.run_word)
+                )
+            )
             return
         im.text(
             ("Preview of the visible window" if m.preview else "Bursts of the active file")
