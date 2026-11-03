@@ -1,9 +1,7 @@
-"""The native burst background tool at parity with the retired Qt BurstBackgroundEstimator.
+"""The native burst background tool: estimate, workspace hand-over, container, drawing, tooltips.
 
-Both hosts drew the same ``BurstBackgroundApp``; the Qt widget estimated synchronously with files pushed in by
-the workflow shell, the emtk app picks its own files and estimates on the controller's worker. The Qt widget's
-rates on the same measurement were recorded (``qt_reference.json``) and are compared, and both against the
-background the demo measurement was made with.
+The rates are checked against the background the demo measurement was made with
+(``demo_data.BACKGROUND_KHZ``).
 """
 
 from __future__ import annotations
@@ -57,24 +55,15 @@ def _estimated(app, path):
     return next(iter(app.model.backgrounds.values()))
 
 
-@pytest.fixture(scope="module")
-def qt():
-    """What the retired Qt BurstBackgroundEstimator reported on the demo measurement (qt_reference.json)."""
-    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
-
-
-# 1. the Qt widget's rates, and the background the measurement was made with
-def test_an_estimate_gives_the_qt_widgets_rates_and_the_known_background(qt, measurement):
+# 1. the background the measurement was made with
+def test_an_estimate_gives_the_planted_background(measurement):
     app = create_app()
     try:
         rates = _estimated(app, measurement)
         for detector in ("G|G", "R|G"):
-            # A Poisson-MLE fit of the inter-photon tail (L-BFGS-B, forward differences): it
-            # stops at the optimiser's tolerance, so the last digits differ between compilers
-            # (a few 1e-6 relative, x86 Linux vs arm64 macOS); the statistical error is ~0.5 %.
-            assert rates[detector] == pytest.approx(qt["rates"][detector], rel=1e-5)
+            # A Poisson-MLE fit of the inter-photon tail; the statistical error is ~0.5 %.
             assert rates[detector] == pytest.approx(BACKGROUND_KHZ[detector], rel=0.1)
-        assert [app.model.fit_from_ms, app.model.fit_to_ms] == pytest.approx(qt["window"])
+        assert 0.0 < app.model.fit_from_ms < app.model.fit_to_ms <= app.model.max_dt_ms
         assert not app.controller.running
     finally:
         app.close()

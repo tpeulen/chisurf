@@ -1,8 +1,7 @@
-"""The native 2CDE tool at parity with the retired Qt BurstTwoCdeTool.
+"""The native 2CDE tool: its run, states, errors, guide, drawing and tooltips.
 
-Both hosts drew the same ``BurstTwoCdeApp``; what differed is the run around it -- the Qt tool's
-ChiSurfProgress worker, result cache, stamp and show-time run against the emtk ``TwoCdeController``. The Qt
-worker's answer on the same demo folder was recorded (``qt_reference.json``) and is compared.
+The answer is the one planted in the demo folder (``demo_folder.build``): static bursts read
+FRET-2CDE near 10, the dynamic ones (every fourth) well above it.
 """
 
 from __future__ import annotations
@@ -65,32 +64,35 @@ def _values(df):
     return np.asarray(df[core.COLUMN_FRET_2CDE], float)
 
 
-def _qt_facts(folder):
-    """What the retired Qt BurstTwoCdeTool's worker returned on the demo folder (qt_reference.json)."""
-    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
-
-
-# 1. the same answer as the Qt tool's worker, and the known one
-def test_a_run_gives_the_qt_tools_answer_and_writes_the_same_companion(folder, tmp_path):
-    qt = _qt_facts(folder)
+# 1. the planted answer, and the companion written beside the measurement
+def test_a_run_finds_the_dynamic_bursts_and_writes_one_companion(folder, tmp_path):
     app = _app(folder)
     try:
         app.controller.run()
         _settle(app)
         ours = _values(app.model.df)
-        assert ours == pytest.approx(np.asarray(qt["values"]), nan_ok=True)
-        assert json.loads(json.dumps(app.model.fingerprint_params())) == qt["params"]
-        assert sorted(p.name for p in folder.parent.glob("*.pto")) == qt["companions"]
-        assert qt["companions"] == ["m000.pto"] and not (folder / "2c4").exists()
-        index = np.arange(len(ours))
-        assert np.nanmedian(ours[index % 4 != 3]) < 15 < np.nanmedian(ours[index % 4 == 3])
+        assert ours.shape == (60,) and np.isfinite(ours).all()
+        dynamic = np.arange(len(ours)) % 4 == 3
+        assert np.median(ours[~dynamic]) == pytest.approx(10.0, abs=2.5)
+        assert ours[~dynamic].max() < 20 < 30 < ours[dynamic].min()
+        params = json.loads(json.dumps(app.model.fingerprint_params()))
+        assert params.get("micro_time_resolution_ps") is None
+        assert {k: params[k] for k in ("variant", "kernel", "tau_us", "donor_channels", "acceptor_channels")} == {
+            "variant": "fret",
+            "kernel": "laplace",
+            "tau_us": 100.0,
+            "donor_channels": [0],
+            "acceptor_channels": [1],
+        }
+        assert sorted(p.name for p in folder.parent.glob("*.pto")) == ["m000.pto"]
+        assert not (folder / "2c4").exists()
         assert app.model.status_text == "FRET-2CDE: 60 / 60 bursts valid"
         assert not app.model.is_running and not app.model.is_locked
     finally:
         app.close()
 
 
-# 2. the run's states, as the Qt tool's
+# 2. the run's states
 def test_an_unchanged_run_is_kept_and_points_at_restart(folder, monkeypatch):
     app = _app(folder)
     try:
@@ -224,7 +226,7 @@ def test_errors_reach_the_window(folder, tmp_path, monkeypatch):
         )
         app.controller.run()
         _settle(app)
-        assert app.model.df is not None  # the result stands, as in Qt
+        assert app.model.df is not None  # a failed write keeps the result
         assert "could not write the 2CDE result: disk full" in app.model.status_text
         monkeypatch.setattr(
             core,

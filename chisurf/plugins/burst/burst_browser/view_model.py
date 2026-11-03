@@ -5,9 +5,9 @@ companions — BVA ``bv4``, 2CDE ``2c4`` … — via
 :func:`chisurf.core.fio.fluorescence.burst.read_bur_with_companions`), derives the
 per-burst FRET efficiency ``E`` and stoichiometry ``S`` when absent, and holds the
 gating state (E/S/size ranges, selected detector, histogram column, selection
-mode). It computes the gating mask and the histogram data. All Qt concerns (table
-view, plot, combos, foldable panels, docks) live in ``gui/sections.py`` + the
-AutoForm rendered from ``burst_browser.view.json``.
+mode). It computes the gating mask and the histogram data. Drawing (table, plot,
+combos, foldable panels, docks) lives in ``gui/app.py`` and the form rendered
+from ``gui/burst_browser.view.json``.
 
 The table is a columnar store, not a data frame — see the
 [columnar store concept](/subsystems/columnar-store.md). A folder of ten

@@ -249,7 +249,7 @@ class TitrationGui(TourTarget):
         filters_open = im.collapsing_header("Burst filters", 0)
         im.set_item_tooltip(tr("Configure photon and stoichiometry filters."))
         if filters_open:
-            # Ranges of the Qt form (titration.view.json).
+            # Ranges of the titration form (titration.view.json).
             model.min_photons = _typed_number(
                 self, "min_photons", "Min. photons", model.min_photons, 0, 100000
             )

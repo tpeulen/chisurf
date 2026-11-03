@@ -1,6 +1,6 @@
 """What one step of the burst workflow hands the next: the detector setup, the raw files, the bursts.
 
-Shared by the native hub (:mod:`.gui.native`) and the legacy Qt shell (:mod:`.gui.tool`), so both answer "which
+Used by the native hubs (:mod:`.gui.native`, the ALEX Suite's) and the steps they open, so all answer "which
 bursts do the later steps read" the same way. Nothing here imports a GUI toolkit.
 """
 

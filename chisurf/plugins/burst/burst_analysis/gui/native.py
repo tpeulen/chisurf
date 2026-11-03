@@ -7,8 +7,8 @@ child plugins name in ``entrypoints.emtk``. Burst MLE appears twice, once per bu
 state (the same app with ``split_by_state``).
 
 What one step hands the next is a :class:`..workflow_context.BurstWorkflowContext`, applied to a step each time it
-is opened and to every open step when the setup, the files or the bursts change -- the hand-off of the legacy Qt
-shell (``gui/tool.py``), one method per step. Nothing here imports Qt.
+is opened and to every open step when the setup, the files or the bursts change, one method per step. Nothing
+here imports Qt.
 """
 
 from __future__ import annotations
@@ -676,7 +676,7 @@ class BurstAnalysisHubApp(ToolHubApp):
             return
         if self.context.raw_files and not child.model.files:
             controller.add_files([str(p) for p in self.context.raw_files])
-        # Compute on arrival, as the Qt step does: nothing is asked that the data cannot answer.
+        # Compute on arrival: nothing is asked that the data cannot answer.
         reason = getattr(child.model, "can_estimate", lambda: None)()
         if (
             not getattr(child.model, "diagnostics", None)

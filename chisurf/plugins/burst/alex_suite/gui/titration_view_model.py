@@ -70,7 +70,7 @@ class TitrationViewModel:
         )
         self._result: TitrationResult | None = None
         self._observers: list[Callable[[str], None]] = []
-        #: Set by the Qt panel to a callable returning chosen paths. The model
+        #: Set by the host to a callable returning chosen paths. The model
         #: never opens a dialog itself, so the same object drives a script.
 
     # ── observer plumbing (the AutoForm convention) ─────────────────────

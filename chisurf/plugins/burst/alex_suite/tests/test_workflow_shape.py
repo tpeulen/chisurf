@@ -7,13 +7,10 @@ behaviour is a bug that presented as the application crashing.
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
+from chisurf.plugins.burst.alex_suite.gui.native import STEPS
 
-#: Recorded from the retired Qt shell's ALEX_PANELS before deletion.
-ALEX_PANELS = json.loads(
-    (Path(__file__).with_name("qt_reference.json")).read_text(encoding="utf-8")
-)["ALEX_PANELS"]
+#: The hub's rail without its separators.
+ALEX_PANELS = [panel for panel in STEPS if not panel.get("separator")]
 
 
 def _numbered() -> list[str]:

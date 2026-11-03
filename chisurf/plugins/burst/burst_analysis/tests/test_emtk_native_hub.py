@@ -1,8 +1,8 @@
 """The native Burst Analysis hub (cards BA0-BA2): the workflow walked with real input on copies of the in-repository
 BH SPC-132 files.
 
-The setup is chosen, the files arrive by a host drop on the data step, Next runs Burst Selection (the Qt tool's 198
-bursts), and every later step is opened and checked for what the workflow handed it.
+The setup is chosen, the files arrive by a host drop on the data step, Next runs Burst Selection (the 198
+bursts the standalone Burst Search finds on these files), and every later step is opened and checked for what the workflow handed it.
 """
 
 from __future__ import annotations
@@ -199,7 +199,7 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
         "8, 9",
     )
     assert [Path(p).name for p in c["background"].model.files] == ["m000.spc", "m001.spc"]
-    assert c["background"].model.diagnostics  # estimated on arrival, as the Qt step does
+    assert c["background"].model.diagnostics  # estimated on arrival
     assert [Path(p).name for p in c["irf_bg"].model.files] == ["m000.spc", "m001.spc"]
     assert "bursts: m000.pto" in hub.status
 

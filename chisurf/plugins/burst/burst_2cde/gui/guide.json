@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour for FRET-2CDE / ALEX-2CDE. The panel is hand-built Qt, not an AutoForm view, so steps target objectNames -- the shared action buttons by suffix ({'name': 'run'} finds toolAction_run) and the settings fields by the twocde_* names set in gui/tool.py. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "_comment": "Guided tour for FRET-2CDE / ALEX-2CDE. Steps target the action buttons by name ({'name': 'run'}) and the settings fields by their twocde_* names. Read by chisurf.emtk.help_guide.EmTkGuidedTour.",
   "steps": [
     {
       "title": "Did it stay there, or did it move?",

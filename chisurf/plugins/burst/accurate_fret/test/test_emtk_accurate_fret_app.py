@@ -1,7 +1,8 @@
-"""The native accurate-FRET app at parity with the retired Qt AccurateFretTool: numbers, guide, tooltips, plots.
+"""The native accurate-FRET app: numbers, guide, tooltips, plots.
 
-The Qt numbers were recorded from ``AccurateFretTool`` on the same simulated bursts (qt_reference.json); the
-calibration workflow itself is covered by ``test_native.py``.
+The numbers are checked against the factors and efficiencies planted in the simulated bursts
+(``test_accurate_fret_plugin._simulate``); the calibration workflow itself is covered by
+``test_native.py``.
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ from emtk.testing import RecordingPainter
 
 from chisurf.plugins.burst.accurate_fret.gui.app import create_app
 
-from .test_accurate_fret_plugin import TAU_D0, _simulate
+from .test_accurate_fret_plugin import ALPHA, BETA, DELTA, GAMMA, R0, TAU_D0, _simulate
 
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
@@ -59,24 +60,22 @@ def _draw(app, size=(1200, 800), times=3):
     return painter
 
 
-def test_calibration_equals_the_qt_tool(tmp_path):
-    """Same bursts, same settings: every factor and population row the retired Qt tool reported (qt_reference.json)."""
-    recorded = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
+def test_calibration_recovers_the_planted_factors_and_populations(tmp_path):
+    """The factor table shows the planted alpha, beta, gamma, delta (all estimated from the
+    data) and the given R0; the two FRET populations sit at the planted efficiencies."""
     app = _calibrated(_bursts(tmp_path))
     try:
-        ours = json.loads(
-            json.dumps(
-                {"factors": app.model.factor_rows(), "populations": app.model.population_rows()},
-                default=str,
-            )
-        )
-        # Deliberate difference: the Qt tool said "source not reported" for a beta the 1/S fit
-        # measured (tttrlib did not report beta's identification); it is a data estimate.
-        expected = [
-            dict(row, origin="data estimate") if row["factor"] == "\u03b2" else row
-            for row in recorded["factors"]
-        ]
-        assert ours == {"factors": expected, "populations": recorded["populations"]}
+        factors = {row["factor"]: row for row in app.model.factor_rows()}
+        planted = {"\u03b1": (ALPHA, 0.01), "\u03b2": (BETA, 0.07), "\u03b3": (GAMMA, 0.05), "\u03b4": (DELTA, 0.01)}
+        for name, (value, tol) in planted.items():
+            assert float(factors[name]["value"]) == pytest.approx(value, abs=tol), name
+            assert factors[name]["origin"] == "data estimate", name
+        r0 = factors["R\u2080"]
+        assert float(r0["value"]) == pytest.approx(R0) and r0["origin"] == "given"
+        populations = app.model.population_rows()
+        assert [row["n"] for row in populations] == ["100", "100"]
+        efficiencies = sorted(float(row["E"].split("\u00b1")[0]) for row in populations)
+        assert efficiencies == pytest.approx([0.3, 0.75], abs=0.03)
     finally:
         app.close()
 

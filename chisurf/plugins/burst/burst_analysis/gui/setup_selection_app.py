@@ -27,7 +27,7 @@ from chisurf.emtk.setup_step import SetupStepApp
 
 HERE = Path(__file__).resolve().parent
 
-#: Kept for the Qt host, which paints its background before the first frame.
+#: The background a host paints before the first frame.
 WINDOW_BG = (30, 32, 38, 255)
 
 TITLE = "Detector setup"
@@ -110,7 +110,7 @@ class BurstSetupSelectionApp(SetupStepApp):
         return self.model.get_settings()
 
     def get_settings(self) -> dict[str, Any]:
-        """The working definition, as the Qt detector page's ``get_settings`` returned it."""
+        """The working definition: the selected setup's detectors and windows."""
         return self.selected_setup_data()
 
     def refresh_setups(self) -> list[str]:

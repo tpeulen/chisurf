@@ -31,7 +31,7 @@ from chisurf.plugins.emtk_layout import action_caption, action_tooltip, button_r
 
 HERE = Path(__file__).resolve().parent
 
-#: Kept for the Qt host, which paints its background before the first frame.
+#: The background a host paints before the first frame.
 WINDOW_BG = (30, 32, 38, 255)
 
 #: MMFDB kinds the database picker offers for raw data.
@@ -142,7 +142,7 @@ class BurstDataSelectionModel:
         An MMFDB client (``call(method, params)``). Default: the shared session client of the dataset picker,
         made on the first import.
     auto_import : bool
-        Register each newly added file in MMFDB (the Qt step does this on every add).
+        Register each newly added file in MMFDB, on every add.
     on_change : callable, optional
         Called after the file list changed.
     """

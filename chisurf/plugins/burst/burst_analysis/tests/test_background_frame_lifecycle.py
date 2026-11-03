@@ -30,7 +30,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[4]
-#: The hand-off of the Qt tool's SPC-132 run: its ``channel_settings`` are the setup the walk uses,
+#: A burst-analysis hand-off for the SPC-132 run: its ``channel_settings`` are the setup the walk uses,
 #: and its ``m000.spc`` is the measurement they were read from (the search writes the container
 #: beside the copy in the test's temporary folder).
 HANDOFF = (

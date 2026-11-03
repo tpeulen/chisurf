@@ -41,6 +41,6 @@ def test_typed_size_bounds_gate_the_bursts(drv):
     assert model.size_max == 250
     np.testing.assert_array_equal(model.masked_row_indices(), [1])
     drv.type_into_name("sz_min", "-20")
-    assert model.size_min == 0, "a negative photon count is clamped to the Qt minimum"
+    assert model.size_min == 0, "a negative photon count is clamped to 0"
     drv.type_into_name("sz_min", "400")
     assert (model.size_min, model.size_max) == (250, 400), "bounds typed out of order are swapped"

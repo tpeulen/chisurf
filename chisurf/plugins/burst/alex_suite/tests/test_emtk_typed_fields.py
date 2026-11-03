@@ -1,6 +1,6 @@
 """The number fields of the ALEX Suite: integers step with the arrow keys, floats take typed values.
 
-Ranges are the Qt originals': the titration form's (``titration.view.json``), the alternation spin boxes' (period
+Ranges are the declared ones: the titration form's (``titration.view.json``), the alternation fields' (period
 up to 1e8, each gate edge inside the period).
 """
 
@@ -37,12 +37,12 @@ def test_titration_integer_fields_step_and_float_fields_take_typing(drv):
     drv.click_text("> Burst filters")
     model.min_photons = 0
     step_name(drv, "min_photons", keys.KEY_DOWN)
-    assert model.min_photons == 0, "a photon count is clamped to the Qt minimum"
+    assert model.min_photons == 0, "a photon count is clamped to its minimum, 0"
     b0 = model.bins
     step_name(drv, "bins", keys.KEY_UP)
     assert model.bins == b0 + 1
     drv.type_into_name("s_low", "-0.25")
-    assert model.s_low == -0.25, "the S gate takes a negative value, as in the Qt form"
+    assert model.s_low == -0.25, "the S gate takes a negative value"
     drv.type_into_name("s_high", "0.8")
     assert model.s_high == 0.8
     drv.type_into_name("gamma", "1.5")

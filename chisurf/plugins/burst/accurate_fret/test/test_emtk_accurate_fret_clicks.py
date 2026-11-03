@@ -19,8 +19,8 @@ from emtk.testing import RecordingPainter
 from chisurf.plugins.burst.accurate_fret.gui.app import create_app
 from chisurf.plugins.emtk_layout import help_close_caption
 
-from .test_accurate_fret_plugin import TAU_D0
-from .test_emtk_accurate_fret_parity import _bursts
+from .test_accurate_fret_plugin import ALPHA, GAMMA, TAU_D0
+from .test_emtk_accurate_fret_app import _bursts
 
 SIZE = (1200, 800)
 SMALL = (800, 600)
@@ -219,10 +219,10 @@ def test_calibrate_click_is_refused_with_the_reason_until_a_table_is_loaded_then
     painter = calibrate_by_click(app)
     assert app.controller.status == "Accurate FRET calibrated." and app.model.result is not None
     factors = {row["factor"]: row["value"] for row in app.model.factor_rows()}
-    assert (
-        factors["α"] == "0.0798" and factors["γ"] == "0.6162"
-    )  # the numbers the Qt tool gave on these bursts
-    assert "0.0798" in painter.strings and "α" in painter.strings  # the factor table cell shows it
+    # the factors planted in the simulated bursts
+    assert float(factors["α"]) == pytest.approx(ALPHA, abs=0.01)
+    assert float(factors["γ"]) == pytest.approx(GAMMA, abs=0.05)
+    assert factors["α"] in painter.strings and "α" in painter.strings  # the factor table cell shows it
 
 
 def test_the_stop_button_cancels_a_running_calibration_and_keeps_the_previous_state(

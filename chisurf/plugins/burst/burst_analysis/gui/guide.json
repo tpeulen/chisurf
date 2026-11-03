@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour for the integrated burst workflow (the native hub, gui/native.py; the legacy Qt shell reads it too). The steps are the numbered rows of the left rail, so they target 'panel' -- and they WAIT for the user to select the row rather than selecting it for them. Read by chisurf.emtk.help_guide.EmTkGuidedTour.",
+  "_comment": "Guided tour for the integrated burst workflow (the native hub, gui/native.py). The steps are the numbered rows of the left rail, so they target 'panel' -- and they WAIT for the user to select the row rather than selecting it for them. Read by chisurf.emtk.help_guide.EmTkGuidedTour.",
   "steps": [
     {
       "title": "What this window is",

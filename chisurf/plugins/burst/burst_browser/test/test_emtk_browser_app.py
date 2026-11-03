@@ -1,8 +1,7 @@
-"""The native Burst Browser at parity with the retired Qt BurstBrowserWidget.
+"""The native Burst Browser: loading, gating, the Input section, drawing, tooltips.
 
-Both hosts drew the same ``BurstBrowserApp``; the Qt widget added its file dialogs and loaded synchronously, the
-emtk app loads on the controller's worker. What the Qt widget showed on the same demo folder -- rows, gated rows,
-histogram, status -- was recorded (``qt_reference.json``) and is compared.
+Rows, gated rows and the E histogram are checked against the burst tables the demo folder
+writes (``demo_folder.build``): read back here, gated and binned with numpy.
 """
 
 from __future__ import annotations
@@ -66,28 +65,47 @@ def _shown(model):
     }
 
 
-def _qt_facts(root):
-    """What the retired Qt BurstBrowserWidget showed for the same folder and gates (qt_reference.json)."""
-    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
+def _written(root):
+    """E and S of every burst in the demo tables (the zero rows interleave the bursts)."""
+    tables = [
+        np.loadtxt(path, skiprows=1, delimiter="\t", ndmin=2)
+        for path in sorted((root / "bi4_bur").glob("*.bur"))
+    ]
+    rows = np.vstack(tables)
+    rows = rows[rows[:, 3] > 0]  # Number of Photons
+    return rows[:, 6], rows[:, 7]
 
 
-# 1. what the Qt widget shows for the same folder and gates
-def test_loading_and_gating_show_what_the_qt_widget_shows(root):
-    qt = _qt_facts(root)
+def _expected(e, status_selected, total):
+    counts, _edges = np.histogram(e, bins=60)
+    return {
+        "rows": total,
+        "masked": int(e.size),
+        "counts": [int(c) for c in counts],
+        "status": f"Bursts: {status_selected} / {total} selected",
+    }
+
+
+# 1. the tables as written, ungated and gated on the high-FRET population
+def test_loading_and_gating_show_the_written_bursts(root):
+    e, s = _written(root)
     app = create_app()
     try:
         _loaded(app, root)
-        assert _shown(app.model) == qt["loaded"]
+        assert _shown(app.model) == _expected(e, e.size, e.size)
         for key, value in GATES.items():
             setattr(app.model, key, value)
         app.model.refresh()
-        assert _shown(app.model) == qt["gated"]
+        inside = (
+            (e >= GATES["e_min"]) & (e <= GATES["e_max"]) & (s >= GATES["s_min"]) & (s <= GATES["s_max"])
+        )
+        assert int(inside.sum()) == 120  # the high-FRET population: 2 of 5 of 300
+        assert _shown(app.model) == _expected(e[inside], 120, e.size)
         strings = _draw(app).strings
         assert (
             "Bursts: 120 / 300 selected" in strings and "Bursts: 300 / 300 selected" not in strings
         )
-        assert qt["gated"]["masked"] == 120  # the high-FRET population: 2 of 5
-        assert all(hasattr(app, name) for name in qt["api"])  # the workflow shell's calls
+        assert all(hasattr(app, name) for name in ("table", "load_folder", "load_bur"))
     finally:
         app.close()
 

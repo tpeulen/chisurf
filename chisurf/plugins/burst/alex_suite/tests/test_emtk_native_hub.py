@@ -4,7 +4,8 @@ Two walks. On the simulated µs-ALEX measurement of :mod:`..demo` (written into 
 step's own Load example button), Next presses alone take it from the files to an E–S histogram: the alternation
 step converts on arrival, the burst search runs on the converted container with the detected setup, the background
 is estimated, Accurate FRET calibrates, and ndX shows E against S. On copies of the in-repository BH SPC-132 PIE files
-the alternation step leaves the data alone and the burst search finds the Qt tool's 198 bursts.
+the alternation step leaves the data alone and the burst search finds the 198 bursts the standalone Burst Search
+finds on these files (``burst_selection/tests``).
 """
 
 from __future__ import annotations
@@ -76,26 +77,19 @@ def wait_for(drv, condition, timeout=60.0) -> None:
     drv.draw(2)
 
 
-def test_the_rail_is_the_legacy_panel_table():
-    """The retired Qt shell's steps and side tools (qt_reference.json); Setup's role is the burst hub's 'setup' (was 'channels').
+def test_the_rail_is_the_pipeline_then_the_side_tools():
+    """Seven numbered steps (Setup first, then Files), then the side tools.
 
-    The ALEX-Suite CSV export panel is deliberately absent from the native rail: the pipeline stores the analysis
-    in the ``.pto`` container (pto end to end) and the converter command writes the old files.
+    There is no ALEX-Suite CSV export step: the pipeline stores the analysis in the ``.pto``
+    container (pto end to end) and the converter command writes the old files.
     """
-    import json
-
     from chisurf.plugins.burst.alex_suite.gui.native import STEPS
 
-    recorded = json.loads(
-        (Path(__file__).with_name("qt_reference.json")).read_text(encoding="utf-8")
-    )
-    legacy = [
-        ("setup" if p["role"] == "channels" else p["role"])
-        for p in recorded["ALEX_PANELS"]
-        if not p.get("separator")
-    ]
     native = [p["role"] for p in STEPS if not p.get("separator")]
-    assert native == [role for role in legacy if role != "legacy_export"]
+    assert native == [
+        "setup", "data", "alternation", "selection", "background", "accurate_fret", "es",
+        "browser", "titration", "bva",
+    ]
     assert "legacy_export" not in native
     numbered = [p["name"] for p in STEPS if p["name"][:1].isdigit()]
     assert [int(n.split(".")[0]) for n in numbered] == list(range(1, 8))
