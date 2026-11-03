@@ -1,8 +1,8 @@
-"""The native mean micro-time tool against the Qt tool it replaces: numbers, every control with a real-input click test, the layout at two sizes.
+"""The mean micro-time tool: numbers, every control with a real-input click test, the layout at two sizes.
 
 Hermetic: settings, MMFDB and its database in a temporary folder, a temporary HOME, the photon streams written into a temporary folder from a
-seed, no network (the database picker gets a stub client). References: (a) the Qt tool's own view model run on the same file, (b) the photon
-counts written into the stream, (c) an independent tttrlib CLSM image, (d) what the Qt window showed (``data/qt_values.json``).
+seed, no network (the database picker gets a stub client). References: (a) the photon counts and the lifetimes written into the stream,
+(b) an independent tttrlib CLSM image.
 """
 
 from __future__ import annotations
@@ -23,7 +23,6 @@ from chisurf.plugins.microscopy.imaging_emtk.testing import (
 )
 from chisurf.plugins.microscopy.img_pixel_micro_time.gui.app import MicroTimeApp, make_app
 from chisurf.plugins.microscopy.img_pixel_micro_time.gui.model import MicroTimeModel
-from chisurf.plugins.microscopy.img_pixel_micro_time.gui.view_model import MicroTimeViewModel
 from test.gui.emtk_layout_checks import (
     SIZES,
     assert_disjoint,
@@ -36,10 +35,7 @@ from test.gui.emtk_layout_checks import (
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
-DATA = HERE / "data"
-QT_VALUES = json.loads((DATA / "qt_values.json").read_text(encoding="utf-8"))
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "micro_time_emtk.view.json").read_text(encoding="utf-8"))
-QT_SPEC = json.loads((PLUGIN / "gui" / "micro_time.view.json").read_text(encoding="utf-8"))
 BIG = (1200, 800)
 
 TOOL = C.Tool(
@@ -99,7 +95,7 @@ def drv(app):
 # ── 1. the numbers ──────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_the_maps_match_the_stream_the_qt_numbers_and_the_expected_arrival_times(app, drv, flim):
+def test_the_maps_match_the_stream_and_the_expected_arrival_times(app, drv, flim):
     m = C.computed(app, drv, flim)
     truth = data.counts(1)[0]
     np.testing.assert_array_equal(m.intensity_map(), truth.sum(axis=0))
@@ -112,25 +108,11 @@ def test_the_maps_match_the_stream_the_qt_numbers_and_the_expected_arrival_times
         and right == pytest.approx(3.38, rel=0.04)
         and right > 2 * left * 0.9
     )
-    qt = QT_VALUES["mean_micro_time_map"]
-    assert (
-        float(mt.sum()) == pytest.approx(qt["sum"], rel=1e-12)
-        and mt.min() == qt["min"]
-        and mt.max() == qt["max"]
-    )
-    assert m.results_text == QT_VALUES["results_text"] == "flim.ptu: 32x32 px.\nWindows: ch0."
-
-
-def test_the_live_qt_view_model_gives_the_same_maps_on_the_same_file(app, drv, flim):
-    m = C.computed(app, drv, flim)
-    qt = MicroTimeViewModel()
-    qt.filename = str(flim)
-    assert qt.compute()
-    expected = np.maximum(np.nan_to_num(qt.mean_micro_time_map()), 0.0)
-    np.testing.assert_array_equal(m.mean_micro_time_map(), expected)
-    np.testing.assert_array_equal(m.intensity_map(), qt.intensity_map())
+    # every photon was written at bin >= 20 (0.64 ns) and at most bin 255
+    assert mt.min() >= 20 * data.MICRO_RES * 1e9 and mt.max() <= 255 * data.MICRO_RES * 1e9
+    assert m.results_text == "flim.ptu: 32x32 px.\nWindows: ch0."
     assert "mean_micro_time (ch0)" in m._columns
-    np.testing.assert_array_equal(m._columns["mean_micro_time (ch0)"], expected)
+    np.testing.assert_array_equal(m._columns["mean_micro_time (ch0)"], mt)
 
 
 def test_an_independent_clsm_image_gives_the_same_mean_micro_time(app, drv, flim):
@@ -184,11 +166,8 @@ def test_two_detector_windows_give_two_map_sets(app, drv, flim2):
 def test_a_micro_time_range_selects_the_photons_of_the_window(app, drv, flim):
     app.model.detectors = {"early": {"chs": [0], "micro_time_ranges": [(0, 60)]}}
     m = C.computed(app, drv, flim)
-    full = MicroTimeViewModel()
-    full.filename = str(flim)
-    full.compute()
-    assert m.intensity_map().sum() < full.intensity_map().sum()
-    assert m.mean_micro_time_map().max() < full.mean_micro_time_map().max()
+    assert m.intensity_map().sum() < data.counts(1)[0].sum()
+    assert m.mean_micro_time_map().max() < 60 * data.MICRO_RES * 1e9
 
 
 # ── 2. the file ─────────────────────────────────────────────────────────────────────────────────────────────── #
@@ -380,12 +359,10 @@ def test_the_hub_starts_the_run_through_start(app, drv, flim):
     C.hub_start_runs_the_maps(TOOL, flim, drv)
 
 
-# ── 8. static: spec, inventory, Qt-free, tooltips, layout ──────────────────────────────────────────────────── #
+# ── 8. static: spec, Qt-free, tooltips, layout ──────────────────────────────────────────────────── #
 
 
-def test_every_qt_control_has_an_emtk_equivalent():
-    qt_labels = {s.get("label") for s in walk(QT_SPEC["sections"]) if s.get("label")}
-    assert qt_labels == {"TTTR file", "Min. photons"}
+def test_the_spec_has_the_file_the_settings_the_actions_and_the_three_map_tabs():
     emtk = {s.get("label") for s in walk(EMTK_SPEC["sections"]) if s.get("label")} | {
         b["label"] for s in walk(EMTK_SPEC["sections"]) for b in s.get("buttons", [])
     }
@@ -398,12 +375,11 @@ def test_every_qt_control_has_an_emtk_equivalent():
         "Next",
         "Detector window",
     } <= emtk
-    qt_tabs = [s["title"] for s in walk(QT_SPEC["sections"]) if s.get("type") == "custom"]
-    assert (
-        qt_tabs
-        == ["Intensity", "Mean micro-time (ns)", "Mean micro-time movie"]
-        == [p["title"] for p in EMTK_SPEC["sections"][1:]]
-    )
+    assert [p["title"] for p in EMTK_SPEC["sections"][1:]] == [
+        "Intensity",
+        "Mean micro-time (ns)",
+        "Mean micro-time movie",
+    ]
 
 
 def test_every_spec_attribute_and_action_exists_on_the_model():

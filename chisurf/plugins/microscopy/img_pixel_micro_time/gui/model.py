@@ -1,4 +1,4 @@
-"""Qt-free model of the emtk mean micro-time window (the analysis is :class:`~.view_model.MicroTimeViewModel`, shared with the Qt tool)."""
+"""Qt-free model of the emtk mean micro-time window (the analysis is :class:`~.view_model.MicroTimeViewModel`)."""
 
 from __future__ import annotations
 

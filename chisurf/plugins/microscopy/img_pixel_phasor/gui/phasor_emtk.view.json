@@ -1,5 +1,5 @@
 {
-  "_comment": "Phasor-FLIM, drawn by emtk. The Qt tool's AutoForm spec is phasor.view.json.",
+  "_comment": "Phasor-FLIM, drawn by emtk.",
   "window": {"width": 1100, "height": 720},
   "sections": [
     {
@@ -28,7 +28,7 @@
             {
               "action": "save_container",
               "label": "Save container",
-              "description": "Write the phasor table as a phasor artifact into the container beside the photon file (the Qt tool did this when it closed)."
+              "description": "Write the phasor table as a phasor artifact into the container beside the photon file."
             },
             {
               "action": "open_ndx",

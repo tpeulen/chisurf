@@ -1,4 +1,4 @@
-"""Qt-free model of the emtk phasor window (the analysis is :class:`~.view_model.PhasorImgViewModel`, shared with the Qt tool)."""
+"""Qt-free model of the emtk phasor window (the analysis is :class:`~.view_model.PhasorImgViewModel`)."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ class PhasorModel(PixelModelMixin, PhasorImgViewModel):
     def artifact_name(self) -> str:
         return "phasor"
 
-    # -- the IRF reference of a detector window (the Qt tool takes it from the IRF & BG step) ---------------- #
+    # -- the IRF reference of a detector window (set here or by the IRF & BG step) ---------------- #
     def irf_window_choices(self) -> list[str]:
         return self.window_names()
 

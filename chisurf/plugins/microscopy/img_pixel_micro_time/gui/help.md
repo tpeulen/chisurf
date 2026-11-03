@@ -16,7 +16,7 @@ electronics delay. Press **Guide** at the top of the settings window for a walk-
 
 **Add mean micro-time to HDF5** appends the columns to the imaging HDF5 the pipeline remembers (otherwise a file is asked for); **Save container** writes the
 `mean_micro_time` artifact beside the photon file; **ndX** explores the table; **Next** hands the file on inside the Imaging Tools pipeline. Closing a
-computed session flushes the HDF5 and the container, as the Qt tool does.
+computed session flushes the HDF5 and the container.
 
 ## Further reading
 

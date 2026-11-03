@@ -1,8 +1,8 @@
-"""The native phasor tool against the Qt tool it replaces: numbers, every control with a real-input click test, the layout at two sizes.
+"""The phasor tool: numbers, every control with a real-input click test, the layout at two sizes.
 
 Hermetic: settings, MMFDB and its database in a temporary folder, a temporary HOME, the photon streams written into a temporary folder from a
-seed, no network (the database picker gets a stub client). References: (a) the Qt tool's own view model run on the same file, (b) the photon
-counts written into the stream, (c) an independent tttrlib CLSM image, (d) what the Qt window showed (``data/qt_values.json``).
+seed, no network (the database picker gets a stub client). References: (a) the photon counts and lifetimes written into the stream,
+(b) an independent tttrlib CLSM image and its phasor.
 """
 
 from __future__ import annotations
@@ -25,7 +25,6 @@ from chisurf.plugins.microscopy.imaging_emtk.testing import (
 )
 from chisurf.plugins.microscopy.img_pixel_phasor.gui.app import PhasorApp, make_app
 from chisurf.plugins.microscopy.img_pixel_phasor.gui.model import PhasorModel
-from chisurf.plugins.microscopy.img_pixel_phasor.gui.view_model import PhasorImgViewModel
 from test.gui.emtk_layout_checks import (
     SIZES,
     assert_disjoint,
@@ -38,10 +37,7 @@ from test.gui.emtk_layout_checks import (
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
-DATA = HERE / "data"
-QT_VALUES = json.loads((DATA / "qt_values.json").read_text(encoding="utf-8"))
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "phasor_emtk.view.json").read_text(encoding="utf-8"))
-QT_SPEC = json.loads((PLUGIN / "gui" / "phasor.view.json").read_text(encoding="utf-8"))
 BIG = (1200, 800)
 
 TABS = (
@@ -118,7 +114,7 @@ def phasor_app(app, drv, path, **settings):
     return C.computed(app, drv, path)
 
 
-def test_the_maps_match_the_stream_the_qt_numbers_and_a_direct_tttrlib_call(app, drv, flim):
+def test_the_maps_match_the_stream_and_a_direct_tttrlib_call(app, drv, flim):
     import tttrlib
 
     m = phasor_app(app, drv, flim)
@@ -133,7 +129,7 @@ def test_the_maps_match_the_stream_the_qt_numbers_and_a_direct_tttrlib_call(app,
     ]  # -1: from the header (40 MHz); FREQ is the same in MHz
     np.testing.assert_allclose(g, ref[..., 0], atol=1e-12)
     np.testing.assert_allclose(s, ref[..., 1], atol=1e-12)
-    assert m.results_text == QT_VALUES["results_text"] == "flim.ptu: 32x32 px.\nWindows: ch0."
+    assert m.results_text == "flim.ptu: 32x32 px.\nWindows: ch0."
     assert (
         {"g (ch0)", "s (ch0)"} <= set(m._columns)
         and "n_photons (ch0)" in m._columns
@@ -180,16 +176,6 @@ def test_an_explicit_frequency_in_mhz_equals_the_header_value_and_another_one_mo
     assert not np.allclose(app.model.g_map(), auto, atol=0.05)
 
 
-def test_the_live_qt_view_model_gives_the_same_maps_on_the_same_file(app, drv, flim):
-    m = phasor_app(app, drv, flim)
-    qt = PhasorImgViewModel()
-    qt.filename, qt.frequency = str(flim), FREQ
-    assert qt.compute()
-    for name in ("g_map", "s_map", "intensity_map", "phasor_histogram_map"):
-        np.testing.assert_array_equal(getattr(m, name)(), getattr(qt, name)())
-    assert set(m._columns) == set(qt._columns)
-
-
 def test_the_phasor_frequency_and_min_photons_fields_need_a_new_run(app, drv, flim):
     m = phasor_app(app, drv, flim)
     before = m.g_map().copy()
@@ -198,7 +184,7 @@ def test_the_phasor_frequency_and_min_photons_fields_need_a_new_run(app, drv, fl
     C.run(app, drv)
     assert not np.array_equal(before, m.g_map())
     drv.type_into("n_ph_min", "100000")
-    assert m.n_ph_min == 10000  # clamped to the Qt range
+    assert m.n_ph_min == 10000  # clamped to the field's range
     C.run(app, drv)
     assert (m.g_map() == -1).all(), "pixels below Min photons are discriminated"
 
@@ -560,12 +546,10 @@ def test_the_hub_starts_the_run_through_start(app, drv, flim):
     C.hub_start_runs_the_maps(TOOL, flim, drv)
 
 
-# ── 8. static: spec, inventory, Qt-free, tooltips, layout ──────────────────────────────────────────────────── #
+# ── 8. static: spec, Qt-free, tooltips, layout ──────────────────────────────────────────────────── #
 
 
-def test_every_qt_control_has_an_emtk_equivalent():
-    qt_labels = {s.get("label") for s in walk(QT_SPEC["sections"]) if s.get("label")}
-    assert qt_labels == {"TTTR file", "Min photons", "Frequency (MHz, -1=auto)"}
+def test_the_spec_has_the_file_the_settings_the_actions_and_the_map_tabs():
     emtk = {s.get("label") for s in walk(EMTK_SPEC["sections"]) if s.get("label")} | {
         b["label"] for s in walk(EMTK_SPEC["sections"]) for b in s.get("buttons", [])
     }
@@ -579,10 +563,7 @@ def test_every_qt_control_has_an_emtk_equivalent():
         "Next",
         "Detector window",
     } <= emtk
-    qt_tabs = [s["title"] for s in walk(QT_SPEC["sections"]) if s.get("type") == "custom"]
-    assert sorted(set(qt_tabs) - {"Phasor cursors"}) == sorted(TABS) and sorted(
-        p["title"] for p in EMTK_SPEC["sections"][1:]
-    ) == sorted(TABS)
+    assert sorted(p["title"] for p in EMTK_SPEC["sections"][1:]) == sorted(TABS)
 
 
 def test_every_spec_attribute_and_action_exists_on_the_model():
