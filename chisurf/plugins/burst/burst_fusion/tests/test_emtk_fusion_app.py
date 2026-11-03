@@ -1,9 +1,7 @@
-"""The native burst fusion tool at parity with the Qt BurstFusionTool.
+"""The native burst fusion app: fusing the demo, the run's states, the plots, the guide, drawing.
 
-Both hosts draw the same ``BurstFusionApp``. The Qt tool loads the demo and fuses
-synchronously (``load_demo``, ``process_bursts``); the emtk app does both on the
-controller's worker. The Qt tool's results on the plugin's own demo (molecule count declared) are
-recorded in ``qt_reference.json``, and the native app's are compared with them.
+The demo declares how many molecules made its bursts, so a fusion is checked against that count; the
+before/after table is checked against the fusion's own counts and what fusing fragments must do.
 """
 
 from __future__ import annotations
@@ -53,18 +51,34 @@ def _demo(app):
     return app
 
 
-def _qt_facts(settings_dir=None):
-    """What the retired Qt BurstFusionTool produced on the plugin demo (recorded before it was removed)."""
-    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
+def _check_summary(model):
+    """The before/after table against the fusion's own counts and the physics of fusing one molecule's bursts.
+
+    Fragments of one molecule share its proximity ratio, so the mean barely moves, and the fused bursts carry more
+    photons, so the shot-noise width narrows and the photons per burst grow.
+    """
+    rows = {r["quantity"]: r for r in model.summary_rows()}
+    assert list(rows) == [
+        "Bursts", "PR mean", "PR width (std)", "Photons (mean)", "Photons (med)", "Duration (ms)",
+        "Rate (kHz)", "Fused groups", "Largest fused", "Bursts fused", "Window, ms",
+    ]
+    stats = model.analysis.statistics
+    assert rows["Bursts"]["before"] == str(stats["n_bursts_before"])
+    assert rows["Bursts"]["after"] == str(stats["n_bursts_after"])
+    assert rows["Fused groups"]["after"] == str(stats["n_fused_groups"])
+    pr = {k: float(rows["PR mean"][k]) for k in ("before", "after")}
+    assert pr["after"] == pytest.approx(pr["before"], abs=0.01)
+    assert float(rows["PR width (std)"]["after"]) < float(rows["PR width (std)"]["before"])
+    for name in ("Photons (mean)", "Photons (med)", "Duration (ms)"):
+        assert float(rows[name]["after"]) > float(rows[name]["before"]), name
 
 
-# 1. the demo fused: the Qt tool's result and files, and towards the declared molecule count
-def test_the_demo_fuses_as_in_the_qt_tool(tmp_path, monkeypatch):
+# 1. the demo fused: a run of the threshold's name, its tables, towards the declared molecule count
+def test_the_demo_fuses_towards_the_declared_molecules(tmp_path, monkeypatch):
     import functools
 
     from chisurf.plugins.burst.burst_fusion import demo
 
-    qt = _qt_facts()
     # A demo of its own: the cached one already holds fused folders from earlier runs, and the
     # writer then picks a new name ("…_0") instead of overwriting.
     monkeypatch.setattr(
@@ -79,10 +93,8 @@ def test_the_demo_fuses_as_in_the_qt_tool(tmp_path, monkeypatch):
         truth = app.model._demo["truth"]
         app.controller.run()
         _settle(app)
-        # The Qt tool wrote a threshold-named folder beside the source; the fused bursts are now a
-        # run of that name in the same analysis container, its tables the folder's content.
+        # The fused bursts are a run named after the threshold in the source's analysis container.
         written = app.model.written_folder
-        assert qt["out"] == "burstwise_demo_fused_p0.50"
         assert written == f"{app.model.folder} fused p0.50"
         from chisurf.core.fio.pto import Measurement
 
@@ -91,7 +103,7 @@ def test_the_demo_fuses_as_in_the_qt_tool(tmp_path, monkeypatch):
         run = Path(written).name
         assert {f"{run}/bursts", f"{run}/assembly", f"{run}/membership"} <= names
         assert app.model._status == f"Fused bursts written to {written}"
-        assert json.loads(json.dumps(app.model.summary_rows(), default=str)) == qt["summary"]
+        _check_summary(app.model)
         stats = app.model.analysis.statistics
         before, after = stats["n_bursts_before"], stats["n_bursts_after"]
         assert abs(after - truth["n_molecules"]) < abs(

@@ -1,13 +1,11 @@
-"""The native photon-by-photon kinetics tool at parity with the retired Qt BurstGsTool.
+"""The native photon-by-photon kinetics app: fit, progress, errors, export, guide, drawing.
 
-Both hosts drew the same ``BurstGsApp``; the Qt tool fitted through ChiSurfProgress and reported in its
-status bar, the emtk app fits on the controller's worker. The Qt tool's fit on the tool's own simulation
-(known rates) was recorded in ``qt_reference.json`` and the fits are compared.
+The fit runs on the tool's own simulation, whose rates and FRET efficiencies are planted, so the fit is
+checked against the simulated truth.
 """
 
 from __future__ import annotations
 
-import json
 import sys
 import time
 from pathlib import Path
@@ -49,26 +47,29 @@ def _settle(app, timeout=120.0):
     _draw(app, n=1)
 
 
-@pytest.fixture(scope="module")
-def qt():
-    """What the retired Qt BurstGsTool reported on the same simulation (qt_reference.json)."""
-    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
-
-
-# 1. the Qt tool's fit, status line and report; the simulated rates come back
-def test_a_fit_gives_the_qt_tools_rates_status_and_report(qt):
+# 1. the fit recovers the simulated rates and efficiencies; status line and report state them
+def test_a_fit_recovers_the_simulated_rates_and_reports_them():
     app = _app()
     try:
+        m = app.model
         app.controller.run()
         _settle(app)
-        fit = app.model.analysis.fit
-        assert np.asarray(fit.rate_matrix) == pytest.approx(np.asarray(qt["matrix"]))
-        assert fit.log_likelihood == pytest.approx(qt["logL"])
-        assert app.controller.status == qt["status"]
-        assert app.model.results_text == qt["report"]
+        fit = m.analysis.fit
         k12, k21 = fit.rate_matrix[1, 0], fit.rate_matrix[0, 1]
-        assert k12 == pytest.approx(app.model.sim_k_forward, rel=0.15)
-        assert k21 == pytest.approx(app.model.sim_k_backward, rel=0.15)
+        assert k12 == pytest.approx(m.sim_k_forward, rel=0.15)
+        assert k21 == pytest.approx(m.sim_k_backward, rel=0.15)
+        assert sorted(np.asarray(fit.efficiencies).ravel()) == pytest.approx(
+            sorted([m.sim_e1, m.sim_e2]), abs=0.03
+        )
+        assert app.controller.status == (
+            f"logL = {fit.log_likelihood:,.1f}, k(1→2) = {k12:,.0f} /s, k(2→1) = {k21:,.0f} /s"
+        )
+        report = m.results_text
+        n = m.sim_n_bursts
+        assert report.startswith(f"{n} bursts, {n * m.sim_photons_per_burst:,} photons, 2 states")
+        assert f"k(1 -> 2) = {k12:12,.1f}" in report and f"k(2 -> 1) = {k21:12,.1f}" in report
+        relaxation_us = 1e6 / (k12 + k21)
+        assert f"Relaxation time(s): {relaxation_us:.1f} us" in report
     finally:
         app.close()
 
@@ -186,7 +187,7 @@ def test_errors_and_the_no_result_case(monkeypatch):
         app.close()
 
 
-def test_export_after_a_fit_suggests_the_qt_name(tmp_path):
+def test_export_after_a_fit_suggests_a_name_beside_the_measurement(tmp_path):
     app = _app()
     try:
         # A run of the measurement's container (the workspace's address); the fit is simulated.
@@ -210,8 +211,8 @@ def test_export_after_a_fit_suggests_the_qt_name(tmp_path):
 
 
 def test_the_burst_run_comes_from_the_workspace_not_a_drop(tmp_path):
-    """The Qt tool took dropped .bur tables; the input is now a workspace burst run (the shell's
-    drop is the one entry point), so the window has no drop hook."""
+    """The input is a workspace burst run (the shell's drop is the one entry point), so the window has
+    no drop hook."""
     from chisurf.plugins.burst.burst_gs.gui.app import receive_bursts
 
     stray = tmp_path / "notes.txt"

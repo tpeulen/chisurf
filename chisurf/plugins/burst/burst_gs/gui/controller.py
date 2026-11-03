@@ -1,8 +1,8 @@
 """Native asynchronous kinetics fitting and measurement/export actions.
 
-The same run as the Qt tool's (``gui/tool.py``): the fit off the UI thread with its
-progress, the Qt status line after a fit ("logL = …, k(1→2) = … /s, …"), and an
-export that needs a fit and suggests ``<first table>.gs.csv``.
+The fit runs off the UI thread with its progress, a status line after a fit
+("logL = …, k(1→2) = … /s, …"), and an export that needs a fit and suggests
+``<first table>.gs.csv``.
 """
 
 import copy
@@ -39,7 +39,7 @@ class BurstGsController:
         return True
 
     def progress(self, fraction, message):
-        """Progress from the fit (the Qt task's set_fraction); raises when Stop was pressed."""
+        """Progress from the fit; raises when Stop was pressed."""
         if self._cancel.is_set():
             raise CancelledError()
         self.progress_fraction = float(fraction)
@@ -99,7 +99,7 @@ class BurstGsController:
             self.progress_text = ""
 
     def _fit_line(self):
-        """The Qt tool's status line after a fit."""
+        """The status line after a fit: log-likelihood and both rates."""
         fit = self.model.analysis.fit
         matrix = fit.rate_matrix
         return (
@@ -134,7 +134,7 @@ class BurstGsController:
         self.action = action
         options = {"filters": filters} if filters else {}
         filename = None
-        if self.model.bur_files:  # the Qt tool's suggestion: beside the measurement
+        if self.model.bur_files:  # suggested beside the measurement
             from chisurf.core.fio.address import container_of
 
             source = container_of(self.model.bur_files[0])

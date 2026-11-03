@@ -37,7 +37,7 @@ def folder(tmp_path):
 
 
 class _Tool:
-    """The view model with the workflow hand-off the retired Qt tool exposed."""
+    """The view model with a workflow hand-off (folder in, written folder out)."""
 
     def __init__(self, folder):
         from chisurf.plugins.burst.burst_fusion.gui.view_model import FusionViewModel

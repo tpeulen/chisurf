@@ -1,6 +1,6 @@
-"""Qt-free view-model behind the Gopich-Szabo tool.
+"""Toolkit-free view-model behind the Gopich-Szabo tool.
 
-Holds the settings the AutoForm binds to, runs the Qt-free analysis from
+Holds the settings the AutoForm binds to, runs the analysis from
 :mod:`chisurf.plugins.burst.burst_gs.core`, and exposes the tables, plot series
 and report text that ``burst_gs.view.json`` reads.
 """

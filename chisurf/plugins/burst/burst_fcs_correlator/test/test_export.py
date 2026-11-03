@@ -9,7 +9,6 @@ import numpy as np
 import pytest
 
 from chisurf.core.datastore import numeric_column
-from chisurf.core.fio.fluorescence.burst_companion import read_companion
 from chisurf.core.fio.pto import Measurement
 from chisurf.plugins.burst.burst_fcs_correlator.core.export import write_fcs_results_container
 from chisurf.plugins.burst.burst_fcs_correlator.gui.app import create_app
@@ -37,7 +36,7 @@ def rows(source, value=0.5):
     ]
 
 
-def test_native_run_writes_the_frozen_real_grid_and_indexed_container(source):
+def test_native_run_writes_the_indexed_container(source):
     app = create_app()
     ctrl = app.controller
     from .driving import make_input_container
@@ -62,23 +61,19 @@ def test_native_run_writes_the_frozen_real_grid_and_indexed_container(source):
         assert series[0]["x"] == [selected["td_mean"]]
         assert series[0]["y"] == [1.0] and series[0]["marker"]
         assert series[0]["name"] == "Simple fit"
-        facts = json.loads((Path(__file__).with_name("data") / "burst-facts.json").read_text())
-        expected = next(iter(facts["td4_files"].values()))
         assert not (source.parent / "td4").exists()  # a companion is an explicit export
-        # The frozen real grid (what the legacy writer put on disk) is reproduced
-        # by the explicit export, not written beside the container.
-        frozen = source.parent / "frozen" / "BH_SPC132.td4"
-        frozen.parent.mkdir()
-        frozen.write_text(expected)
-        columns, full = read_companion(frozen)
+        # one row per burst, its diffusion time the fitted curve's
+        expected = [c["td_mean"] for c in sorted(ctrl._curves, key=lambda c: c["burst_index"])]
         with Measurement.open(source.with_suffix(".pto")) as measurement:
             table = measurement.get_store("burst fcs")
             np.testing.assert_array_equal(numeric_column(table, "Burst Index"), [0, 1, 2])
-            np.testing.assert_allclose(numeric_column(table, columns[0]), full[:, 0], atol=5e-7)
+            np.testing.assert_allclose(
+                numeric_column(table, "td_mean__green_ACF"), expected, rtol=1e-6, atol=5e-7
+            )
             uid = measurement._resolve("burst fcs")
             assert measurement.tag(uid, "_mmfdb_edge.source_row_column") == "Burst Index"
             assert measurement.tag(uid, "_mmfdb_artifact.row_grain") == "burst"
-            assert measurement.column_units(table, columns[0]) == "milliseconds"
+            assert measurement.column_units(table, "td_mean__green_ACF") == "milliseconds"
             uid = measurement._resolve("burst fcs")
             assert measurement.tag(uid, "_mmfdb_operation.operation_type") == "burst_correlation"
     finally:

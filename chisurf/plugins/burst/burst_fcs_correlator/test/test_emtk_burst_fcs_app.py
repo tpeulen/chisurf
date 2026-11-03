@@ -1,7 +1,7 @@
-"""The emtk burst-wise FCS correlator equals the Qt tool's computation and settings; layout, tooltips, isolation.
+"""The emtk burst-wise FCS correlator: its curves, settings, layout, tooltips and isolation.
 
-The Qt tool computed through ``BurstFcsClient.correlate_file`` (the backend call) with a ``_BurstFcsModel`` for the settings; the
-numbers here are compared with exactly that path on the deterministic demonstration data of ``demo.py``.
+The app's curves are compared with the backend call ``BurstFcsClient.correlate_file`` and with tttrlib's correlator
+called directly, on the deterministic demonstration data of ``demo.py``.
 """
 
 from __future__ import annotations
@@ -100,15 +100,15 @@ def test_the_demonstration_stream_reads_back_with_its_resolutions(data):
 # -- the numbers ------------------------------------------------------------------------------------------------------ #
 
 
-def test_the_curves_equal_the_qt_tools_backend_call(drv, data):
+def test_the_curves_equal_the_backend_call(drv, data):
     c = run(drv, data)
     raw, ranges = c.resolve_files()[0]
     settings = c._model.to_settings()
-    qt = BurstFcsClient().correlate_file(
+    backend = BurstFcsClient().correlate_file(
         str(raw), ranges, [dict(p, micro_a=[], micro_b=[]) for p in PAIRS], settings.to_dict()
     )["result"]["curves"]
-    assert len(c._curves) == len(qt) == len(ranges) * len(PAIRS)
-    for ours, theirs in zip(c._curves, qt):
+    assert len(c._curves) == len(backend) == len(ranges) * len(PAIRS)
+    for ours, theirs in zip(c._curves, backend):
         assert (ours["burst_index"], ours["pair_name"]) == (
             theirs["burst_index"],
             theirs["pair_name"],
@@ -158,7 +158,8 @@ def test_every_fit_mode_produces_its_result(drv, data):
 # -- the settings ------------------------------------------------------------------------------------------------------ #
 
 
-def qt_fields():
+def model_fields():
+    """The fields of the settings model's spec (``burst_fcs.view.json``)."""
     spec = json.loads((Path(__file__).parents[1] / "gui" / "burst_fcs.view.json").read_text())
     out = {}
 
@@ -189,9 +190,9 @@ def our_fields():
     return out
 
 
-def test_every_field_of_the_qt_spec_is_in_the_emtk_spec_with_its_range():
-    qt, ours = qt_fields(), our_fields()
-    for attr, section in qt.items():
+def test_every_field_of_the_model_spec_is_in_the_emtk_spec_with_its_range():
+    model, ours = model_fields(), our_fields()
+    for attr, section in model.items():
         assert attr in ours, attr
         for key in ("kind", "minimum", "maximum"):
             if key in section and not (
@@ -200,14 +201,14 @@ def test_every_field_of_the_qt_spec_is_in_the_emtk_spec_with_its_range():
                 assert ours[attr].get(key) == section[key], (attr, key)
     assert (
         ours["maxent_log10_reg"]["minimum"] == -12.0 and ours["maxent_log10_reg"]["maximum"] == 12.0
-    )  # the controller clamps to 12 (Qt spec: 6)
+    )  # the controller clamps to 12 (model spec: 6)
     panel_modes = create_app().panel.fit_modes()
-    assert [v for v, _ in panel_modes] == qt["fit_mode"]["options"] and [
+    assert [v for v, _ in panel_modes] == model["fit_mode"]["options"] and [
         l for _, l in panel_modes
-    ] == qt["fit_mode"]["labels"]
+    ] == model["fit_mode"]["labels"]
 
 
-def test_the_settings_model_converts_like_the_qt_tool():
+def test_the_settings_model_converts_to_backend_settings():
     m = _BurstFcsModel()
     m.n_bins, m.n_casc, m.make_fine, m.padding_ms, m.fit_mode = 5, 25, True, 12.5, "maxent"
     m.maxent_log10_reg, m.maxent_td_min, m.tmin_fit = -2.0, 0.01, 0.5
@@ -280,7 +281,7 @@ def test_pairs_of_a_detector_setup_are_its_saved_pairs_else_one_acf_per_detector
     ]
 
 
-# -- tooltips, descriptions, Qt-free, isolation ------------------------------------------------------------------------ #
+# -- tooltips, descriptions, no Qt, isolation ------------------------------------------------------------------------ #
 
 
 def walk(node):

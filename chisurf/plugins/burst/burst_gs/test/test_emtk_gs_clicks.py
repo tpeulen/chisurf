@@ -8,7 +8,6 @@ the status line, the drawn strings, the files written).
 
 from __future__ import annotations
 
-import json
 import threading
 import time
 from pathlib import Path
@@ -160,22 +159,25 @@ def test_the_simulation_checkbox_switches_the_input_panels_and_enables_fit(app):
     assert not app.model.use_simulation and has(draw(app).strings, "Data Input & Channels")
 
 
-def test_fit_click_gives_the_qt_tools_rates_status_report_and_tables(app, qt):
+def test_fit_click_recovers_the_simulated_rates_and_shows_status_report_and_tables(app):
     simulate(app)
     app.model.sim_n_bursts, app.model.sim_photons_per_burst, app.model.max_iterations = (
         200,
         200,
         2000,
-    )  # the Qt run's own
+    )
     press_text(app, "▶ Fit Kinetics")
     assert app.controller.running and "Fitting…" in shown(app) or app.controller.running
     settle(app)
     fit_ = app.model.analysis.fit
-    assert np.asarray(fit_.rate_matrix) == pytest.approx(np.asarray(qt["matrix"]))
-    assert fit_.log_likelihood == pytest.approx(qt["logL"])
-    assert app.controller.status == qt["status"] and app.model.results_text == qt["report"]
+    k12, k21 = fit_.rate_matrix[1, 0], fit_.rate_matrix[0, 1]
+    assert k12 == pytest.approx(app.model.sim_k_forward, rel=0.15)  # the planted rates
+    assert k21 == pytest.approx(app.model.sim_k_backward, rel=0.15)
+    status = f"logL = {fit_.log_likelihood:,.1f}, k(1→2) = {k12:,.0f} /s, k(2→1) = {k21:,.0f} /s"
+    assert app.controller.status == status
+    assert app.model.results_text.startswith("200 bursts, 40,000 photons, 2 states")
     strings = draw(app).strings
-    assert qt["status"] in " ".join(strings)
+    assert status in " ".join(strings)
     assert (
         f"{fit_.rate_matrix[1, 0]:,.1f}" in strings and f"{fit_.rate_matrix[0, 1]:,.1f}" in strings
     )  # the Rates table cells

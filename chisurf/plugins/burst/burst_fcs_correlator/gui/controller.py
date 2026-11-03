@@ -87,7 +87,7 @@ class BurstFcsController(RunPickerMixin):
                 self.unchecked.discard(path)
 
     def checked_files(self):
-        """The listed inputs that are ticked (the Qt list's ``checked_paths``)."""
+        """The listed inputs that are ticked."""
         return [p for p in self.files if p not in self.unchecked]
 
     def check_all(self):
@@ -103,13 +103,13 @@ class BurstFcsController(RunPickerMixin):
             self.unchecked.discard(path)
 
     def clear(self):
-        """Forget the inputs and every curve (the Qt Clear button)."""
+        """Forget the inputs and every curve."""
         self.files, self._curves, self._model._selected = [], [], None
         self.unchecked = set()
         self.status = "Inputs and results cleared."
 
     def pairs_from_setup(self, setup_name, detectors):
-        """Channel pairs of a detector setup: its saved FCS pairs, else one auto-correlation per detector (as the Qt tool does)."""
+        """Channel pairs of a detector setup: its saved FCS pairs, else one auto-correlation per detector."""
         from chisurf.core.fluorescence.fcs.channel_setups import load_fcs_channel_setups
 
         detectors = detectors or {}

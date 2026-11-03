@@ -367,8 +367,8 @@ class BurstGsGui:
     def rate_bars(self) -> tuple[list[str], np.ndarray, np.ndarray | None]:
         """Fitted rate per transition, its label "k(i→j)", and the simulated rate where known.
 
-        ``rate_matrix`` is ``K[target, source]``: k(i→j) is ``K[j, i]`` (as in the Qt tool's
-        status line). The simulated truth exists only for the two-state simulation.
+        ``rate_matrix`` is ``K[target, source]``: k(i→j) is ``K[j, i]`` (as in the status
+        line). The simulated truth exists only for the two-state simulation.
         """
         ana = self.model.analysis
         if ana is None or getattr(ana.fit, "rate_matrix", None) is None:

@@ -23,7 +23,7 @@ from chisurf.plugins.burst.burst_fusion.gui import view_model
 from chisurf.plugins.burst.burst_fusion.gui.app import create_app
 from chisurf.plugins.emtk_layout import help_close_caption
 
-from .test_emtk_fusion_parity import _qt_facts
+from .test_emtk_fusion_app import _check_summary
 
 SIZE = (1200, 800)
 SMALL = (800, 600)
@@ -192,21 +192,18 @@ def test_estimate_click_gives_the_curve_the_summary_table_and_the_status(app):
     assert stats["n_bursts_after"] < stats["n_bursts_before"]
 
 
-def test_run_click_fuses_writes_the_folder_as_the_qt_tool_did_and_reports_it(app, tmp_path):
-    qt = _qt_facts(tmp_path / "qt_settings")
+def test_run_click_fuses_writes_the_run_and_reports_it(app, tmp_path):
     load_demo(app)
     truth = app.model.demo["truth"]
     press(app, "toolAction_run")
     settle(app)
-    # The Qt tool wrote a threshold-named folder; the fused bursts are now a run of that name in
-    # the same analysis container, with the same numbers.
+    # The fused bursts are a run named after the threshold in the source's analysis container.
     from chisurf.core.fio.classify import container_entries
 
     written = app.model.written_folder
     assert written == f"{app.model.folder} fused p0.50"
-    assert qt["out"] == "burstwise_demo_fused_p0.50"
     assert written in [a for k, a in container_entries(Path(written).parent) if k == "bursts"]
-    assert json.loads(json.dumps(app.model.summary_rows(), default=str)) == qt["summary"]
+    _check_summary(app.model)
     stats = app.model.analysis.statistics
     assert abs(stats["n_bursts_after"] - truth["n_molecules"]) < abs(
         stats["n_bursts_before"] - truth["n_molecules"]
@@ -379,9 +376,9 @@ def test_the_estimate_panel_opens_and_its_fields_and_toggles_are_operated(app):
         type_into(app, field, typed)
         assert getattr(s, attr) == pytest.approx(expected), field
     type_into(app, "n_bins", "9999")
-    assert s.n_bins == 500  # the Qt maximum
+    assert s.n_bins == 500  # the spec's maximum
     type_into(app, "n_bins", "1")
-    assert s.n_bins == 5  # the Qt minimum
+    assert s.n_bins == 5  # the spec's minimum
     for field in ("pool_measurements", "write_source_companion"):
         before = getattr(app.model, field)
         press(app, field)

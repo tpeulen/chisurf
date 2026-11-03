@@ -13,7 +13,7 @@ from chisurf.emtk.channel_definition import format_ranges, parse_ranges
 
 FIT_MODES = ("none", "simple", "maxent")
 FIT_LABELS = ("None", "Simple", "MaxEnt")
-#: The settings the model holds (the Qt AutoForm's ``value`` fields) and the limits the spec declares for them.
+#: The settings the model holds (the ``value`` fields of ``burst_fcs.view.json``) and the limits the spec declares for them.
 MAXENT_ONLY = ("maxent_log10_reg", "maxent_td_min", "maxent_td_max")
 
 
