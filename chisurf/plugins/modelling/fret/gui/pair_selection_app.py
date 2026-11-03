@@ -1,8 +1,7 @@
 """The native pair selection window: which FRET pairs to measure to tell the conformations of a trajectory apart.
 
-The native counterpart of the Qt ``FRETPairSelectionWindow``. The run is :func:`..core.pair_run.run_pair_selection`, the
-function the Qt window calls too; this file is the session around it (a worker thread, the rows of the table) and the
-window: the fields of the Qt window declared in ``pair_selection.view.json``, three file rows, a results table
+The run is :func:`..core.pair_run.run_pair_selection`; this file is the session around it (a worker thread, the rows
+of the table) and the window: the fields declared in ``pair_selection.view.json``, three file rows, a results table
 (``data_table``) and a decay plot. The shell (dialogs, Help, guided tour) is the shared :class:`chisurf.emtk.card_shell.CardShell`.
 """
 
@@ -149,7 +148,7 @@ class PairSession(PairParams):
 
     # run
     def start(self) -> bool:
-        """Run the selection on a worker (the table is emptied first, as the Qt window does)."""
+        """Run the selection on a worker (the table is emptied first)."""
         if self.running:
             return False
         self.result, self.rows = None, []
@@ -165,7 +164,7 @@ class PairSession(PairParams):
     def _work(self, params: PairParams) -> None:
         try:
             result = run_pair_selection(params)
-        except Exception as exc:  # noqa: BLE001 - shown in the window, as the Qt tool's error box
+        except Exception as exc:  # noqa: BLE001 - shown in the window
             self._queue.put(("error", str(exc)))
         else:
             self._queue.put(("done", result))

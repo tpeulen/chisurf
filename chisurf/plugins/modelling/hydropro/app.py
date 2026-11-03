@@ -1,10 +1,10 @@
-"""Native HYDROPRO / HYDRO++ window: the Qt tool's parameters, file buttons, run, results table and output pane, without Qt.
+"""Native HYDROPRO / HYDRO++ window: the parameters, file buttons, run, results table and output pane.
 
-The parameter panels are the Qt AutoForm spec (``gui/hydropro.view.json``) drawn by :func:`emtk.view_form.draw_sections`
+The parameter panels are the AutoForm spec ``gui/hydropro.view.json``, drawn by :func:`emtk.view_form.draw_sections`
 over :class:`~.gui.model.HydroProModel`; the buttons, the results ``data_table`` and the output pane are
 ``gui/hydropro_emtk.view.json``. Only what a spec cannot draw is drawn here: the selectable output log, the Help and
 Guide buttons and the in-app dialogs (file chooser, "executable required", notices). The calculation is
-:func:`~.core.runner.run_hydro` on a worker thread, exactly as the Qt tool, the CLI and the RPC service drive it.
+:func:`~.core.runner.run_hydro` on a worker thread, as the CLI and the RPC service drive it.
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ install_translations()
 
 GUI = Path(__file__).parent / "gui"
 TABLE = "result_rows"
-#: The Qt guide names its targets by the Qt button's text; the native controls answer to the same names.
+#: The guide names some targets by a button's text; the controls answer to those names too.
 ALIASES = {
     "Executable": "select_exe",
     "Select files": "workspace_input_rows",
@@ -52,12 +52,12 @@ PARAMS_MIN = 360.0
 
 
 def build_spec(extra: dict | None = None) -> dict:
-    """The native spec: the Qt parameter panels (spin arrows, folds) plus the native-only sections."""
-    qt = json.loads((GUI / "hydropro.view.json").read_text(encoding="utf-8"))
+    """The native spec: the parameter panels of ``hydropro.view.json`` (spin arrows, folds) plus the window's sections."""
+    view = json.loads((GUI / "hydropro.view.json").read_text(encoding="utf-8"))
     if extra is None:
         extra = json.loads((GUI / "hydropro_emtk.view.json").read_text(encoding="utf-8"))
     panels = []
-    for panel in qt["sections"]:
+    for panel in view["sections"]:
         if panel.get("title") == "Results":  # its Status field moves to the results window
             continue
         panel = copy.deepcopy(panel)
@@ -68,7 +68,7 @@ def build_spec(extra: dict | None = None) -> dict:
                 section["style"] = "spin"
                 if section["kind"] == "float" and not section.get("step"):
                     section["step"] = (
-                        1.0  # QDoubleSpinBox's default single step, which the Qt AutoForm keeps
+                        1.0  # a float field without a step steps by 1
                     )
             if section.get("type") == "value" and section.get("kind") == "str":
                 section["elide"] = "start"
@@ -117,7 +117,7 @@ def soft_wrap(text: str, columns: int) -> str:
 
 
 class MessageWindow:
-    """A titled in-app message with one OK button (the Qt ``QMessageBox``)."""
+    """A titled in-app message with one OK button."""
 
     def __init__(self) -> None:
         self.window = DialogWindow(
@@ -197,7 +197,7 @@ class HydroProApp(ImApp):
         )
         super().__init__(self.render)
 
-    # -- the Qt tool's remembered state ---------------------------------------------------------------------------- #
+    # -- the remembered state ---------------------------------------------------------------------------- #
     def export_settings(self) -> dict:
         return self.model.export_settings()
 
@@ -297,7 +297,7 @@ class HydroProApp(ImApp):
         self.file_window.show()
 
     def _draw_prompt(self, box: tuple) -> None:
-        """Qt ``DownloadInfoDialog``: where to get the program, and a way to point at it."""
+        """The "executable required" prompt: where to get the program, and a way to point at it."""
         model = self.model
         self.prompt_window.open = True
         closed = self.prompt_window.begin(box) == "close"

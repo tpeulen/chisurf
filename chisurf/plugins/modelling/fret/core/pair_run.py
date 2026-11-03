@@ -1,7 +1,7 @@
-"""One pair-selection run, Qt-free: trajectory + candidate sites in, the informative pairs and the RMSD decay out.
+"""One pair-selection run: trajectory + candidate sites in, the informative pairs and the RMSD decay out.
 
-Both windows of the pair selection (the Qt ``FRETPairSelectionWindow`` and the native one) call :func:`run_pair_selection`
-with the same :class:`PairParams`; nothing of the run lives in a widget.
+The pair selection window and headless callers run :func:`run_pair_selection` with a :class:`PairParams`; nothing of
+the run lives in a widget.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ ATTACHMENT_ATOMS = ("CB", "CA")
 
 @dataclass
 class PairParams:
-    """What the user chose (the Qt window's fields, same names and defaults)."""
+    """What the user chose: the files, the candidate sites, the FRET parameters and how many pairs to add."""
 
     trajectory: str = ""
     topology: str = ""
@@ -62,14 +62,14 @@ class PairResult:
     warnings: list[str] = field(default_factory=list)
 
     def rows(self) -> list[tuple[int, str, float]]:
-        """``(number, pair, <<RMSD>>)`` per chosen pair, as the Qt table lists them."""
+        """``(number, pair, <<RMSD>>)`` per chosen pair, in the order they were added."""
         return [
             (i + 1, self.pair_names[int(self.selected[i])], float(self.decay[i]))
             for i in range(int(self.selected.shape[0]))
         ]
 
     def export_text(self) -> str:
-        """The text file the Qt Export button writes."""
+        """The text file Export writes: a header, then one tab-separated line per pair."""
         lines = ["#\tPair_added\t<<RMSD>>/A\n"]
         lines += [f"{n}\t{pair}\t{rmsd:.2f}\n" for n, pair, rmsd in self.rows()]
         return "".join(lines)
@@ -121,7 +121,7 @@ def run_pair_selection(
                     n_samples=int(params.av_samples),
                     max_points_per_av=int(params.av_max_points),
                 )
-            except Exception as av_exc:  # noqa: BLE001 - the Qt tool falls back the same way
+            except Exception as av_exc:  # noqa: BLE001 - any AV failure falls back
                 text = (
                     "Failed to compute AV-based efficiencies (falling back to attachment-atom distances)."
                     f"\n\n{av_exc}"

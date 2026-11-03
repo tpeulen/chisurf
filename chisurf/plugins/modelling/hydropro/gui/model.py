@@ -1,9 +1,9 @@
-"""HydroPro without Qt: the parameters, the run, the results table and the output log.
+"""HydroPro's model: the parameters, the run, the results table and the output log.
 
-This is the Qt tool's ``_HydroModel`` (the attributes the AutoForm reads and writes, ``indmode`` held as a string for
-the combo) joined with everything ``HydroProTool`` and its two dialogs did around it: the run on a worker thread, the
-output log and progress, the results table, the CSV export, the "executable required" prompt and the warnings. The
-calculation itself is :func:`..core.run_hydro`, exactly as the Qt tool, the CLI and the RPC service drive it.
+It holds the attributes the AutoForm spec reads and writes (``indmode`` held as a string for the combo) and
+everything around them: the run on a worker thread, the output log and progress, the results table, the CSV
+export, the "executable required" prompt and the warnings. The calculation itself is :func:`..core.run_hydro`,
+as the CLI and the RPC service drive it.
 
 The structures come from the Datasets workspace; the actions that need a dialog (``select_exe``,
 ``save_csv``/``save_log``) set :attr:`HydroProModel.dialog` and the window opens it; the model never
@@ -21,7 +21,7 @@ from typing import Callable
 from ..core import HydroProSettings, HydroResult, run_hydro
 
 DOWNLOAD_URL = "https://leonardo.inf.um.es/macromol/programs/hydro%2B%2B/hydro%2B%2B.htm"
-#: The Qt dialogs' file filters, verbatim.
+#: The file dialogs' filters.
 STRUCT_FILTER = "Structural files (*.pdb *.txt *.bea *.*)"
 EXE_FILTER = "Executables (*.exe);;All files (*.*)"
 CSV_FILTER = "CSV files (*.csv)"
@@ -84,7 +84,7 @@ class HydroProModel:
         self.opened_urls: list[str] = []
         self.open_url: Callable[[str], None] | None = None  # set by the host window
 
-    # -- conversions (the Qt model's) ------------------------------------------------------------------------ #
+    # -- conversions ------------------------------------------------------------------------ #
     def struct_list(self) -> list[Path]:
         return [Path(p.strip()) for p in self.struct_files.split(",") if p.strip()]
 
@@ -143,7 +143,7 @@ class HydroProModel:
     # -- output pane ------------------------------------------------------------------------------------------------- #
     @property
     def log_text(self) -> str:
-        """What the Qt output dialog's ``toPlainText()`` returned: one paragraph per appended message."""
+        """The output log as text: one paragraph per appended message."""
         return "\n".join(self.log_lines)
 
     @property
@@ -161,7 +161,7 @@ class HydroProModel:
         self.dialog = "exe"
 
     def files_chosen(self, paths) -> None:
-        """Qt ``_select_files`` after the dialog: the list replaces the field and the table shows the files, empty."""
+        """Files chosen: the list replaces the field and the table shows the files, empty."""
         paths = [str(p) for p in paths]
         if paths:
             self.struct_files = ", ".join(paths)
@@ -189,7 +189,7 @@ class HydroProModel:
             self.open_url(DOWNLOAD_URL)
 
     def clear(self) -> None:
-        """Qt ``_clear``: the file list, the status, the results and the table."""
+        """Clear the file list, the status, the results and the table."""
         self.struct_files = ""
         self.status = ""
         self.results = []
@@ -201,7 +201,7 @@ class HydroProModel:
 
     # -- run -------------------------------------------------------------------------------------------------------------- #
     def run(self) -> None:
-        """Qt ``_on_run``: validate, make sure there is an executable (prompt), then start the worker."""
+        """Validate, make sure there is an executable (prompt), then start the worker."""
         if self.running:
             return
         files = self.struct_list()
@@ -223,7 +223,7 @@ class HydroProModel:
         self.exe_prompt = True
 
     def prompt_exe_chosen(self, path) -> None:
-        """The prompt's "Select executable…" answer (Qt ``DownloadInfoDialog._select_exe``)."""
+        """The prompt's "Select executable…" answer."""
         if path:
             self.prompt_path = Path(path)
 
@@ -262,7 +262,7 @@ class HydroProModel:
                 should_cancel=lambda: self._cancel,
             )
             put(("finished", results))
-        except Exception as exc:  # surfaced to the window, as the Qt worker did
+        except Exception as exc:  # surfaced to the window
             put(("failed", str(exc)))
 
     def cancel(self) -> None:
@@ -335,7 +335,7 @@ class HydroProModel:
         self.dialog = "log"
 
     def write_csv(self, path) -> bool:
-        """Qt ``_save_csv`` after the dialog: the same rows, the same message."""
+        """Write the results as CSV (file, diffusion coefficient) and say so in a notice."""
         try:
             with open(path, "w", newline="", encoding="utf-8") as fh:
                 writer = csv.writer(fh)
@@ -356,7 +356,7 @@ class HydroProModel:
             return False
 
     def write_log(self, path) -> bool:
-        """Qt ``OutputDialog._save_log``: the log as plain text; a failure is silent there, a notice here."""
+        """Write the log as plain text; a failure is a notice."""
         try:
             Path(path).write_text(self.log_text, encoding="utf-8")
             return True
@@ -367,12 +367,12 @@ class HydroProModel:
     def clear_log(self) -> None:
         self.log_lines = []
 
-    # -- persistence (the Qt tool's QSettings: the executable and the parameters) ---------------------------------------- #
+    # -- persistence (the executable and the parameters) ---------------------------------------- #
     def export_settings(self) -> dict:
         return {"exe_path": self.exe_path, **self.to_settings().to_dict(), "indmode": self.indmode}
 
     def restore_settings(self, settings: dict) -> None:
-        """Restore :meth:`export_settings`; invalid values are ignored field by field (Qt: ``from_dict``)."""
+        """Restore :meth:`export_settings`; invalid values are ignored field by field (``HydroProSettings.from_dict``)."""
         if isinstance(settings.get("exe_path"), str):
             self.exe_path = settings["exe_path"]
         stored = {k: v for k, v in settings.items() if k in HydroProSettings().to_dict()}

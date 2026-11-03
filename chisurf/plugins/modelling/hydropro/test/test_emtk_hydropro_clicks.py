@@ -705,7 +705,7 @@ def test_settings_round_trip_through_the_app(drv, world):
     )
     assert (
         other.model.struct_files == ""
-    )  # the Qt tool remembered the executable and the parameters, not the file list
+    )  # the executable and the parameters are remembered, not the file list
     other.close()
 
 

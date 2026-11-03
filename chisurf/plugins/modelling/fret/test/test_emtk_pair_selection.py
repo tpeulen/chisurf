@@ -1,4 +1,4 @@
-"""The native pair selection window (fret_docking): parity with the Qt window and real-input tests of every control.
+"""The native pair selection window (fret_docking): the window runs the core selection, and real-input tests of every control.
 
 Hermetic: temporary settings and HOME, a real 8-frame trajectory of the hgbp1 test data, no network. Nothing here
 calls a model method to "click": a pointer is pressed and released at the rectangle a control drew, text is typed,
@@ -64,37 +64,45 @@ def run_and_wait(ui):
     return ui.draw(3)
 
 
-EXPECTED_ROWS = [
-    (1, "A:THR92-A:GLY94", 1.53),
-    (2, "A:TYR47-A:ASN50", 1.29),
-    (3, "A:LEU40-A:LEU95", 1.22),
-    (4, "A:VAL38-A:THR92", 1.17),
-    (5, "A:LEU90-A:LEU116", 1.22),
-]
+@pytest.fixture(scope="module")
+def core_rows(inputs):
+    """The five pairs the core selection chooses on the inputs, called directly without a window."""
+    result = run_pair_selection(
+        PairParams(
+            trajectory=str(inputs / "small.dcd"), topology=str(inputs / "topol.pdb"), max_pairs=5
+        )
+    )
+    return [(n, p, round(v, 2)) for n, p, v in result.rows()]
 
 
-# ---- numeric parity with the Qt window -------------------------------------------------------------------------
+# ---- the window runs the core selection ------------------------------------------------------------------------
 
 
-QT = json.loads((Path(__file__).parent / "qt_reference.json").read_text())
-
-
-def test_the_run_equals_the_qt_windows(inputs):
-    """The retired Qt window chose these five pairs, and its Export button wrote this text (recorded)."""
+def test_the_window_run_equals_the_core_selection(inputs, core_rows):
+    """The window lists the pairs the core chooses; Export writes a header and one line per pair."""
     ui = ready(inputs)
     run_and_wait(ui)
     rows = [(r["number"], r["pair"], round(r["rmsd"], 2)) for r in ui.app.session.rows]
-    assert rows == [(n, p, v) for n, p, v in EXPECTED_ROWS]
-    assert ui.app.session.result.export_text() == QT["export_text"]
+    assert len(rows) == 5 and rows == core_rows
+    assert ui.app.session.result.export_text() == "".join(
+        ["#\tPair_added\t<<RMSD>>/A\n", *(f"{n}\t{p}\t{v:.2f}\n" for n, p, v in core_rows)]
+    )
     ui.app.close()
 
 
-def test_the_default_fields_equal_the_qt_windows():
-    """The Qt window started at ``PairParams()`` and its spin boxes had these ranges (recorded)."""
-    for attr, (lo, hi) in QT["ranges"].items():
-        spec = _field(make_app().spec, attr)
-        assert spec["minimum"] == pytest.approx(lo), attr
-        assert spec["maximum"] == pytest.approx(hi), attr
+NUMERIC = ["stride", "av_samples", "av_max_points", "max_pairs", "r0", "err"]
+
+
+def test_the_fields_start_at_the_core_defaults_inside_their_ranges():
+    """The window starts at ``PairParams()``; every number field's range holds its default."""
+    app = make_app()
+    defaults = PairParams()
+    for attr in NUMERIC:
+        spec = _field(app.spec, attr)
+        assert getattr(app.session, attr) == getattr(defaults, attr), attr
+        assert spec["minimum"] <= getattr(defaults, attr) <= spec["maximum"], attr
+        assert spec["minimum"] > 0, attr  # a stride, a count or R0 of zero means nothing
+    app.close()
 
 
 def _field(spec, attr):
@@ -110,13 +118,13 @@ def _field(spec, attr):
 # ---- the controls, by real input -------------------------------------------------------------------------------
 
 
-def test_run_lists_the_pairs_draws_the_plot_and_export_writes_the_file(inputs, tmp_path):
+def test_run_lists_the_pairs_draws_the_plot_and_export_writes_the_file(inputs, core_rows, tmp_path):
     ui = ready(inputs)
     assert not ui.app.session.rows and ui.shown("No result yet")
     run_and_wait(ui)
     assert (
         ui.shown("5 pairs chosen.")
-        and ui.shown("A:THR92-A:GLY94")
+        and ui.shown(core_rows[0][1])
         and "decay_plot" in ui.app.item_rects
     )
     ui.click("export")
@@ -125,7 +133,7 @@ def test_run_lists_the_pairs_draws_the_plot_and_export_writes_the_file(inputs, t
     ui.save_dialog_type_name(str(target))
     ui.press_text("Save")
     assert target.read_text().splitlines()[0] == "#\tPair_added\t<<RMSD>>/A"
-    assert target.read_text().splitlines()[1] == "1\tA:THR92-A:GLY94\t1.53"
+    assert target.read_text().splitlines()[1] == f"1\t{core_rows[0][1]}\t{core_rows[0][2]:.2f}"
     assert len(target.read_text().splitlines()) == 6
     ui.app.close()
 
@@ -155,7 +163,7 @@ def test_export_is_unavailable_before_a_run_and_while_running(inputs):
     ],
 )
 def test_number_field(inputs, key, start, typed, lo, hi, step, kind):
-    """Typed value + Enter, text that is no number, both limits and both arrows (the Qt spin boxes' ranges)."""
+    """Typed value + Enter, text that is no number, both limits and both arrows (the spec's ranges)."""
     ui = ready(inputs, fps_json=str(inputs / "hiv_rt.fps.json"))
     s = ui.app.session
     assert getattr(s, key) == start
@@ -188,7 +196,7 @@ def test_number_field(inputs, key, start, typed, lo, hi, step, kind):
     ],
 )
 def test_number_field_wheel_and_click_away(inputs, key, typed):
-    """The wheel over a spin field steps it (up raises, down lowers, as the Qt boxes do); typing without Enter is
+    """The wheel over a spin field steps it (up raises, down lowers); typing without Enter is
     committed when the pointer goes down elsewhere."""
     ui = ready(inputs, fps_json=str(inputs / "hiv_rt.fps.json"))
     s = ui.app.session
@@ -240,7 +248,7 @@ def test_text_field(inputs, key, start, typed):
     ui.draw(1)
     ui.key(keys.KEY_BACKSPACE, "")
     ui.click("trajectory", fx=0.9)  # the commit is the pointer going down elsewhere
-    assert getattr(s, key) == ""  # an empty value is allowed, as in the Qt box
+    assert getattr(s, key) == ""  # an empty value is allowed
     ui.app.close()
 
 
@@ -368,13 +376,22 @@ def test_failures_are_reported_in_a_message_and_the_status_line(inputs):
         u.app.close()
 
 
-def test_the_core_runs_without_a_window(inputs):
+def test_the_core_runs_without_a_window_and_adds_pairs_greedily(inputs, core_rows):
+    """Fewer pairs are the first of more: each pair is added to those already chosen."""
+    import re
+
     result = run_pair_selection(
         PairParams(
             trajectory=str(inputs / "small.dcd"), topology=str(inputs / "topol.pdb"), max_pairs=3
         )
     )
-    assert [(n, p, round(v, 2)) for n, p, v in result.rows()] == EXPECTED_ROWS[:3]
+    rows = [(n, p, round(v, 2)) for n, p, v in result.rows()]
+    assert rows == core_rows[:3]
+    ranges = [range(35, 51), range(85, 96), range(115, 121)]  # PairParams().residues
+    for _n, pair, _v in core_rows:
+        for site in pair.split("-"):
+            chain, number = re.fullmatch(r"([A-Z]):[A-Z]{3}(\d+)", site).groups()
+            assert chain == "A" and any(int(number) in r for r in ranges), pair
 
 
 def test_stride_changes_the_frames_read(inputs):

@@ -1,7 +1,6 @@
 """The FRET docking window: FRET-restrained rigid-body docking, refinement and screening (IMP + IMP.bff).
 
-The native counterpart of the Qt ``FretDockingTool``. The inputs are the Qt tool's own ``fret_dock.view.json`` spec
-(read from the FRET plugin, not copied), drawn by emtk with spin fields and grouped captions; the structures are a
+The inputs are the FRET plugin's ``fret_dock.view.json`` spec (read, not copied), drawn by emtk with spin fields and grouped captions; the structures are a
 table (``data_table``), the results a sortable table, a score-versus-step plot and a 3D trace of the selected structure.
 The state and the run live in :class:`~.docking_session.DockingSession`.
 """
@@ -195,7 +194,7 @@ class DockingCard(CardShell):
         self.result_form = FormState(on_used=self.used)
         self.session.on_change = self.request_frame
         self.error_shown = ""
-        #: The Structure tab's molecular viewer (chimol, as the Qt docking window embeds it).
+        #: The Structure tab's molecular viewer (chimol).
         self.chimol = ChimolView()
         self._chimol_path = ""
 

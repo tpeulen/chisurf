@@ -1,9 +1,9 @@
-"""The docking card's view model: inputs, run control, results and the score traces, without Qt.
+"""The docking card's view model: inputs, run control, results and the score traces.
 
-The inputs and the request they build are those of the Qt tool's ``_DockingModel`` (``fret/gui/docking_model.py``, which
-is Qt-free); the run is the same: ``dock`` in a terminable child process, repeated docking through
-``estimate_errors``, the other operations inline, the score traces read from the files the engine writes while it
-runs. The tests compare :meth:`DockingSession.build_params` with the Qt model's for the same inputs.
+The inputs and the request they build are those of ``_DockingModel`` (``fret/gui/docking_model.py``); the run is
+``dock`` in a terminable child process, repeated docking through ``estimate_errors``, the other operations inline,
+the score traces read from the files the engine writes while it runs. The tests compare
+:meth:`DockingSession.build_params` with ``_DockingModel``'s for the same inputs.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from chisurf.emtk.card_shell import Rows
 OPERATIONS = ("dock", "refine", "screen", "score")
 METHODS = ("minimize", "mc")
 AV_BACKENDS = ("auto", "labellib", "imp-bff")
-#: Columns of the results table, in the Qt table's order.
+#: Columns of the results table, in order.
 RESULT_KEYS = ("trial", "type", "score", "distances", "best_pdb")
 
 
@@ -70,7 +70,7 @@ class DockingSession:
     """Everything the docking window edits and shows."""
 
     def __init__(self) -> None:
-        # inputs (the Qt model's attributes)
+        # inputs (``_DockingModel``'s attributes)
         self.pdb_files: list[str] = []
         self.fps_json = ""
         self.output_dir = ""
