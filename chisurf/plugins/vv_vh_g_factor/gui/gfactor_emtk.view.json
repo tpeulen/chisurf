@@ -249,7 +249,7 @@
               "maximum": 1000.0,
               "decimals": 3,
               "step": 0.1,
-              "description": "Shift the VH time axis by this many TAC bins, fractional bins included (the Qt tool's 'Shift Perpendicular Decay')."
+              "description": "Shift the VH time axis by this many TAC bins, fractional bins included."
             }
           ]
         }

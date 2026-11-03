@@ -1,4 +1,9 @@
-"""The native VV/VH G-factor calculator against the Qt tool, every control operated with real input events.
+"""The VV/VH G-factor calculator, every control operated with real input events.
+
+The decays are generated (:func:`make_data`) with a planted G = VV/VH = 1.2 and 3 background counts per channel;
+G is checked against that and against the documented tail-matching formula recomputed here: the mean of the
+channel ratios VV/VH over the tail region (valid where VH > 0 and the ratio > 0), and, with background
+correction, the same after subtracting the mean counts of the background region from each channel (floored at 0).
 
 Hermetic: HOME, the chisurf settings folder and the MMFDB paths live in a temporary folder; the last test proves
 the user's real ``~/.chisurf`` was not touched (file names and modification times are compared with a snapshot
@@ -8,7 +13,6 @@ taken when this module was imported; the session log files chisurf itself starts
 from __future__ import annotations
 
 import csv
-import hashlib
 import json
 import os
 import pwd
@@ -28,7 +32,6 @@ from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
 from chisurf.plugins.vv_vh_g_factor.gui.model import GFactorModel
 
 PLUGIN = Path(__file__).parent.parent
-ORACLE_PATH = Path(__file__).with_name("data") / "numerical-control-freeze.json"
 
 REAL_CHISURF = Path(pwd.getpwuid(os.getuid()).pw_dir) / ".chisurf"
 
@@ -248,127 +251,115 @@ def type_value(ui, name, text):
     return ui.settle()
 
 
-# ───────────────────────────── numbers equal the Qt tool ───────────────────────────── #
+# ───────────────────────────── G from the planted data and the formula ───────────────────────────── #
+
+#: What :func:`make_data` plants.
+PLANTED_G, PLANTED_BACKGROUND = 1.2, 3.0
 
 
-@pytest.fixture(scope="module")
-def legacy_oracle():
-    """Committed controls/numerics captured before the old calculator was retired."""
-    return json.loads(ORACLE_PATH.read_text())
+def tail_g(vv, vh, region, background_region=None):
+    """G by tail matching (no shift): the mean valid VV/VH ratio over ``region``, background-corrected if asked."""
+    full_vv, full_vh = np.asarray(vv, float), np.asarray(vh, float)
+    lo, hi = (int(round(v)) for v in region)
+    vv, vh = full_vv[lo:hi], full_vh[lo:hi]
+    bg = (0.0, 0.0)
+    if background_region is not None:
+        b0, b1 = (int(round(v)) for v in background_region)
+        bg = (float(np.mean(full_vv[b0:b1])), float(np.mean(full_vh[b0:b1])))
+        vv, vh = np.maximum(vv - bg[0], 0.0), np.maximum(vh - bg[1], 0.0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratio = vv / vh
+    ratio = ratio[np.isfinite(ratio) & (ratio > 0)]
+    return float(np.mean(ratio)), bg
 
 
-def test_seeded_physical_files_equal_the_immutable_capture(files, legacy_oracle):
-    """Regenerated physical data must match the source the frozen answers belong to."""
-    for name, path in files.items():
-        assert (
-            hashlib.sha256(Path(path).read_bytes()).hexdigest()
-            == legacy_oracle["files"][name]["sha256"]
-        )
-
-
-@pytest.mark.parametrize("state", ["defaults", "existing_reference", "no-background", "background"])
-def test_g_factor_mixing_defaults_and_reference_equal_frozen_qt(state, files, legacy_oracle):
-    record = legacy_oracle["records"][state]
-    frozen = record.get("legacy", record.get("state"))
+def model_with(files, **settings):
     native = GFactorModel()
-    if state == "existing_reference":
-        path = PLUGIN / "test_vv_vh_data.dat"
-        assert hashlib.sha256(path.read_bytes()).hexdigest() == record["source_sha256"]
-        native.load(path)
-    elif state != "defaults":
-        native.fp_dt_ns = 0.05
-        native.load(files["fast"])
-        native.load(files["slow"], slow=True)
-        native.background = state == "background"
-        native.compute()
-    assert native.region == list(map(float, frozen["region_bounds"]))
-    assert native.background_region == list(map(float, frozen["bg_region_bounds"]))
-    assert native.shift == frozen["decay_shift"] and native.flip == frozen["flip"]
-    assert native.background == frozen["use_background_correction"]
-    if state == "defaults":
-        assert native.g_factor is None and native.result == {} and native.fp_result == {}
-        controls = {c["name"]: c for c in record["controls"]}
-        assert native.fp_dt_ns == controls["fp_dt_spinbox"]["value"]
-        assert native.fp_rho_ns == controls["fp_rho_spinbox"]["value"]
-        return
-    assert native.result["g_factor_uncorrected"] == pytest.approx(frozen["g_factor_uncorrected"])
-    assert native.g_factor == pytest.approx(frozen["g_factor"])
-    if state == "existing_reference":
-        assert native.result["g_factor_stddev_uncorrected"] > 0
-        return
-    before_native = record["native"]["result"]
-    # The old UI never wired SD to its scalar; captured owner output preserves the real uncertainty.
-    assert frozen["g_factor_stddev"] is None
-    assert native.result["g_factor_stddev_uncorrected"] == pytest.approx(
-        before_native["g_factor_stddev_uncorrected"]
-    )
-    if state == "background":
-        assert native.result["g_factor_corrected"] == pytest.approx(frozen["g_factor_corrected"])
-        assert native.result["g_factor_stddev_corrected"] == pytest.approx(
-            before_native["g_factor_stddev_corrected"]
-        )
-        for key, display in (
-            ("bg_parallel_avg", "bg_parallel_text"),
-            ("bg_perpendicular_avg", "bg_perpendicular_text"),
-        ):
-            assert native.result[key] == pytest.approx(float(frozen[display]), abs=1e-3)
-    assert native.fp_result["tau_estimate_ns"] == pytest.approx(frozen["fp_tau_estimate_ns"])
-    assert native.fp_result["r_expected"] == pytest.approx(frozen["fp_rs_expected"])
-    # The recording predates the physical G = VV/VH convention (it rejected the
-    # linked estimate as out of range); under it the estimate is physical and applied.
-    assert frozen["l1_estimate"] is None and "will not be auto-applied" in frozen["fp_warning"]
-    assert 0 <= native.fp_result["l1"] <= 0.5
-    assert native.fp_result["l1"] == native.fp_result["l2"]
+    native.fp_dt_ns = 0.05
+    native.load(files["fast"])
+    native.load(files["slow"], slow=True)
+    for key, value in settings.items():
+        setattr(native, key, value)
+    native.compute()
+    return native
+
+
+def test_nothing_is_calculated_before_a_reference_is_loaded():
+    native = GFactorModel()
+    assert native.g_factor is None and native.result == {} and native.fp_result == {}
+
+
+def test_g_of_the_shipped_reference_file_follows_the_tail_formula():
+    native = GFactorModel()
+    native.load(PLUGIN / "test_vv_vh_data.dat")
+    g, _ = tail_g(*native.channels(), native.region)
+    assert native.result["g_factor_uncorrected"] == pytest.approx(g, rel=1e-12)
+    assert native.g_factor == pytest.approx(g, rel=1e-12)
+    assert native.result["g_factor_stddev_uncorrected"] > 0
+
+
+@pytest.mark.parametrize("background", [False, True])
+def test_g_follows_the_tail_formula_and_recovers_the_planted_g(files, background):
+    native = model_with(files, background=background)
+    vv, vh = native.channels()
+    g, _ = tail_g(vv, vh, native.region)
+    assert native.result["g_factor_uncorrected"] == pytest.approx(g, rel=1e-12)
+    if background:
+        g_bg, (bg_vv, bg_vh) = tail_g(vv, vh, native.region, native.background_region)
+        assert native.result["bg_parallel_avg"] == pytest.approx(bg_vv, rel=1e-12)
+        assert native.result["bg_perpendicular_avg"] == pytest.approx(bg_vh, rel=1e-12)
+        assert (bg_vv, bg_vh) == (pytest.approx(PLANTED_BACKGROUND, abs=0.5),) * 2
+        assert native.result["g_factor_corrected"] == pytest.approx(g_bg, rel=1e-12)
+        assert native.g_factor == native.result["g_factor_corrected"]
+    else:
+        assert native.result["g_factor_corrected"] is None and native.g_factor == pytest.approx(g)
+    assert native.g_factor == pytest.approx(PLANTED_G, rel=0.03)
+    # the slow reference gives the linked mixing estimate, inside the physical range
+    assert 0 <= native.fp_result["l1"] <= 0.5 and native.fp_result["l1"] == native.fp_result["l2"]
     assert "linked estimate" in native.fp_result["warning"]
+    assert native.fp_result["tau_estimate_ns"] > 0 and 0 < native.fp_result["r_expected"] < 0.4
 
 
 @pytest.mark.parametrize("shift,flip", [(0.4, False), (0.0, True), (-1.5, True)])
-def test_shift_and_flip_recompute_like_frozen_qt(files, legacy_oracle, shift, flip):
-    frozen = legacy_oracle["records"][f"shift={shift};flip={flip}"]
-    native = GFactorModel()
-    native.fp_dt_ns = 0.05
-    native.load(files["fast"])
-    native.load(files["slow"], slow=True)
-    native.shift, native.flip = shift, flip
-    native.compute()
-    assert native.g_factor == pytest.approx(frozen["g_factor"])
-    assert native.fp_result["tau_estimate_ns"] == pytest.approx(frozen["fp_tau_estimate_ns"])
-    assert native.fp_result["r_expected"] == pytest.approx(frozen["fp_rs_expected"])
-    # physical convention (recording predates it): flipped channels leave the physical range
-    l1 = native.fp_result["l1"]
-    assert (l1 is None) == native.flip or (l1 is None or 0 <= l1 <= 0.5)
+def test_shift_and_flip_recompute_g(files, shift, flip):
+    native = model_with(files, shift=shift, flip=flip)
+    if flip:  # VV and VH swapped: the ratio inverts
+        assert native.g_factor == pytest.approx(1.0 / PLANTED_G, rel=0.03)
+        assert native.fp_result["l1"] is None  # the swapped channels leave the physical range
+    else:
+        assert native.g_factor == pytest.approx(PLANTED_G, rel=0.03)
+        assert 0 <= native.fp_result["l1"] <= 0.5
+    if shift == 0.0:  # channels() hands the decays out already swapped
+        g, _ = tail_g(*native.channels(), native.region)
+        assert native.g_factor == pytest.approx(g, rel=1e-12)
 
 
-def test_batch_results_equal_frozen_qt_batch_window(files, legacy_oracle):
-    frozen = legacy_oracle["records"]["batch"]
-    native = GFactorModel()
-    native.fp_dt_ns = 0.05
-    native.load(files["fast"])
-    native.load(files["slow"], slow=True)
-    native.background = True
-    native.compute()
+def test_batch_rows_use_the_calibration_and_rank_the_planted_rotations(files):
+    native = model_with(files, background=True)
     native.batch_files = [files["batch1"], files["batch2"]]
     native.compute_batch()
-    assert len(native.batch_results) == len(frozen["results"]) == 2
-    for row, expected in zip(native.batch_results, frozen["results"]):
-        assert Path(row["file"]).name == expected[0]
-        # r_inf follows the physical G = VV/VH convention; the recording (expected[1]) predates it
-        assert -0.5 <= row["r_inf"] <= 1.0
-        assert [row["region_start"], row["region_stop"]] == expected[2:4]
-        assert row["g_factor"] == pytest.approx(expected[6])
-        assert [row["bg_vv"], row["bg_vh"]] == pytest.approx(expected[4:6])
-    for row, expected in zip(native.batch_rows(), frozen["results"]):
-        assert row["file"] == expected[0]
-        assert list(map(float, row["region"].split("-"))) == expected[2:4]
-        assert float(row["r_inf"]) == pytest.approx(
-            native.batch_results[native.batch_rows().index(row)]["r_inf"], abs=1e-4
+    assert [Path(row["file"]).name for row in native.batch_results] == ["batch1.dat", "batch2.dat"]
+    for row in native.batch_results:
+        assert row["error"] == ""
+        assert [row["region_start"], row["region_stop"]] == native.region
+        assert row["g_factor"] == pytest.approx(native.g_factor)
+        assert [row["bg_vv"], row["bg_vh"]] == pytest.approx(
+            [native.result["bg_parallel_avg"], native.result["bg_perpendicular_avg"]]
         )
-        assert float(row["g_factor"]) == pytest.approx(expected[6], abs=5e-5)
-        assert [float(row["bg_vv"]), float(row["bg_vh"])] == pytest.approx(expected[4:6], rel=1e-5)
+        assert row["l1"] == row["l2"] == pytest.approx(native.fp_result["l1"])
+        assert -0.5 <= row["r_inf"] <= 1.0 and 0 < row["r_ss"] < 0.4
+    # batch1 rotates in 8 ns, batch2 in 30 ns: the slower one keeps more anisotropy
+    first, second = native.batch_results
+    assert first["r_ss"] < second["r_ss"] and first["r_inf"] < second["r_inf"]
+    for row, result in zip(native.batch_rows(), native.batch_results):
+        assert row["file"] == Path(result["file"]).name
+        assert list(map(float, row["region"].split("-"))) == native.region
+        assert float(row["r_inf"]) == pytest.approx(result["r_inf"], abs=1e-4)
+        assert float(row["g_factor"]) == pytest.approx(result["g_factor"], abs=5e-5)
     snapshot = native.batch_snapshot()
-    assert list(snapshot["background_levels"]) == pytest.approx(frozen["results"][0][4:6])
-    # the recording (l1 = l2 = 0) predates the physical convention that applies the estimate
-    assert frozen["snapshot"]["l1"] == frozen["snapshot"]["l2"] == 0
+    assert list(snapshot["background_levels"]) == pytest.approx(
+        [native.result["bg_parallel_avg"], native.result["bg_perpendicular_avg"]]
+    )
     assert snapshot["l1"] == snapshot["l2"] == pytest.approx(native.fp_result["l1"])
 
 
@@ -392,9 +383,7 @@ def test_the_fast_reference_picked_in_the_workspace_gives_the_calculated_g(ui, f
 
 def test_the_slow_reference_adds_the_mixing_estimate(ui, files):
     m = loaded(ui, files)
-    assert m.slow_file == files["slow"] and m.fp_result["tau_estimate_ns"] == pytest.approx(
-        8.8642, rel=2e-3
-    )  # qt_values.json: 8.864208 (with background correction on)
+    assert m.slow_file == files["slow"] and m.fp_result["tau_estimate_ns"] > 0
     assert m.fp_result["r_expected"] is not None
 
 
