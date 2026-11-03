@@ -1,6 +1,6 @@
 """Plugin startup checks without Qt: what is installed, how it is wired, and a sweep that constructs each native app.
 
-The list is what the Qt tool listed (``chisurf.plugins.iter_plugins``: built-in and user plugins, their dependency
+The list is ``chisurf.plugins.iter_plugins`` (built-in and user plugins, their dependency
 maps, the dependency problems the resolver reports), joined with each plugin's manifest for the native entry point.
 A sweep builds every native app in a fresh process on throw-away settings, one plugin at a time, and the results come
 back through a queue that :meth:`PluginCheckModel.poll` drains once per frame, so the window never blocks.
@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-#: The longest an error is shown in the table before the details pane (the Qt tool cut at 50 characters).
+#: The longest an error is shown in the table; the whole text is in the details pane.
 ERROR_CELL = 50
 #: Consecutive failures after which a plugin is blacklisted (skipped while "Skip blacklisted" is on).
 BLACKLIST_AFTER = 5
@@ -131,7 +131,7 @@ class PluginCheckModel:
 
     # -- the list ---------------------------------------------------------------- #
     def name_of(self, key: str) -> str:
-        """The menu path the Qt tree showed in its first column."""
+        """The plugin's menu path, shown in the first column."""
         manifest = self.catalog.get(key, {})
         return str(manifest.get("plugin_name") or manifest.get("display_name") or key)
 
@@ -218,7 +218,7 @@ class PluginCheckModel:
         return self.catalog.get(self.selected_key, {})
 
     def details(self) -> list[tuple[str, str]]:
-        """``(caption, text)`` blocks of the selected plugin: what the Qt details pane listed, plus the check result."""
+        """``(caption, text)`` blocks of the selected plugin: its manifest facts plus the check result."""
         key = self.selected_key
         if key not in self.catalog:
             return []
@@ -250,7 +250,7 @@ class PluginCheckModel:
 
     @property
     def error_text(self) -> str:
-        """The selected plugin's whole error (and traceback): the Qt tool's error box, shown for a failed check."""
+        """The selected plugin's whole error (and traceback), shown for a failed check."""
         result = self.results.get(self.selected_key, {})
         return "\n".join(
             part

@@ -18,7 +18,7 @@ from chisurf.plugins.core.plugin_check.gui.model import PluginCheckModel
 from chisurf.plugins.emtk_layout import action_caption, help_close_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 
-from .test_emtk_plugin_check_parity import (  # noqa: F401  (hermetic is autouse)
+from .test_emtk_plugin_check import (  # noqa: F401  (hermetic is autouse)
     BIG,
     SMALL,
     hermetic,
@@ -622,7 +622,7 @@ def test_no_tour_card_button_is_dead_even_over_the_table(drv):
 # -- the host and the small window -------------------------------------------------------------------------------------- #
 
 
-def test_a_file_dropped_on_the_window_is_ignored_as_the_qt_window_ignored_it(drv, tmp_path):
+def test_a_file_dropped_on_the_window_is_ignored(drv, tmp_path):
     path = tmp_path / "x.zip"
     path.write_bytes(b"x")
     before = (drv.app.model.selected_key, dict(drv.app.model.results))
