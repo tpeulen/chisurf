@@ -124,9 +124,12 @@ def test_pure_steps_have_the_wizards_edge_cases():
     assert engine.select_fit_range(d) == (2, 8)
     assert engine.header_time_ns(None, 1) is None
     assert engine.window_bins(None, (5, 50), 2) == (5, 50, 5, 50)
-    # the setup's gates (step 0): the first bounds both polarisations
+    # the setup's gates (step 0): the first bounds both polarisations, and Window start / stop
+    # (bins) narrow the fit inside it -- every input the panel shows changes the fit
     assert engine.window_bins([[40, 80]], (5, 50), 4) == (10, 20, 10, 20)
-    assert engine.window_bins([[0, 64], [64, 128]], (5, 50), 4, 2) == (0, 16, 0, 16)
+    assert engine.window_bins([[0, 64], [64, 128]], (5, 50), 4, 2) == (5, 16, 5, 16)
+    assert engine.window_bins([[0, 64]], (2, 9), 4) == (2, 9, 2, 9)
+    assert engine.window_bins([[40, 80]], (30, 40), 4) == (10, 20, 10, 20)  # outside: the gate
     arr = np.arange(16, dtype=float)
     rolled = engine.process_background(arr, 2, np.zeros(16))
     np.testing.assert_array_equal(rolled[8:], np.roll(arr[8:], 2))
@@ -162,6 +165,7 @@ def test_the_batch_rows_equal_the_wizards_process_bursts(sample_copy, tmp_path, 
     session.add_burst_files([own / BURST_TABLE])
     for det in ("G|G", "R|G"):
         session.current_detector = det
+        session.settings.min_photons = 10  # the wizard's default (ours is 5)
         session.auto_extract()
     seen = []
     session.run_batch(progress=lambda done, total: seen.append((done, total)))

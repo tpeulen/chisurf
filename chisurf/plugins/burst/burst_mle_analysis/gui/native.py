@@ -48,6 +48,8 @@ REGION_FILL = (46, 117, 182, 60)
 #: The decay plot's highlighted ranges: the fit window, and the IRF range the IRF clip keeps.
 FIT_FILL = (90, 170, 90, 50)
 IRF_FILL = (220, 150, 60, 50)
+#: First id of the decay plot's drag lines (fit window and IRF range, both halves).
+DRAG_IDS = 720
 
 
 
@@ -746,8 +748,47 @@ class MleNativeApp(TourTarget, ImApp):
                     seg = np.arange(lo, hi)
                     seg = seg[values[seg] > 0]
                     implot.plot_line(label, seg, values[seg])
+            self._drag_ranges(curves, half)
             implot.end_plot()
+        im.set_item_tooltip(
+            tr(
+                "Drag the green lines to set the fit window and the orange lines to set the IRF "
+                "range (in either half); the decay is fitted again when a line is let go."
+            )
+        )
         im.text(self.model.current_file_text())
+
+    def _drag_ranges(self, curves, half: int) -> None:
+        """Lines on the edges of the fit window and of the IRF range, in both halves (the VH half
+        has the same window): dragging one sets Window start / stop or the IRF clip, which the
+        fields show; the fit runs again when the line is let go, not on every frame of a drag."""
+        if half <= 0 or self.job.busy:
+            return
+        pending = self.__dict__.setdefault("_dragging", {})
+        edges = []  # (setting, x of the edge in the VV half, colour)
+        if curves.fit_windows:
+            lo, hi = curves.fit_windows[0]
+            edges += [("micro_time_start", lo - 0.5, FIT_FILL), ("micro_time_stop", hi - 0.5, FIT_FILL)]
+        if curves.irf_windows:
+            lo, hi = curves.irf_windows[0]
+            edges += [("irf_start", lo - 0.5, IRF_FILL), ("irf_stop", hi - 0.5, IRF_FILL)]
+        for i, (name, x, colour) in enumerate(edges):
+            for part, offset in enumerate((0, half)):
+                key = (name, part)
+                shown = pending.get(key, x) + offset
+                line = implot.drag_line_x(
+                    DRAG_IDS + 2 * i + part, float(shown), colour[:3] + (255,), 2.0
+                )
+                if line.held:
+                    pending[key] = float(line.value) - offset
+                elif key in pending:
+                    # a line sits on a bin edge (x = bin - 0.5): a start is the first bin inside,
+                    # Window stop the first bin after; the IRF clip's stop is its last bin
+                    edge = int(np.floor(pending.pop(key) + 1.0))
+                    edge = max(0, min(half, edge))
+                    value = edge - 1 if name == "irf_stop" else edge
+                    setattr(self.model, name, value)
+                    self.on_used(name)
 
     def _inspect(self, box=None) -> None:
         bursts = self.model.n_bursts

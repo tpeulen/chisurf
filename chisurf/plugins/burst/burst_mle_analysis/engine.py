@@ -170,15 +170,21 @@ def window_bins(
     """Per-polarisation ``(vv_start, vv_stop, vh_start, vh_stop)`` in binned channels.
 
     ``micro_time_ranges`` mean what they mean in the step-0 setup: the detector's gates, for all of its
-    channels. The first gate bounds both polarisations (a fit window is contiguous); without gates the
-    global window applies. *n_channels* is accepted for call-site symmetry and not used.
+    channels. The fit window is the window *micro_time_range* (Window start / stop, in bins) inside the
+    first gate: the gate says which photons are the detector's (PIE), the window which of them are
+    fitted, so narrowing it narrows the fit. Without gates the window alone applies. *n_channels* is
+    accepted for call-site symmetry and not used.
     """
-    sb, eb = micro_time_range
+    sb, eb = int(micro_time_range[0]), int(micro_time_range[1])
     ranges = [r for r in (detector_ranges or []) if r is not None and len(r) >= 2]
     if not ranges:
         return (sb, eb, sb, eb)
     b = max(1, int(binning))
     lo, hi = int(ranges[0][0] // b), int(ranges[0][1] // b)
+    if eb > sb:
+        lo, hi = max(lo, sb), min(hi, eb)
+        if hi <= lo:  # a window outside the gate: the gate (an empty fit says nothing)
+            lo, hi = int(ranges[0][0] // b), int(ranges[0][1] // b)
     return (lo, hi, lo, hi)
 
 
@@ -1033,7 +1039,7 @@ class MleSettings:
     micro_time_start: int = 0
     micro_time_stop: int = 4096
     micro_time_binning: int = 1
-    min_photons: int = 10
+    min_photons: int = 5
     p2s_twoIstar: bool = True
     BIFL_scatter: bool = False
     irf_model: str = "gaussian"

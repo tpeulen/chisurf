@@ -142,9 +142,15 @@ writes the selected model and its per-model edits; drop the file on ChiSurf and 
 The **Decay and fit** plot shows the whole decay of the burst photons: every
 micro-time channel, VV then VH, split by a vertical line. That includes the
 channels outside the fit window, which the fit leaves out. Two shaded bands mark
-the ranges on each half. **Fit window** (green) is the detector's gate, where the
-decay is fitted, and the model is drawn only there. **IRF range** (orange) is
-where the IRF the fit convolves with is not zero, inside the IRF clip.
+the ranges on each half. **Fit window** (green) is where the decay is fitted:
+**Window start** / **Window stop** (in bins) inside the detector's gate. The
+model is drawn only there. **IRF range** (orange) is where the IRF the fit
+convolves with is not zero, inside the IRF clip (**IRF start** / **IRF stop**).
+Every edge is a line you can drag, in either half. Letting go of a line writes
+its field and fits again. Changing a field moves its line, so the plot always
+shows what is fitted.
+**Min photons** (default 5) is the fewest photons a burst needs in the fit
+window to be fitted.
 
 Select **Fit model** before running the preview or batch:
 

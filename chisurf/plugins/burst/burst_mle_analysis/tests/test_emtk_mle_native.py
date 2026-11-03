@@ -466,3 +466,29 @@ def test_the_current_file_and_the_inspected_bursts_file_are_named(fitted):
     drv.click_text("Inspected burst")
     assert any(t.startswith("burst ") and t.endswith("- m000.spc") for t in texts(drv.draw(3)))
     drv.click_text("Decay and fit")
+
+
+def test_the_window_fields_and_the_dragged_lines_move_the_fit_window_and_the_irf_range(fitted):
+    """Every input shows in the decay plot: Window stop narrows the green band (also inside a gate),
+    and letting go of a dragged line writes the field and fits again."""
+    window, drv = fitted
+    drv.click_text("Decay and fit")
+    drv.draw(1)
+    model = window.model
+    lo, hi = model.fit_curves.fit_windows[0]
+    model.micro_time_stop = hi - 5
+    assert model.fit_curves.fit_windows[0] == (lo, hi - 5)
+    # a fit-window line let go at the edge two bins further in
+    window._dragging = {("micro_time_stop", 0): hi - 7 - 0.5}
+    drv.draw(1)
+    assert model.micro_time_stop == hi - 7 and model.fit_curves.fit_windows[0] == (lo, hi - 7)
+    # the same line in the VH half moves the same field
+    half = model.fit_curves.data_full.size // 2
+    window._dragging = {("micro_time_start", 1): lo + 2 - 0.5}
+    drv.draw(1)
+    assert model.micro_time_start == lo + 2 and model.fit_curves.fit_windows[1][0] == half + lo + 2
+    # an IRF line: its stop is the last bin kept
+    irf_lo, irf_hi = model.fit_curves.irf_windows[0]
+    window._dragging = {("irf_stop", 0): irf_hi - 1 - 0.5}
+    drv.draw(1)
+    assert model.irf_stop == irf_hi - 2 and model.fit_curves.irf_windows[0][1] <= irf_hi - 1
