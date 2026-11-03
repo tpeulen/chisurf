@@ -174,7 +174,8 @@ def test_the_demo_clears_previous_curves_and_parameter_state(model):
     assert model.burst_results == []
     assert model.tau == 4.0
     assert not model.fix_tau
-    assert model.fix_gamma and model.fix_r0 and model.fix_rho
+    assert not model.fix_gamma  # the scatter fraction is fitted
+    assert model.fix_r0 and model.fix_rho
 
 
 def test_the_reader_honours_an_explicit_correction_and_clock(hermetic_env, tmp_path):

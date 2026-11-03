@@ -22,11 +22,12 @@ def physical_model(tmp_path):
         BURST_TABLE,
         CHANNEL_SETTINGS,
         REPO_DATA,
+        as_the_wizard,
     )
 
     target = tmp_path / "measurement"
     shutil.copytree(REPO_DATA, target)
-    session = engine.MleSession()
+    session = as_the_wizard(engine.MleSession())  # the frozen values were taken with these
     session.set_detectors(CHANNEL_SETTINGS["detectors"], "SPC-130")
     session.add_burst_files([target / BURST_TABLE])
     session.auto_extract()
@@ -115,7 +116,7 @@ def test_registered_vectors_and_per_model_edits_survive_settings(name, tmp_path)
     assert len(values) == len(flags) == len(names)
     if name == "fit23":
         np.testing.assert_array_equal(values, [4, 0.1, 0.38, 1.22])
-        np.testing.assert_array_equal(flags, [0, 1, 1, 1])
+        np.testing.assert_array_equal(flags, [0, 0, 1, 1])  # gamma is fitted
     model.edit_parameter({"name": names[0]}, "start", 3.125)
     if name != "fit25":
         model.edit_parameter({"name": names[0]}, "fixed", True)

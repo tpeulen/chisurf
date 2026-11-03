@@ -117,6 +117,34 @@ def test_measured_irf_and_background_recover_the_planted_lifetime(inputs):
     assert 0.0 < outcome.two_istar < 1.5
 
 
+def test_a_reference_dye_gives_the_irf_and_a_scatter_beats_it(inputs, tmp_path):
+    """Without a scatter, the decay of a dye of known lifetime gives the IRF (here a Rh110 of
+    4 ns on the planted prompt); with a scatter beside it, the scatter is used."""
+    rng = np.random.default_rng(11)
+    tau_channels = 4.0e-9 / demo.MICRO_RESOLUTION_S
+    micro = rng.normal(20.0, 2.0, 200000) + rng.exponential(tau_channels, 200000)
+    micro = np.mod(np.rint(micro), demo.CHANNELS)
+    dye = write_ptu(tmp_path / "Rh110_ref.ptu", micro)
+    session = fresh_session(inputs["bur"])
+    session.set_binning(1)
+    session.set_pattern_files("bg", "synthetic", [inputs["bg"]])
+    assert session.set_pattern_files("irf", "synthetic", [dye]) == ["synthetic"]
+    source = session.irf_source["synthetic"]
+    assert source.startswith("Rh110_ref.ptu (Rh110, ") and "ns from its tail" in source
+    assert float(source.split("Rh110, ")[1].split(" ns")[0]) == pytest.approx(4.0, rel=0.05)
+    irf = session.irf_np["synthetic"]
+    half = irf.size // 2
+    assert int(np.argmax(irf[:half])) in range(18, 23), "the prompt under the dye's decay"
+    assert irf[:half][40:].sum() < 0.02, "no decay left in the IRF"
+    set_window(session)
+    outcome = session.fit()
+    assert outcome is not None, session.status
+    assert outcome.x[0] == pytest.approx(TRUE_TAU, rel=0.05)
+
+    session.set_pattern_files("irf", "synthetic", [dye, inputs["irf"]])
+    assert session.irf_source["synthetic"].startswith("scatter measured_irf.ptu")
+
+
 def test_one_for_all_sets_every_detector_and_per_detector_sets_one(inputs):
     session = fresh_session(inputs["bur"])
     session.set_detectors(
@@ -163,7 +191,10 @@ def test_save_vv_vhs_writes_the_histogram_of_each_file(inputs, tmp_path):
     session.set_pattern_files("irf", "synthetic", [Path(copy)])
     written = sorted(tmp_path.glob("irf_copy_*.dat"))
     assert len(written) == 1, [p.name for p in tmp_path.iterdir()]
-    np.testing.assert_allclose(read_vv_vh(written[0]), session.irf_np["synthetic"], atol=1e-5)
+    # the file's histogram as measured (counts); the IRF is what is cleaned from it
+    vv, vh, _seconds, _dt = session._reference_counts("synthetic", Path(copy))
+    np.testing.assert_allclose(read_vv_vh(written[0]), np.hstack([vv, vh]), atol=1e-5)
+    assert session.irf_source["synthetic"].startswith("scatter irf_copy.ptu")
 
 
 # -- tail fit --------------------------------------------------------------------------------------------------- #
@@ -226,6 +257,7 @@ def test_the_irf_model_changes_the_estimated_irf(inputs):
 def displaced_session(inputs, bins: int = 3) -> tuple[engine.MleSession, float]:
     """Auto IRF with the VH half displaced by *bins*; returns the session and the tau of the undisplaced fit."""
     session = fresh_session(inputs["bur"])
+    session.settings.fix_gamma = True  # a free scatter fraction absorbs part of the displacement
     session.auto_extract()
     assert session.outcome is not None, "auto_extract produced no fit"
     reference = session.outcome.x[0]

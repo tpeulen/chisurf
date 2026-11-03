@@ -670,10 +670,13 @@ def burst_histogram(
     return np.hstack([cp, cs_hist])
 
 
+#: Counts an IRF from a reference measurement needs in each polarisation to be used for a detector.
+MIN_IRF_COUNTS = 500
+
 #: The IRF models of the Auto IRF/background estimate: (value, label).
 IRF_MODELS = [
     ("gaussian", "Gaussian"),
-    ("skewed", "Skewed"),
+    ("skewed", "Skewed Gaussian"),
     ("experimental", "Experimental"),
 ]
 
@@ -1026,7 +1029,8 @@ class MleSettings:
     r0: float = 0.38
     rho: float = 1.22
     fix_tau: bool = False
-    fix_gamma: bool = True
+    #: The scatter fraction is fitted: a fixed guess was the largest error of the summed-decay fit.
+    fix_gamma: bool = False
     fix_r0: bool = True
     fix_rho: bool = True
     shift: int = 0
@@ -1042,7 +1046,9 @@ class MleSettings:
     min_photons: int = 5
     p2s_twoIstar: bool = True
     BIFL_scatter: bool = False
-    irf_model: str = "gaussian"
+    #: Shape of an IRF estimated from the photons outside the bursts (the last resort, see
+    #: :meth:`MleSession.irf_pattern`): a skewed Gaussian follows the detector's slow edge.
+    irf_model: str = "skewed"
 
     def parameter_state(self) -> tuple[list[str], np.ndarray, np.ndarray]:
         """Return free facade names, starts and fixed flags for this selected model."""
@@ -1138,6 +1144,9 @@ class MleSession:
     bg_one_for_all: bool = True
     #: Write the VV | VH histogram of every IRF / background file beside it.
     save_vv_vhs: bool = False
+    #: Where each detector's IRF came from, in words ("scatter H2O_1.ptu", "Rh110_1.ptu (Rh110,
+    #: 4.0 ns)", "photons outside the bursts (skewed Gaussian)").
+    irf_source: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.tttrs = LazyTTTRs(self.tttr_paths, self.file_type, self.definition)
@@ -1517,10 +1526,12 @@ class MleSession:
             irf_model=self.settings.irf_model,
         )
         n = 0
+        label = dict(IRF_MODELS).get(self.settings.irf_model, self.settings.irf_model).lower()
         for det, pat in patterns.items():
             if det:
                 if not self.irf_files.get(det):
                     self.irf_np[det] = np.asarray(pat["irf"], dtype=float)
+                    self.irf_source[det] = f"photons outside the bursts ({label})"
                 if not self.bg_files.get(det):
                     self.bg_np[det] = np.asarray(pat["bg"], dtype=float)
                 n += 1
@@ -1565,20 +1576,132 @@ class MleSession:
                 write_vv_vh(name, vv=row[:half], vh=row[half:])
         return np.sum(rows, axis=0)
 
+    def _reference_counts(self, det: str, path: Path) -> tuple[np.ndarray, np.ndarray, float, float]:
+        """VV and VH counts of one reference measurement on *det*'s channels, its acquisition time
+        [s] and the width of one bin [ns]."""
+        info = self.detectors[det]
+        binning = int(self.settings.micro_time_binning)
+        tttr = self._open_pattern_tttr(path)
+        row = vv_vh_histogram(
+            tttr, info.get("chs", []), (0, 0), binning, normalize_counts=0, apply_vh_shift=False
+        )
+        half = row.size // 2
+        if self.save_vv_vhs:
+            from chisurf.core.fio import write_vv_vh
+
+            chs = "".join(map(str, info.get("chs", [])))
+            write_vv_vh(f"{Path(path).with_suffix('').as_posix()}_{chs}.dat", vv=row[:half], vh=row[half:])
+        header = tttr.header
+        seconds = float((tttr.macro_times[-1] - tttr.macro_times[0]) * header.macro_time_resolution)
+        dt_ns = float(header.micro_time_resolution) * 1e9 * binning
+        return row[:half], row[half:], seconds, dt_ns
+
+    def irf_pattern(self, det: str, paths: list[Path]) -> tuple[np.ndarray, str] | None:
+        """The IRF of *det* from reference measurements, and where it came from; ``None`` when none
+        of them shows the detector's response.
+
+        A scatter measurement (water, Ludox) is the IRF itself; it is corrected for the background
+        (a measured buffer of this detector, scaled to the scatter's time, then the flat floor).
+        Without one, the decay of a reference dye (``reference_dyes.yaml``: Rh110, Alexa647, ...)
+        gives the IRF by inverting the convolution with its exponential, whose lifetime is fitted to
+        the dye's tail (the listed one when that fails); of
+        several dyes the one with the most photons in the detector's gate is used (Rh110 for the
+        green detectors, Alexa647 for the red ones of a PIE set-up). Each polarisation sums to one.
+        """
+        from chisurf.core.fio.reference_files import reference_dye
+        from chisurf.core.fluorescence.tcspc.irf import (
+            irf_from_reference_decay,
+            reference_tail_lifetime,
+            scatter_irf,
+        )
+
+        binning = max(1, int(self.settings.micro_time_binning))
+        gates = [r for r in (self.detectors[det].get("micro_time_ranges") or []) if r and len(r) >= 2]
+        window = (int(gates[0][0]) // binning, int(gates[0][1]) // binning) if gates else None
+        scatter = [p for p in paths if reference_dye(p) is None]
+        groups: dict[str, list[Path]] = {}
+        for p in paths:
+            dye = reference_dye(p)
+            if dye is not None:
+                groups.setdefault(dye["name"], []).append(p)
+        buffer = None
+        if self.bg_files.get(det) and det in self.bg_np:
+            buffer = np.asarray(self.bg_np[det], dtype=float)  # counts per second, VV | VH
+
+        candidates: list[tuple[float, np.ndarray, str]] = []
+        if scatter:
+            vv = vh = 0.0
+            seconds = 0.0
+            for p in scatter:
+                a, b, t, _dt = self._reference_counts(det, p)
+                vv, vh, seconds = vv + a, vh + b, seconds + t
+            half = np.size(vv)
+            bvv = bvh = None
+            if buffer is not None and buffer.size == 2 * half:
+                bvv, bvh = buffer[:half] * seconds, buffer[half:] * seconds
+            parts = [
+                scatter_irf(vv, buffer=bvv, window=window),
+                scatter_irf(vh, buffer=bvh, window=window),
+            ]
+            corrected = "buffer-corrected" if bvv is not None else "floor-corrected"
+            text = f"scatter {', '.join(p.name for p in scatter)} ({corrected})"
+            candidates.append((np.inf, parts, text))  # a scatter wins over every dye
+        for name, group in groups.items():
+            listed = reference_dye(group[0])["tau_ns"]
+            vv = vh = 0.0
+            dt = 0.0
+            for p in group:
+                a, b, _t, dt = self._reference_counts(det, p)
+                vv, vh = vv + a, vh + b
+            # the dye's own lifetime, from its tail (magic angle); the listed one if that fails or
+            # is far off (a tail that is mostly floor)
+            tau = reference_tail_lifetime(vv + 2.0 * vh, dt, window=window)
+            if tau is None or not 0.5 * listed < tau < 2.0 * listed:
+                tau, how = listed, "listed"
+            else:
+                how = "from its tail"
+            parts = [
+                irf_from_reference_decay(vv, tau, dt, window=window),
+                irf_from_reference_decay(vh, tau, dt, window=window),
+            ]
+            area = float(min(parts[0].sum(), parts[1].sum()))
+            text = f"{', '.join(p.name for p in group)} ({name}, {tau:.2f} ns {how}, reconvolved)"
+            candidates.append((area, parts, text))
+        usable = [c for c in candidates if min(c[1][0].sum(), c[1][1].sum()) >= MIN_IRF_COUNTS]
+        if not usable:
+            return None
+        _area, parts, text = max(usable, key=lambda c: c[0])
+        return np.hstack([part / part.sum() for part in parts]), text
+
+    def _pattern(self, kind: str, det: str, paths: list[Path]) -> tuple[np.ndarray, str] | None:
+        if kind == "irf":
+            return self.irf_pattern(det, paths)
+        names = ", ".join(Path(p).name for p in paths)
+        return self.pattern_histogram(det, paths, 3), f"measured {names}"
+
     def set_pattern_files(self, kind: str, det: str, paths: list[Path]) -> list[str]:
         """Use the measurements *paths* as the IRF (``kind="irf"``) or background (``"bg"``); returns the detectors set.
 
-        With "one for all" the same files serve every detector. Each detector's pattern is the sum of the files'
+        With "one for all" the same files serve every detector. Each detector's pattern is computed from the files'
         histograms on its own channels, so a file measured on all detectors at once gives every detector its pattern.
+        An IRF file that shows a detector nothing (a green dye on the red detector of the red pulse) leaves that
+        detector to the estimate from the photons outside the bursts.
         """
-        files, np_dict, normalize, one = self._pattern_store(kind)
+        files, np_dict, _normalize, one = self._pattern_store(kind)
         paths = [Path(p) for p in paths]
         dets = list(self.detectors) if one else [det]
+        done = []
         for d in dets:
+            got = self._pattern(kind, d, paths)
+            if got is None:
+                continue
             files[d] = list(paths)
-            np_dict[d] = self.pattern_histogram(d, paths, normalize)
+            np_dict[d] = got[0]
+            if kind == "irf":
+                self.irf_source[d] = got[1]
+            done.append(d)
         self.outcome = None
-        return dets
+        return done
 
     def clear_pattern_files(self, kind: str, det: str) -> list[str]:
         """Forget the measured files (and the pattern read from them) of *det*, or of every detector with "one for all"."""
@@ -1587,15 +1710,24 @@ class MleSession:
         for d in dets:
             if files.pop(d, None) is not None:
                 np_dict.pop(d, None)
+                if kind == "irf":
+                    self.irf_source.pop(d, None)
         self.outcome = None
         return dets
 
     def refresh_pattern_files(self) -> None:
         """Re-read every measured pattern at the current binning and channels (after either changed)."""
-        for kind in ("irf", "bg"):
-            files, np_dict, normalize, _one = self._pattern_store(kind)
+        for kind in ("bg", "irf"):  # the buffer first: a scatter IRF is corrected with it
+            files, np_dict, _normalize, _one = self._pattern_store(kind)
             for det in [d for d in files if d in self.detectors and files[d]]:
-                np_dict[det] = self.pattern_histogram(det, files[det], normalize)
+                got = self._pattern(kind, det, files[det])
+                if got is None:
+                    files.pop(det)
+                    np_dict.pop(det, None)
+                    continue
+                np_dict[det] = got[0]
+                if kind == "irf":
+                    self.irf_source[det] = got[1]
 
     def _pattern_store(self, kind: str):
         if kind == "irf":
@@ -1614,18 +1746,20 @@ class MleSession:
             self.status = "No burst photons found for the selected file"
             return
         pick = self.auto_binning()
-        if pick is not None:
+        if pick is not None and int(pick) != int(self.settings.micro_time_binning):
             self.set_binning(int(pick))
-        n = self.extract_irf_background()
+            self.refresh_pattern_files()  # measured patterns read at the old binning
+        self.extract_irf_background()
         self.build_decay()
         window = select_fit_range(self.decay)
         if window is not None:
             self.settings.micro_time_start, self.settings.micro_time_stop = window
         self.build_decay()
         self.fit()
+        measured = sum(1 for d in self.detectors if self.irf_files.get(d))
         self.status = (
-            f"Auto IRF/background estimated from non-burst photons for {n} detector(s) (binning "
-            f"{self.settings.micro_time_binning}, window {list(self.micro_time_range)})."
+            f"Binning {self.settings.micro_time_binning}, window {list(self.micro_time_range)}"
+            + (f"; {measured} detector(s) with a measured IRF." if measured else ".")
         )
 
     # -- fit --------------------------------------------------------------------------------------------------- #
@@ -2165,13 +2299,13 @@ class MleSession:
         self.irf_one_for_all = bool(payload.get("irf_one_for_all", self.irf_one_for_all))
         self.bg_one_for_all = bool(payload.get("bg_one_for_all", self.bg_one_for_all))
         self.save_vv_vhs = bool(payload.get("save_vv_vhs", self.save_vv_vhs))
-        for kind, key in (("irf", "irf_files"), ("bg", "bg_files")):
-            files, np_dict, normalize, _one = self._pattern_store(kind)
+        for kind, key in (("bg", "bg_files"), ("irf", "irf_files")):
+            files, _np, _normalize, _one = self._pattern_store(kind)
             for det, paths in (payload.get(key) or {}).items():
                 found = [Path(p) for p in paths if Path(p).is_file()]
                 if det in self.detectors and found:
                     files[det] = found
-                    np_dict[det] = self.pattern_histogram(det, found, normalize)
+        self.refresh_pattern_files()
 
     # -- inspected burst --------------------------------------------------------------------------------------- #
     def inspect_burst(self, idx: int) -> dict[str, np.ndarray]:

@@ -15,7 +15,7 @@ import pytest
 
 from chisurf.plugins.burst.burst_mle_analysis import engine
 
-from .conftest import BURST_TABLE, CHANNEL_SETTINGS
+from .conftest import BURST_TABLE, CHANNEL_SETTINGS, as_the_wizard
 
 
 def _a(values):
@@ -26,7 +26,7 @@ def _a(values):
 @pytest.fixture(scope="module")
 def session(sample_copy):
     """A session loaded with the sample's burst file and detectors (nothing fitted yet)."""
-    s = engine.MleSession()
+    s = as_the_wizard(engine.MleSession())
     s.set_detectors(CHANNEL_SETTINGS["detectors"], CHANNEL_SETTINGS["file_type"])
     s.add_burst_files([sample_copy / BURST_TABLE])
     s.current_detector = "G|G"
@@ -156,7 +156,7 @@ def _tau_columns(rows):
 def test_the_batch_rows_equal_the_wizards_process_bursts(sample_copy, tmp_path, qt_reference):
     """Same burst table, IRF/background, windows and start values: every burst's fitted lifetime is the wizard's."""
     ref = qt_reference["batch"]
-    session = engine.MleSession()
+    session = as_the_wizard(engine.MleSession())
     session.set_detectors(CHANNEL_SETTINGS["detectors"], CHANNEL_SETTINGS["file_type"])
     import shutil
 

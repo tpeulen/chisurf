@@ -141,7 +141,7 @@
           "attr": "irf_model",
           "label": "IRF model",
           "options_source": "irf_model_choices",
-          "description": "Shape of the IRF that Auto IRF/background estimates from the non-burst photons. Gaussian: a Gaussian fitted to the prompt, which cannot follow the slow fluorescent tail (recommended). Skewed: a skew-normal fit for an asymmetric detector response. Experimental: the raw baseline-subtracted histogram. A measured IRF file replaces the estimate."
+          "description": "Shape of the IRF estimated from the non-burst photons, the last resort when there is neither a scatter (water, Ludox) nor a reference-dye (Rh110, Alexa647) measurement beside the data. Skewed Gaussian (default): a skew-normal fitted to the prompt, following the detector's slow edge without the fluorescent tail. Gaussian: symmetric. Experimental: the raw baseline-subtracted histogram, which still holds fluorescence. A measured IRF file replaces the estimate."
         },
         {
           "type": "toggle",

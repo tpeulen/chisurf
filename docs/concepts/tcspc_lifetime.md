@@ -159,6 +159,30 @@ Two practical points:
   channel from a scatter measurement. A fitted sub-channel time shift absorbs it;
   getting it wrong biases short lifetimes most.
 
+### Where the IRF comes from
+
+The best IRF is a **scatter measurement** (water, Ludox) with the buffer's
+background subtracted. Without one, a **reference dye** of a single known
+lifetime $\tau_r$ (Rh110, Alexa647) gives it exactly. Its decay on bins of width
+$\Delta t$ is $D_i = \sum_{j \le i} \mathrm{IRF}_j\, a^{\,i-j}$ with
+$a = e^{-\Delta t/\tau_r}$, which is the recursion
+$D_i = \mathrm{IRF}_i + a\, D_{i-1}$, so
+
+$$
+\mathrm{IRF}_i = D_i - e^{-\Delta t/\tau_r}\, D_{i-1}
+$$
+
+after the flat floor is removed. This is not an ill-posed deconvolution: one
+known exponential is undone exactly, and only the bins where the difference
+stands above its noise are kept. A wrong $\tau_r$ leaves part of the dye's decay
+in the IRF, so $\tau_r$ is fitted to the reference's own tail (on
+$VV + 2\,VH$, so rotation does not bend it); the listed lifetime is only the
+fallback. In the Burst MLE tool the last resort is the photons outside the
+bursts. Those are mostly fluorescence of dim molecules, so a skewed Gaussian is
+fitted to their prompt and their tail is dropped. See
+[Lifetime from bursts](../guides/21_lifetime_from_bursts.md) for the order the
+tool applies.
+
 ## The nuisance terms
 
 The count in channel $i$ is not $M_i$ alone. The forward model layers several

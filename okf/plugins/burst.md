@@ -10,16 +10,20 @@ timestamp: '2026-07-05T00:00:00Z'
 ## Where to pick this up
 
 **Next, in order (2026-11-02, after the detector-name round):**
-0. **Burst MLE IRF without a measured IRF** (2026-11-03, DNA13bp_3.ptu / RVZMT150, folder has only
-   Rh110 and Alexa647 references, no buffer/scatter). The estimate from the non-burst photons is
-   fluorescence, not scatter: "Experimental" spans bins 8–39 (binning 4) and gives tau 1.0 ns, while
-   Gaussian gives 2.6 ns and Skewed 2.4 ns. The preview's single lifetime underfits the tail (model at
-   0.5–0.9 of the data): the summed decay mixes FRET and donor-only molecules. Gamma fixed at 0.1 is
-   the largest error: freeing it takes 2I* from 570 to 142. Measure: `scratchpad replay_variants.py`
-   pattern (copy ~/.chisurf/emtk + flr DB to a temp settings dir; never let a test hub save into
-   ~/.chisurf). Options: (a) gamma from the background rate, or free, in the preview; (b) an IRF
-   from a lifetime reference (Rh110, tau 4.0 ns) by reference convolution; (c) a Gaussian fitted
-   only to the steepest rise of the burst decay.
+0. **Burst MLE IRF: what is left** (2026-11-03). Done: gamma is fitted by default; the IRF comes
+   per detector from a scatter (buffer- then floor-corrected), else a reference dye
+   (`core/fio/reference_dyes.yaml`; IRF[i] = D[i] - exp(-dt/tau) D[i-1], tau fitted to the dye's
+   tail on VV+2VH), else a skewed Gaussian on the non-burst photons (`MleSession.irf_pattern`,
+   `irf_source`). DNA13bp_3.ptu (RVZMT150, binning 4): G|G 2I* 570 (fixed gamma) -> 133 (free) -> 87
+   (Rh110 IRF, tau 2.68 ns, gamma 0.23); Rh110 tail 4.02 ns, Alexa647 1.14-1.26 ns (the list says 1.0).
+   Measure with the `replay_chain.py` pattern (copy ~/.chisurf/emtk + flr DB to a temp settings dir;
+   never let a test hub save into ~/.chisurf). Open: (a) the preview's single lifetime still undershoots
+   the far tail (model/data 0.64): FRET + donor-only mix, a two-lifetime preview would show it;
+   (b) R|R fits ~3 ns and the sample's raw red tail is 3.4-4 ns in every red channel -- check the
+   acceptor dye / red background before blaming the IRF; (c) `reference_tail_lifetime` assumes a flat
+   floor, so a period under ~5 tau lifts it (a 16 ns period gave 3.4 ns for 4 ns); (d) the buffer
+   correction of a scatter uses the buffer's counts/s pattern, which sums several buffer files
+   instead of averaging them.
 1. **No HDF5 anywhere** (owner: "no HDF5! csv at most; better deprecate, only an exporter at most").
    Results live in the `.pto` container; loose files only through an explicit exporter, CSV at most.
    Still writing HDF5: `chisurf/core/datastore.py`, `plugins/microscopy/{img_pixel_intensity/gui/view_model,

@@ -186,17 +186,44 @@ by its provider and is not a free table parameter. Fit26 needs two reference
 patterns and `fit_nexp` needs its array-input workflow, so neither is offered by
 this tool.
 
+#### Where the IRF comes from
+
+In the pipeline the IRF of each detector is taken, in this order, from:
+
+1. **A scatter measurement** (a file named `H2O`, `water`, `Ludox`, `scatter`,
+   `IRF` or `prompt`) in the data's folder or one folder up. The buffer
+   measurement (`buffer`, `blank`, `PBS`, ...), when there is one, is scaled to
+   the scatter's acquisition time and subtracted; then the flat floor. This is
+   the best IRF.
+2. **A reference dye of known lifetime** (Rh110, Rh6G, Fluorescein, Alexa488,
+   Alexa647, Cy5; names and lifetimes in `chisurf/core/fio/reference_dyes.yaml`).
+   Its decay is the IRF convolved with one exponential, which is inverted
+   exactly: on bins of width Δt, IRF[i] = D[i] − exp(−Δt/τ)·D[i−1] after the
+   floor is removed. Of several dyes, each detector takes the one with the most
+   photons in its gate: Rh110 for the green detectors, Alexa647 for the red
+   detectors of a PIE set-up.
+3. **The photons outside the bursts**, fitted with a skewed Gaussian. This is the
+   last resort: those photons are mostly fluorescence of dim molecules, not
+   scatter.
+
+A detector that a reference file shows nothing (a green dye in the red
+detectors after the red pulse) falls back to the next source. The **IRF** tab
+names the source of the selected detector. The scatter fraction **gamma** is
+fitted, not fixed: on DNA13bp_3.ptu a fixed gamma of 0.1 gave 2I* = 570 and a
+free one 133. With the IRF from Rh110, 2I* was 87.
+
 #### Measured IRF and background, Opt, Save fit
 
 The tab **IRF/BG files** replaces the estimate from the non-burst
-photons by measurements. **Add IRF files** and **Add background files** take any
+photons by measurements. An IRF file may be a scatter or a reference dye: a dye
+is recognised by its name and its IRF is recovered as above. **Add IRF files** and **Add background files** take any
 TTTR measurement; each detector reads its own channels, the histograms of
 several files are summed, the IRF is normalised to one per polarisation and the
 background to counts per second. With **one for all** the files serve every
 detector, without it only the selected one. **Auto IRF/background** keeps a
 measured pattern and estimates only the other one; a new binning re-reads the
 files. **Save VV/VHs** writes each file's VV|VH histogram beside it
-(`<file>_<channels>.dat`). **IRF model** (Gaussian, Skewed, Experimental) is the
+(`<file>_<channels>.dat`). **IRF model** (Skewed Gaussian, the default; Gaussian; Experimental) is the
 shape that **Auto IRF/background** estimates; changing it re-estimates.
 
 **Opt** searches the VH shift, the sub-bin shifts, the IRF window and the IRF

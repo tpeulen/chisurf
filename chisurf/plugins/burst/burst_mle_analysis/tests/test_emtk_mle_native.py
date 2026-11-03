@@ -172,7 +172,7 @@ def test_the_parameter_table_edits_a_start_value_and_a_fixed_flag(fitted):
     assert "tau" in shown and "gamma" in shown
     # double click the Start cell of tau (the first '4' under the Start column), type, Enter
     rec = {r["name"]: r for r in window.model.parameter_records()}
-    assert rec["tau"]["start"] == 4.0 and rec["gamma"]["fixed"] is True
+    assert rec["tau"]["start"] == 4.0 and rec["gamma"]["fixed"] is False
     cell = drv.text_rect(drv.draw(2), "4")
     drv.click((cell[0], cell[1], cell[2], cell[3]), clicks=2)
     assert window_table(window).editing is not None, (
@@ -196,11 +196,11 @@ def test_the_parameter_table_edits_a_start_value_and_a_fixed_flag(fitted):
     painter = drv.draw(2)
     header = drv.text_rect(painter, "Fixed")
     row = drv.text_rect(painter, "gamma")
-    assert window.model.fix_gamma is True
+    assert window.model.fix_gamma is False  # the scatter fraction is fitted unless fixed
     drv.click((header[0] + 4, row[1], 20.0, row[3]))
-    assert window.model.fix_gamma is False and window.model.parameter_records()[1]["fixed"] is False
+    assert window.model.fix_gamma is True and window.model.parameter_records()[1]["fixed"] is True
     drv.click((header[0] + 4, row[1], 20.0, row[3]))
-    assert window.model.fix_gamma is True
+    assert window.model.fix_gamma is False
 
 
 def test_the_binning_choice_re_estimates_the_patterns_and_refits(fitted):

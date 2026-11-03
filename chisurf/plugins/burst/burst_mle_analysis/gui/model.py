@@ -606,8 +606,17 @@ class MleViewModel(RunPickerMixin):
                 kind=label, error=exc
             )
             return 0
-        self.status_text = str(tr("{count} measured {kind} file(s) for {detectors}.")).format(
-            count=len(current) + len(new), kind=label, detectors=", ".join(done)
+        if not done:
+            self.status_text = str(
+                tr("The {kind} file(s) show no detector a response; nothing changed.")
+            ).format(kind=label)
+            return 0
+        self.status_text = (
+            self.irf_source_text()
+            if kind == "irf"
+            else str(tr("{count} measured {kind} file(s) for {detectors}.")).format(
+                count=len(current) + len(new), kind=label, detectors=", ".join(done)
+            )
         )
         self.session.build_decay()
         self.refit()
@@ -920,35 +929,49 @@ class MleViewModel(RunPickerMixin):
         self.notify("fit")
 
     def prepare_patterns(self, analysed=()) -> None:
-        """IRF and background without asking: the buffer and scatter measurements beside the
-        analysed files (or a folder up) for every detector, the rest estimated from the photons
-        outside the bursts. What the pipeline does when the bursts arrive."""
+        """IRF and background without asking, from the measurements beside the analysed files (or
+        a folder up). The IRF of each detector comes, in this order, from a scatter measurement
+        (water, Ludox; corrected with the buffer), from a reference dye of known lifetime (Rh110,
+        Alexa647), and only then from the photons outside the bursts (a skewed Gaussian fitted to
+        their histogram). The background is the buffer measurement, else estimated from the
+        photons outside the bursts. What the pipeline does when the bursts arrive."""
         from chisurf.core.fio.reference_files import find_reference_measurements
 
         try:
-            found = find_reference_measurements(analysed) if analysed else {"irf": [], "bg": []}
-            used = []
-            for kind in ("irf", "bg"):
-                if not found[kind]:
+            found = (
+                find_reference_measurements(analysed)
+                if analysed
+                else {"irf": [], "dye": [], "bg": []}
+            )
+            session = self.session
+            # the buffer first: a scatter IRF is corrected with it
+            for kind, paths in (("bg", found["bg"]), ("irf", found["irf"] + found["dye"])):
+                if not paths:
                     continue
-                for det in list(self.session.detectors):
+                for det in list(session.detectors):
+                    if session.irf_files.get(det) if kind == "irf" else session.bg_files.get(det):
+                        continue  # "one for all" set it with an earlier detector
                     try:
-                        self.session.set_pattern_files(kind, det, list(found[kind]))
+                        session.set_pattern_files(kind, det, list(paths))
                     except Exception:  # noqa: BLE001 - a reference this detector cannot read
                         continue
-                used.append(f"{'IRF' if kind == 'irf' else 'background'}: "
-                            + ", ".join(p.name for p in found[kind]))
-            if self.session.current_tttr() is not None:
-                self.session.auto_extract()  # fills what no measured file gave
+            if session.current_tttr() is not None:
+                session.auto_extract()  # fills what no measured file gave
                 self.auto_patterns = True
-            self.status_text = (
-                "Measured " + "; ".join(used) + ". " if used else
-                "No buffer / scatter measurement beside the data: IRF and background estimated "
-                "from the photons outside the bursts. "
-            ) + (self.session.status or "")
+            self.status_text = self.irf_source_text() + " " + (session.status or "")
             self.notify("fit")
         finally:
             self._release_snapshot()
+
+    def irf_source_text(self) -> str:
+        """Where each detector's IRF and background came from, in one line."""
+        session = self.session
+        parts = [
+            f"{det}: IRF from {session.irf_source.get(det, 'nowhere yet')}"
+            + ("; measured background" if session.bg_files.get(det) else "")
+            for det in session.detectors
+        ]
+        return ". ".join(parts) + "." if parts else ""
 
     def auto_extract(self) -> None:
         """One click: binning, IRF and background from the non-burst photons, fit window, fit."""

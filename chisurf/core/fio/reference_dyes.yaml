@@ -1,0 +1,23 @@
+# Reference dyes a lab measures beside its samples: a single, known fluorescence lifetime, so the
+# instrument response can be recovered from their decay when no scatter (water, Ludox) was measured
+# (chisurf.core.fluorescence.tcspc.irf.irf_from_reference_decay). A file is matched by its name.
+# pattern: regular expression on the file stem (case-insensitive)
+# tau_ns: lifetime in water at room temperature
+- name: Rh110
+  pattern: 'rh[-_ ]?110|rhodamine[-_ ]?110'
+  tau_ns: 4.0
+- name: Rh6G
+  pattern: 'rh[-_ ]?6g|rhodamine[-_ ]?6g'
+  tau_ns: 4.08
+- name: Fluorescein
+  pattern: 'fluorescein'
+  tau_ns: 4.0
+- name: Alexa488
+  pattern: 'alexa[-_ ]?(fluor[-_ ]?)?488|a488'
+  tau_ns: 4.1
+- name: Alexa647
+  pattern: 'alexa[-_ ]?(fluor[-_ ]?)?647|a647'
+  tau_ns: 1.0
+- name: Cy5
+  pattern: 'cy[-_ ]?5(?![.0-9])'
+  tau_ns: 1.0

@@ -19,7 +19,7 @@ import pytest
 
 from chisurf.plugins.burst.burst_mle_analysis import engine
 
-from .conftest import BURST_TABLE, CHANNEL_SETTINGS, REPO_DATA
+from .conftest import BURST_TABLE, CHANNEL_SETTINGS, REPO_DATA, as_the_wizard
 
 DATA = REPO_DATA  # read-only uses (headers); fits run on the temporary copy
 BUR = REPO_DATA / BURST_TABLE
@@ -38,7 +38,7 @@ def fitted(sample_copy):
     ``auto_extract`` is the foolproof workflow: it auto-selects the micro-time binning and fit window and
     estimates the IRF/bg from the non-burst photons.
     """
-    s = engine.MleSession()
+    s = as_the_wizard(engine.MleSession())
     s.set_detectors(CHANNEL_SETTINGS["detectors"], CHANNEL_SETTINGS["file_type"])
     s.add_burst_files([sample_copy / BURST_TABLE])
     s.current_detector = "G|G"

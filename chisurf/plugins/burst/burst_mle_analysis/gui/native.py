@@ -651,12 +651,20 @@ class MleNativeApp(TourTarget, ImApp):
         self.remember("irf", box)
         running = self.job.busy
         measured = bool(self.model.irf_file_rows())
+        session = self.model.session
         im.text_wrapped(
             tr("IRF of {detector}: {source}.").format(
                 detector=self.model.current_detector or tr("the detector"),
-                source=tr("a measured IRF (separate measurement)")
-                if measured
-                else tr("estimated from the photons outside the bursts"),
+                source=session.irf_source.get(session.current_detector)
+                or tr("estimated from the photons outside the bursts"),
+            )
+        )
+        im.set_item_tooltip(
+            tr(
+                "The IRF comes from a scatter measurement (water, Ludox) beside the data, corrected "
+                "with the buffer; else from a reference dye of known lifetime (Rh110, Alexa647) by "
+                "inverting its exponential decay; else from a skewed Gaussian fitted to the photons "
+                "outside the bursts. Pick another measurement below."
             )
         )
         im.begin_disabled(running)
