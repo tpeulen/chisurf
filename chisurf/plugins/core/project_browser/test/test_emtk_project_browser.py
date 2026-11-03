@@ -1,9 +1,8 @@
-"""The native Project Browser at parity with the Qt ProjectBrowserTool.
+"""The emtk Project Browser app against a real scratch project service.
 
-Both talk to the same project service. The Qt tool's tree on the seeded scratch database is
-``qt_reference.json`` (recorded from the live widget, ids normalised; this file imports no Qt) and
-is compared with the emtk app's rows; save, restore, export/import and delete are driven through the
-emtk app against a real scratch database.
+The ``db`` fixture saves three versions (two of a private project, one of a public one) of a payload
+with one dataset and no fit; the list is checked against what was saved. Save, restore,
+export/import and delete are driven through the emtk app against the same database.
 """
 
 from __future__ import annotations
@@ -132,75 +131,32 @@ def _project(app, name):
     return next(p for p in app.model.projects if p["project_name"] == name)
 
 
-#: The legacy Qt ``ProjectBrowserTool`` tree on this file's seeded database (fixture ``db``), recorded
-#: from the live widget and frozen. The tree is a function of the service's ``list_projects`` answer;
-#: what changes run to run (project and version ids, ``created_at``, the account) is normalised to
-#: ``<project NAME>`` / ``<version NAME vN>`` / ``<timestamp>`` / ``<user>``, so the record holds.
-QT = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
-
-
-def _normalised_rows(projects, owner):
-    """The emtk model's projects as the Qt tree's nine columns, normalised like the record.
-
-    Parameters
-    ----------
-    projects : list of dict
-        ``app.model.projects``.
-    owner : str
-        The account the database was seeded by.
-
-    Returns
-    -------
-    list of dict
-    """
-
-    def who(user):
-        return "<user>" if user == owner else user
-
-    rows = []
-    for p in projects:
-        name = p["project_name"]
-        rows.append(
-            {
-                "project": [
-                    f"{name}  ({p['version_count']} versions)",
-                    f"<project {name}>",
-                    who(p.get("owner_user_id", "")),
-                    "",
-                    p.get("visibility", "private"),
-                    "",
-                    "",
-                    "<timestamp>" if p.get("created_at") else "",
-                    "",
-                ],
-                "versions": [
-                    [
-                        f"v{v['version_number']}  {v.get('project_name', name)}",
-                        f"<version {name} v{v['version_number']}>",
-                        who(v.get("owner_user_id", "")),
-                        v.get("status", ""),
-                        "",
-                        str(v.get("dataset_count", 0)),
-                        str(v.get("fit_count", 0)),
-                        "<timestamp>" if v.get("created_at") else "",
-                        (v.get("notes") or "")[:60],
-                    ]
-                    for v in p["versions"]
-                ],
-            }
-        )
-    return rows
-
-
-# 1. the same projects and versions as the Qt tree
-def test_the_list_shows_what_the_qt_tree_shows(db):
+# 1. the list holds the projects and versions the fixture saved
+def test_the_list_shows_the_saved_projects_and_versions(db):
     app = _app(db)
     try:
         _settle(app)
-        ours = _normalised_rows(app.model.projects, db["settings"]["client"]["username"])
-        key = lambda row: row["project"][1]  # noqa: E731
-        assert sorted(ours, key=key) == sorted(QT["rows"], key=key)
-        assert len({p["project_id"] for p in app.model.projects}) == len(QT["rows"]) == 2
+        owner = db["settings"]["client"]["username"]
+        # what the db fixture saved: (visibility, [notes of v1, v2, ...])
+        saved = {
+            "decay study": ("private", ["first fit", "refit with IRF"]),
+            "fcs titration": ("public", ["public set"]),
+        }
+        projects = {p["project_name"]: p for p in app.model.projects}
+        assert set(projects) == set(saved)
+        assert len({p["project_id"] for p in app.model.projects}) == 2
+        for name, (visibility, notes) in saved.items():
+            project = projects[name]
+            assert project.get("visibility") == visibility
+            assert project["version_count"] == len(notes) == len(project["versions"])
+            assert project.get("owner_user_id") == owner and project.get("created_at")
+            versions = sorted(project["versions"], key=lambda v: v["version_number"])
+            assert [v["version_number"] for v in versions] == list(range(1, len(notes) + 1))
+            assert [v.get("notes") for v in versions] == notes
+            for v in versions:
+                assert v.get("owner_user_id") == owner and v.get("status") == "succeeded"
+                # the saved payload holds one dataset and no fit
+                assert (v.get("dataset_count", 0), v.get("fit_count", 0)) == (1, 0)
     finally:
         app.close()
 

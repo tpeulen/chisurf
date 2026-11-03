@@ -12,7 +12,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from .test_emtk_project_browser_parity import _app, _project, _settle
+from .test_emtk_project_browser import _app, _project, _settle
 
 
 def _sample_payload(tmp_path):

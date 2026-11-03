@@ -26,7 +26,7 @@ def restore_payload(payload):
 
 
 def restore_fit_windows(payload):
-    """Reopen the restored fits' windows, as the Qt tool did after a restore.
+    """Reopen the restored fits' windows after a restore.
 
     ``load_project_payload`` here skips window creation (it must run without Qt); inside
     ChiSurf the main window then opens each fit's window, and without one this is a no-op.

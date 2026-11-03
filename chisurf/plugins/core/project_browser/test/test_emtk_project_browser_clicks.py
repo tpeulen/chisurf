@@ -21,7 +21,7 @@ from .driving import (
     hermetic_env,
     layout_problems,
 )
-from .test_emtk_project_browser_parity import _app, _project
+from .test_emtk_project_browser import _app, _project
 
 
 @pytest.fixture(autouse=True)
