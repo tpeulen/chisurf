@@ -56,7 +56,7 @@ class UpdaterApp(ImApp):
         self.model = model or UpdaterModel()
         self.job = SnapshotJob(self.model)
         self.model.runner = self.start_job
-        #: Start the check that runs when the window opens, as the Qt tool did (its timer fired 150 ms after show):
+        #: Start the check that runs when the window opens:
         #: ``auto_check_delay`` seconds after the first frame, so that a window only drawn (a screenshot, a
         #: proof that no Qt is imported) never reaches for the network.
         self.auto_check = auto_check
@@ -263,7 +263,7 @@ class UpdaterApp(ImApp):
         self.packages.draw_overlays(box)
 
     def _draw_progress(self, box: Any) -> None:
-        """The window that shows the update's latest step while it is prepared (the Qt progress dialog)."""
+        """The window that shows the update's latest step while it is prepared (a progress window)."""
         model = self.model
         window = self.progress_window
         if model.updating and not window.open:

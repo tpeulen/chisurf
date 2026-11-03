@@ -2,7 +2,7 @@
 Escape, the wheel, drags. Nothing calls a model method to "click". All solver calls are fakes (``fakes.py``): each test reads the
 command line that reached ``PackageManager._popen`` and the visible outcome.
 
-Drops: the window takes none (as the Qt dialog).
+Drops: the window takes none.
 """
 
 from __future__ import annotations

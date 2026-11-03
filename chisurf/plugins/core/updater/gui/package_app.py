@@ -1,6 +1,6 @@
 """Native emtk package manager: installed packages, search and install, environments, channels, and the operation log.
 
-Each page of the Qt tab widget is a panel of the view spec ``packages.view.json`` drawn by
+Each tab page is a panel of the view spec ``packages.view.json`` drawn by
 :func:`emtk.view_form.draw_sections` (tables are ``data_table`` sections, selection through ``selected_call``); only the
 tab bar, the environment line, the scrolling log, Help / Guide and the file choosers are drawn here. All state and work is in
 :class:`~.package_model.PackageManagerModel`; the solver calls run on a :class:`~chisurf.emtk.jobs.SnapshotJob`.
@@ -12,7 +12,6 @@ tab bar, the environment line, the scrolling log, Help / Guide and the file choo
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -93,7 +92,7 @@ class PackagePanel:
             model.append_log(f"Failed: {self.job.error}")
         if not self.loaded:
             self.loaded = True
-            model.refresh_all()  # the Qt widget loaded its lists when it was created
+            model.refresh_all()  # the lists are loaded when the window is created
         self.form.rects.clear()
         self._tabs()
         name = _NAMES[model.tab]

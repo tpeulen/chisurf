@@ -1,6 +1,6 @@
 """Qt-free state and behaviour of the package manager window (installed packages, search, environments, channels).
 
-Everything the Qt ``PackageManagerWidget`` did that was not drawing: each button's call reaches the solver only through
+Everything the window does that is not drawing: each button's call reaches the solver only through
 :class:`~chisurf.plugins.core.updater.updater.PackageManager` (``_popen``), so a test replaces that one method and sees the
 command line the real code would have run. Slow calls (``do_*``) run on a snapshot in a worker thread (the app's job);
 with no ``runner`` set they run inline, which is what the model tests do. Destructive actions (remove, remove environment,
@@ -76,7 +76,7 @@ class PackageManagerModel(DialogMixin):
         return "\n".join(self.log)
 
     def append_log(self, message: str) -> None:
-        """Append a timestamped message to the operation log (as the Qt log did)."""
+        """Append a ``[HH:MM:SS]``-stamped message to the operation log."""
         self.log.append(f"[{datetime.now().strftime('%H:%M:%S')}] {message}")
 
     def enabled(self, name: str) -> bool:
@@ -108,7 +108,7 @@ class PackageManagerModel(DialogMixin):
 
     @staticmethod
     def _normalise(result: Any) -> tuple[bool, Any, str]:
-        """A solver call's answer as ``(success, data, error)`` (the Qt worker's rule)."""
+        """A solver call's answer as ``(success, data, error)``."""
         if isinstance(result, tuple):
             if len(result) == 3:
                 return result[0], result[1], result[2]
@@ -224,7 +224,7 @@ class PackageManagerModel(DialogMixin):
             )
 
     def ask_update_selected(self) -> None:
-        """Update Selected: no question (as in the Qt tool)."""
+        """Update Selected: runs without a question."""
         if self.sel_installed:
             self._operate(
                 "update",
@@ -320,7 +320,7 @@ class PackageManagerModel(DialogMixin):
         )
 
     def remove_channel(self) -> None:
-        """Remove Selected (channel): no question (as in the Qt tool)."""
+        """Remove Selected (channel): runs without a question."""
         if self.sel_channel:
             ch = self.sel_channel["channel"]
             self._operate("remove_channel", ch, label=f"Removing channel '{ch}'...")

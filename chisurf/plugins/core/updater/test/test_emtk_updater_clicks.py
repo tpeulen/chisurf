@@ -9,7 +9,6 @@ removal, environment change or network.
 from __future__ import annotations
 
 import time
-from pathlib import Path
 
 import pytest
 import yaml
@@ -126,7 +125,7 @@ def test_check_for_updates_press_runs_the_check_in_the_background_and_fills_the_
 
 
 def test_a_second_press_while_the_check_runs_does_nothing(ui, fakes, gate):
-    """The button is greyed while the job runs (the Qt tool disabled it): no second job starts."""
+    """The button is greyed while the job runs: no second job starts."""
     ui.click("check_for_updates")
     ui.draw(3)
     assert (
@@ -219,7 +218,7 @@ def test_the_picked_version_is_the_one_update_now_installs(checked, fakes):
 
 @pytest.mark.xfail(
     strict=True,
-    reason="emtk gap: the wheel over a choice does not step it (a Qt combo box does)",
+    reason="emtk gap: the wheel over a choice does not step it",
 )
 def test_the_wheel_over_the_version_list_steps_it(checked):
     ui = checked
@@ -278,7 +277,7 @@ def test_Yes_starts_the_update_and_the_fake_runner_sees_the_install_line(checked
 def test_the_progress_window_shows_the_latest_step_while_the_update_is_prepared(
     checked, fakes, monkeypatch
 ):
-    """While the update runs, a window names its step (the Qt progress dialog's label); it closes when the update has been handed over."""
+    """While the update runs, a window names its step; it closes when the update has been handed over."""
     from chisurf.plugins.core.updater import updater as up
 
     gate = {"release": False}

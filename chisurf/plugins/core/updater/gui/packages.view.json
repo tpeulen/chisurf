@@ -1,5 +1,5 @@
 {
-  "_comment": "ChiSurf package manager, native emtk window. Drawn by emtk.view_form over PackageManagerModel (gui/package_model.py): one panel per page of the Qt tab widget, the operation log and Refresh All under them (drawn by gui/package_app.py), and the in-app confirm / text-entry dialog the Qt tool asked with message boxes. Tables are data_table sections; the Qt tables allowed several selected rows, a data_table selects one.",
+  "_comment": "ChiSurf package manager, native emtk window. Drawn by emtk.view_form over PackageManagerModel (gui/package_model.py): one panel per tab page, the operation log and Refresh All under them (drawn by gui/package_app.py), and the in-app confirm / text-entry dialog. Tables are data_table sections; each selects one row.",
   "title": "ChiSurf Package Manager",
   "sections": [
     {
@@ -310,7 +310,7 @@
       "type": "panel",
       "title": "ChiSurf Package Manager",
       "name": "dialog",
-      "description": "Asks before an install, update-all or removal runs, and takes the names the Qt tool asked for in input boxes.",
+      "description": "Asks before an install, update-all or removal runs, and takes the names an action needs (environment, clone, channel).",
       "sections": [
         {
           "type": "info",

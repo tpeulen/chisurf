@@ -1,7 +1,6 @@
 """Qt-free state and behaviour of the updater window (version check, changelog, update).
 
-Everything the Qt ``UpdaterWidget`` did that was not drawing lives here, cut over unchanged where it could be:
-the startup settings (``plugins.updater`` in the user's settings file), the changelog formatting, the version
+Everything the window does that is not drawing lives here: the startup settings (``plugins.updater`` in the user's settings file), the changelog formatting, the version
 list and the changelog of the selected version, and the update itself. The network and the machine are reached
 only through :class:`~chisurf.plugins.core.updater.updater.ChiSurfUpdater`, so a test replaces its
 ``_list_remote_versions``, ``_run_update_in_separate_process`` and friends and sees the command line the real
@@ -30,7 +29,7 @@ HARDCODED_URL = "https://www.peulen.xyz/downloads/chisurf/"
 #: Shown in the changelog area until a changelog exists.
 CHANGELOG_PLACEHOLDER = "Changelog will appear here after checking for updates..."
 
-#: The question Update Now asks (the Qt dialog's text).
+#: The question Update Now asks before it runs.
 UPDATE_WARNING = (
     "The update process will close all ChiSurf windows and continue in a separate window.\n\n"
     "All unsaved work will be lost. After the update completes, you will need to restart ChiSurf manually.\n\n"
@@ -39,7 +38,7 @@ UPDATE_WARNING = (
 
 
 def parse_changelog(text: str) -> dict:
-    """Split the raw changelog string into what both renderings (Qt rich text, emtk blocks) draw.
+    """Split the raw changelog string into what both renderings (the HTML text, the emtk blocks) draw.
 
     Returns ``header`` (the leading ``Changes ...`` line or ``None``), ``items`` (the ``- `` lines), ``others``
     (any other lines) and ``footer`` (``More details:`` / ``See commit history:`` lines), all unescaped; ``empty``
@@ -233,12 +232,12 @@ class UpdaterModel(DialogMixin):
     # -- what the form shows ----------------------------------------------------------------------------------------- #
     @property
     def current_version_text(self) -> str:
-        """The installed version (the Qt tool showed it next to its caption)."""
+        """The installed version, shown next to the caption."""
         return self.current_version
 
     @property
     def solver_text(self) -> str:
-        """Which solver would run the update and where it lives (the Qt status label's tooltip)."""
+        """Which solver would run the update and where it lives (the status line's tooltip)."""
         manager = self.updater.pkg_manager
         if manager is None:
             return "Solver information unavailable"
@@ -257,7 +256,7 @@ class UpdaterModel(DialogMixin):
 
     @property
     def branch_text(self) -> str:
-        """The branch the changelog is read from (the Qt label beside the Development box was empty)."""
+        """The branch the changelog is read from, shown beside the Development box."""
         return f"branch: {self.updater.channel}"
 
     @property
@@ -271,12 +270,12 @@ class UpdaterModel(DialogMixin):
         self._apply_channel()
 
     def _apply_channel(self) -> None:
-        # If ever allowed to uncheck, fall back to main/master (as the Qt box did)
+        # If ever allowed to uncheck, fall back to main/master
         self.updater.channel = "development" if self.dev_checked else "master"
 
     @property
     def check_on_startup(self) -> bool:
-        """Check for updates when ChiSurf starts (saved the moment it is changed, as in the Qt tool)."""
+        """Check for updates when ChiSurf starts (saved the moment it is changed)."""
         return self._check_on_startup
 
     @check_on_startup.setter
@@ -296,7 +295,7 @@ class UpdaterModel(DialogMixin):
 
     @property
     def version_labels(self) -> list[str]:
-        """One entry per available version, as the Qt drop-down listed them."""
+        """One entry per available version, newest first."""
         return [f"Version {v.get('version')}" for v in self.available_versions if v.get("version")]
 
     @property
@@ -334,7 +333,7 @@ class UpdaterModel(DialogMixin):
         if self.dialog or self.busy or self.updating:
             return False
         if name == "development":
-            return False  # always on: no stable release exists yet (the Qt box was disabled)
+            return False  # always on: no stable release exists yet
         if name == "selected_version":
             return bool(self.available_versions)
         if name == "ask_update":
@@ -357,7 +356,7 @@ class UpdaterModel(DialogMixin):
         self._run("do_check")
 
     def do_check(self) -> None:
-        """The check itself (network): the Qt ``check_for_updates`` slot."""
+        """The check itself (network): list the releases and read the newest one's changelog."""
         logging.info("Checking for updates via UI")
         self.status = "Checking for updates..."
         self.update_enabled = False
@@ -393,7 +392,7 @@ class UpdaterModel(DialogMixin):
         self.update_changelog_for_selected()
 
     def auto_check(self) -> None:
-        """The check that runs when the window opens (network): the Qt ``_auto_check_on_start``.
+        """The check that runs when the window opens (network).
 
         Respects the startup switches only when the window was opened by ChiSurf's startup, not by the user.
         """
@@ -453,7 +452,7 @@ class UpdaterModel(DialogMixin):
         self._run("update_changelog_for_selected")
 
     def update_changelog_for_selected(self) -> None:
-        """The changelog of the selected version (network): the Qt ``_update_changelog_for_selected``."""
+        """The changelog of the selected version (network), since the version listed before it."""
         try:
             idx = self.version_index
             if idx < 0 and self.available_versions:
@@ -504,7 +503,7 @@ class UpdaterModel(DialogMixin):
                 self.status = "Update cancelled by user."
 
     def do_update(self) -> None:
-        """Run the update (it may end the process): the Qt ``update_chisurf`` slot after the confirmation."""
+        """Run the update after the confirmation (it may end the process)."""
         logging.info("Starting ChiSurf update via UI")
         self.exit_requested = False
 
@@ -555,7 +554,7 @@ class UpdaterModel(DialogMixin):
 
     # -- persistence -------------------------------------------------------------------------------------------------- #
     def export_settings(self) -> dict:
-        """The two startup switches (the Qt tool saved them to the settings file at once; the host copy follows)."""
+        """The two startup switches (saved to the settings file at once; the host copy follows)."""
         return {"check_on_startup": self._check_on_startup, "ignore_updates": self.ignore_updates}
 
     def restore_settings(self, settings: dict) -> None:

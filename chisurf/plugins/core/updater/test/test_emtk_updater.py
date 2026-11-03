@@ -1,14 +1,14 @@
-"""The native updater tab against the Qt tool: statuses, version list, changelog, settings, update command lines, no Qt.
+"""The emtk updater tab: statuses, version list, changelog, settings, update command lines, no Qt.
 
 SAFETY: every system action is a fake (``fakes.py``): no update, install, removal or environment change, no network. The
-update tests assert the command line that reached the fake runner, written out here (``Fakes.expected_*``), and the Qt
-tool is run beside the model on the same fakes. ``data/qt_values.json`` holds what the Qt tool produced before the port.
+expected values come from the fakes' own inputs: the listed releases (``RELEASES``), the commit list the fake GitHub
+answers with (``COMMITS``) and the command lines written out in ``Fakes.expected_*``.
 """
 
 from __future__ import annotations
 
+import html
 import json
-import sys
 import time
 from pathlib import Path
 
@@ -16,21 +16,31 @@ import pytest
 import yaml
 from emtk.testing import RecordingPainter
 
-from .fakes import RELEASES
+from .fakes import COMMITS, RELEASES
 
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
-REF = json.loads((HERE / "data" / "qt_values.json").read_text(encoding="utf-8"))
-#: The version the reference run installed ("26.dev..." changes with every commit): its text is replaced by today's.
-REF_VERSION = REF["initial"]["current_version"]
-SAMPLE = REF["format_changelog"]["input"]
+COMMITS_URL = "https://github.com/Fluorescence-Tools/chisurf/commits"
+LABELS = [f"Version {r['version']}" for r in RELEASES]
 
 
-def today(text: str) -> str:
-    """A reference text with the installed version it was recorded under replaced by the current one."""
-    from chisurf.core import info
+def changes():
+    """The changelog lines of the fake commits: merges skipped, first message line, date and author."""
+    return [
+        f"{c['commit']['author']['date'][:10]} {c['commit']['message'].splitlines()[0]} "
+        f"(by {c['commit']['author']['name']})"
+        for c in COMMITS
+        if not c["commit"]["message"].startswith("Merge")
+    ]
 
-    return text.replace(REF_VERSION, info.__version__)
+
+def changelog_html(old: str, new: str) -> str:
+    """The changelog HTML for the fake commits between *old* and *new*: bold header, escaped items, the link."""
+    items = "".join(f"  <li>{html.escape(line, quote=False)}</li>\n" for line in changes())
+    return (
+        f"<b>Changes between {old} and {new}:</b>\n<ul>\n{items}</ul>\n"
+        f'<p>More details: <a href="{COMMITS_URL}">{COMMITS_URL}</a></p>'
+    )
 
 
 def model_checked(**kwargs):
@@ -41,30 +51,26 @@ def model_checked(**kwargs):
     return model
 
 
-QT = json.loads(
-    (Path(__file__).parent / "qt_reference.json").read_text()
-)  # the retired Qt tool, live, on the same fakes
-
-
-# ---------------------------------------------------------------------------------------------- 1. the numbers equal the Qt tool's
-def test_a_check_gives_the_status_versions_and_changelog_the_qt_tool_gave(fakes):
+# ---------------------------------------------------------------------------------------------- 1. status, versions, changelog
+def test_a_check_lists_the_releases_and_the_changelog_of_the_newest(fakes):
     model = model_checked()
-    ref = REF["checked"]
-    assert model.status == ref["status"] == "Update available: version 26.10.02"
-    assert model.version_labels == ref["items"]
-    assert model.version_index == ref["index"] == 0
-    assert model.changelog_html == today(ref["html"])
+    assert model.status == f"Update available: version {RELEASES[0]['version']}"
+    assert model.version_labels == LABELS
+    assert model.version_index == 0
+    assert model.changelog_html == changelog_html(RELEASES[1]["version"], RELEASES[0]["version"])
     assert (
         model.update_enabled and model.enabled("ask_update") and model.enabled("selected_version")
     )
 
 
-def test_every_version_shows_the_changelog_the_qt_tool_showed_for_it(fakes):
+def test_every_version_shows_the_changelog_since_the_version_before_it(fakes):
+    """The changelog of a release runs from the next older listed release (the installed one for the oldest)."""
     model = model_checked()
+    versions = [r["version"] for r in RELEASES] + [model.current_version]
     for index in range(len(model.version_labels)):
         model.selected_version = model.version_labels[index]
         model.update_changelog_for_selected()
-        assert model.changelog_html == today(REF["html_by_index"][str(index)]), index
+        assert model.changelog_html == changelog_html(versions[index + 1], versions[index]), index
 
 
 def test_the_changelog_range_follows_the_previous_listed_version_and_the_installed_one_for_the_oldest(
@@ -92,14 +98,13 @@ def test_the_changelog_range_follows_the_previous_listed_version_and_the_install
     assert ranges[2][0] == "2026-07-18"
 
 
-def test_the_start_up_check_matches_the_qt_tool_and_asks_the_same_notice(fakes):
+def test_the_start_up_check_lists_the_releases_and_gives_a_notice(fakes):
     from chisurf.plugins.core.updater.gui.model import UpdaterModel
 
     model = UpdaterModel()
     model.auto_check()
-    ref = REF["initial"]
-    assert model.status == ref["status"]
-    assert model.version_labels == ref["items"]
+    assert model.status == "Update available: version 26.10.02"
+    assert model.version_labels == LABELS
     assert (model.dialog, model.dialog_title, model.dialog_text) == (
         "notice",
         "Update Available",
@@ -107,8 +112,10 @@ def test_the_start_up_check_matches_the_qt_tool_and_asks_the_same_notice(fakes):
     )
     drawn = [f"{b[1]}: {b[2]}" if b[0] == "link" else b[1] for b in model.changelog_blocks]
     assert [d.strip() for d in drawn] == [
-        ln.strip() for ln in today(ref["changelog_plain"]).splitlines() if ln.strip()
-    ]  # the blocks the window draws read as the Qt text area read the same changelog
+        f"Changes between {model.current_version} and 26.10.02:",
+        *changes(),
+        f"More details: {COMMITS_URL}",
+    ]  # the start-up changelog runs from the installed version
     assert model.update_enabled and not model.suppress_initial_notification
 
 
@@ -142,13 +149,13 @@ def test_start_up_check_is_skipped_by_the_switches_only_when_opened_by_start_up(
     )
 
 
-def test_no_versions_listed_is_the_message_the_qt_tool_gave(fakes):
+def test_no_versions_listed_says_the_installed_version_is_up_to_date(fakes):
     fakes.releases.clear()
     from chisurf.plugins.core.updater.gui.model import UpdaterModel
 
     model = UpdaterModel()
     model.auto_check()
-    assert model.status == REF["no_versions"]["status"].replace(REF_VERSION, model.current_version)
+    assert model.status == f"ChiSurf is up to date (version {model.current_version})."
     assert (
         model.version_labels == [] and not model.update_enabled and not model.enabled("ask_update")
     )
@@ -156,20 +163,26 @@ def test_no_versions_listed_is_the_message_the_qt_tool_gave(fakes):
     assert model.status == "Error checking for updates: No update information available"
 
 
-def test_the_changelog_formatting_equals_the_qt_widgets_for_a_recorded_sample():
+def test_the_changelog_formatting_of_a_sample():
+    """Header bold, ``- `` lines a list, other lines paragraphs, the details line a link, everything escaped."""
     from chisurf.plugins.core.updater.gui.model import format_changelog_html
 
-    assert format_changelog_html(SAMPLE) == REF["format_changelog"]["html"]
-    assert (
-        format_changelog_html("  ")
-        == REF["format_changelog"]["empty"]
-        == "<i>No changelog available.</i>"
+    sample = (
+        "Changes between 26.09.20 and 26.10.02:\n- 2026-10-01 Add <the> updater (by Ada)\n"
+        f"plain line & more\n\nMore details: {COMMITS_URL}"
     )
+    assert format_changelog_html(sample) == (
+        "<b>Changes between 26.09.20 and 26.10.02:</b>\n<ul>\n"
+        "  <li>2026-10-01 Add &lt;the&gt; updater (by Ada)</li>\n</ul>\n"
+        "<p>plain line &amp; more</p>\n"
+        f'<p>More details: <a href="{COMMITS_URL}">{COMMITS_URL}</a></p>'
+    )
+    assert format_changelog_html("  ") == "<i>No changelog available.</i>"
     assert format_changelog_html(None) == "<i>No changelog available.</i>"
 
 
-def test_the_blocks_the_window_draws_say_what_the_qt_text_area_said():
-    """Characters a Markdown renderer would eat (``<b>``, ``_``, ``*``) are shown as written, in the Qt tool's order."""
+def test_the_blocks_the_window_draws_show_the_text_as_written():
+    """Characters a Markdown renderer would eat (``<b>``, ``_``, ``*``) are shown as written, in the changelog's order."""
     from chisurf.plugins.core.updater.gui.model import changelog_blocks
 
     text = (
@@ -178,7 +191,7 @@ def test_the_blocks_the_window_draws_say_what_the_qt_text_area_said():
     )
     blocks = changelog_blocks(text)
     assert [b[0] for b in blocks] == ["header", "item", "item", "paragraph", "link"]
-    # The Qt text area (QTextDocument.toPlainText of format_changelog_html(text)), recorded 2026-10-12.
+    # the lines of the text, list markers dropped
     lines = [
         "Changes between 1 and 2:",
         "2026-10-01 fix snake_case_name and *star* <b>x</b> (by Ada)",
@@ -192,49 +205,17 @@ def test_the_blocks_the_window_draws_say_what_the_qt_text_area_said():
     assert changelog_blocks("") == [("empty", "No changelog available.", None)]
 
 
-# ---------------------------------------------------------------------------------------------- 2. the live Qt tool beside the model
-def test_the_retired_qt_tool_and_the_model_agree_after_a_check(fakes):
-    from chisurf.plugins.core.updater.gui.model import UpdaterModel
-
-    update_enabled, development, dev_enabled, dropdown_enabled, status, items = QT["after_check"]
-    model = UpdaterModel()
-    model.do_check()
-    assert status == model.status
-    assert items == model.version_labels
-    for index in range(3):  # the changelog of every entry equals the recorded Qt HTML
-        model.version_index = index
-        model.update_changelog_for_selected()
-        assert model.changelog_html == today(REF["html_by_index"][str(index)])
-    assert update_enabled == model.update_enabled
-    assert development == model.development and not dev_enabled
-    assert dropdown_enabled == model.enabled("selected_version")
-
-
-def test_the_retired_qt_tool_and_the_model_agree_without_versions(fakes):
-    from chisurf.plugins.core.updater.gui.model import UpdaterModel
-
-    fakes.releases.clear()
-    model = UpdaterModel()
-    model.do_check()
-    status, update_enabled = QT["no_versions"]
-    assert status == model.status == "Error checking for updates: No update information available"
-    assert not update_enabled and not model.update_enabled
-
-
-# ---------------------------------------------------------------------------------------------- 3. startup settings
-def test_the_startup_switches_are_saved_as_the_qt_tool_saved_them(tmp_path):
+# ---------------------------------------------------------------------------------------------- 2. startup settings
+def test_the_startup_switches_are_saved_under_plugins_updater(tmp_path):
     from chisurf.plugins.core.updater.gui.model import UpdaterModel
 
     settings_file = tmp_path / "settings" / "settings_chisurf.yaml"
-    qt_saved = REF["startup_saved"]  # what the Qt tool wrote for the same two switches
-    assert qt_saved["plugins"]["updater"] == {
-        "ignore_updates_on_startup": True,
-        "check_on_startup": False,
-    }
     model = UpdaterModel()
     model.check_on_startup = False
     model.ignore_updates_on_startup = True
-    assert yaml.safe_load(settings_file.read_text()) == qt_saved
+    assert yaml.safe_load(settings_file.read_text()) == {
+        "plugins": {"updater": {"ignore_updates_on_startup": True, "check_on_startup": False}}
+    }
     again = UpdaterModel()  # read back at the next start
     assert (again.check_on_startup, again.ignore_updates_on_startup) == (False, True)
 
@@ -261,14 +242,14 @@ def test_settings_round_trip_through_the_host_hooks():
     app.close()
 
 
-# ---------------------------------------------------------------------------------------------- 4. the update command line
+# ---------------------------------------------------------------------------------------------- 3. the update command line
 def run_update(model, fakes, accept=True):
     model.ask_update()
     assert model.dialog == "confirm_update"
     (model.dialog_ok if accept else model.dialog_cancel)()
 
 
-def test_update_now_runs_the_command_the_qt_tool_ran_for_a_remote_package(fakes):
+def test_update_now_downloads_a_remote_package_and_installs_it(fakes):
     model = model_checked()
     run_update(model, fakes)
     ((url, local),) = fakes.downloads
@@ -277,13 +258,6 @@ def test_update_now_runs_the_command_the_qt_tool_ran_for_a_remote_package(fakes)
         local
     ).parent.name.startswith("chisurf_update_")
     assert fakes.update_commands == [("separate_process", fakes.expected_update_commands(local))]
-    kind, recorded = REF["update_accepted"]["commands"][0]  # what the Qt tool ran before the port
-    recorded = [
-        sys.prefix if part == recorded[recorded.index("--prefix") + 1] else part
-        for part in recorded
-    ]
-    assert kind == "separate_process" and recorded[:-1] == fakes.update_commands[0][1][:-1]
-    assert Path(recorded[-1]).name == Path(local).name
     assert (
         model.status
         == "The update was started in a separate window; restart ChiSurf when it has finished."
@@ -300,35 +274,13 @@ def test_update_now_for_a_conda_package_uses_the_same_install_line(fakes):
     assert fakes.update_commands == [("separate_process", fakes.expected_update_commands(local))]
 
 
-def test_update_now_matches_the_retired_qt_tool_command_for_command(fakes):
-    from chisurf.plugins.core.updater.gui.model import UpdaterModel
-
-    for index, name in ((0, "chisurf-macos-26.10.02.tar.bz2"), (2, "chisurf-macos-26.08.01.conda")):
-        qt_cmd = QT[f"cmd_{index}"]
-        fakes.update_commands.clear()
-        model = UpdaterModel()
-        model.do_check()
-        model.selected_version = model.version_labels[index]
-        run_update(model, fakes)
-        cmd = fakes.update_commands[0][1]
-        # the same line (up to the environment prefix and the temp folder) for the same file
-        assert [p for p in cmd[:6]] == qt_cmd[:6] and qt_cmd[6] == "<prefix>"
-        assert Path(cmd[-1]).name == qt_cmd[-1] == name
-
-
-def test_update_now_without_a_listed_version_runs_the_standard_install_line_like_the_qt_tool(fakes):
+def test_update_now_without_a_listed_version_runs_the_standard_install_line(fakes):
     from chisurf.plugins.core.updater.gui.model import UpdaterModel
 
     model = UpdaterModel()
     model.update_enabled = True  # as after a check that listed nothing but found a newer one
     run_update(model, fakes)
     assert fakes.update_commands == [("separate_process", fakes.expected_latest_command())]
-    recorded = REF["standard_update_commands"][0][1]  # what the Qt tool ran before the port
-    recorded = [
-        sys.prefix if part == recorded[recorded.index("--prefix") + 1] else part
-        for part in recorded
-    ]
-    assert recorded == fakes.update_commands[0][1]
     assert fakes.downloads == []
 
 
@@ -348,15 +300,17 @@ def test_the_channel_chooses_the_changelog_branch_not_the_install_line(fakes, de
 
 
 def test_declining_the_question_runs_nothing_and_says_so(fakes):
-    asked = REF["update_declined"]["asked"]  # the Qt tool's own questions, recorded
-    qt_status = "Update cancelled by user."
     model = model_checked()
-    run_update(model, fakes, accept=False)
-    assert model.status == qt_status == "Update cancelled by user."
+    model.ask_update()
+    assert (model.dialog_title, model.dialog_text) == (
+        "Update Warning",
+        "The update process will close all ChiSurf windows and continue in a separate window.\n\n"
+        "All unsaved work will be lost. After the update completes, you will need to restart ChiSurf manually.\n\n"
+        "Do you want to continue?",
+    )
+    model.dialog_cancel()
+    assert model.status == "Update cancelled by user."
     assert fakes.update_commands == [] and fakes.downloads == []
-    assert (
-        asked[-1][2] == model.dialog_text == REF["update_declined"]["asked"][-1][2]
-    )  # the question is the Qt tool's, word for word
 
 
 def test_a_failed_download_is_reported_and_runs_nothing(fakes, monkeypatch):
@@ -407,7 +361,7 @@ def test_the_package_manager_button_is_available(fakes):
     assert model.package_manager_available and model.enabled("open_package_manager")
 
 
-# ---------------------------------------------------------------------------------------------- 5. spec and model agree
+# ---------------------------------------------------------------------------------------------- 4. spec and model agree
 def spec():
     return json.loads((GUI / "updater.view.json").read_text(encoding="utf-8"))
 
@@ -454,7 +408,7 @@ def test_the_model_imports_no_qt(monkeypatch):
     assert result["ok"], result["output"]
 
 
-# ---------------------------------------------------------------------------------------------- 6. tooltips, drawing
+# ---------------------------------------------------------------------------------------------- 5. tooltips, drawing
 def test_every_control_has_a_tooltip():
     from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory
 

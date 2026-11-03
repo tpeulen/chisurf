@@ -1,4 +1,4 @@
-"""The in-app confirm / notice / text-entry dialog the Qt tool asked with message boxes.
+"""The in-app confirm / notice / text-entry dialog of the updater and package windows.
 
 A model that mixes :class:`DialogMixin` in shows its dialog through the ``dialog`` panel of its view spec: the
 text, an optional entry field and one or two buttons (``dialog_ok`` / ``dialog_cancel``). The dialog is modal:
