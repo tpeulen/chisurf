@@ -139,6 +139,13 @@ patterns) and **Detector setup** (the shared channel editor). **Save settings**
 writes the selected model and its per-model edits; drop the file on ChiSurf and pick it
 (a *setup* row) to carry them into another analysis.
 
+The **Decay and fit** plot shows the whole decay of the burst photons: every
+micro-time channel, VV then VH, split by a vertical line. That includes the
+channels outside the fit window, which the fit leaves out. Two shaded bands mark
+the ranges on each half. **Fit window** (green) is the detector's gate, where the
+decay is fitted, and the model is drawn only there. **IRF range** (orange) is
+where the IRF the fit convolves with is not zero, inside the IRF clip.
+
 Select **Fit model** before running the preview or batch:
 
 | Model | Inputs in parameter order | Interpretation |

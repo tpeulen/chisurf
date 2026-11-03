@@ -45,6 +45,9 @@ from .model import MleViewModel
 
 HERE = Path(__file__).parent
 REGION_FILL = (46, 117, 182, 60)
+#: The decay plot's highlighted ranges: the fit window, and the IRF range the IRF clip keeps.
+FIT_FILL = (90, 170, 90, 50)
+IRF_FILL = (220, 150, 60, 50)
 
 
 
@@ -709,16 +712,40 @@ class MleNativeApp(TourTarget, ImApp):
             )
             return
         if implot.begin_plot("Decay histogram and fit", (-1, -1)):
-            implot.setup_axes("Micro-time window (channels, VV then VH)", "Photons")
+            implot.setup_axes("Micro-time channel (VV, then VH)", "Photons")
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
-            implot.plot_scatter("Data (VV|VH)", curves.x, curves.data, size=2.5)
-            drawn = np.isfinite(curves.model) & (
-                curves.model > 0
-            )  # a log axis cannot show the empty part before a tail
-            implot.plot_line("Model (fit)", curves.x[drawn], curves.model[drawn])
-            if curves.irf is not None:
-                implot.plot_line("IRF", curves.x, curves.irf)
-            implot.plot_line("Background", curves.x, curves.background)
+            x, data = curves.x_full, curves.data_full
+            top = float(np.max(data)) * 3.0 if data.size and np.max(data) > 0 else 10.0
+            # the ranges first, under the curves: what is fitted, and the IRF the clip keeps
+            for colour, label, windows in (
+                (FIT_FILL, "Fit window", curves.fit_windows),
+                (IRF_FILL, "IRF range", curves.irf_windows),
+            ):
+                for part, (lo, hi) in enumerate(windows):
+                    if hi <= lo:
+                        continue
+                    band_x = np.array([lo, hi], dtype=float) - 0.5  # whole channels
+                    band_y = np.full(2, top)
+                    implot.set_next_fill_style(colour[:3] + (255,), colour[3] / 255.0)
+                    implot.plot_shaded(
+                        (label if part == 0 else "") + f"##{label}{part}", band_x, band_y, yref=-np.inf
+                    )
+            split = np.array([data.size / 2.0 - 0.5])  # where the VH half starts
+            implot.plot_inf_lines("##VV|VH", split)
+            implot.plot_scatter("Data (VV|VH)", x, data, size=2.5)
+            for part, (lo, hi) in enumerate(curves.fit_windows):
+                seg = np.arange(lo, hi)
+                seg = seg[np.isfinite(curves.model_full[seg]) & (curves.model_full[seg] > 0)]
+                # the model where it was fitted; a log axis cannot show the empty part before a tail
+                implot.plot_line("Model (fit)", seg, curves.model_full[seg])
+            half = data.size // 2
+            for label, values in (("IRF", curves.irf_full), ("Background", curves.background_full)):
+                if values is None:
+                    continue
+                for lo, hi in ((0, half), (half, data.size)):  # each half its own line
+                    seg = np.arange(lo, hi)
+                    seg = seg[values[seg] > 0]
+                    implot.plot_line(label, seg, values[seg])
             implot.end_plot()
         im.text(self.model.current_file_text())
 

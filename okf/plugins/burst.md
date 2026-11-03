@@ -10,6 +10,13 @@ timestamp: '2026-07-05T00:00:00Z'
 ## Where to pick this up
 
 **Next, in order (2026-11-02, after the detector-name round):**
+0. **Burst MLE: "Window start/stop [bin]" does not set the fit window when the detector has gates**
+   (2026-11-03). `engine.window_bins` takes the detector's first `micro_time_ranges` gate and ignores
+   `micro_time_start/stop`. On DNA13bp_3 / RVZMT150 the panel says 7–45 while the fit (and the plot's
+   green band) is bins 0–62. Measure: `mle.model.fit_curves.fit_windows` against the two fields.
+   Decide which one wins: the fields should either narrow the gate or be hidden when a gate exists.
+   The decay plot now shows every channel (`decay_all`, `cut=False`) with the fit window and the IRF
+   range (non-zero IRF within the clip) shaded, so the mismatch is visible.
 1. **No HDF5 anywhere** (owner: "no HDF5! csv at most; better deprecate, only an exporter at most").
    Results live in the `.pto` container; loose files only through an explicit exporter, CSV at most.
    Still writing HDF5: `chisurf/core/datastore.py`, `plugins/microscopy/{img_pixel_intensity/gui/view_model,

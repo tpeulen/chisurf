@@ -11,7 +11,7 @@ Qt-free and emtk-free.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -39,11 +39,27 @@ class DecayCurves:
     residuals: np.ndarray
     #: Number of VV channels in the windowed curves (the VH window follows).
     n_vv: int
+    #: The whole decay, VV half then VH half, and the overlays on the same axis and scale: the
+    #: plot shows all of it, the fit window and the IRF range highlighted on it.
+    data_full: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    model_full: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    irf_full: np.ndarray | None = None
+    background_full: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    #: ``[(start, stop), ...]`` on the full axis: the fit window of the VV half, then of the VH half.
+    fit_windows: tuple = ()
+    #: ``[(start, stop), ...]`` on the full axis, per half: where the IRF the fit convolves with is
+    #: not zero, inside the IRF clip (``irf_start``/``irf_stop``).
+    irf_windows: tuple = ()
 
     @property
     def x(self) -> np.ndarray:
         """Channel index into the windowed curves."""
         return np.arange(self.data.size)
+
+    @property
+    def x_full(self) -> np.ndarray:
+        """Channel index into the whole decay (VV half, then VH half)."""
+        return np.arange(self.data_full.size)
 
 
 def clamp_window(start: int, stop: int | None, n: int) -> tuple[int, int]:
@@ -80,6 +96,8 @@ def decay_curves(
     *,
     tail: bool = False,
     diverged: bool = False,
+    irf_range: tuple[int, int] = (-1, -1),
+    data_all: np.ndarray | None = None,
 ) -> DecayCurves:
     """Window and scale the fit's data, model, IRF and background for display.
 
@@ -96,6 +114,10 @@ def decay_curves(
     diverged : bool
         A diverged fit returns a model whose amplitude ran away; the displayed model is clipped to ten times the
         data maximum so the panel stays readable (the fitted parameters are untouched).
+    irf_range : tuple of int
+        ``(irf_start, irf_stop)`` of the IRF clip in bins of one half (``-1``: that edge is open).
+    data_all : numpy.ndarray, optional
+        The decay with every channel, not cut to the fit window (same layout): the data shown.
     """
     data_full = np.asarray(data, dtype=float)
     model_full = np.asarray(model, dtype=float)
@@ -116,6 +138,33 @@ def decay_curves(
     resid[mask] = (data_full[mask] - model_full[mask]) / np.sqrt(data_full[mask])
     resid_rng, _ = windowed(resid, ranges)
 
+    half = data_full.size // 2
+    vv = clamp_window(ranges[0], ranges[1], half)
+    vh = clamp_window(ranges[2], ranges[3], half)
+    start, stop = int(irf_range[0]), int(irf_range[1])
+    irf_lo = max(0, start) if start >= 0 else 0
+    irf_hi = min(half, stop + 1) if stop >= 0 else half
+    model_full_disp = np.nan_to_num(model_full, nan=0.0, posinf=0.0, neginf=0.0)
+    if diverged and data_rng.size:
+        cap = float(np.nanmax(data_rng)) * 10.0
+        if cap > 0:
+            model_full_disp = np.clip(model_full_disp, 0.0, cap)
+
+    def scaled(full: np.ndarray, rng: np.ndarray) -> np.ndarray:
+        # the factor the windowed overlay got, so both agree inside the window
+        s = float(np.sum(rng))
+        return full * (s_dat / s) if (s > 0 and s_dat > 0) else full
+
+    irf_arr = np.asarray(irf, dtype=np.float64)
+    bg_arr = np.asarray(background, dtype=np.float64)
+
+    def support(lo: int, hi: int, offset: int) -> tuple[int, int]:
+        # the IRF range used: where the IRF the fit convolves with is not zero, inside the clip
+        part = irf_arr[offset + lo : offset + hi] if irf_arr.size == data_full.size else np.zeros(0)
+        nonzero = np.flatnonzero(part > 0)
+        if nonzero.size == 0:
+            return offset + lo, offset + hi
+        return offset + lo + int(nonzero[0]), offset + lo + int(nonzero[-1]) + 1
     return DecayCurves(
         data=data_rng,
         model=model_disp,
@@ -123,4 +172,14 @@ def decay_curves(
         background=_overlay(bg_rng, s_dat),
         residuals=resid_rng,
         n_vv=n_vv,
+        data_full=(
+            np.asarray(data_all, dtype=float)
+            if data_all is not None and np.size(data_all) == data_full.size
+            else data_full
+        ),
+        model_full=model_full_disp,
+        irf_full=None if tail else scaled(irf_arr, irf_rng),
+        background_full=scaled(bg_arr, bg_rng),
+        fit_windows=(vv, (half + vh[0], half + vh[1])),
+        irf_windows=() if tail else (support(irf_lo, irf_hi, 0), support(irf_lo, irf_hi, half)),
     )

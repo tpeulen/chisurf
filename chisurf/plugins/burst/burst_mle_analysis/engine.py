@@ -193,8 +193,12 @@ def vv_vh_histogram(
     threshold: Any = -1,
     normalize_counts: int = 1,
     apply_vh_shift: bool = True,
+    cut: bool = True,
 ) -> np.ndarray:
-    """The VV | VH micro-time histogram of *tttr* (one row of the wizard's ``make_vv_vh``)."""
+    """The VV | VH micro-time histogram of *tttr* (one row of the wizard's ``make_vv_vh``).
+
+    *cut* zeroes everything outside the fit window and below the thresholds -- what is fitted;
+    ``False`` keeps every channel -- what is shown."""
     vv_sb, vv_eb, vh_sb, vh_eb = window_bins(
         detector_ranges, micro_time_range, binning, len(detector_chs)
     )
@@ -213,7 +217,7 @@ def vv_vh_histogram(
     cs_hist = period_histogram(ts, binning, period=period)
     if apply_vh_shift and shift != 0:
         cs_hist = np.roll(cs_hist, shift)
-    if apply_vh_shift:
+    if apply_vh_shift and cut:
         if vv_sb > 0:
             cp[:vv_sb] = 0
         if vv_eb < cp.size:
@@ -1458,18 +1462,27 @@ class MleSession:
         idx = self.burst_index_array()
         if tttr is None or not chs or idx.size == 0:
             return None
-        rows = vv_vh_histogram(
-            # the burst photons, cut once per file (the decay is rebuilt for every setting)
-            self._memo("burst_tttr", lambda: tttr[idx]),
-            chs,
-            self.micro_time_range,
-            self.settings.micro_time_binning,
+        photons = self._memo("burst_tttr", lambda: tttr[idx])  # cut once per file
+        kwargs = dict(
             detector_ranges=self.detector.get("micro_time_ranges"),
             shift=self.settings.shift,
             normalize_counts=-1,
         )
+        binning = self.settings.micro_time_binning
+        rows = vv_vh_histogram(photons, chs, self.micro_time_range, binning, **kwargs)
         self.decay = np.asarray(rows)
+        #: The same decay with every channel (not cut to the fit window): what the plot shows,
+        #: kept with the decay it belongs to.
+        self._decay_all = (
+            self.decay,
+            np.asarray(vv_vh_histogram(photons, chs, self.micro_time_range, binning, cut=False, **kwargs)),
+        )
         return self.decay
+
+    def decay_all(self, decay: np.ndarray) -> np.ndarray | None:
+        """*decay* with every channel (:meth:`build_decay`), ``None`` when it was not built here."""
+        pair = getattr(self, "_decay_all", None)
+        return pair[1] if pair is not None and pair[0] is decay else None
 
     # -- IRF / background -------------------------------------------------------------------------------------- #
     def auto_binning(self) -> int | None:
@@ -1684,6 +1697,8 @@ class MleSession:
             self.window_ranges(),
             tail=self.settings.model == "tail",
             diverged=diverged,
+            irf_range=(self.settings.irf_start, self.settings.irf_stop),
+            data_all=self.decay_all(self.decay),
         )
         self.outcome = FitOutcome(
             np.asarray(res.x, dtype=float),
@@ -1742,7 +1757,14 @@ class MleSession:
         score = float(res.negative_log_likelihood)
         irf = self.irf() if self.current_detector in self.irf_np else np.zeros_like(d)
         curves = decay_curves(
-            d, model, irf, self.background(), self.window_ranges(), tail=True, diverged=False
+            d,
+            model,
+            irf,
+            self.background(),
+            self.window_ranges(),
+            tail=True,
+            diverged=False,
+            data_all=self.decay_all(self.decay),
         )
         self.outcome = FitOutcome(x, score, list(TAIL_SCHEMA["properties"]), curves, model, d, res)
         self.status = "" if np.isfinite(score) else "Tail fit failed: non-finite score"

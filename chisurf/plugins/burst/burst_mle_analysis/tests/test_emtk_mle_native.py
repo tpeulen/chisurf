@@ -136,9 +136,20 @@ def test_auto_irf_background_click_equals_the_engine_and_draws_its_curves(monkey
         spy.clear()
         drv.draw(1)
     curves = window.model.fit_curves
-    np.testing.assert_array_equal(spy.named("Data (VV|VH)")[2][1], curves.data)
-    np.testing.assert_allclose(spy.named("Model (fit)")[2][1], curves.model)
-    assert sorted(c[1] for c in spy.calls) == ["Background", "Data (VV|VH)", "IRF", "Model (fit)"]
+    # all the data is drawn; the model only in the fit window (one segment per half)
+    np.testing.assert_array_equal(spy.named("Data (VV|VH)")[2][1], curves.data_full)
+    assert curves.data_full.size > curves.data.size
+    # all the data: the decay with every channel, not the one cut to the fit window
+    uncut = window.model.session.decay_all(window.model.session.decay)
+    assert uncut is not None
+    np.testing.assert_array_equal(curves.data_full, uncut)
+    drawn = np.concatenate([c[2][1] for c in spy.calls if c[1] == "Model (fit)"])
+    np.testing.assert_allclose(drawn, curves.model[curves.model > 0])
+    # the fit window and the IRF range are highlighted, each once in the legend, per half
+    bands = [c[1] for c in spy.calls if c[0] == "plot_shaded"]
+    assert bands == ["Fit window##Fit window0", "##Fit window1", "IRF range##IRF range0", "##IRF range1"]
+    lines = sorted({c[1] for c in spy.calls if c[0] != "plot_shaded" and not c[1].startswith("##")})
+    assert lines == ["Background", "Data (VV|VH)", "IRF", "Model (fit)"]
 
 
 def test_typing_the_window_refits_and_changes_the_curves(fitted):
