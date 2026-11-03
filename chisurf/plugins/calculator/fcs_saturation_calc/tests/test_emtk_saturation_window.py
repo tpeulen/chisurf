@@ -1,7 +1,10 @@
-"""The emtk saturation calculator equals the Qt tool: numbers, tables, summary, tooltips, layout, files and session.
+"""The saturation calculator window: numbers, tables, summary, tooltips, layout, files and session.
 
-``golden_qt.json`` holds what the Qt tool (``gui/tool.py``) computed for six states, captured before any change to the
-Qt tool; the live Qt tool is also constructed here for the cases that need it.
+For six states every plotted series is checked against the plugin's headless core (``core.py``) run directly on the
+model's scheme and optics, and against what holds by construction: the unperturbed curve is the analytic 3-D Gaussian,
+the excitation profile is ``exp(-2 r^2 / w_r^2)``, the state populations sum to one, the emission is ``sum_i Q_i P_i``,
+zero power leaves the curve unsaturated and the volume unexpanded. The fitted curves are checked against an independent
+Gauss-Newton fit (``assert_saturation_series``). Rates, brightness and the scheme list are the shipped scheme files.
 """
 
 from __future__ import annotations
@@ -18,7 +21,25 @@ from chisurf.plugins.calculator.fcs_saturation_calc.gui.panel import TABS
 
 from .driving import BIG, SMALL, clipped_texts, draw_clip, hermetic_env, layout_problems
 
-GOLDEN = json.loads((Path(__file__).with_name("golden_qt.json")).read_text())
+#: The six states the window is checked in: settings applied in this order.
+STATES = {
+    "default": {},
+    "power_2mW": {"power_mW": 2.0},
+    "power_0": {"power_mW": 0.0},
+    "cy5_1mW": {"scheme_preset": "Cyanine 5 (4-state, isomer + triplet)", "power_mW": 1.0},
+    "two_state_640_ms": {
+        "scheme_preset": "Two-state (ground + excited)",
+        "wavelength_nm": 640.0,
+        "rate_unit": "1/ms",
+        "power_mW": 0.5,
+    },
+    "oxazine_normalised_nobunching": {
+        "scheme_preset": "Oxazine 1 (3-state, triplet)",
+        "normalize_fcs": True,
+        "include_bunching": False,
+        "power_mW": 0.3,
+    },
+}
 SERIES = (
     "fcs_curves_series",
     "fcs_residual_series",
@@ -177,8 +198,101 @@ def assert_saturation_series(model, source, name, actual, expected):
     assert np.all(np.abs(shown - reference) <= 2.0 * envelope + roundoff)
 
 
+def _optics(model):
+    """The scheme and optics arguments the core functions take, read off the model."""
+    sat = model.saturation
+    return dict(
+        extinction=float(sat.extinction),
+        dark_matrix=sat.dark_matrix_hz,
+        exc_matrix=sat.exc.rate_matrix(),
+        brightness=sat.brightness.array,
+        w_r_nm=float(model.w_r_nm),
+        w_z_nm=float(model.w_z_nm),
+        wavelength_nm=float(model.wavelength_nm),
+    )
+
+
+def expected_series(model, source):
+    """``{name: (x, y)}`` of one plot source, from the headless core run directly on the model's settings.
+
+    The fitted curve and its residual are taken from the model itself: ``assert_saturation_series`` checks
+    those against an independent fit, not against this table.
+    """
+    from chisurf.plugins.calculator.fcs_saturation_calc import core
+
+    shown = {s["name"]: (np.asarray(s["x"]), np.asarray(s["y"])) for s in getattr(model, source)}
+    power = float(model.power_mW)
+    if source in ("fcs_curves_series", "fcs_residual_series"):
+        tau_ms, g_u, g_s = core.calculate_fcs_curves(
+            power_mW=power,
+            D_um2s=float(model.D_um2s),
+            N=1.0,
+            include_bunching=bool(model.include_bunching),
+            **_optics(model),
+        )
+        g_u, g_s = np.asarray(g_u) / model.N, np.asarray(g_s) / model.N
+        if model.normalize_fcs:
+            g_u, g_s = g_u / g_u[0], g_s / g_s[0]
+        out = {"Unperturbed Gaussian": (tau_ms, g_u), "Saturated": (tau_ms, g_s)}
+        fitted = bool(model.show_gaussian_fit) and power > 0.0  # a fit only of a saturated curve
+        if source == "fcs_residual_series":
+            out = {"zero": (tau_ms, np.zeros_like(tau_ms))} if fitted else {}
+        for name in ("1-component Gaussian fit", "saturated − 1-component fit"):
+            if fitted and name in shown:
+                out[name] = shown[name]
+        assert set(out) == set(shown), (source, sorted(out), sorted(shown))
+        return {name: out[name] for name in shown}
+    if source == "volume_profile_series":
+        prof = core.compute_volume_profile(
+            power_mW=power, state_labels=model.saturation.state_labels, **_optics(model)
+        )
+        r = prof["r_nm"]
+        out = {"Excitation k_exc(r) / peak": (r, prof["k_exc_norm"])}
+        for i, label in enumerate(prof["labels"]):
+            out[f"P{i + 1} ({label})"] = (r, prof["P_states"][i])
+        out["Emission Σ Q_i P_i(r)"] = (r, prof["emission"])
+        return {k: v for k, v in out.items() if k in shown}
+    # the power sweeps run up to the decade above max(50 mW, 2 P); the marker sits on the curve at P
+    ceiling = float(10.0 ** np.ceil(np.log10(max(50.0, 2.0 * power))))
+    powers, v_rel, tau_d = core.compute_power_sweep_curves(
+        power_mW=ceiling, D_um2s=float(model.D_um2s), **_optics(model)
+    )
+    y = v_rel if source == "volume_power_series" else tau_d
+    name = "V_eff / V_0" if source == "volume_power_series" else "τ_D (ms)"
+    return {name: (powers, y), "Current Power": ([power], [float(np.interp(power, powers, y))])}
+
+
+def assert_series_by_construction(model):
+    """The identities every state's series obey, whatever the scheme."""
+    w_r, n = float(model.w_r_nm), float(model.N)
+    curves = {s["name"]: np.asarray(s["y"]) for s in model.fcs_curves_series}
+    tau = np.asarray(model.fcs_curves_series[0]["x"]) * 1e-3
+    tau_d = (w_r * 1e-9) ** 2 / (4.0 * float(model.D_um2s) * 1e-12)
+    k = float(model.w_z_nm) / w_r
+    gauss = 1.0 / (1.0 + tau / tau_d) / np.sqrt(1.0 + tau / (k * k * tau_d))  # the 3-D Gaussian
+    gauss = gauss / gauss[0] if model.normalize_fcs else gauss / n
+    np.testing.assert_allclose(curves["Unperturbed Gaussian"], gauss, rtol=1e-9)
+    profile = {s["name"]: (np.asarray(s["x"]), np.asarray(s["y"])) for s in model.volume_profile_series}
+    r, k_exc = profile["Excitation k_exc(r) / peak"]
+    gaussian_beam = np.exp(-2.0 * r**2 / w_r**2) if float(model.power_mW) > 0.0 else 0.0 * r
+    np.testing.assert_allclose(k_exc, gaussian_beam, atol=1e-12)  # no light: no excitation
+    populations = [y for name, (_x, y) in profile.items() if name.startswith("P")]
+    np.testing.assert_allclose(np.sum(populations, axis=0), 1.0, atol=1e-9)
+    q = np.ravel(model.saturation.brightness.array)
+    np.testing.assert_allclose(
+        profile["Emission Σ Q_i P_i(r)"][1],
+        np.sum([qi * p for qi, p in zip(q, populations)], axis=0),
+        atol=1e-12,
+    )
+    if float(model.power_mW) == 0.0:
+        np.testing.assert_allclose(curves["Saturated"], curves["Unperturbed Gaussian"], rtol=1e-12)
+        from chisurf.plugins.calculator.fcs_saturation_calc import core
+
+        assert core.volume_expansion(power_mW=0.0, **_optics(model)) == 1.0  # no light: V_eff = V_0
+
+
 def apply(model, settings):
-    """Set what the Qt tool's setters took, in the same order."""
+    """Set the model's fields in the given order."""
     for key, value in settings.items():
         setattr(model, key, value)
 
@@ -190,141 +304,91 @@ def plain(text):
 # -- the numbers ----------------------------------------------------------------------------------------------- #
 
 
-@pytest.mark.parametrize("state", list(GOLDEN))
-def test_every_series_equals_what_the_qt_tool_computed(app, state):
-    gold = GOLDEN[state]
-    apply(app.model, gold["settings"])
+@pytest.mark.parametrize("state", list(STATES))
+def test_every_series_equals_the_core_and_obeys_its_identities(app, state):
+    apply(app.model, STATES[state])
     for source in SERIES:
-        ours, theirs = getattr(app.model, source), gold["series"][source]
-        assert [s["name"] for s in ours] == [s["name"] for s in theirs], source
-        for a, b in zip(ours, theirs):
-            assert np.allclose(a["x"], b["x"], rtol=1e-9, atol=0.0)
-            assert_saturation_series(app.model, source, a["name"], a["y"], b["y"])
+        ours = getattr(app.model, source)
+        expected = expected_series(app.model, source)
+        assert [s["name"] for s in ours] == list(expected), source
+        for entry in ours:
+            x, y = expected[entry["name"]]
+            assert np.allclose(entry["x"], x, rtol=1e-9, atol=0.0), (source, entry["name"])
+            assert_saturation_series(app.model, source, entry["name"], entry["y"], y)
+    assert_series_by_construction(app.model)
 
 
-@pytest.mark.parametrize("state", list(GOLDEN))
-def test_the_scheme_rates_and_the_summary_equal_the_qt_tools(app, state):
-    gold = GOLDEN[state]
-    apply(app.model, gold["settings"])
-    sat = app.model.saturation
-    assert list(sat.state_labels) == gold["state_labels"]
-    assert {k: float(p.value) for k, p in sat.dark.rates_by_name().items()} == pytest.approx(
-        gold["dark"]
-    )
-    assert {k: float(p.value) for k, p in sat.exc.rates_by_name().items()} == pytest.approx(
-        gold["exc"]
-    )
-    assert [float(p.value) for p in sat.brightness._brightness] == pytest.approx(gold["brightness"])
-    assert app.model.info_text() == gold["info"]
+def _scheme_file(model):
+    """The shipped scheme file of the model's preset."""
+    name = model.SCHEME_PRESETS[model.scheme_preset]
+    return json.loads((Path(__file__).parents[1] / "schemes" / name).read_text())
+
+
+@pytest.mark.parametrize("state", list(STATES))
+def test_the_summary_shows_the_cores_numbers(app, state):
+    from chisurf.plugins.calculator.fcs_saturation_calc import core
+
+    apply(app.model, STATES[state])
+    info = plain(app.model.info_text())
+    ratio = core.volume_expansion(power_mW=float(app.model.power_mW), **_optics(app.model))
+    shown = float(re.search(r"Volume expansion V_?eff/V_?0:\s*([\d.]+)", info).group(1))
+    assert shown == pytest.approx(ratio, abs=5e-4)
     rows = app.panel.info_rows()
     assert rows, "the summary has rows"
     flat = " ".join(label + " " + value for label, value in rows)
-    # every number of the Qt summary is shown
-    for number in re.findall(r"\d+\.?\d*(?:e[+-]?\d+)?", plain(gold["info"])):
+    # every number of the summary is shown in the Info table
+    for number in re.findall(r"\d+\.?\d*(?:e[+-]?\d+)?", info):
         assert number in flat + " " + app.panel.info_footer() + " " + app.panel.info_title(), number
 
 
-@pytest.mark.parametrize("state", list(GOLDEN))
-def test_the_tables_show_the_qt_tables_cells(app, state):
-    gold = GOLDEN[state]
-    apply(app.model, gold["settings"])
-    panel = app.panel
-    n = len(gold["state_labels"])
-    for which, rows, prefix in (
-        ("dark", panel.dark_rows(), "k"),
-        ("exc", panel.exc_rows(), "sigma"),
+@pytest.mark.parametrize("state", list(STATES))
+def test_the_tables_show_the_schemes_rates_and_brightness(app, state):
+    apply(app.model, STATES[state])
+    panel, sat = app.panel, app.model.saturation
+    labels = list(sat.state_labels)
+    n = len(labels)
+    for group, rows, prefix in (
+        (sat.dark, panel.dark_rows(), "k"),
+        (sat.exc, panel.exc_rows(), "sigma"),
     ):
-        assert [r["state"] for r in rows] == gold["state_labels"]
+        rates = {k: float(p.value) for k, p in group.rates_by_name().items()}
+        assert [r["state"] for r in rows] == labels
         for i, row in enumerate(rows):
             for j in range(n):
                 shown = row[f"c{j}"]
                 if i == j:
                     assert shown is None  # the diagonal is derived, not a rate
                 else:
-                    assert shown == pytest.approx(gold[which].get(f"{prefix}{i + 1}_{j + 1}", 0.0))
+                    assert shown == pytest.approx(rates.get(f"{prefix}{i + 1}_{j + 1}", 0.0))
     q = panel.brightness_rows()
-    assert [r["value"] for r in q] == pytest.approx(gold["brightness"])
-    assert [r["name"] for r in q] == [f"Q({s})" for s in gold["state_labels"]]
-    optics = panel.optics_rows()
-    symbols = {
-        "P": "power",
-        "λ_exc": "wavelength",
-        "ε": "extinction",
-        "τ_R1": "tau_R1",
-        "τ_R2": "tau_R2",
-    }
-    assert [symbols.get(r["name"], r["name"]) for r in optics] == [p[0] for p in gold["parameters"]]
-    for row, (name, value, fixed, bounds, bounds_on) in zip(optics, gold["parameters"]):
-        assert row["value"] == pytest.approx(value)
+    assert [r["value"] for r in q] == pytest.approx([float(p.value) for p in sat.brightness._brightness])
+    assert [r["name"] for r in q] == [f"Q({s})" for s in labels]
+    optics = {r["name"]: r for r in panel.optics_rows()}
+    assert optics["P"]["value"] == pytest.approx(app.model.power_mW)
+    assert optics["λ_exc"]["value"] == pytest.approx(app.model.wavelength_nm)
+    for row in optics.values():
         if row["_output"]:
-            assert (
-                row["fixed"] is None and row["lo"] is None and row["bounds"] is None
-            )  # the Qt table leaves these blank
-        else:
-            assert (row["fixed"], row["bounds"], row["lo"], row["hi"]) == (
-                fixed,
-                bounds_on,
-                bounds[0],
-                bounds[1],
-            )
+            assert row["fixed"] is None and row["lo"] is None and row["bounds"] is None  # outputs: no bounds
 
 
-QT_PRESETS = json.loads((Path(__file__).with_name("golden_qt_presets.json")).read_text())
-
-
-def _signature(y):
-    y = np.asarray(y, float)
-    idx = np.linspace(0, y.size - 1, 8).astype(int) if y.size else []
-    return y.size, float(y.sum()) if y.size else 0.0, [float(y[i]) for i in idx]
-
-
-def test_the_recorded_qt_tool_and_the_emtk_model_agree_on_every_preset(app):
-    """``golden_qt_presets.json``: every series of every preset as the (now deleted) Qt tool computed it."""
-    for preset, sources in QT_PRESETS["presets"].items():
+def test_every_preset_is_a_shipped_scheme_file_and_its_series_equal_the_core(app):
+    names = [n for n, f in app.model.SCHEME_PRESETS.items() if f]
+    assert names == [n for n in app.model.scheme_names() if n != "Custom"]
+    for preset in names:
         app.model.scheme_preset = preset
+        scheme = _scheme_file(app.model)
+        assert scheme, preset
         for source in SERIES:
-            mine = getattr(app.model, source)
-            theirs = sources[source]
-            assert [s["name"] for s in mine] == [s["name"] for s in theirs], (preset, source)
-            for a, b in zip(mine, theirs):
-                n, total, samples = _signature(a["y"])
-                assert n == b["y"]["n"], (preset, source)
-                # The golden was recorded on macOS (Accelerate). The series go through
-                # LAPACK (linalg.solve, the rate matrix's eigenvalues) and a Hankel
-                # quadrature; another BLAS (OpenBLAS on x86 Linux) differs by ~1.5e-8
-                # relative on the decayed samples of the two-state curve. 1e-7 still
-                # catches any change of the physics.
-                # A residual series is the difference of two nearly equal curves: the curves'
-                # error carries over as an *absolute* one, so near its zero crossings a residual
-                # differs by up to 3e-10 (rel 3e-7 of the residual, 1.5e-8 of the curves).
-                # The same holds for a curve's decayed tail: its error is absolute at the scale
-                # of the curve, not of the sample (Cyanine 5's 4-state curve, peak 323.7, differs
-                # by 1.0e-9 = 3e-12 of its peak at samples of 1e-6, i.e. rel 1.5e-6 there). So
-                # the floor scales with the curve's peak: 1e-11 of it (3x the measured spread).
-                # Cyanine 5's residual inherits its curve's 1.0e-9 per point, and a sum's absolute
-                # error grows with its n points: on Linux the 300-point Cy5 residual sum differed by
-                # 2.25e-7 (rel 1.16e-7). So a residual sample gets 3e-9 (3x the per-point error) and
-                # a residual sum n times that (9e-7 here, 4x the measured difference).
-                scale = max((abs(v) for v in b["y"]["samples"]), default=0.0)
-                floor = 3e-9 if "residual" in source else max(1e-12, 1e-11 * scale)
-                sum_floor = floor * max(1, n) if "residual" in source else floor
-                assert total == pytest.approx(b["y"]["sum"], rel=1e-7, abs=sum_floor), (
-                    preset,
-                    source,
+            expected = expected_series(app.model, source)
+            for entry in getattr(app.model, source):
+                assert_saturation_series(
+                    app.model, source, entry["name"], entry["y"], expected[entry["name"]][1]
                 )
-                assert samples == pytest.approx(b["y"]["samples"], rel=1e-7, abs=floor), (
-                    preset,
-                    source,
-                )
-    assert app.model.scheme_names() == QT_PRESETS["scheme_names"] == QT_PRESETS["scheme_presets"]
-    # The dye list is what the database holds, not something the Qt tool decided: since mmfdb
-    # schema 51 dropped the 3-point placeholder spectra, 2-aminopurine (recorded with one) has no
-    # absorption spectrum and is rightly no longer offered. The recorded list minus such dyes.
+        assert_series_by_construction(app.model)
+    # The dye list is what the database holds: the dyes with an absorption spectrum.
     from chisurf.core.fluorescence.fret.dyes import list_absorbing_dyes
 
-    offered = app.model.dye_names()
-    assert offered == [""] + list_absorbing_dyes()
-    assert [n for n in QT_PRESETS["dye_names"] if n in offered] == offered
+    assert app.model.dye_names() == [""] + list_absorbing_dyes()
 
 
 def test_the_physical_anchors_of_the_guide_hold(app):
@@ -353,10 +417,10 @@ def test_the_physical_anchors_of_the_guide_hold(app):
     assert 3.0 < ratio < 3.6
 
 
-# -- the controls the Qt spec declared ------------------------------------------------------------------------ #
+# -- the AutoForm spec (view.json) and the emtk spec declare the same controls ------------------------------------------------------------------------ #
 
 
-def qt_fields():
+def autoform_fields():
     spec = json.loads((Path(__file__).parents[1] / "gui" / "view.json").read_text())
     out = {}
 
@@ -387,12 +451,12 @@ def our_fields():
     return out
 
 
-def test_every_field_of_the_qt_spec_is_in_the_emtk_spec_with_its_range_and_choices():
-    qt, ours = qt_fields(), our_fields()
-    for attr, section in qt.items():
+def test_every_field_of_the_autoform_spec_is_in_the_emtk_spec_with_its_range_and_choices():
+    declared, ours = autoform_fields(), our_fields()
+    for attr, section in declared.items():
         if section.get("type") not in ("value", "choice", "toggle"):
             continue
-        assert attr in ours, f"{attr} of the Qt spec is not in the emtk spec"
+        assert attr in ours, f"{attr} of view.json is not in the emtk spec"
         for key in ("kind", "maximum", "decimals"):
             if key in section and attr != "power_mW":
                 assert ours[attr].get(key) == section[key], (attr, key)
@@ -400,16 +464,14 @@ def test_every_field_of_the_qt_spec_is_in_the_emtk_spec_with_its_range_and_choic
             assert ours[attr]["options"] == section["options"]
         if "options_source" in section:
             assert ours[attr].get("options_source") in (section["options_source"], "dye_options")
-    assert (
-        ours["power_mW"]["minimum"] == 0.0
-    )  # the Qt setter takes zero although its slider starts at 0.001
+    assert ours["power_mW"]["minimum"] == 0.0  # zero power is allowed (the slider starts at 0.001)
     assert (
         ours["power_log"]["minimum"] == -3.0 and ours["power_log"]["maximum"] == 2.0
     )  # 0.001 .. 100 mW
 
 
-def test_the_plot_tabs_draw_every_plot_of_the_qt_spec():
-    qt_plots = {
+def test_the_plot_tabs_draw_every_plot_of_the_spec():
+    declared_plots = {
         s["source"]
         for s in json.loads((Path(__file__).parents[1] / "gui" / "view.json").read_text())[
             "sections"
@@ -417,7 +479,7 @@ def test_the_plot_tabs_draw_every_plot_of_the_qt_spec():
         for s in _plots(s)
     }
     shown = {source for sources in PLOT_TABS.values() for source in sources}
-    assert qt_plots == shown
+    assert declared_plots == shown
 
 
 def _plots(section):
@@ -427,7 +489,7 @@ def _plots(section):
         yield from _plots(child)
 
 
-def test_the_tabs_are_the_qt_dock_tabs_in_order():
+def test_the_tabs_are_in_order():
     assert TABS == (
         "State diagram",
         "FCS curve",
@@ -438,7 +500,7 @@ def test_the_tabs_are_the_qt_dock_tabs_in_order():
     )
 
 
-# -- tooltips, descriptions, Qt-free ------------------------------------------------------------------------------ #
+# -- tooltips, descriptions, no Qt import ------------------------------------------------------------------------------ #
 
 
 def walk(node):

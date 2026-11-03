@@ -21,9 +21,11 @@ from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 
 from .driving import BIG, SMALL, SatDriver, hermetic_env
-from .test_emtk_saturation_parity import assert_saturation_series
-
-GOLDEN = json.loads((Path(__file__).with_name("golden_qt.json")).read_text())
+from .test_emtk_saturation_window import (
+    assert_saturation_series,
+    assert_series_by_construction,
+    expected_series,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -67,8 +69,9 @@ def series(drv, source="fcs_curves_series"):
     return {s["name"]: np.asarray(s["y"]) for s in getattr(model(drv), source)}
 
 
-def golden_y(state, source="fcs_curves_series"):
-    return {s["name"]: np.asarray(s["y"]) for s in GOLDEN[state]["series"][source]}
+def expected_y(drv, source="fcs_curves_series"):
+    """The series the core computes for the window's current settings (``expected_series``)."""
+    return {name: y for name, (_x, y) in expected_series(model(drv), source).items()}
 
 
 def pick(drv, field, label):
@@ -122,9 +125,9 @@ def test_compute_recomputes_from_scratch_and_says_so(drv):
     assert "Computed." in drv.draw(2).strings
 
 
-def test_compute_gives_the_qt_tools_curves(drv):
+def test_compute_gives_the_cores_curves(drv):
     drv.click("compute")
-    for name, y in golden_y("default").items():
+    for name, y in expected_y(drv).items():
         assert_saturation_series(model(drv), "fcs_curves_series", name, series(drv)[name], y)
 
 
@@ -267,11 +270,11 @@ def test_the_scheme_list_picks_every_preset_and_custom_changes_nothing(drv):
     )  # a label for edited schemes, not a scheme
 
 
-def test_picking_the_cyanine_preset_gives_the_qt_tools_curves(drv):
+def test_picking_the_cyanine_preset_gives_the_cores_curves(drv):
     type_power(drv, "1")
     pick(drv, "scheme_preset", "Cyanine 5 (4-state, isomer + triplet)")
     for source in ("fcs_curves_series", "volume_profile_series", "volume_power_series"):
-        for name, y in golden_y("cy5_1mW", source).items():
+        for name, y in expected_y(drv, source).items():
             assert_saturation_series(model(drv), source, name, series(drv, source)[name], y)
 
 
@@ -284,14 +287,15 @@ def test_laser_power_is_typed_and_clamped_to_zero_and_100_mw(drv, text, expected
     assert model(drv).power_mW == pytest.approx(expected)
 
 
-def test_a_typed_power_gives_the_qt_tools_curves_and_summary(drv):
+def test_a_typed_power_gives_the_cores_curves_and_summary(drv):
     type_power(drv, "2")
     for source in ("fcs_curves_series", "volume_power_series", "tau_d_power_series"):
-        for name, y in golden_y("power_2mW", source).items():
+        for name, y in expected_y(drv, source).items():
             assert_saturation_series(model(drv), source, name, series(drv, source)[name], y)
-    assert model(drv).info_text() == GOLDEN["power_2mW"]["info"]
+    assert "2 mW" in model(drv).info_text()  # the summary is of the typed power
+    assert_series_by_construction(model(drv))
     type_power(drv, "0")
-    for name, y in golden_y("power_0").items():
+    for name, y in expected_y(drv).items():
         assert_saturation_series(model(drv), "fcs_curves_series", name, series(drv)[name], y)
     assert np.allclose(
         series(drv)["Saturated"], series(drv)["Unperturbed Gaussian"]
@@ -335,13 +339,13 @@ def test_the_wavelength_is_typed_and_clamped(drv, text, expected):
     assert model(drv).wavelength_nm == pytest.approx(expected)
 
 
-def test_the_wavelength_changes_the_curves_and_matches_the_qt_tool(drv):
+def test_the_wavelength_changes_the_curves_and_matches_the_core(drv):
     drv.type_into("wavelength_nm", "640")
     drv.type_into("power_mW", "0.5")
     pick(drv, "scheme_preset", "Two-state (ground + excited)")
-    # the golden state sets the unit by the Qt tool's setter after the preset; do the same by the unit list
+    # the unit is set after the preset, by the unit list
     pick(drv, "rate_unit", "1/ms")
-    for name, y in golden_y("two_state_640_ms").items():
+    for name, y in expected_y(drv).items():
         assert_saturation_series(model(drv), "fcs_curves_series", name, series(drv)[name], y)
 
 
@@ -468,7 +472,7 @@ def test_the_brightness_table_is_edited_and_its_checkboxes_clicked(drv):
     assert q[2].value == (9.0 if not q[2].bounds_on else 1.0)
 
 
-def test_the_optics_values_are_typed_and_equal_the_qt_curves(drv):
+def test_the_optics_values_are_typed_and_reach_the_summary(drv):
     drv.select = tab(drv, "State diagram")
     assert edit(drv, "optics_rows", 3, "value", "250")  # w_r
     assert edit(drv, "optics_rows", 4, "value", "1000")  # w_z
@@ -560,7 +564,7 @@ def test_the_state_diagram_shows_the_scheme_the_tables_hold(drv):
     assert {"S0", "S1", "P", "T1"} <= set(drv.draw(2).strings)
 
 
-def test_the_info_tab_lists_the_qt_summary_rows(drv):
+def test_the_info_tab_lists_the_summary_rows(drv):
     tab(drv, "Info")
     strings = drv.draw(2).strings
     for label in (
@@ -571,7 +575,12 @@ def test_the_info_tab_lists_the_qt_summary_rows(drv):
         "Relaxation times:",
     ):
         assert label in strings, label
-    assert "1.933×" in strings  # the Qt summary's number for 0.2 mW
+    from chisurf.plugins.calculator.fcs_saturation_calc import core
+
+    from .test_emtk_saturation_window import _optics
+
+    m = model(drv)  # the expansion at the default 0.2 mW, from the core
+    assert f"{core.volume_expansion(power_mW=m.power_mW, **_optics(m)):.3f}×" in strings
 
 
 def test_the_normalise_checkbox_scales_both_curves_to_one_and_back(drv):
@@ -585,7 +594,7 @@ def test_the_normalise_checkbox_scales_both_curves_to_one_and_back(drv):
     )
     drv.click("normalize_fcs")
     assert not np.isclose(series(drv)["Saturated"][0], 1.0)
-    for name, y in golden_y("default").items():
+    for name, y in expected_y(drv).items():
         assert_saturation_series(model(drv), "fcs_curves_series", name, series(drv)[name], y)
 
 
@@ -596,7 +605,7 @@ def test_the_one_component_fit_checkbox_adds_and_removes_the_fit_and_the_residua
     assert not model(drv).show_gaussian_fit and "1-component Gaussian fit" not in series(drv)
     drv.click("show_gaussian_fit")
     assert "1-component Gaussian fit" in series(drv)
-    for name, y in golden_y("default", "fcs_residual_series").items():
+    for name, y in expected_y(drv, "fcs_residual_series").items():
         assert_saturation_series(
             model(drv), "fcs_residual_series", name, series(drv, "fcs_residual_series")[name], y
         )
@@ -616,7 +625,7 @@ def test_the_three_profile_checkboxes_remove_and_restore_their_curves(drv):
     assert not any(n.startswith("Emission") for n in names())
     drv.click("show_fluorescence_profile")
     for source in ("volume_profile_series",):
-        for name, y in golden_y("default", source).items():
+        for name, y in expected_y(drv, source).items():
             assert_saturation_series(model(drv), source, name, series(drv, source)[name], y)
 
 

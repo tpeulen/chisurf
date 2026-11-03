@@ -1,10 +1,8 @@
 """Behaviour tests of the FCS saturation calculator, on the native model.
 
-These were the tests of the Qt ``SaturationCalculatorTool``; the tool is deleted and its logic lives
-in :class:`~..gui.model.SaturationModel`, which the emtk app drives. The Qt-widget-structure tests
-(AutoForm children, toolbar actions, rate-matrix header stretch, dock-tab names, the QSlider, the Qt
-guided tour) have native equivalents in ``test_emtk_saturation_clicks.py`` (toolbar, Guide, power slider,
-tables, tour) and are not repeated here.
+The calculator's logic lives in :class:`~..gui.model.SaturationModel`, which the emtk app drives; the
+window's controls (toolbar, Guide, power slider, tables, tour) are tested in
+``test_emtk_saturation_clicks.py`` and are not repeated here.
 """
 
 import os
@@ -16,7 +14,7 @@ from chisurf.plugins.calculator.fcs_saturation_calc.gui.model import SaturationM
 
 
 def SaturationCalculatorTool():
-    """A fresh model, the object the tests used to reach through the Qt tool."""
+    """A fresh model."""
     return SaturationModel()
 
 
@@ -120,7 +118,7 @@ def test_user_settings_persistence(tmp_path, monkeypatch):
 
     assert os.path.exists(settings_file)
 
-    tool2 = SaturationModel(restore=True)  # the Qt tool restored the session on construction
+    tool2 = SaturationModel(restore=True)  # restore=True restores the session on construction
     assert abs(tool2.saturation._power.value - 0.55) < 1e-5
     assert tool2.normalize_fcs is True
 

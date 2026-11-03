@@ -1,10 +1,10 @@
-"""Qt-free state and coupled recomputation of the FRET calculator.
+"""State and coupled recomputation of the FRET calculator (no GUI toolkit).
 
-Two models, one per tab. A field edit runs the one method the Qt tool wired to
-that field's ``editingFinished`` (forward from the distance, inverse from the
-lifetime, efficiency or rate, back-map from the homo-FRET distance); the
-results are written back into the fields the way the Qt spin boxes took them,
-rounded to the field's decimals and clamped to its range.
+Two models, one per tab. A committed field edit runs the one method its spec
+``call`` names (forward from the distance, inverse from the lifetime,
+efficiency or rate, back-map from the homo-FRET distance); the results are
+written back into the fields rounded to the field's decimals and clamped to
+its range.
 """
 
 from __future__ import annotations
@@ -17,12 +17,12 @@ import numpy as np
 
 _GUI_DIR = Path(__file__).parent
 
-#: kappa^2 the Qt tool always passed (isotropic dynamic average).
+#: kappa^2 passed to every computation (isotropic dynamic average).
 KAPPA2 = 0.667
 
 
 def default_client() -> SimpleNamespace:
-    """The backend handlers the Qt tool reached through its in-process client."""
+    """The backend handlers, called in process."""
     from ..backend import services
 
     return SimpleNamespace(
@@ -84,7 +84,7 @@ def distribution_series(mean, sigma, chi_active, xform=None, wide=False, trim=Fa
 
 
 class _CoupledModel:
-    """What both tabs share: a client, a status line, the Qt spin boxes' rounding."""
+    """What both tabs share: a client, a status line, the fields' rounding."""
 
     #: ``attr -> (decimals, minimum, maximum)`` of the fields results are written to.
     result_fields: dict[str, tuple[int, float, float]] = {}
@@ -190,7 +190,7 @@ class HeteroFretModel(_CoupledModel):
         for attr, key in (("R", "R"), ("E", "E"), ("tau", "tau_DA"), ("kFRET", "kFRET")):
             self._store(attr, result[key])
 
-    # -- the handlers the Qt tab wired to editingFinished -------------------- #
+    # -- the handlers the spec's field calls name ------------------------------ #
     def compute_forward(self, _value: Any = None) -> None:
         """Distance (and sigma, R0, tau0, distribution) given: the other three follow."""
         result = self._call(
@@ -355,7 +355,7 @@ class HomoFretModel(_CoupledModel):
 
 
 class FretCalculatorModel:
-    """Both tabs and the selected one: what a window (or the Qt host) shares."""
+    """Both tabs and the selected one: what a window (or a host) shares."""
 
     TABS = ("HeteroFRET", "HomoFRET")
 
@@ -364,7 +364,7 @@ class FretCalculatorModel:
         self.hetero = HeteroFretModel(client)
         self.homo = HomoFretModel(client)
         self.tab = 0
-        # The Qt tool computed both tabs once at construction: the first frame shows outputs.
+        # Both tabs compute once at construction: the first frame shows outputs.
         self.hetero.compute_forward()
         self.homo.compute_forward()
 

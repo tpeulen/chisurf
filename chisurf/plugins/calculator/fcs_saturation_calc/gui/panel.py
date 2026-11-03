@@ -1,4 +1,4 @@
-"""The Qt-free view model behind the saturation window: what ``saturation_emtk.view.json`` reads and calls.
+"""The view model behind the saturation window: what ``saturation_emtk.view.json`` reads and calls.
 
 The model (:class:`~.model.SaturationModel`) holds the physics; this panel adds what a window needs on top of it:
 the tables of the rate matrices and the parameters as records, the edits written back to the live parameters, the
@@ -14,14 +14,14 @@ import time
 
 from .model import SaturationModel
 
-#: The lowest power the logarithmic slider reaches (the Qt slider's lower end).
+#: The lowest power the logarithmic slider reaches.
 POWER_FLOOR_MW = 0.001
 POWER_CEILING_MW = 100.0
 #: Seconds between re-reads of the dye list shown in the dye combo.
 DYE_REFRESH_S = 1.0
-#: Names of the plot tabs, in the order of the Qt tool's dock tabs after the state diagram.
+#: Names of the plot tabs, in order after the state diagram.
 TABS = ("State diagram", "FCS curve", "Info", "Volume profile", "Volume(P)", "Diffusion time")
-#: Short row names of the Optics table, the symbols the Qt table shows.
+#: Short row names of the Optics table: the quantities' symbols.
 SYMBOLS = {
     "power": "P",
     "wavelength": "\u03bb_exc",
@@ -128,7 +128,7 @@ class SaturationPanel:
 
     # -- the specs' hooks ----------------------------------------------------------------------------------- #
     def edited(self, *_value) -> None:
-        """A field committed: recompute (the Qt tool's ``_on_changed``)."""
+        """A field committed: recompute (the model's ``_on_changed``)."""
         self.app.model._on_changed()
         self.app.error = ""
 
@@ -363,7 +363,7 @@ class SaturationPanel:
 
     # -- the summary -------------------------------------------------------------------------------------------- #
     def info_rows(self) -> list[tuple[str, str]]:
-        """The Qt summary table as (label, value) pairs without its markup."""
+        """The summary table as (label, value) pairs without its markup."""
         html = self.app.model.info_text()
         rows = []
         for label, value in re.findall(r"<tr><td[^>]*>(.*?)</td><td[^>]*>(.*?)</td></tr>", html):

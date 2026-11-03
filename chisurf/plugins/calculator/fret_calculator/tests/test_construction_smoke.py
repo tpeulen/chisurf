@@ -2,8 +2,7 @@
 
 Builds the real app headlessly to catch import / side-effect-on-init regressions and pins the
 headless import boundary: the plugin package (``api`` / ``core`` / ``backend``) imports without a
-Qt binding. The Qt dock-tool tests (``ChisurfDockTool`` reuse, the dropped-path message) went with
-the Qt tool; the drop message is tested on the native app
+Qt binding. The dropped-path message is tested on the native app
 (``test_a_file_dropped_on_the_host_reaches_the_app_and_says_the_calculator_has_no_file_input``).
 """
 

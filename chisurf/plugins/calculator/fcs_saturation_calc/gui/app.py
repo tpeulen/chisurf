@@ -38,7 +38,7 @@ NOTE_H = 46.0
 #: Colours of the selected tab button (button, hovered, active), the tab bar's selected colour.
 MIN_CONTROLS = 400.0
 SELECTED_TAB = ((66, 133, 220, 255), (82, 148, 235, 255), (66, 133, 220, 255))
-#: The plots that follow the Qt dock tabs: tab -> the sections of ``view.json`` it shows (source attribute order).
+#: The plot tabs: tab -> the sections of ``view.json`` it shows (source attribute order).
 PLOT_TABS = {
     "FCS curve": ("fcs_curves_series", "fcs_residual_series"),
     "Volume profile": ("volume_profile_series",),
@@ -55,7 +55,7 @@ def _colour(value) -> tuple:
 
 
 def _plot_sections() -> dict[str, dict]:
-    """The ``plot`` sections of the Qt spec by source attribute (titles, axis labels, log axes, descriptions)."""
+    """The ``plot`` sections of ``view.json`` by source attribute (titles, axis labels, log axes, descriptions)."""
     found: dict[str, dict] = {}
 
     def walk(sections):
@@ -295,7 +295,7 @@ class SaturationApp(TourTarget, ImApp):
         self.remember("results", tuple(box))
 
     def _plot(self, source: str, height: float) -> None:
-        """One series plot of the Qt spec: its axes, log scales, colours, dashes and markers."""
+        """One series plot of ``view.json``: its axes, log scales, colours, dashes and markers."""
         section = dict(PLOTS[source])
         full_title = section["title"]
         section["title"] = SHORT_TITLES.get(
@@ -517,7 +517,7 @@ class SaturationApp(TourTarget, ImApp):
         self.tour.draw(*vp.size)
 
     def close(self) -> None:
-        """Persist the session as the Qt tool does when its window closes."""
+        """Persist the session when the window closes."""
         self.panel.wait()
         self.model.save_user_settings()
 

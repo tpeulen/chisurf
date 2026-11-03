@@ -25,7 +25,7 @@ class TestManifest:
         data = json.loads(MANIFEST_PATH.read_text())
         entrypoints = data.get("entrypoints", {})
         assert "emtk" in entrypoints
-        assert "gui" not in entrypoints  # the Qt tool is deleted
+        assert "gui" not in entrypoints  # the window is the emtk app only
         assert "services" in entrypoints
 
     def test_manifest_rpc_methods_have_names(self) -> None:

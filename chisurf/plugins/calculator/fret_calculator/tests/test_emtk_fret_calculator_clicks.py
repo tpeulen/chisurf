@@ -13,7 +13,7 @@ from emtk.view_form import spin_step
 
 from chisurf.plugins.emtk_layout import action_caption, help_close_caption
 
-from .test_emtk_fret_calculator_parity import (
+from .test_emtk_fret_calculator_window import (
     SIZE,
     SMALL,
     click,

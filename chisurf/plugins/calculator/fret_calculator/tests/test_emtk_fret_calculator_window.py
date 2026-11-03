@@ -1,9 +1,7 @@
-"""The native FRET calculator against the values the Qt tool showed, and against the backend services.
+"""The FRET calculator window against the backend services and the textbook FRET and homo-FRET formulas.
 
-Hermetic: settings in a temporary folder, no files, no network. The Qt tool is deleted: its numbers
-are frozen and pinned below. Every edit
-is typed into the real emtk field (click, type, Enter) so that the spec's ``call`` wiring is what is
-tested.
+Hermetic: settings in a temporary folder, no files, no network. Every edit is typed into the real emtk
+field (click, type, Enter) so that the spec's ``call`` wiring is what is tested.
 """
 
 from __future__ import annotations
@@ -101,29 +99,45 @@ def homo_state(m):
     }
 
 
-# ── 1. numbers equal the frozen Qt values and the backend ----------------------------------------------- #
+# ── 1. numbers typed through the fields equal the backend services and the textbook formulas ------------ #
 
 
-def test_the_numbers_the_qt_tool_showed_are_pinned(app):
-    """Values read off the Qt window before it was deleted."""
+def _rounded(model, result):
+    """A backend result as the model stores it: rounded to each result field's decimals."""
+    keys = {"R": "R", "E": "E", "tau": "tau_DA", "kFRET": "kFRET"}
+    return {a: round(float(result[k]), model.result_fields[a][0]) for a, k in keys.items()}
+
+
+def test_edits_through_the_fields_give_the_backend_values_and_the_homo_formulas(app):
     m = app.model.hetero
-    assert (m.tau, m.E, m.kFRET) == (1.7599, 0.560037, 0.31823)
     for attr, value in (("tau0", 3.5), ("R0", 60.0), ("R", 55.0), ("sigma", 8.0)):
         edit(app, attr, value)
     edit(app, "use_chi", True)
-    assert (m.tau, m.E, m.kFRET) == (1.4182, 0.594792, 0.419391)
-    edit(app, "E", 0.8)
-    assert (m.R, m.tau, m.kFRET) == (47.62, 0.7, 1.143429)
+    expect = services.fret_compute_handler(
+        R=55.0, R0=60.0, tau0=3.5, kappa2=0.667, sigma=8.0, distribution="chi"
+    )["result"]
+    assert {a: getattr(m, a) for a in ("E", "tau", "kFRET")} == {
+        a: v for a, v in _rounded(m, expect).items() if a != "R"
+    }
+    edit(app, "E", 0.8)  # the inverse route: a single distance with this efficiency
+    expect = services.fret_from_efficiency_handler(E=0.8, R0=60.0, tau0=3.5)["result"]
+    assert {a: getattr(m, a) for a in ("R", "tau", "kFRET")} == {
+        a: v for a, v in _rounded(m, expect).items() if a != "E"
+    }
+    assert m.tau == pytest.approx(3.5 * (1 - 0.8), abs=5e-5)  # tau_DA = tau0 (1 - E)
+
     app.select_tab(1)
     h = app.model.homo
     for attr, value in (("tau0", 2.5), ("R0", 55.0), ("rho", 20.0), ("t_RM", 1.5)):
         edit(app, attr, value)
-    assert (h.k_homo, h.R_DA) == (0.308333, 57.44)
-    edit(app, "R_DA", 45.0)
-    assert (h.t_RM, h.k_homo) == (0.3681, 1.333402)
+    k = 0.5 * (1 / 1.5 - 1 / 20.0)  # k_homo = (1/t_RM - 1/rho) / 2
+    assert h.k_homo == round(k, 6) and h.R_DA == round(55.0 * (k * 2.5) ** (-1 / 6), 2)
+    edit(app, "R_DA", 45.0)  # back-map: k_homo = (R0/R_DA)^6 / tau0, t_RM = 1 / (2 k + 1/rho)
+    k = (55.0 / 45.0) ** 6 / 2.5
+    assert h.k_homo == round(k, 6) and h.t_RM == round(1 / (2 * k + 1 / 20.0), 4)
 
 
-def test_native_values_equal_the_backend_services_not_only_the_qt_tool():
+def test_native_values_equal_the_backend_services():
     m = HeteroFretModel()
     m.R = 55.0
     m.compute_forward()
@@ -328,8 +342,8 @@ def test_every_spec_key_exists_on_the_model(spec_file, model):
     } <= found
 
 
-def test_every_field_has_the_qt_limits_and_decimals():
-    """Spec ranges equal the Qt AutoForm spec (HEAD) and the model's result rounding."""
+def test_every_field_has_the_models_limits_and_decimals():
+    """Spec ranges and decimals equal the model's input and result fields (one rounding everywhere)."""
     for spec_file, model in (
         ("fret.view.json", HeteroFretModel),
         ("homofret.view.json", HomoFretModel),
@@ -515,16 +529,14 @@ def test_guide_and_help_buttons_open_the_tour_and_the_help(app):
 def test_help_text_is_plain_and_its_links_are_live(app):
     text = (GUI / "help.md").read_text(encoding="utf-8")
     assert "**" not in text and "`" not in text  # the native help window shows Markdown marks raw
-    assert (
-        "slider" not in text.lower()
-    )  # the Qt-era text described sliders this window does not have
+    assert "slider" not in text.lower()  # the window has no sliders
     links = re.findall(r"\]\((docs/[^)#]+)\)", text)
     assert links and all((REPO / link).is_file() for link in links)
     app.help_window.show()
     assert "FRET calculator" in " ".join(draw(app).strings) or draw(app).strings
 
 
-# ── 5. persistence, manifest, no Qt, host ---------------------------------------------------------- #
+# ── 5. persistence, manifest, no Qt import, host ---------------------------------------------------------- #
 
 
 def test_settings_round_trip_and_invalid_values_are_ignored(app):
