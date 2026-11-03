@@ -92,6 +92,8 @@ def test_fit23_matches_frozen_physical_preview_and_finite_exports(physical_model
     ]:
         assert hashlib.sha256(actual.tobytes()).hexdigest() == hashes_before[key]
     session.df_bursts = take_rows(session.df_bursts, np.arange(3))
+    for det in session.detectors:
+        session.settings_of(det).min_photons = 10  # the frozen files were written at the old default
     assert len(session.run_batch(max_workers=1)) == 6
     written = session.export_results()
     hashes = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in written}

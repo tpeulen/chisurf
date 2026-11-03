@@ -10,6 +10,7 @@
 - 2026-11-03: CI macOS setup (build_tools/install_macos_sdk.sh) rewritten: builds against the runner's current SDK with MACOSX_DEPLOYMENT_TARGET=11.0 (conda-forge default; Apple Silicon minimum). Dropped the 10.9 SDK download from phracker/MacOSX-SDKs and the Xcode Info.plist patch; fixed a stray brace that made the download run every time and a duplicate CMAKE_OSX_SYSROOT export set to the target number. Same script copied to modules/ndxplorer (own repo).
 - 2026-11-03 — PIE window detection counts pulses within one detector, not across detectors: cable and electronics delays had been read as a second pulse. Its edge search uses coarse bins at least 0.25 ns wide, so a laser rise spread over several 80 ps channels is found. DNA13bp_3.ptu: was prompt 11–31 (the green decay cut away, and MLE ran to its 40 ns bound); now prompt 6–279 (donor), delayed 279–500 (acceptor).
 - 2026-11-03 — Burst MLE: Window start/stop now narrow the fit window inside the detector's gate (they were ignored when a gate existed). The decay plot has draggable lines for the fit window and the IRF range in both halves; letting go writes the field and fits again. Min photons defaults to 5.
+- 2026-11-03 — Burst MLE: the IRF tab is shown in Simple mode too. It says where the IRF comes from (estimated with the chosen IRF model, or a separate measurement picked from the workspace, with a way back to the estimate), plots VV and VH as loaded and as fitted, zoomed onto the IRF with draggable clip edges, and holds the cleanup fields (VH shift, IRF start/stop, thresholds).
 
 ## 2026-11-02
 

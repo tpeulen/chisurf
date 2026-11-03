@@ -425,7 +425,8 @@ class MleNativeApp(TourTarget, ImApp):
                 pass
         # Simple: the fit and its result. The IRF and its files are prepared by the pipeline; their
         # tabs, the setup, the tables and the single-burst inspector are Advanced.
-        for key in ("detectors", "results", "irf", "patterns", "inspect"):
+        # the IRF tab stays: the IRF the fit uses is shown and can be replaced or cleaned in Simple too
+        for key in ("detectors", "results", "patterns", "inspect"):
             if key not in self.docks.windows:
                 continue
             if advanced:
@@ -643,13 +644,117 @@ class MleNativeApp(TourTarget, ImApp):
                 self.item_rects[key] = tuple(self.form.rects[attr])
 
     def _irf(self, box=None) -> None:
+        """The IRF: where it comes from (estimated from the photons outside the bursts, or a
+        separate measurement picked from the workspace), how it is cleaned up (shift, clip,
+        threshold) and how it looks before and after -- in Simple mode as well: an IRF the fit
+        convolves with is never taken unseen."""
         self.remember("irf", box)
+        running = self.job.busy
+        measured = bool(self.model.irf_file_rows())
         im.text_wrapped(
-            tr(
-                "IRF and background as the fit sees them: the estimated or loaded patterns after shift, window and threshold."
+            tr("IRF of {detector}: {source}.").format(
+                detector=self.model.current_detector or tr("the detector"),
+                source=tr("a measured IRF (separate measurement)")
+                if measured
+                else tr("estimated from the photons outside the bursts"),
             )
         )
-        draw_sections(self.irf_sections, self.model, self.form)
+        im.begin_disabled(running)
+        self._draw_input("irf_measurement")
+        if measured and button_row(
+            [
+                {
+                    "label": str(tr("Use the estimate")),
+                    "key": "irf_estimate",
+                    "tip": str(
+                        tr("Forget the measured IRF and estimate it from the photons outside the bursts.")
+                    ),
+                }
+            ],
+            remember=self.remember,
+        ) == "irf_estimate":
+            self.model.clear_irf_files()
+            self.auto_extract()
+        draw_sections(self._irf_fields(), self.model, self.form)
+        im.end_disabled()
+        self._irf_plot()
+
+    def _irf_fields(self) -> list:
+        """The IRF's shape when it is estimated (IRF model) and its cleanup: in Simple mode shift,
+        clip and threshold; all of them else."""
+        key = "_irf_simple" if self._simple() else "_irf_full"
+        if getattr(self, key, None) is None:
+            keep = {"shift", "irf_start", "irf_stop", "irf_threshold_vv", "irf_threshold_vh"}
+            model = [
+                x
+                for sec in self.pattern_sections
+                for x in sec.get("sections", [])
+                if x.get("attr") == "irf_model"
+            ]
+            sections = [
+                dict(sec, sections=model + [
+                    x for x in sec.get("sections", []) if key == "_irf_full" or x.get("attr") in keep
+                ])
+                for sec in self.irf_sections
+            ]
+            setattr(self, key, sections)
+        return getattr(self, key)
+
+    def _irf_plot(self) -> None:
+        """The IRF as loaded and as the fit sees it, VV and VH over the channels of one period,
+        zoomed onto the IRF; the IRF range shaded, its edges draggable."""
+        session = self.model.session
+        raw = np.asarray(session.irf_np.get(session.current_detector, []), dtype=float)
+        if raw.size < 2 or not raw.any():
+            im.text_wrapped(
+                tr("No IRF yet: pick a measured IRF above, or press Next to estimate it from the data.")
+            )
+            return
+        clean = np.asarray(session.irf(), dtype=float)
+        half = raw.size // 2
+        x = np.arange(half)
+        curves = self.model.fit_curves
+        if curves is not None and curves.irf_windows:
+            lo, hi = curves.irf_windows[0]
+        else:
+            nonzero = np.flatnonzero(clean[:half] > 0)
+            lo, hi = (int(nonzero[0]), int(nonzero[-1]) + 1) if nonzero.size else (0, half)
+        peak = float(raw.max())
+        floor = peak * 1e-4  # four decades: a model IRF's tails reach 1e-300
+        # a plot per detector and binning, zoomed onto the IRF once; the user zooms out from there
+        plot_id = f"IRF##irf{session.current_detector}{session.settings.micro_time_binning}"
+        if implot.begin_plot(plot_id, (-1, -1)):
+            implot.setup_axes("Micro-time channel [bin]", "Counts")
+            implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
+            implot.setup_axes_limits(
+                max(-0.5, lo - 15.5), min(half - 0.5, hi + 30.5), floor, peak * 3.0
+            )
+            band_x = np.array([lo, hi], dtype=float) - 0.5
+            band_y = np.full(2, peak * 3.0)
+            implot.set_next_fill_style(IRF_FILL[:3] + (255,), IRF_FILL[3] / 255.0)
+            implot.plot_shaded("IRF range##irfr", band_x, band_y, yref=-np.inf)
+            for label, values, colour, weight in (
+                ("VV as loaded", raw[:half], (150, 150, 150, 255), 1.0),
+                ("VH as loaded", raw[half:], (100, 100, 170, 255), 1.0),
+                ("VV as fitted", clean[:half], IRF_FILL[:3] + (255,), 2.0),
+                ("VH as fitted", clean[half:], (240, 210, 90, 255), 2.0),
+            ):
+                seg = x[values > floor * 1e-2]
+                implot.set_next_line_style(colour, weight)
+                implot.plot_line(label, seg, values[seg])
+            self._drag_edges(
+                [("irf_start", lo - 0.5, IRF_FILL), ("irf_stop", hi - 0.5, IRF_FILL)],
+                half,
+                DRAG_IDS + 40,
+                halves=1,
+            )
+            implot.end_plot()
+        im.set_item_tooltip(
+            tr(
+                "The IRF as measured or estimated (thin) and after the VH shift, the clip and the "
+                "thresholds (thick): what the fit convolves with. Drag the lines to clip it."
+            )
+        )
 
     def _patterns(self, box=None) -> None:
         self.remember("patterns", box)
@@ -762,9 +867,6 @@ class MleNativeApp(TourTarget, ImApp):
         """Lines on the edges of the fit window and of the IRF range, in both halves (the VH half
         has the same window): dragging one sets Window start / stop or the IRF clip, which the
         fields show; the fit runs again when the line is let go, not on every frame of a drag."""
-        if half <= 0 or self.job.busy:
-            return
-        pending = self.__dict__.setdefault("_dragging", {})
         edges = []  # (setting, x of the edge in the VV half, colour)
         if curves.fit_windows:
             lo, hi = curves.fit_windows[0]
@@ -772,12 +874,20 @@ class MleNativeApp(TourTarget, ImApp):
         if curves.irf_windows:
             lo, hi = curves.irf_windows[0]
             edges += [("irf_start", lo - 0.5, IRF_FILL), ("irf_stop", hi - 0.5, IRF_FILL)]
+        self._drag_edges(edges, half, DRAG_IDS)
+
+    def _drag_edges(self, edges, half: int, first_id: int, halves: int = 2) -> None:
+        """Draggable vertical lines at *edges* (``(setting, x in the VV half, colour)``), in both
+        halves; a line let go writes its setting (a bin) and the fit runs again."""
+        if half <= 0 or self.job.busy:
+            return
+        pending = self.__dict__.setdefault("_dragging", {})
         for i, (name, x, colour) in enumerate(edges):
-            for part, offset in enumerate((0, half)):
-                key = (name, part)
+            for part, offset in enumerate((0, half)[:halves]):
+                key = (name, part) if first_id == DRAG_IDS else (first_id, name, part)  # per plot
                 shown = pending.get(key, x) + offset
                 line = implot.drag_line_x(
-                    DRAG_IDS + 2 * i + part, float(shown), colour[:3] + (255,), 2.0
+                    first_id + 2 * i + part, float(shown), colour[:3] + (255,), 2.0
                 )
                 if line.held:
                     pending[key] = float(line.value) - offset

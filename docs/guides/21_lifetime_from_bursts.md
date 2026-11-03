@@ -152,6 +152,18 @@ shows what is fitted.
 **Min photons** (default 5) is the fewest photons a burst needs in the fit
 window to be fitted.
 
+The **IRF** tab is there in Simple mode too, because the fit is only as good as
+the IRF it convolves with. Its first line says where the IRF comes from. By
+default it is estimated from the photons outside the bursts, with the shape set
+by **IRF model** (Gaussian, skewed, or the experimental histogram). To use a
+separate IRF measurement instead, pick it from the workspace under **Measured
+IRF** and press **Use selected**; **Use the estimate** switches back. The plot
+shows VV and VH over one period, zoomed onto the IRF: thin lines are the IRF as
+loaded, thick lines what the fit uses after the cleanup. The cleanup is
+**VH shift**, the clip (**IRF start** / **IRF stop**, also draggable in the plot)
+and the **VV** / **VH thresholds**, which zero the counts below that fraction of
+the peak.
+
 Select **Fit model** before running the preview or batch:
 
 | Model | Inputs in parameter order | Interpretation |
