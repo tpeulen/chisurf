@@ -1,8 +1,8 @@
-"""The native colocalization tool against the Qt tool it replaces: numbers, every control with a real-input click test, the layout at two sizes.
+"""The colocalization app: numbers, every control with a real-input click test, the layout at two sizes.
 
 Hermetic: settings, MMFDB and its database in a temporary folder, a temporary HOME, the images written into a temporary folder from a seed, no network (the
-database picker gets a stub client); a last test asserts the real ``~/.chisurf`` is untouched. References: the Qt tool's own view model run on the same file,
-and independent numpy / scipy calculations of the coefficients.
+database picker gets a stub client); a last test asserts the real ``~/.chisurf`` is untouched. References: the analysis view model the app wraps,
+run directly on the same file, and independent numpy / scipy calculations of the coefficients.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ from test.gui.emtk_layout_checks import (
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "coloc_emtk.view.json").read_text(encoding="utf-8"))
-QT_SPEC = json.loads((PLUGIN / "gui" / "coloc.view.json").read_text(encoding="utf-8"))
+BASE_SPEC = json.loads((PLUGIN / "gui" / "coloc.view.json").read_text(encoding="utf-8"))
 BIG = (1200, 800)
 
 
@@ -137,26 +137,26 @@ def computed(app, drv, path, **settings):
     return app.model
 
 
-def qt_model(path, **settings):
-    qt = ColocViewModel()
+def view_model_run(path, **settings):
+    vm = ColocViewModel()
     for k, v in settings.items():
-        setattr(qt, k, v)
-    qt.set_filename(str(path))
-    assert qt.compute()
-    return qt
+        setattr(vm, k, v)
+    vm.set_filename(str(path))
+    assert vm.compute()
+    return vm
 
 
 # ── 1. the numbers ──────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_the_coefficients_equal_the_qt_tool_and_an_independent_pearson(app, drv, pair):
+def test_the_coefficients_equal_the_view_model_and_an_independent_pearson(app, drv, pair):
     from chisurf.core.fio.image import imread
 
     m = computed(app, drv, pair)
-    qt = qt_model(pair)
+    vm = view_model_run(pair)
     assert (
-        m.metric_rows() == qt.metric_rows()
-        and m.results_text == qt.results_text == "pair.tif · 64×64 px · ch0 vs ch1 · PCC = 0.675"
+        m.metric_rows() == vm.metric_rows()
+        and m.results_text == vm.results_text == "pair.tif · 64×64 px · ch0 vs ch1 · PCC = 0.675"
     )
     stack = imread(pair).astype(float)
     a, b = stack[0] - m.background_a, stack[1] - m.background_b
@@ -168,9 +168,9 @@ def test_the_coefficients_equal_the_qt_tool_and_an_independent_pearson(app, drv,
     )
     assert m._metrics["pearson"] == pytest.approx(independent_pearson, rel=1e-9)
     assert m._metrics["pearson"] == pytest.approx(0.675, abs=5e-4)
-    np.testing.assert_array_equal(m.image_a(), qt.image_a())
-    np.testing.assert_array_equal(m.histogram_image(), qt.histogram_image())
-    np.testing.assert_array_equal(m.coloc_mask_image(), qt.coloc_mask_image())
+    np.testing.assert_array_equal(m.image_a(), vm.image_a())
+    np.testing.assert_array_equal(m.histogram_image(), vm.histogram_image())
+    np.testing.assert_array_equal(m.coloc_mask_image(), vm.coloc_mask_image())
 
 
 @pytest.mark.parametrize(
@@ -201,10 +201,12 @@ def test_the_coefficients_equal_the_qt_tool_and_an_independent_pearson(app, drv,
     ],
     ids=lambda c: "+".join(sorted(c)),
 )
-def test_every_setting_gives_what_the_qt_tool_gives_with_the_same_setting(app, drv, pair, changes):
+def test_every_setting_gives_what_the_view_model_gives_with_the_same_setting(
+    app, drv, pair, changes
+):
     m = computed(app, drv, pair, **changes)
-    qt = qt_model(pair, **changes)
-    assert m.metric_rows() == qt.metric_rows()
+    vm = view_model_run(pair, **changes)
+    assert m.metric_rows() == vm.metric_rows()
     for name in (
         "image_a",
         "image_b",
@@ -213,25 +215,25 @@ def test_every_setting_gives_what_the_qt_tool_gives_with_the_same_setting(app, d
         "ccf_map_image",
         "object_map_image",
     ):
-        x, y = getattr(m, name)(), getattr(qt, name)()
+        x, y = getattr(m, name)(), getattr(vm, name)()
         assert (x is None) == (y is None), name
         if x is not None:
             np.testing.assert_array_equal(x, y)
     for name in ("ccf_series", "profile_series", "object_distance_series"):
-        assert len(getattr(m, name)()) == len(getattr(qt, name)()), name
+        assert len(getattr(m, name)()) == len(getattr(vm, name)()), name
 
 
-def test_estimate_background_sets_both_backgrounds_as_the_qt_tool_does(app, drv, pair):
+def test_estimate_background_sets_both_backgrounds_as_the_view_model_does(app, drv, pair):
     m = computed(app, drv, pair, auto_background=False)
     assert m.enabled("run_coloc") is not False
     drv.click("estimate_background")
     drv.settle(timeout=120)
-    qt = qt_model(pair, auto_background=False)
-    qt.estimate_background()
+    vm = view_model_run(pair, auto_background=False)
+    vm.estimate_background()
     assert (m.background_a, m.background_b, m.auto_background) == pytest.approx(
-        (qt.background_a, qt.background_b, False), rel=1e-4
+        (vm.background_a, vm.background_b, False), rel=1e-4
     )
-    assert m.metric_rows() == qt.metric_rows()
+    assert m.metric_rows() == vm.metric_rows()
 
 
 def test_a_photon_stream_uses_the_detector_windows_as_channels(app, drv, stream_module):
@@ -248,8 +250,8 @@ def test_a_photon_stream_uses_the_detector_windows_as_channels(app, drv, stream_
     assert app.model.channel_names() == ["green", "red"] and app.model.setup_name == "demo"
     m = computed(app, drv, stream_module)
     assert m.results_text.endswith("green vs red · PCC = %.3f" % m._metrics["pearson"])
-    qt = ColocViewModel()
-    qt.apply_setup_settings(
+    vm = ColocViewModel()
+    vm.apply_setup_settings(
         {
             "name": "demo",
             "detectors": {
@@ -258,9 +260,9 @@ def test_a_photon_stream_uses_the_detector_windows_as_channels(app, drv, stream_
             },
         }
     )
-    qt.set_filename(str(stream_module))
-    qt.compute()
-    assert m.metric_rows() == qt.metric_rows()
+    vm.set_filename(str(stream_module))
+    vm.compute()
+    assert m.metric_rows() == vm.metric_rows()
 
 
 # ── 2. the file ─────────────────────────────────────────────────────────────────────────────────────────── #
@@ -301,7 +303,7 @@ def test_a_failing_run_is_reported_and_leaves_no_result(app, drv, tmp_path):
     assert app.model.metric_rows() == [] and app.model.status_line.startswith("Failed:")
 
 
-def test_export_csv_writes_the_file_the_qt_tool_writes(app, drv, pair, tmp_path):
+def test_export_csv_writes_the_file_the_view_model_writes(app, drv, pair, tmp_path):
     computed(app, drv, pair)
     app.model.folder = str(tmp_path)
     drv.click("request_export")
@@ -313,9 +315,9 @@ def test_export_csv_writes_the_file_the_qt_tool_writes(app, drv, pair, tmp_path)
     drv.click_text("Save", last=True)
     drv.draw(3)
     written = tmp_path / "pair.coloc.csv"
-    qt = qt_model(pair)
-    expected = tmp_path / "qt.csv"
-    qt.export_csv(str(expected))
+    vm = view_model_run(pair)
+    expected = tmp_path / "view_model.csv"
+    vm.export_csv(str(expected))
     assert (
         written.read_text() == expected.read_text().replace(str(pair), str(pair))
         and app.model.status_line == f"Wrote {written}"
@@ -391,7 +393,7 @@ def test_every_typed_setting_is_taken_on_enter(app, drv, attr, text, expected):
     assert getattr(app.model, attr) == expected
 
 
-def test_typed_numbers_are_clamped_to_the_qt_ranges(app, drv):
+def test_typed_numbers_are_clamped_to_the_spec_ranges(app, drv):
     drv.type_into("frame", "9999999")
     assert app.model.frame == 100000
     drv.type_into("frame", "-9")
@@ -451,7 +453,7 @@ def open_gates(app, drv):
     assert "Add ellipse" in drv.draw(2).strings
 
 
-def test_the_typed_box_gates_the_coefficients_like_the_qt_tool(app, drv, pair):
+def test_the_typed_box_gates_the_coefficients_like_the_view_model(app, drv, pair):
     m = computed(app, drv, pair)
     drv.click("Scatter gate.fold")
     drv.click("gate_enabled")
@@ -464,10 +466,10 @@ def test_the_typed_box_gates_the_coefficients_like_the_qt_tool(app, drv, pair):
         drv.type_into(attr, text)
     drv.click("run_coloc")
     drv.settle(timeout=120)
-    qt = qt_model(
+    vm = view_model_run(
         pair, gate_enabled=True, gate_a_min=10.0, gate_a_max=60.0, gate_b_min=5.0, gate_b_max=50.0
     )
-    assert m.metric_rows() == qt.metric_rows() and m.gates.get("box") is not None
+    assert m.metric_rows() == vm.metric_rows() and m.gates.get("box") is not None
 
 
 def test_a_gate_region_added_from_the_list_recomputes_and_clear_gate_drops_it(app, drv, pair):
@@ -580,7 +582,7 @@ def test_every_tab_has_a_message_when_empty(app, drv):
         )
 
 
-def test_the_coefficient_table_shows_the_qt_rows_and_sorts_by_its_header(app, drv, pair):
+def test_the_coefficient_table_shows_the_metric_rows_and_sorts_by_its_header(app, drv, pair):
     m = computed(app, drv, pair)
     app.docks.focus("Coefficients")
     strings = drv.draw(3).strings
@@ -760,8 +762,9 @@ def _labels(sections):
     return {"".join(ch for ch in label if ord(ch) < 0x2300 or ch in "σγ").strip() for label in out}
 
 
-def test_every_qt_control_has_an_emtk_equivalent():
-    qt, emtk = _labels(QT_SPEC["sections"]), _labels(EMTK_SPEC["sections"])
+def test_every_control_of_the_base_spec_has_an_emtk_equivalent():
+    """``coloc.view.json`` (read by the view model) and ``coloc_emtk.view.json`` offer the same controls."""
+    base, emtk = _labels(BASE_SPEC["sections"]), _labels(EMTK_SPEC["sections"])
     assert {
         "Channel A",
         "Channel B",
@@ -779,19 +782,19 @@ def test_every_qt_control_has_an_emtk_equivalent():
         "Costes randomization test",
         "van Steensel shift (px)",
         "Log histogram",
-    } <= qt
-    assert qt - {"Image", "Estimate background", "Export CSV"} <= emtk, sorted(qt - emtk)
+    } <= base
+    assert base - {"Image", "Estimate background", "Export CSV"} <= emtk, sorted(base - emtk)
     assert {"Image", "Run", "Estimate background", "Export CSV"} <= emtk
-    qt_tabs = [
+    base_tabs = [
         s["title"]
-        for s in walk(QT_SPEC["sections"])
+        for s in walk(BASE_SPEC["sections"])
         if s.get("type") in ("custom", "table", "plot")
         and s.get("title")
         and s.get("key") != "region_list"
     ]
-    assert [t for t in qt_tabs if t in TABS] == [t for t in TABS if t in qt_tabs] and set(
+    assert [t for t in base_tabs if t in TABS] == [t for t in TABS if t in base_tabs] and set(
         TABS
-    ) <= set(qt_tabs) | {"Coefficients", "Channels"}
+    ) <= set(base_tabs) | {"Coefficients", "Channels"}
 
 
 def test_every_spec_attribute_and_action_exists_on_the_model():
@@ -949,7 +952,7 @@ def test_persistent_settings_guard_detects_actual_changes_and_ignores_generated_
 def test_the_setup_choice_offers_the_saved_setups_and_their_windows_become_the_channels(
     app, drv, stream_module, monkeypatch
 ):
-    """The Qt tool's Setup combo: standalone, the saved setups are picked here (the hub hands its own over)."""
+    """The Setup choice: standalone, the saved setups are picked here (the hub hands its own over)."""
     import chisurf.core.data_io.detector_setups as store
 
     saved = {

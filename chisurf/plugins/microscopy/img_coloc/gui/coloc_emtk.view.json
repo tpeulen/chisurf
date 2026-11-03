@@ -1,5 +1,5 @@
 {
-  "_comment": "Colocalization, drawn by emtk. The Qt tool's AutoForm spec is coloc.view.json.",
+  "_comment": "Colocalization, drawn by emtk. The settings mirror coloc.view.json, which the view model reads.",
   "window": {
     "width": 1100,
     "height": 720
