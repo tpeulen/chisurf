@@ -313,7 +313,8 @@ def input_section(spec: WorkspaceInput, *, title: str = "Input") -> dict:
         "key": "data_table",
         "description": (
             f"The {kinds} in the workspace this tool takes. Data enters ChiSurf by dropping files "
-            "on the window; pick here what this tool works on."
+            "on the window; pick here what this tool works on, drag rows down into the tool, or "
+            "right-click them and Add to this tool."
         ),
         "options": {
             "source": "workspace_input_rows",
@@ -321,6 +322,14 @@ def input_section(spec: WorkspaceInput, *, title: str = "Input") -> dict:
             "editable": False,
             "height": 110,
             "filter": True,
+            "drag_call": "workspace_input_drag",
+            "context_menu": [
+                {
+                    "label": "Add to this tool",
+                    "call": "workspace_input_add",
+                    "description": "Hand this row (or the selected rows) to this tool.",
+                }
+            ],
             "columns": [
                 {"key": "name", "title": "Data name", "width": 180,
                  "tooltip": "The dataset's name in the workspace."},
@@ -438,6 +447,32 @@ class WorkspaceInputMixin:
         """A row picked in a one-dataset Input section: hand it over."""
         if isinstance(row, dict) and row.get("uid"):
             self._workspace_input_deliver([row])
+
+    def _workspace_input_rows_of(self, record: Any) -> list[dict]:
+        """*record*, or every selected row when it is one of them (a right click or a drag
+        on a selection acts on all of it)."""
+        if not (isinstance(record, dict) and record.get("uid")):
+            return []
+        chosen = [r for r in self.workspace_input_selection if isinstance(r, dict) and r.get("uid")]
+        if any(r.get("uid") == record.get("uid") for r in chosen):
+            return chosen
+        return [record]
+
+    def workspace_input_add(self, record: Any) -> None:
+        """*Add to this tool* from the Input table's context menu."""
+        rows = self._workspace_input_rows_of(record)
+        if rows:
+            self._workspace_input_deliver(rows)
+
+    def workspace_input_drag(
+        self, record: Any, x: float, y: float, dropped: bool, on_table: bool = False
+    ) -> None:
+        """A row dragged out of the Input table: let go anywhere in the tool but on the table
+        itself, it is handed over -- dragged down into the tool's own list."""
+        if dropped and not on_table:
+            rows = self._workspace_input_rows_of(record)
+            if rows:
+                self._workspace_input_deliver(rows)
 
     def workspace_input_use(self) -> None:
         """*Use selected* in a many-dataset Input section."""

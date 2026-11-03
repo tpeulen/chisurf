@@ -545,7 +545,13 @@ What the host builds from the declaration:
     `workspace_input_plugin = "<id>"` and `workspace_input_app = <app>`; a pick
     calls your receive hook exactly as *Open in…* does. Set
     `workspace_input_on_used` to the tour's `notify_used` so a guided-tour step
-    targeting `workspace_input_rows` can await the pick.
+    targeting `workspace_input_rows` can await the pick;
+  * besides a click (one dataset) or *Use selected* (several), a row is handed
+    over by dragging it out of the table and letting go anywhere in the tool
+    but on the table itself (`workspace_input_drag`, told `on_table` by emtk's
+    data table), or by the table's right-click *Add to this tool*
+    (`workspace_input_add`); either takes the whole selection when the row is
+    part of it.
 
 **Results go back** through the API seam: `register_result(result, kind=...,
 result_of=source_uid, name=...)` takes a dataset object (a computed curve; set

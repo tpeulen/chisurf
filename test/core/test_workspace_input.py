@@ -101,3 +101,33 @@ def test_the_generated_input_section_goes_first_once():
     twice = with_workspace_input(once, WorkspaceInput(kinds=["photons"]))
     assert [s["title"] for s in twice["sections"]] == ["Input", "Settings"]
     assert view["sections"][0]["title"] == "Settings"  # the original is not modified
+
+
+class _Taker:
+    """The Input section's model half, recording what it hands over."""
+
+    def __init__(self):
+        from chisurf.core.plugin.workspace_input import WorkspaceInputMixin
+
+        class Model(WorkspaceInputMixin):
+            pass
+
+        self.model = Model()
+        self.handed: list = []
+        self.model._workspace_input_deliver = lambda rows: self.handed.append([r["uid"] for r in rows])
+
+
+def test_rows_are_added_from_the_context_menu_or_dragged_down_into_the_tool():
+    section = input_section(WorkspaceInput(kinds=["photons"], many=True))
+    options = section["sections"][0]["options"]
+    assert options["drag_call"] == "workspace_input_drag"
+    assert [i["call"] for i in options["context_menu"]] == ["workspace_input_add"]
+    taker = _Taker()
+    other = dict(PHOTONS, uid="p2", name="m001.spc")
+    taker.model.workspace_input_add(PHOTONS)  # right-click, Add to this tool
+    taker.model.workspace_input_selection = [PHOTONS, other]
+    taker.model.workspace_input_add(other)  # on a selected row: the whole selection
+    taker.model.workspace_input_drag(PHOTONS, 10.0, 400.0, False)  # still moving
+    taker.model.workspace_input_drag(PHOTONS, 10.0, 60.0, True, on_table=True)  # back on the table
+    taker.model.workspace_input_drag(dict(PHOTONS, uid="p3"), 10.0, 400.0, True)  # into the tool
+    assert taker.handed == [["p1"], ["p1", "p2"], ["p3"]]
