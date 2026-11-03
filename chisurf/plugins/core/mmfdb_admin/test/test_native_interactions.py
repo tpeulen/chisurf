@@ -1,11 +1,10 @@
-"""Behaviours of the retired Qt MMFDB Admin that the native app had to gain before the Qt went.
+"""Keyboard, pointer and progress interactions of the MMFDB Admin window.
 
-An audit of every reachable Qt action against the native app found no lost backend call, but
-these interactions were missing: Enter in a connection field logs in, Enter in the eLabFTW
-search lists, the Spectra search runs as you type (with Auto to turn it off), the Spectra
-table's right-click menu, Find Duplicates' progress and Cancel, a click on a provenance edge
-showing its record, and an entity row's UUID on hover. Each is driven here as a user drives
-it (emtk Driver) over a seeded temporary MMFDB.
+Enter in a connection field logs in, Enter in the eLabFTW search lists, the Spectra search
+runs as you type (with Auto to turn it off), the Spectra table's right-click menu, Find
+Duplicates' progress and Cancel, a click on a provenance edge or node showing its record,
+Open in ndX, and an entity row's UUID on hover. Each is driven here as a user drives it
+(emtk Driver) over a seeded temporary MMFDB.
 """
 
 from __future__ import annotations

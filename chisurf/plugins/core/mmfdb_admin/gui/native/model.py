@@ -7,8 +7,8 @@ bar of ``gui/app.py`` are drawn over, and the hub every panel talks through:
   Login builds a client for that endpoint, checks the transport, signs in (an
   existing token, the process's cached session, a passwordless login, the typed
   password, and else the login dialog) and refuses a user who is not an MMFDB
-  administrator, as the Qt tool does. Nothing here persists a password;
-* the **panels** -- the rail's destinations in the Qt tool's order, each a model
+  administrator. Nothing here persists a password;
+* the **panels** -- the rail's destinations, each a model
   (:mod:`.entity`, :mod:`.panels`, :mod:`.spectra`, :mod:`.provenance`), made on
   first use and loaded the first time they are opened;
 * the **calls** -- every server call goes through :meth:`AdminModel.run` on a

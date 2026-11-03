@@ -3,8 +3,8 @@
 Each class is the model one ``view.json`` panel of ``admin_panels.view.json`` is
 drawn over: Overview, All items, Measurements, Sample Metadata, Import / Export,
 eLabFTW, Studies, Protocols, Lifecycle, Calibrations, Reagent Lots and Pipelines.
-They do what the Qt tool's tabs and ``*_view.py`` widgets do, through the same
-client calls; every call runs off the drawing thread (:meth:`Panel.run`).
+Each loads and acts through the MMFDB client; every call runs off the drawing
+thread (:meth:`Panel.run`).
 """
 
 from __future__ import annotations

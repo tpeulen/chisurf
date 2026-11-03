@@ -43,8 +43,7 @@ table and form to share the space.
 
 The form's fields come from the mmCIF dictionary (the FLR / PDBx categories), so
 a field's tooltip is its dictionary definition. **An edit is saved when you
-commit the field** (Enter, or a click elsewhere): there is no Save button, as in
-the Qt tool. Read-only entities (raw data, products, analyses, objects, projects,
+commit the field** (Enter, or a click elsewhere): there is no Save button. Read-only entities (raw data, products, analyses, objects, projects,
 the setup's channels) show their fields read-only. Hover a row to see the record's
 UUID, when it has one.
 

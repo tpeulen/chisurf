@@ -237,7 +237,7 @@ class ConnectionDialog(Dialog):
 
 
 class PasswordDialog(Dialog):
-    """Set or clear a user's password, with the strength the Qt dialog shows.
+    """Set or clear a user's password, with its strength shown as it is typed.
 
     Save checks the two entries match and that an administrator's password is
     not empty and at least medium strength; Clear (refused for administrators)

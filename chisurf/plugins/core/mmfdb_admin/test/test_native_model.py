@@ -1,8 +1,7 @@
 """The native MMFDB Admin's model against a real seeded MMFDB (in-process services, real ACL).
 
-Every panel loads what the Qt tool shows for the same database; every action does
-what the Qt action does, through the same client calls; every confirmation that is
-declined changes nothing. Hermetic: ``native_support`` points the settings, the
+Every panel loads what the seeded database holds; every action makes its client call
+and the database shows the result; every confirmation that is declined changes nothing. Hermetic: ``native_support`` points the settings, the
 database, the object store and ``HOME`` at a temporary copy of a seeded database.
 """
 

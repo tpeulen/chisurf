@@ -1,6 +1,6 @@
 """Native emtk MMFDB Admin: browse, edit, import and export the Multiparametric Fluorescence Database.
 
-The window is the Qt tool's shell -- a menu bar, a connection toolbar, a
+The window is a shell -- a menu bar, a connection toolbar, a
 searchable rail of panels on the left, the open panel on the right and a status
 bar with Back / Next -- drawn without Qt. Everything a panel shows is declared:
 ``admin.view.json`` (the toolbar, the entity panel, every dialog) and
