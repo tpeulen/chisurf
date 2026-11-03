@@ -13,8 +13,11 @@ timestamp: '2026-07-05T00:00:00Z'
 0. **Burst MLE IRF: what is left** (2026-11-03). Done: gamma is fitted by default; the IRF comes
    per detector from a scatter (buffer- then floor-corrected), else a reference dye
    (`core/fio/reference_dyes.yaml`; IRF[i] = D[i] - exp(-dt/tau) D[i-1], tau fitted to the dye's
-   tail on VV+2VH), else a skewed Gaussian on the non-burst photons (`MleSession.irf_pattern`,
-   `irf_source`). DNA13bp_3.ptu (RVZMT150, binning 4): G|G 2I* 570 (fixed gamma) -> 133 (free) -> 87
+   tail on VV+2VH), else a skewed Gaussian on the non-burst photons, else (fewer than 500 non-burst
+   photons in the gate) the blind estimate from the burst decay (`MleSession.blind_irf`, the IRF
+   Estimation tool's engine, trimmed by a skewed Gaussian) (`MleSession.irf_pattern`, `irf_source`).
+   Forced on DNA13bp_3 G|G the blind estimate gave 2I* 80, tau 2.85 ns -- lower than Rh110's 87
+   because it is taken from the decay it then fits; the owner's order keeps it last. DNA13bp_3.ptu (RVZMT150, binning 4): G|G 2I* 570 (fixed gamma) -> 133 (free) -> 87
    (Rh110 IRF, tau 2.68 ns, gamma 0.23); Rh110 tail 4.02 ns, Alexa647 1.14-1.26 ns (the list says 1.0).
    Measure with the `replay_chain.py` pattern (copy ~/.chisurf/emtk + flr DB to a temp settings dir;
    never let a test hub save into ~/.chisurf). Open: (a) the preview's single lifetime still undershoots

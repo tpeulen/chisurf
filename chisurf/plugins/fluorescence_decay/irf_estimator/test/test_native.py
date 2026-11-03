@@ -75,10 +75,10 @@ def test_native_async_estimation_and_plot_mouse():
     app.draw(RecordingPainter(), 0, 0, 1200, 900)
     app.io.mouse_pos = (900.0, 300.0)
     app.draw(RecordingPainter(), 0, 0, 1200, 900)
-    assert "Intensity:" in app.pointer_text  # the Qt tooltip: "Time: x ns, Intensity: y"
+    assert "Intensity:" in app.pointer_text  # the pointer readout: "Time: x ns, Intensity: y"
 
 
-def test_native_surface_workflow_without_qt(tmp_path):
+def test_native_surface_workflow_imports_no_qt(tmp_path):
     script = f"""
 import importlib.abc, sys, numpy as np
 class BlockQt(importlib.abc.MetaPathFinder):

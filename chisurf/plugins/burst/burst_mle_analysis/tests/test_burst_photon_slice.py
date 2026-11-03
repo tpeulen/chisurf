@@ -2,7 +2,7 @@
 
 ``Last Photon`` is inclusive — the ``.bur`` writer stores
 ``Number of Photons == Last - First + 1``, and this plugin's own photon-coverage
-mask (``wizard._covered_photon_indices``, ``stops + 1``) reads it that way. The
+mask (``burst_photon_indices``, ``stops + 1``) reads it that way. The
 two multiprocessing workers used to slice the same pair exclusively, so every
 per-burst lifetime, every ``Number of Photons (fit window)`` and every pooled
 per-state decay was computed on one photon less than the row describes, and a

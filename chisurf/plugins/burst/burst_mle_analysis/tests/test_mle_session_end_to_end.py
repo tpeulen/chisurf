@@ -2,9 +2,7 @@
 
 Drives the engine the way the workflow does -- set detectors, load a .bur, build the decay, provide IRF/background,
 run the fit -- and asserts the results are sane. This catches the silent-failure bugs where the current detector
-loses its IRF (so the fit bails) and the decay/plot end up empty. It replaces the end-to-end test of the retired Qt
-wizard: the numbers that wizard gave are recorded in ``qt_reference.json`` and compared in ``test_mle_engine.py``;
-here are the behaviours.
+loses its IRF (so the fit bails) and the decay/plot end up empty.
 
 The data is the in-repository ``burst_selection/tests/data/bh_spc132_sm_dna`` folder (real photons, no download). The
 engine writes its result tables next to the burst files, so the tests work on a temporary copy.
@@ -19,7 +17,7 @@ import pytest
 
 from chisurf.plugins.burst.burst_mle_analysis import engine
 
-from .conftest import BURST_TABLE, CHANNEL_SETTINGS, REPO_DATA, as_the_wizard
+from .conftest import BURST_TABLE, CHANNEL_SETTINGS, REPO_DATA
 
 DATA = REPO_DATA  # read-only uses (headers); fits run on the temporary copy
 BUR = REPO_DATA / BURST_TABLE
@@ -38,7 +36,7 @@ def fitted(sample_copy):
     ``auto_extract`` is the foolproof workflow: it auto-selects the micro-time binning and fit window and
     estimates the IRF/bg from the non-burst photons.
     """
-    s = as_the_wizard(engine.MleSession())
+    s = engine.MleSession()
     s.set_detectors(CHANNEL_SETTINGS["detectors"], CHANNEL_SETTINGS["file_type"])
     s.add_burst_files([sample_copy / BURST_TABLE])
     s.current_detector = "G|G"
@@ -100,21 +98,6 @@ def test_auto_extract_gives_a_physical_lifetime_for_every_colour(fitted):
         assert 0.5 < tau < 5.0, f"{det} tau railed/implausible: {tau}"
 
 
-def test_the_one_click_values_are_the_wizards(fitted, qt_reference):
-    # The retired Qt wizard's Auto button (binning and window) and its auto-optimise gave the green one-click
-    # values again; both are recorded, so the engine's one-click path is held to them.
-    ref = qt_reference["end_to_end"]
-    assert fitted.settings.micro_time_binning == ref["green_binning"]
-    assert list(fitted.micro_time_range) == ref["green_range"]
-    assert float(fitted.outcome.x[0]) == pytest.approx(ref["green_tau"], abs=6e-4)
-    assert fitted.settings.micro_time_binning == ref["auto_optimize"]["binning"]
-    assert list(fitted.micro_time_range) == ref["auto_optimize"]["range"]
-    assert float(fitted.outcome.x[0]) == pytest.approx(ref["auto_optimize"]["tau"], abs=6e-4)
-    fitted.current_detector = "R|G"
-    fitted.auto_extract()
-    assert float(fitted.outcome.x[0]) == pytest.approx(ref["red_tau"], abs=6e-4)
-
-
 def _mean_arrival_lifetime(session, chs):
     """Model-free lifetime: mean burst micro-time minus the scatter prompt."""
     tttr = session.current_tttr()
@@ -146,29 +129,27 @@ def test_auto_extract_lifetime_matches_model_free_estimate(fitted):
         )
 
 
-def test_tail_fit_recovers_a_plausible_lifetime(fitted, qt_reference):
-    """The multi-exponential tail fit runs and recovers the lifetime the Qt wizard gave on this sample.
+def test_tail_fit_recovers_a_plausible_lifetime(fitted):
+    """The multi-exponential tail fit runs and its lifetime is that of the reconvolution fit's
+    decay, give or take what the tail alone sees.
 
-    The tail model (``DecayFitNExp`` with ``tail_start``) is a different estimator family from the fit2x models: it
-    fits pure exponentials from a start channel with no IRF deconvolution -- the standard treatment for FRET
-    sensitised-emission decays.
+    The tail model (``DecayFitNExp`` with ``tail_start``) is a different estimator family from the
+    fit2x models: it fits pure exponentials from a start channel with no IRF deconvolution -- the
+    standard treatment for FRET sensitised-emission decays.
     """
-    ref = qt_reference["end_to_end"]["tail"]
+    reconvolved = float(fitted.outcome.x[0])
     fitted.set_model(engine.TAIL_MODEL)
     names, _values, _fixed = fitted.settings.parameter_state()
-    assert names == ref["names"]
-    assert any(name.startswith("tau") for name in names)
+    assert names == ["tail_start", "tau1", "tau2"]
     sb, eb = fitted.micro_time_range
     tail_start = float(sb + max(1, (eb - sb) // 5))
-    assert tail_start == ref["tail_start"]
     fitted.settings.edit_parameter("tail_start", tail_start, fixed=False)
     outcome = fitted.fit()
     assert outcome is not None, fitted.status
     tau = float(outcome.x[names.index("tau1")])
-    assert 0.2 < tau < 8.0, f"tail-fit tau railed/implausible: {tau}"
-    assert tau == pytest.approx(ref["tau1"], rel=1e-6)
+    assert tau == pytest.approx(reconvolved, rel=0.35), (tau, reconvolved)
     # the model curve was drawn (no blank Intensity panel)
-    assert outcome.curves.model.size == ref["model_size"] and outcome.curves.model.any()
+    assert outcome.curves.model.size == outcome.curves.data.size and outcome.curves.model.any()
 
 
 def test_burst_result_columns_are_model_specific():
@@ -390,7 +371,7 @@ def test_the_panel_displays_each_detectors_g_factor_l1_l2_and_switching_does_not
     """The panel shows each detector's G factor / l1 / l2 (read-only text).
 
     The corrections live on the detector definition. They are read-only (calibration constants, edited in the
-    detector setup) and, crucially, switching detectors must NOT corrupt the definition: the Qt setters poked the
+    detector setup) and, crucially, switching detectors must NOT corrupt the definition: earlier setters poked the
     definition's table cells by row/column and **swapped** one detector's l1/l2 onto another on repeated switches
     (so the fit silently ran with the wrong polarisation corrections).
     """

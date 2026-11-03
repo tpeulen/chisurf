@@ -1,11 +1,11 @@
-"""View model of the emtk burst-MLE app (cards ML0 to ML5): the Qt-free engine's session behind spec-bound attributes.
+"""View model of the emtk burst-MLE app (cards ML0 to ML5): the engine's session behind spec-bound attributes.
 
 The AutoForm spec ``mle_native.view.json`` reads and writes the attributes of :class:`MleViewModel`; each one is a view
-on :class:`~..engine.MleSession` (the same session the parity tests compare with the Qt wizard). Changing a setting
-refits the current decay, as the wizard does. The slow actions (auto IRF/background, the batch over every burst) run on
+on :class:`~..engine.MleSession` (the same session the engine tests check). Changing a setting
+refits the current decay. The slow actions (auto IRF/background, the batch over every burst) run on
 a snapshot through :class:`chisurf.emtk.jobs.SnapshotJob`.
 
-Nothing here imports Qt or emtk.
+Nothing here imports a GUI toolkit.
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ SETTING_ATTRS: dict[str, tuple[type, bool]] = {
     "BIFL_scatter": (bool, False),
 }
 
-#: The per-detector settings "Save fit" stores on the detector setup (the keys the wizard stored).
+#: The per-detector settings "Save fit" stores on the detector setup.
 SETUP_KEYS = (
     "micro_time_start",
     "micro_time_stop",
@@ -91,7 +91,7 @@ def _setting_property(name: str, kind: type, rebuild_decay: bool):
 
 
 class MleViewModel(RunPickerMixin):
-    """State and actions of the burst-MLE lifetime tool (no Qt, no emtk).
+    """State and actions of the burst-MLE lifetime tool.
 
     A ``.pto`` among the burst files is a measurement container: the Runs table lists its burst searches and the
     one picked is the burst table the fit reads (:meth:`select_run`).
@@ -312,7 +312,7 @@ class MleViewModel(RunPickerMixin):
         ]
 
     def current_file_text(self) -> str:
-        """Name of the burst file whose decay is shown (the Qt wizard's Filename field), with its position."""
+        """Name of the burst file whose decay is shown, with its position."""
         files = self.session.bur_files
         if not files:
             return ""
@@ -914,7 +914,7 @@ class MleViewModel(RunPickerMixin):
         self.refit()
 
     def refit(self) -> None:
-        """Fit the current decay again with the current settings (the wizard's ``update_fit``)."""
+        """Fit the current decay again with the current settings."""
         if self.session.current_tttr() is None:
             return
         outcome = self.session.fit()

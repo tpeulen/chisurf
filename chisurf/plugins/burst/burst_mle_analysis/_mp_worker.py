@@ -62,7 +62,7 @@ def _burst_slice(first_ph, last_ph) -> slice:
 
     ``Last Photon`` is the burst's last photon **inclusive** — that is what the
     ``.bur`` writer stores (``Number of Photons == last - first + 1``) and what
-    the wizard's own photon-coverage mask assumes (``stops + 1``). The slice
+    the session's photon-coverage mask assumes (``stops + 1``). The slice
     therefore runs to ``last + 1``; a burst with ``first == last`` is one
     photon, not none.
 
@@ -84,7 +84,7 @@ def _burst_slice(first_ph, last_ph) -> slice:
 def _build_fitter(cfg):
     """Build the estimator for this detector's configuration.
 
-    The batch worker and the interactive wizard now build through the same
+    The batch worker and the interactive preview build through the same
     ``Fit2x`` facade, so batch results match the live preview by construction
     rather than by both of them independently reproducing the same setup. The
     facade also area-normalises the background, so gamma is a true 0..1 fraction

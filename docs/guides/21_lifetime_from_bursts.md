@@ -202,9 +202,13 @@ In the pipeline the IRF of each detector is taken, in this order, from:
    floor is removed. Of several dyes, each detector takes the one with the most
    photons in its gate: Rh110 for the green detectors, Alexa647 for the red
    detectors of a PIE set-up.
-3. **The photons outside the bursts**, fitted with a skewed Gaussian. This is the
-   last resort: those photons are mostly fluorescence of dim molecules, not
-   scatter.
+3. **The photons outside the bursts**, fitted with a skewed Gaussian. Those
+   photons are mostly fluorescence of dim molecules, not scatter, so only their
+   prompt is used.
+4. **The burst decay itself**, the last resort, when fewer than 500 photons lie
+   outside the bursts in the detector's gate: the blind estimate of
+   [IRF Estimation](irf_estimation.md) (a truncated exponential fit and
+   Richardson-Lucy deconvolution), trimmed to its prompt by a skewed Gaussian.
 
 A detector that a reference file shows nothing (a green dye in the red
 detectors after the red pulse) falls back to the next source. The **IRF** tab

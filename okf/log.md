@@ -13,6 +13,7 @@
 - 2026-11-03 — Burst MLE: the IRF tab is shown in Simple mode too. It says where the IRF comes from (estimated with the chosen IRF model, or a separate measurement picked from the workspace, with a way back to the estimate), plots VV and VH as loaded and as fitted, zoomed onto the IRF with draggable clip edges, and holds the cleanup fields (VH shift, IRF start/stop, thresholds).
 - 2026-11-03 — Burst Analysis restores a named setup as the setup library holds it. Your session had saved RVZMT150 with detected windows taken in but never saved (prompt 10–31, G|G gate 10–31), and every start brought that copy back under the name; Burst MLE then fitted only the rise of the decay.
 - 2026-11-03 Burst MLE IRF from references: gamma fitted by default; per-detector IRF from scatter (buffer-corrected), else a reference dye of known lifetime (reference_dyes.yaml, IRF recovered by inverting the exponential, tau fitted to the dye's tail), else a skewed Gaussian on the non-burst photons; the IRF tab names the source. DNA13bp_3 G|G 2I* 570 -> 87.
+- 2026-11-03 — Burst MLE: the blind IRF estimate from the burst decay (IRF Estimation's engine) is the last IRF source, after the non-burst photons. Qt parity scaffolding removed from burst_mle_analysis, irf_estimator and burst_irf_bg: qt_reference.json recordings and parity tests replaced by oracles known by construction; stale tests fixed (per-detector fit25 columns, shared read-only burst table in the snapshot, G|G/R|G detector names).
 
 ## 2026-11-02
 

@@ -2,7 +2,7 @@
 
 The sample (``burst_selection/tests/data``, copied to a temp folder by ``conftest``) is added by a host file drop, the
 IRF and background are estimated by a click on Auto IRF/background, bursts are fitted by a click on Fit bursts. Every
-number drawn is compared with the engine's session (itself compared with the Qt wizard in ``test_mle_engine.py``).
+number drawn is compared with the engine's session (itself checked in ``test_mle_engine.py``).
 """
 
 from __future__ import annotations
@@ -382,13 +382,13 @@ def test_guide_targets_are_drawn_and_the_awaited_steps_are_released_by_presses(a
     assert not app.tour.awaiting
 
 
-def test_the_engine_session_not_the_wizard_is_behind_the_app():
+def test_the_app_imports_no_qt():
     import subprocess
     import sys
 
     code = (
         "import sys; import chisurf.plugins.burst.burst_mle_analysis.gui.native as n; "
-        "bad=[m for m in sys.modules if m.startswith('chisurf.plugins.burst.burst_mle_analysis.wizard') or m.split('.')[0] in ('PyQt5','qtpy')]; "
+        "bad=[m for m in sys.modules if m.split('.')[0] in ('PyQt5','PyQt6','PySide2','PySide6','qtpy')]; "
         "print(bad); raise SystemExit(1 if bad else 0)"
     )
     done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
@@ -457,7 +457,7 @@ def test_the_detector_calibration_and_the_anisotropies_are_drawn(fitted):
 
 
 def test_the_current_file_and_the_inspected_bursts_file_are_named(fitted):
-    """The Qt wizard showed the file whose decay is on screen in a Filename field; the app says it under the plot."""
+    """The app names the file whose decay is on screen, under the plot."""
     window, drv = fitted
     drv.click_text("Decay and fit")
     shown = texts(drv.draw(3))

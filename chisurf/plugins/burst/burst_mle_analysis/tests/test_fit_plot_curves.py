@@ -2,7 +2,7 @@
 
 ``test_mle_session_end_to_end.py`` covers this path properly but is skipped
 wherever the BH smFRET DNA files are absent. That gap let a real regression
-ship (in the retired Qt wizard): ``plot_fit_result`` read ``self.fit.data`` and
+ship: the plot read ``self.fit.data`` and
 ``self.fit.model``, attributes the *old* per-estimator tttrlib fitter carried.
 The migrated ``Fit2x`` facade is reusable and holds no per-fit state, so those
 attributes no longer exist and the tool raised
@@ -59,7 +59,7 @@ def _decay(settings: Fit2xSettings, total: int = 40000) -> np.ndarray:
 
 
 def test_a_fit_returns_the_model_curve_it_computed():
-    """What the wizard plots comes from the *result*, not from the fitter."""
+    """What the tool plots comes from the *result*, not from the fitter."""
     settings = _settings()
     fitter = Fit2x(settings, model=Fit2xModel.FIT23)
     data = _decay(settings)
@@ -108,7 +108,7 @@ def test_the_model_curve_is_omitted_unless_asked_for():
 
 
 def test_residuals_can_be_formed_from_data_and_model():
-    """The arithmetic the wizard's residual panel does, on aligned arrays."""
+    """The arithmetic of the residual panel, on aligned arrays."""
     settings = _settings()
     fitter = Fit2x(settings, model=Fit2xModel.FIT23)
     data = _decay(settings)
@@ -129,7 +129,7 @@ def test_residuals_can_be_formed_from_data_and_model():
     assert abs(float(np.mean(residuals[mask]))) < 1.0
 
 
-#: The Qt-free sources that fit, plot and export (the retired wizard's duties).
+#: The sources that fit, plot and export.
 SOURCES = (
     "engine.py",
     "state_split.py",

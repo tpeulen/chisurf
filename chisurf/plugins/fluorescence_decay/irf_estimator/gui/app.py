@@ -1,11 +1,11 @@
-"""Native blind IRF estimation: the Qt IRFEstimatorTool's toolbar, parameters, plot and results.
+"""Native blind IRF estimation: toolbar, parameters, plot and results.
 
 The decay comes from the Datasets workspace: the Input section (the manifest's
 ``accepts[].from_workspace``) hands it to :func:`receive_decay`; nothing asks for an input file.
 The form is ``irf_estimator_emtk.view.json`` drawn by :func:`emtk.view_form.draw_form` over
 :class:`_Form` (the view model's fields, this app's actions). The estimate runs on a worker
-thread; the plot and the results are their own dock windows, laid out as in the Qt tool
-(parameters left, plot right, results under the plot).
+thread; the plot and the results are their own dock windows (parameters left, plot right,
+results under the plot).
 """
 
 from __future__ import annotations
@@ -33,15 +33,15 @@ HERE = Path(__file__).parent
 _EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="irf-estimation")
 ERROR = (230, 90, 90, 255)
 DATA_FILTERS = "VV/VH Files (*.dat);;All Files (*)"  # the saved IRF
-#: The Qt plot's pens, by curve: colour and dash.
+#: The plot's pens, by curve: colour and dash (``None`` is a solid line).
 PENS = {
     "Measured Decay": ((0, 110, 255, 255), None),
     "BG Corrected": ((0, 220, 220, 255), (6.0, 4.0)),
     "Estimated IRF (scaled)": ((0, 220, 0, 255), None),
     "IRF \u2297 Exp (Forward Model)": ((255, 165, 0, 255), (6.0, 4.0)),
 }
-#: guide.json is shared with the Qt tour, which names the toolbar actions by caption and
-#: the spin boxes by objectName; the spec's names are mapped onto those.
+#: guide.json names the toolbar actions by caption and the parameter fields by their tour
+#: ids; the spec's names are mapped onto those.
 TOUR_KEYS = {
     "workspace_input_rows": "Load Decay",
     "request_estimate": "Estimate IRF",
@@ -102,7 +102,7 @@ class _Form:
         return None
 
     def enabled(self, name):
-        """The Qt tool's control states: estimate needs data, save and transfer an IRF."""
+        """Which controls act: estimate needs data, save and transfer need an IRF."""
         app, m = self._app, self._app.model
         if app.future is not None:
             return name in ("request_help", "request_guide")

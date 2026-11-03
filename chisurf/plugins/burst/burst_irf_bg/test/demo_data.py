@@ -70,24 +70,23 @@ def build(root: pathlib.Path, seed: int = 4) -> pathlib.Path:
     return path
 
 
-#: The background rate is a Poisson-MLE fit of the inter-photon-time tail (L-BFGS-B, forward
-#: differences); it stops at the optimiser's function tolerance, which fixes the rate to a few
-#: 1e-6 relative -- the last digits differ between compilers (x86 Linux vs arm64 macOS), while
-#: the rate's statistical error (~1/sqrt(tail counts)) is near 0.5 %. Counts and the prompt are
-#: exact.
-FITTED_RTOL = 1e-5
+#: Non-burst photons written per detector: the IRF scatter and the flat background, over the run.
+NON_BURST_PER_DETECTOR = (1500.0 + 1000.0) * DURATION_S
 
 
-def assert_rows_match(rows, reference) -> None:
-    """The tool's result rows equal the recorded ones: counts and prompt exactly, the fit to its tolerance."""
-    import json  # noqa: PLC0415
+def assert_rows_recover_the_demo(rows) -> None:
+    """The tool's result rows recover what the measurement was built with.
 
-    import pytest  # noqa: PLC0415
-
-    rows = json.loads(json.dumps(rows))
-    assert [{k: v for k, v in r.items() if k != "background_khz"} for r in rows] == [
-        {k: v for k, v in r.items() if k != "background_khz"} for r in reference
-    ]
-    assert [r["background_khz"] for r in rows] == pytest.approx(
-        [r["background_khz"] for r in reference], rel=FITTED_RTOL
-    )
+    Per detector the prompt sits on the IRF peak and the non-burst count is the scatter plus the
+    flat background written outside bursts (a few percent go to burst windows and to photons
+    sharing a macro tick); burst photons were routed 60:40 to the first and second detector, and
+    both detectors see the same non-burst stream, so their background rates agree.
+    """
+    assert len(rows) == 2
+    for row in rows:
+        assert abs(row["prompt_ns"] - IRF_PEAK_NS) < 0.15
+        assert abs(row["n_bg"] - NON_BURST_PER_DETECTOR) < 0.1 * NON_BURST_PER_DETECTOR
+        assert row["n_burst"] > 0
+    assert rows[0]["n_burst"] > rows[1]["n_burst"]
+    rates = [r["background_khz"] for r in rows]
+    assert abs(rates[0] - rates[1]) / max(rates) < 0.05

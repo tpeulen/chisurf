@@ -1,11 +1,9 @@
 """The emtk burst-MLE windows draw what the engine computed, or say that there is none (no invented data, card ML-X).
 
 The earlier app drew a Gaussian "IRF" and an exponential "decay" built with ``np.exp`` for any data and a lifetime
-histogram from its own ``tau1`` / ``tau2`` fields, and read wizard attributes (``irf_background_patterns``,
+histogram from its own ``tau1`` / ``tau2`` fields, and read attributes (``irf_background_patterns``,
 ``burst_files``) that do not exist. These tests fail if a plotted array or a table cell does not come from the
-engine's fit. (The app over the retired Qt wizard is gone; its tests of the drawn curves against the wizard are in
-``test_emtk_mle_native.py`` against the engine, and ``test_mle_engine.py`` holds the engine against the numbers the
-wizard recorded in ``qt_reference.json``.)
+engine's fit (``test_emtk_mle_native.py`` checks the drawn curves against the engine).
 
 Also holds the plot spy and the draw helpers the other emtk tests of this plugin use.
 """

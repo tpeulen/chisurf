@@ -1,4 +1,4 @@
-"""Qt-free IRF estimation workflow and plot data."""
+"""IRF estimation workflow and plot data, independent of any GUI toolkit."""
 
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ class IRFViewModel:
             self.result.time_axis = (np.arange(len(self.result.irf)) * value).tolist()
 
     def time_axis_text(self):
-        """The Qt status bar's permanent time-axis label."""
+        """The status line's time-axis label: range, span, bin width and channel count."""
         axis = self.channel_axis
         if axis is None or len(axis) < 2:
             return "Time axis: Not available"
@@ -65,7 +65,7 @@ class IRFViewModel:
         return f"Time: {lo:.2f} to {hi:.2f} ns (\u0394 = {hi - lo:.2f} ns, dt = {self.dt:.4f} ns, {len(axis)} pts)"
 
     def result_rows(self):
-        """``(label, text)`` of the Qt results group, ``N/A`` before an estimate."""
+        """``(label, text)`` of the results panel, ``N/A`` before an estimate."""
         r = self.result
         return [
             ("Lifetime (\u03c4)", "N/A" if r is None else f"{r.lifetime_ns:.4f} ns"),
@@ -173,7 +173,7 @@ class IRFViewModel:
             maximum = float(irf.max())
             if maximum > 0:
                 scaled = irf * float(self.decay_data.max()) / maximum
-                # As the Qt plot: below one count the scaled IRF is not drawn, so the log axis
+                # Below one count the scaled IRF is not drawn, so the log axis
                 # is not stretched down to the deconvolution's vanishing tails.
                 result.append(
                     {

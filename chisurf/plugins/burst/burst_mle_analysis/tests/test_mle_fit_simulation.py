@@ -1,4 +1,4 @@
-"""Simulation self-test of the Fit23 lifetime engine the burst-MLE wizard uses.
+"""Simulation self-test of the Fit23 lifetime engine the burst-MLE tool uses.
 
 Generates a decay from tttrlib's own forward model at a known lifetime,
 Poisson-samples it, and fits it back. This pins that the fit MACHINERY is correct

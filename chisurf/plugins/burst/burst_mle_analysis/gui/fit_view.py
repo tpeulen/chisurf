@@ -4,7 +4,7 @@ The engine owns the fit. This module turns the rows of the last batch run (``Mle
 lifetime series and their common-grid histograms. With no batch run each function returns an empty result and the
 windows draw an empty-state message: nothing is ever invented.
 
-Qt-free and engine-free: plain rows in, arrays out, so the tests can feed literal rows.
+GUI-free and engine-free: plain rows in, arrays out, so the tests can feed literal rows.
 """
 
 from __future__ import annotations

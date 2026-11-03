@@ -89,20 +89,6 @@ CHANNEL_SETTINGS = {
 }
 
 
-#: What the retired Qt wizard fitted with, which its recorded values (``qt_reference.json``) hold:
-#: a symmetric Gaussian IRF from the non-burst photons and the scatter fraction fixed at 0.1. The
-#: native tool fits gamma and fits a skewed Gaussian; a parity test asks for the wizard's.
-WIZARD_SETTINGS = {"irf_model": "gaussian", "fix_gamma": True}
-
-
-def as_the_wizard(session):
-    """*session* with the wizard's IRF model and fixed gamma, for every detector."""
-    for settings in [session.template, *session.det_settings.values()]:
-        for key, value in WIZARD_SETTINGS.items():
-            setattr(settings, key, value)
-    return session
-
-
 @pytest.fixture(scope="module")
 def hermetic_env(tmp_path_factory):
     """Settings, MMFDB and HOME in a temp folder for the whole module.
@@ -156,17 +142,3 @@ def pto_bursts(sample_copy):
             write_container(raw, read_bur_file(bur), parameters={"run": 1}, run=PTO_RUN)
     return sample_copy
 
-
-REFERENCE = Path(__file__).with_name("qt_reference.json")
-
-
-@pytest.fixture(scope="session")
-def qt_reference():
-    """The numbers the retired Qt ``MLELifetimeAnalysisWizard`` gave on the in-repo sample (``qt_reference.json``).
-
-    Recorded once with the Qt code present: burst indices, header timing, the green and red fits, the IRF and
-    background patterns, the displayed curves, the per-burst lifetimes of the batch and the exported tables.
-    """
-    import json
-
-    return json.loads(REFERENCE.read_text())

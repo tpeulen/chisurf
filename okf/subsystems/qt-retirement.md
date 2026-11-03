@@ -16,6 +16,14 @@ no allow-list. The slice paragraphs and items below that speak of the Qt shell o
 work that led up to it; item 9 is the current S6 measurement and "Merge into mcts-native-baseline" (end of
 "History") lists the ports the merge left open.
 
+**Qt parity scaffolding goes too (owner, 2026-11-03: "the old qt stuff must go").** A test whose oracle is
+a recording of the retired Qt tool (`qt_reference.json`, `qt_values.json`, `QT_FACTS`, `*_parity.py`) is
+replaced by an oracle known by construction (a demo with a planted answer, the input table, the header) or
+dropped; wording that explains code by what the Qt tool did is rewritten to say what the code does; a
+guard that no Qt module is imported stays. Done: `burst_mle_analysis`, `irf_estimator`, `burst_irf_bg`
+(2026-11-03). Open: `find chisurf -name "*parity*.py"` lists the remaining test files (87 on 2026-11-03);
+`find chisurf -name "qt_reference.json" -o -name "qt_values.json"` the recordings (71).
+
 **Migration evidence removed (owner, 2026-10-20: the migration is finished).** `okf/validation/`
 (~700 MB of release-readiness receipts, zips, PNGs) and `okf/plugins/emtk-ports/` (~260 MB: per-port
 `REPORT.md`, before/after captures, inventories, capture scripts) are deleted, and with them the preview

@@ -22,12 +22,12 @@ def physical_model(tmp_path):
         BURST_TABLE,
         CHANNEL_SETTINGS,
         REPO_DATA,
-        as_the_wizard,
     )
 
     target = tmp_path / "measurement"
     shutil.copytree(REPO_DATA, target)
-    session = as_the_wizard(engine.MleSession())  # the frozen values were taken with these
+    # the hashes below were taken with a symmetric Gaussian IRF and the scatter fraction fixed
+    session = engine.MleSession(template=engine.MleSettings(irf_model="gaussian", fix_gamma=True))
     session.set_detectors(CHANNEL_SETTINGS["detectors"], "SPC-130")
     session.add_burst_files([target / BURST_TABLE])
     session.auto_extract()
@@ -63,9 +63,13 @@ def test_physical_preview_and_worker_match_actual_facade(name, physical_model):
         hist = session.inspect_burst(0)[detector]
         result = _build_fitter(cfg).fit(hist, cfg["x0"], cfg["fixed"])
         assert row[f"Tau ({detector})"] == pytest.approx(result.tau)
-        if name == "fit25":
+        # the model is chosen per detector: only the one on screen (G|G) was switched
+        if cfg["model"] == "fit25":
             assert row[f"selected_index ({detector})"] == result.result("selected_index")
             assert row[f"tau1 ({detector})"] == cfg["x0"][0]
+        else:
+            assert f"selected_index ({detector})" not in row
+    assert session.batch_config("G|G")["model"] == name
     # The completed run keeps its schema and starts after a new model is selected.
     session.set_model("fit24" if name != "fit24" else "fit23")
     written = session.export_results()
@@ -277,7 +281,9 @@ def test_snapshot_job_isolates_session_and_rejects_live_edits(monkeypatch, physi
             model.set_setup({"detectors": {"changed": {"chs": [99]}}})
         assert captured[0][0] is not model.session
         assert captured[0][0].current_tttr() is model.session.current_tttr()
-        assert captured[0][0].df_bursts is not model.session.df_bursts
+        # the burst table is read only and shared with the snapshot (copying it cost every job a
+        # copy of the whole table); a live edit is refused above, so nothing reaches it
+        assert captured[0][0].df_bursts is model.session.df_bursts
         assert captured[0][0].tttrs.paths is captured[0][0].tttr_paths
         assert captured[0][2] == "fit23"
         assert "changed" not in captured[0][1]

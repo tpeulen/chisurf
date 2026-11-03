@@ -1,6 +1,6 @@
 """Headless tests for the Burst IRF & Background tool.
 
-Exercises the Qt-free view-model (compute + MLE-pattern accessors) on real
+Exercises the toolkit-free view-model (compute + MLE-pattern accessors) on real
 single-molecule SPC data and a lightweight widget-construction smoke test.
 """
 

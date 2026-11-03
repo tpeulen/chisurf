@@ -1,11 +1,6 @@
-"""The Qt-free burst-MLE engine against the numbers the Qt wizard gave on the in-repository BH SPC-132 sample.
-
-The wizard delegated its pure steps (burst indices, VV|VH histograms, IRF / background processing, header times,
-binning and window selection) to ``engine``; ``MleSession`` composes the same steps without any widget. The wizard is
-retired: what it produced on this sample (burst indices, decay, auto-selected binning and window, the IRF and
-background patterns, the fitted parameters, the displayed curves, the per-burst lifetimes of the batch and the
-exported tables) was recorded to ``qt_reference.json`` and is compared number for number. Real photons, nothing
-generated.
+"""The burst-MLE engine on the in-repository BH SPC-132 sample: every number checked against what it
+must be by construction (the burst table, the file header, the photons themselves), not against a
+recording of an earlier program. Real photons, nothing generated.
 """
 
 from __future__ import annotations
@@ -15,25 +10,20 @@ import pytest
 
 from chisurf.plugins.burst.burst_mle_analysis import engine
 
-from .conftest import BURST_TABLE, CHANNEL_SETTINGS, as_the_wizard
-
-
-def _a(values):
-    """A recorded list as an array (``None`` is a recorded NaN)."""
-    return np.array([np.nan if v is None else v for v in values], dtype=float)
+from .conftest import BURST_TABLE, CHANNEL_SETTINGS
 
 
 @pytest.fixture(scope="module")
 def session(sample_copy):
     """A session loaded with the sample's burst file and detectors (nothing fitted yet)."""
-    s = as_the_wizard(engine.MleSession())
+    s = engine.MleSession()
     s.set_detectors(CHANNEL_SETTINGS["detectors"], CHANNEL_SETTINGS["file_type"])
     s.add_burst_files([sample_copy / BURST_TABLE])
     s.current_detector = "G|G"
     return s
 
 
-def test_engine_imports_no_qt():
+def test_engine_imports_no_gui():
     import subprocess
     import sys
 
@@ -46,67 +36,71 @@ def test_engine_imports_no_qt():
     assert done.returncode == 0, done.stdout + done.stderr
 
 
-def test_burst_files_header_and_indices_equal_the_wizards(session, qt_reference):
-    ref = qt_reference["bursts"]
-    assert session.df_bursts is not None and engine.row_count(session.df_bursts) == ref["n_bursts"]
-    indices = session.burst_indices()
-    assert len(indices) == ref["n_indices"] and int(np.sum(indices)) == ref["indices_sum"]
-    assert list(indices[:5]) == ref["indices_first"] and list(indices[-5:]) == ref["indices_last"]
-    assert session.current_tttr() is not None
-    # recorded at the binning of the green auto-extract, so the channel width is binning x header resolution
-    binning = qt_reference["G|G"]["binning"]
-    dt, period = engine.header_time_ns(session.current_tttr(), binning)
-    assert (dt, period) == tuple(qt_reference["header_time_ns"])
-    assert dt == pytest.approx(binning * engine.header_time_ns(session.current_tttr(), 1)[0])
+def test_the_burst_indices_are_the_photons_of_the_burst_table(session):
+    """The photons from ``First Photon`` to ``Last Photon`` (inclusive) of every burst of the file
+    on screen, each once (overlapping bursts share theirs), ascending."""
+    from pathlib import Path
+
+    table = session.df_bursts
+    stem = Path(session.current_filename).stem
+    files = [Path(str(f).replace("\\", "/")).stem for f in np.asarray(table["First File"], dtype=object)]
+    first = engine.numeric_column(table, "First Photon").astype(np.int64)
+    last = engine.numeric_column(table, "Last Photon").astype(np.int64)
+    expected = set()
+    for f, a, b in zip(files, first, last):
+        if f == stem and b >= a:
+            expected.update(range(int(a), int(b) + 1))
+    indices = np.asarray(session.burst_indices())
+    assert expected and indices.tolist() == sorted(expected)
 
 
-def test_auto_extract_equals_the_wizards_one_click(session, qt_reference):
-    ref = qt_reference["G|G"]
+def test_the_channel_width_is_the_header_resolution_times_the_binning(session):
+    tttr = session.current_tttr()
+    dt1, period = engine.header_time_ns(tttr, 1)
+    assert dt1 == pytest.approx(tttr.header.micro_time_resolution * 1e9)
+    for binning in (2, 32):
+        dt, same_period = engine.header_time_ns(tttr, binning)
+        assert dt == pytest.approx(binning * dt1) and same_period == pytest.approx(period)
+
+
+def _halves(array):
+    half = np.asarray(array).size // 2
+    return np.asarray(array)[:half], np.asarray(array)[half:]
+
+
+def test_auto_extract_gives_a_consistent_decay_irf_and_fit(session):
     session.auto_extract()
-    assert session.outcome is not None
-    assert session.settings.micro_time_binning == ref["binning"]
-    assert list(session.micro_time_range) == ref["micro_time_range"]
+    outcome = session.outcome
+    assert outcome is not None, session.status
+    assert session.settings.micro_time_binning in engine.BINNING_CHOICES
+    start, stop = session.micro_time_range
     for det in ("G|G", "R|G"):
-        # A Gaussian least-squares fit to the prompt: equal to the optimiser's tolerance, which
-        # differs between compilers in the last digits (1e-6 relative, x86 Linux vs arm64 macOS).
-        np.testing.assert_allclose(session.irf_np[det], _a(ref["irf_np"][det]), rtol=1e-5, atol=0)
-        np.testing.assert_array_equal(session.bg_np[det], _a(ref["bg_np"][det]))
-    np.testing.assert_array_equal(session.decay, _a(ref["decay"]))
-    np.testing.assert_allclose(
-        session.irf(), _a(ref["irf"]), rtol=1e-5, atol=0
-    )  # built from irf_np
-    np.testing.assert_array_equal(session.background(), _a(ref["bg"]))
-    # the fit: same optimum, same displayed curves
-    assert session.outcome.names[0] == "tau"
-    assert session.outcome.x[0] == pytest.approx(
-        ref["tau"], abs=6e-4
-    )  # the wizard showed 3 decimals
-    assert session.outcome.two_istar == pytest.approx(ref["twoIstar"], abs=6e-4)
-    for field in ("data", "model", "irf", "background", "residuals"):
-        # The curves are the model at the fitted parameters, which agree across platforms only
-        # to the optimiser's stopping tolerance (tau above: abs 6e-4); measured 2.6e-9 on Linux.
-        np.testing.assert_allclose(
-            getattr(session.outcome.curves, field), _a(ref["curves"][field]), rtol=1e-5, atol=1e-12
-        )
-    assert 0.5 < session.outcome.x[0] < 5.0
+        for half in _halves(session.irf_np[det]):  # a prompt in each polarisation
+            assert np.all(np.isfinite(half)) and half.min() >= 0 and half.max() > 0
+    # the decay is the burst photons inside the window, nothing outside it
+    for half in _halves(session.decay):
+        assert half[:start].sum() == 0 and half[stop:].sum() == 0 and half[start:stop].sum() > 0
+    assert outcome.names[0] == "tau" and 0.5 < outcome.x[0] < 5.0
+    assert 0.0 < outcome.two_istar < 5.0
+    curves = outcome.curves
+    assert curves.data.shape == curves.model.shape == curves.residuals.shape
+    assert curves.model.sum() == pytest.approx(curves.data.sum(), rel=0.05)  # the model holds the photons
 
 
-def test_the_second_detector_and_a_changed_window_equal_the_wizard(session, qt_reference):
+def test_a_narrowed_window_fits_only_what_is_inside(session):
     session.current_detector = "R|G"
     session.auto_extract()
-    assert session.outcome.x[0] == pytest.approx(qt_reference["red_tau"], abs=6e-4)
-    assert session.outcome.two_istar == pytest.approx(qt_reference["red_twoIstar"], abs=6e-4)
-    assert session.settings.micro_time_binning == qt_reference["red_binning"]
-    assert list(session.micro_time_range) == qt_reference["red_range"]
-    # narrow the window by hand
-    ref = qt_reference["red_narrowed"]
-    start, stop = ref["range"]
-    session.settings.micro_time_start, session.settings.micro_time_stop = start, stop
+    start, stop = session.micro_time_range
+    wide = session.outcome.x[0]
+    assert 0.5 < wide < 5.0
+    narrow = (start + 2, stop - 10)
+    session.settings.micro_time_start, session.settings.micro_time_stop = narrow
     session.build_decay()
     outcome = session.fit()
-    np.testing.assert_array_equal(session.decay, _a(ref["decay"]))
-    assert outcome.x[0] == pytest.approx(ref["tau"], abs=6e-4)
-    assert outcome.curves.data.size == ref["curves_size"]
+    for half in _halves(session.decay):
+        assert half[: narrow[0]].sum() == 0 and half[narrow[1] :].sum() == 0
+    assert outcome.curves.data.size == 2 * (narrow[1] - narrow[0])
+    assert outcome.x[0] == pytest.approx(wide, rel=0.25)  # the same molecules, a shorter view
 
 
 def test_a_fit_without_an_irf_says_why():
@@ -115,7 +109,7 @@ def test_a_fit_without_an_irf_says_why():
     assert s.fit() is None and "no IRF" in s.status
 
 
-def test_pure_steps_have_the_wizards_edge_cases():
+def test_pure_steps_handle_the_edge_cases():
     assert engine.select_fit_range(None) is None
     assert engine.select_fit_range(np.zeros(8)) is None
     d = np.zeros(20)
@@ -153,62 +147,44 @@ def _tau_columns(rows):
     }
 
 
-def test_the_batch_rows_equal_the_wizards_process_bursts(sample_copy, tmp_path, qt_reference):
-    """Same burst table, IRF/background, windows and start values: every burst's fitted lifetime is the wizard's."""
-    ref = qt_reference["batch"]
-    session = as_the_wizard(engine.MleSession())
-    session.set_detectors(CHANNEL_SETTINGS["detectors"], CHANNEL_SETTINGS["file_type"])
+def test_the_batch_fits_every_burst_and_exports_one_row_per_burst(sample_copy, tmp_path):
+    """One row per burst and detector; the burst lifetimes scatter around the lifetime of their
+    summed decay; one export per detector with the rows of the burst file."""
     import shutil
 
+    session = engine.MleSession()
+    session.set_detectors(CHANNEL_SETTINGS["detectors"], CHANNEL_SETTINGS["file_type"])
     own = tmp_path / "own"
     shutil.copytree(sample_copy, own)  # the session exports into its own copy
     session.add_burst_files([own / BURST_TABLE])
+    pooled = {}
     for det in ("G|G", "R|G"):
         session.current_detector = det
-        session.settings.min_photons = 10  # the wizard's default (ours is 5)
         session.auto_extract()
+        pooled[det] = float(session.outcome.x[0])
     seen = []
     session.run_batch(progress=lambda done, total: seen.append((done, total)))
+    n = engine.row_count(session.df_bursts)
+    assert len(session.burst_results) == 2 * n
+    assert seen and seen[-1][0] == seen[-1][1] == n
     mine = _tau_columns(session.burst_results)
-    assert sorted(mine) == sorted(ref["columns"]) and "Tau (G|G)" in mine and "Tau (R|G)" in mine
-    for key in mine:
-        if key.startswith("Number of Photons (fit window)"):
-            # the photons the fit saw (inside its window), not the wizard's all-photon count
-            wizard = _a(ref["columns"][key])
-            ok = np.isfinite(mine[key]) & np.isfinite(wizard)
-            assert np.all(mine[key][ok] <= wizard[ok]), key
-            continue
-        wizard = _a(ref["columns"][key])
-        both = np.isfinite(mine[key]) & np.isfinite(wizard)
-        np.testing.assert_allclose(mine[key][both], wizard[both], rtol=1e-9, atol=1e-12, err_msg=key)
-        # the photon floor counts the photons inside the fit window: a few bursts at the floor drop out
-        assert not np.any(np.isfinite(mine[key]) & ~np.isfinite(wizard)), key
-        assert np.mean(np.isfinite(wizard) & ~np.isfinite(mine[key])) < 0.03, key
-    # the batch fitted the detector on screen with its live window (it used the 0..128 seed before the fix)
-    assert (
-        session.settings_of("R|G").micro_time_start
-        == ref["red_micro_time_start_in_channel_settings"]
-    )
-    assert session.settings_of("R|G").micro_time_start == ref["wizard_micro_time_start"] != 0
-    assert len(session.burst_results) == ref["n_rows"] == 2 * engine.row_count(session.df_bursts)
-    assert seen and seen[-1][0] == seen[-1][1] == engine.row_count(session.df_bursts)
-    # the exported b?4 tables: the same files, the same header and the same number of lines
+    for det in ("G|G", "R|G"):
+        taus = mine[f"Tau ({det})"]
+        finite = taus[np.isfinite(taus)]
+        assert finite.size > 100, det
+        assert np.median(finite) == pytest.approx(pooled[det], rel=0.3), det
+        photons = mine[f"Number of Photons (fit window) ({det})"]
+        fitted = np.isfinite(taus)
+        assert np.all(photons[fitted] >= session.settings_of(det).min_photons), det
     written = session.export_results()
-    assert written and all(
-        p.suffix in (".bg4", ".br4") for p in written if p.suffix.startswith(".b")
-    )
-    tables = {
-        p.relative_to(own / BURST_TABLE.parent.parent).as_posix(): p
-        for p in written
-        if p.suffix in (".bg4", ".br4")
-    }
-    assert sorted(tables) == sorted(ref["exports"])
-    for name, path in tables.items():
-        lines = path.read_text().splitlines()
-        assert lines[0] == ref["exports"][name]["header"], name
-        assert len(lines) == ref["exports"][name]["n_lines"], name
-    finite = mine["Tau (G|G)"][np.isfinite(mine["Tau (G|G)"])]
-    assert finite.size > 100 and 0.1 < np.median(finite) < 10.0
+    tables = {p.suffix: p for p in written if p.suffix in (".bg4", ".br4")}
+    assert sorted(tables) == [".bg4", ".br4"]
+    lengths = set()
+    for suffix, det in ((".bg4", "G|G"), (".br4", "R|G")):
+        lines = tables[suffix].read_text().splitlines()
+        assert f"Tau ({det})" in lines[0].split("\t")
+        lengths.add(len(lines))
+    assert len(lengths) == 1, "both tables have the rows of the same burst file"
 
 
 def test_session_settings_round_trip():

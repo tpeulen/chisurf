@@ -20,7 +20,11 @@ from emtk.testing import RecordingPainter
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.plugins.burst.burst_irf_bg.gui import view_model
 from chisurf.plugins.burst.burst_irf_bg.gui.app import create_app, receive_photons
-from chisurf.plugins.burst.burst_irf_bg.test.demo_data import IRF_PEAK_NS, assert_rows_match, build
+from chisurf.plugins.burst.burst_irf_bg.test.demo_data import (
+    IRF_PEAK_NS,
+    assert_rows_recover_the_demo,
+    build,
+)
 from chisurf.plugins.emtk_layout import help_close_caption
 
 SIZE = (1200, 800)
@@ -138,8 +142,8 @@ def load(app, measurement):
 # -- Compute, Stop, the result ------------------------------------------------------------------------------------------ #
 
 
-def test_compute_without_files_says_why_and_a_click_on_a_loaded_demo_gives_the_qt_tools_rows(
-    app, measurement, qt
+def test_compute_without_files_says_why_and_a_click_on_a_loaded_demo_recovers_its_irf(
+    app, measurement
 ):
     press(app, "irf_bg_run")
     assert "Please load TTTR files first." in shown(app) and not app.controller.running
@@ -148,9 +152,10 @@ def test_compute_without_files_says_why_and_a_click_on_a_loaded_demo_gives_the_q
     assert app.controller.running and "Extracting IRF and background …" in shown(app)
     settle(app)
     rows = app.model.results_rows()
-    assert_rows_match(rows, qt["rows"])
-    for row in rows:
-        assert abs(row["prompt_ns"] - IRF_PEAK_NS) < 0.15  # the IRF the demo was made with
+    assert_rows_recover_the_demo(rows)  # the IRF and the photons the demo was made with
+    for series in app.model.irf_series()[:2]:
+        x, y = np.asarray(series["x"]), np.asarray(series["y"])
+        assert abs(float(x[np.argmax(y)]) - IRF_PEAK_NS) < 0.05
     strings = draw(app).strings
     assert strings.count("Extracted IRF + background for 2 detector(s).") == 1
     assert {
@@ -159,8 +164,8 @@ def test_compute_without_files_says_why_and_a_click_on_a_loaded_demo_gives_the_q
         "Prompt (ns)",
         "Non-burst",
         "Burst",
-        "green",
-        "red",
+        "G|G",
+        "R|G",
     } <= set(strings)
     assert all(f"{r['background_khz']:.3f}" in strings for r in rows)  # the table cells
     assert (
@@ -258,7 +263,7 @@ def test_a_broken_file_reports_its_error_in_the_window(app, tmp_path):
         ("micro_time_binning", "500", 64),
     ],
 )
-def test_each_parameter_is_typed_and_clamped_to_the_qt_ranges(app, field, typed, expected):
+def test_each_parameter_is_typed_and_clamped_to_its_range(app, field, typed, expected):
     type_into(app, field, typed)
     assert getattr(app.model, field) == pytest.approx(expected), (field, typed)
     shown_value = {"time_window_ms": f"{expected:.3f}", "baseline_quantile": f"{expected:.2f}"}.get(
@@ -334,19 +339,19 @@ def test_the_channel_definition_button_opens_the_editor_and_a_typed_routing_reac
     assert "TTTR Reading Routine:" not in draw(app).strings
     open_editor(app)
     strings = draw(app).strings
-    assert {"Channels", "green", "red", "▼ Detectors"} <= set(strings)
+    assert {"Channels", "G|G", "R|G", "▼ Detectors"} <= set(strings)
     # the gates column, under its full or narrow-host header
     assert set(ChannelDefinitionWidget.DETECTOR_TITLES["ranges"]) & set(strings)
-    type_into_cell(app, "green", "chs", "5")
-    assert app.model._channels()["green"]["chs"] == [5]
+    type_into_cell(app, "G|G", "chs", "5")
+    assert app.model._channels()["G|G"]["chs"] == [5]
     assert "5" in draw(app).strings
 
 
 def test_a_typed_list_of_routing_channels_arrives_as_a_list(app):
     """The table cell keeps the text as it is typed, so the comma of '0, 8' is not eaten (the old field re-formatted it)."""
     open_editor(app)
-    type_into_cell(app, "green", "chs", "0, 8, 2")
-    assert app.model._channels()["green"]["chs"] == [0, 8, 2]
+    type_into_cell(app, "G|G", "chs", "0, 8, 2")
+    assert app.model._channels()["G|G"]["chs"] == [0, 8, 2]
     assert "0, 8, 2" in draw(app).strings
 
 
@@ -364,20 +369,21 @@ def test_the_ptu_reading_section_lists_its_fields(app):
 # -- Send to MLE and the pattern export ----------------------------------------------------------------------------------------------- #
 
 
-def test_send_to_mle_before_a_result_then_with_a_receiver_as_the_qt_tool_does(measurement, qt):
+def test_send_to_mle_before_a_result_then_with_a_receiver(measurement):
     received = []
     window = create_app(
         mle_receiver=lambda patterns: (received.append(sorted(patterns)), len(patterns))[1]
     )
     try:
         press(window, "send_to_mle")
-        assert window.controller.status == qt["early"] == "Compute the IRF and background first."
+        assert window.controller.status == "Compute the IRF and background first."
         assert "Compute the IRF and background first." in shown(window)
         load(window, measurement)
         compute(window)
         press(window, "send_to_mle")
-        assert window.controller.status == qt["sent"]
-        assert received == [qt["received"]] and qt["sent"] in shown(window)
+        sent = "Sent IRF + background to MLE for 2 detector(s)."
+        assert window.controller.status == sent
+        assert received == [["G|G", "R|G"]] and sent in shown(window)
     finally:
         window.close()
 
@@ -407,7 +413,7 @@ def test_export_mle_patterns_needs_a_result_then_writes_the_npz_with_every_patte
     click(app, text_rect(draw(app), "Save"))
     out = tmp_path / "mine.npz"
     with np.load(out) as data:
-        assert {"green/irf", "green/bg", "red/irf", "red/bg"} <= set(data.files)
+        assert {"G|G/irf", "G|G/bg", "R|G/irf", "R|G/bg"} <= set(data.files)
         for name in app.model.mle_patterns():
             assert np.allclose(data[f"{name}/irf"], app.model.mle_patterns()[name]["irf"])
     assert "MLE patterns exported:" in shown(app) and "Cancel" not in draw(app).strings
@@ -481,12 +487,12 @@ def test_a_click_on_a_row_and_on_the_headers_sorts_and_changes_no_result(app, me
     load(app, measurement)
     compute(app)
     before = {r["detector"]: r["background_khz"] for r in app.model.results_rows()}
-    click(app, text_rect(draw(app), "green"))
+    click(app, text_rect(draw(app), "G|G"))
     for _ in range(2):  # a header click sorts, again flips
         header = [t[:4] for t in draw(app).texts if "Backgr" in t[5]][0]
         click(app, header)
     assert before == {r["detector"]: r["background_khz"] for r in app.model.results_rows()}
-    assert {"green", "red"} <= set(draw(app).strings)
+    assert {"G|G", "R|G"} <= set(draw(app).strings)
 
 
 def tick_labels(painter):
@@ -617,6 +623,50 @@ def test_the_flow_works_in_the_small_window_too(app, measurement):
     assert app.model.baseline_quantile == 0.3
     click(app, rect(app, "irf_bg_run"), SMALL)
     settle(app, SMALL)
-    assert app.model.has_results() and {"green", "red"} <= set(draw(app, SMALL).strings)
+    assert app.model.has_results() and {"G|G", "R|G"} <= set(draw(app, SMALL).strings)
     press_text(app, "Clear files", SMALL)  # the Input section's own control fits the small window
     assert app.model.files == [] and not app.model.has_results()
+
+
+# -- the guide's targets, both window sizes, no Qt, tooltips ------------------------------------------------------------ #
+
+
+def test_every_guide_target_is_drawn_in_the_small_window(app, measurement):
+    give(app, measurement)
+    draw(app, SMALL)
+    tour = app.irf_gui.tour
+    targets = {tour._target_key(s.get("target")) for s in tour.steps} - {""}
+    compute(app, SMALL)
+    drawn = set(app.item_rects) | set(app.irf_gui.form_state.rects)  # buttons and the spec's fields
+    assert targets and targets <= drawn, targets - drawn
+
+
+@pytest.mark.parametrize("size", [SIZE, SMALL])
+def test_draws_empty_and_populated(app, measurement, size):
+    assert "Min photons/burst" in [t.strip() for t in draw(app, size).strings]
+    give(app, measurement)
+    compute(app, size)
+    strings = draw(app, size).strings
+    assert "IRF (non-burst scatter)" in strings
+    assert {"Detector", "Background (kHz)", "Prompt (ns)", "Non-burst", "Burst"} <= set(strings)
+    rows = app.model.results_rows()
+    assert rows and all(
+        f"{r['background_khz']:.3f}" in strings and r["detector"] in strings for r in rows
+    )
+
+
+def test_importing_and_drawing_the_app_pulls_in_no_qt():
+    from test.gui.emtk_port_parity import qt_free
+
+    result = qt_free("burst_irf_bg")
+    assert result["ok"], result["output"]
+
+
+def test_every_control_has_a_tooltip():
+    from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory
+
+    window = build_emtk_app("burst_irf_bg")
+    try:
+        assert emtk_inventory(window)["controls_without_tooltip"] == []
+    finally:
+        window.close()

@@ -1,4 +1,4 @@
-"""Hyperparameter optimisation of the burst-MLE settings (the wizard's "Opt"), Qt-free.
+"""Hyperparameter optimisation of the burst-MLE settings ("Opt").
 
 The tunables are the settings that shape how the IRF and the decay meet: the integer and sub-bin shifts of the
 perpendicular IRF, the IRF window and the IRF thresholds. Each trial writes the settings, refits the current decay

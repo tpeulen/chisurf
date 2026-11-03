@@ -1,4 +1,4 @@
-"""The emtk burst-MLE app over :class:`MleViewModel` (cards ML2 to ML5): no Qt wizard behind it.
+"""The emtk burst-MLE app over :class:`MleViewModel` (cards ML2 to ML5).
 
 Files, detector window, IRF settings and the fit-parameter table are the spec ``mle_native.view.json`` (the files and the
 parameters as ``data_table`` sections); the detector definition is the shared one-page detector editor; the decay fit,

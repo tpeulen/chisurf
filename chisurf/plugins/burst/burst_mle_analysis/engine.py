@@ -1,11 +1,11 @@
-"""The Qt-free engine of the burst-MLE lifetime analysis (cards ML0 and ML1).
+"""The engine of the burst-MLE lifetime analysis (cards ML0 and ML1).
 
-What the (retired) Qt wizard did with its widgets is here as functions of explicit inputs and a session object that
+The steps of the analysis are functions of explicit inputs and a session object that
 holds the state those widgets held (detectors, burst files, the micro-time window, the IRF / background patterns, the
-fit settings). ``tests/test_mle_engine.py`` compares the session with the numbers the wizard gave on the
-in-repository BH sample (``tests/qt_reference.json``).
+fit settings). ``tests/test_mle_engine.py`` checks the session on the in-repository BH sample against what each
+number must be by construction.
 
-No Qt and no emtk are imported here.
+No GUI toolkit is imported here.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ from .interpolate import interpolate_shift
 
 
 # --------------------------------------------------------------------------------------------------------------------
-# pure steps (the wizard calls these)
+# pure steps (the session composes these)
 # --------------------------------------------------------------------------------------------------------------------
 def _is_container(path: Any) -> bool:
     """Whether *path* names a ``.pto`` (or a run in one) rather than a ``.bur`` file."""
@@ -201,7 +201,7 @@ def vv_vh_histogram(
     apply_vh_shift: bool = True,
     cut: bool = True,
 ) -> np.ndarray:
-    """The VV | VH micro-time histogram of *tttr* (one row of the wizard's ``make_vv_vh``).
+    """The VV | VH micro-time histogram of *tttr*.
 
     *cut* zeroes everything outside the fit window and below the thresholds -- what is fitted;
     ``False`` keeps every channel -- what is shown."""
@@ -273,7 +273,7 @@ def process_irf(
     threshold_vv: float = -1.0,
     threshold_vh: float = -1.0,
 ) -> np.ndarray:
-    """The IRF as the fit sees it: VH rolled, sub-bin shifted, windowed and thresholded (the wizard's ``irf``)."""
+    """The IRF as the fit sees it: VH rolled, sub-bin shifted, windowed and thresholded."""
     if arr is None:
         length = max(2, (micro_time_range[1] // binning) * 2)
         arr = np.zeros(length, dtype=np.float64)
@@ -680,14 +680,14 @@ IRF_MODELS = [
     ("experimental", "Experimental"),
 ]
 
-#: The binnings the detector page offers (the Qt combo's items).
+#: The binnings the detector page offers.
 BINNING_CHOICES = [1, 2, 4, 8, 16, 32, 64, 128, 256]
 
 
 def read_burst_analysis(
     paris_path: Path, pattern: str = "**/*.bur"
 ) -> tuple[Any, dict[str, Path], dict | None]:
-    """Read every ``.bur`` under *paris_path* into one burst table (the wizard's ``read_burst_analysis``).
+    """Read every ``.bur`` under *paris_path* into one burst table.
 
     Returns the table (tagged with ``burst_file``), the raw-file stem -> path map (raw files sit beside the analysis
     folder) and the ``setup_info`` of ``Info/photon_selection_parameters.json`` when it has one.
@@ -1019,7 +1019,7 @@ class LazyTTTRs(collections.abc.MutableMapping):
 
 @dataclass
 class MleSettings:
-    """Everything the fit and the displayed IRF depend on (the wizard's spin boxes and check boxes)."""
+    """Everything the fit and the displayed IRF depend on (one per detector)."""
 
     model: str = "fit23"
     model_values: dict[str, dict[str, float]] = field(default_factory=dict)
@@ -1115,7 +1115,7 @@ class FitOutcome:
 
 @dataclass
 class MleSession:
-    """Detectors, burst files, patterns and settings of a burst-MLE analysis; the wizard's state without Qt."""
+    """Detectors, burst files, patterns and settings of a burst-MLE analysis."""
 
     detectors: dict = field(default_factory=dict)
     definition: dict = field(default_factory=dict)
@@ -1258,7 +1258,7 @@ class MleSession:
         return effective_timing_ns(tttr, binning, self.definition.get("tttr_reading") or {})
 
     def add_burst_files(self, paths: collections.abc.Sequence[str | Path]) -> None:
-        """Add ``.bur`` tables. As in the wizard, the analysis folder of the first file is read whole: every ``.bur``
+        """Add ``.bur`` tables. The analysis folder of the first file is read whole: every ``.bur``
         under it (``<analysis>/<ending>/<stem>.bur``) becomes rows of the burst table."""
         for p in map(Path, paths):
             if p not in self.bur_files:
@@ -1510,7 +1510,12 @@ class MleSession:
         )
 
     def extract_irf_background(self) -> int:
-        """IRF and background from the photons outside the bursts, at the current binning; returns the detectors done."""
+        """IRF and background from the photons outside the bursts, at the current binning; returns the detectors done.
+
+        A detector with a measured IRF keeps it. One with too few photons outside the bursts to
+        show a prompt (:data:`MIN_IRF_COUNTS` in its gate) gets the blind estimate from its burst
+        decay (:meth:`blind_irf`), the last resort.
+        """
         from chisurf.core.fluorescence.burst import extract_mle_irf_background
 
         tttr = self.current_tttr()
@@ -1530,12 +1535,68 @@ class MleSession:
         for det, pat in patterns.items():
             if det:
                 if not self.irf_files.get(det):
-                    self.irf_np[det] = np.asarray(pat["irf"], dtype=float)
-                    self.irf_source[det] = f"photons outside the bursts ({label})"
+                    irf = np.asarray(pat["irf"], dtype=float)
+                    if self._background_prompt_photons(tttr, det, ~in_burst) >= MIN_IRF_COUNTS:
+                        self.irf_np[det] = irf
+                        self.irf_source[det] = f"photons outside the bursts ({label})"
+                    else:  # too few to show a prompt: the last resort, the decay itself
+                        self.irf_np[det] = self.blind_irf(det)
+                        self.irf_source[det] = "the burst decay (blind estimate, skewed Gaussian)"
                 if not self.bg_files.get(det):
                     self.bg_np[det] = np.asarray(pat["bg"], dtype=float)
                 n += 1
         return n
+
+    def _background_prompt_photons(self, tttr: Any, det: str, outside: np.ndarray) -> int:
+        """Photons outside the bursts on *det*'s channels and in its gate: what the background
+        estimate of its IRF stands on."""
+        from tttrlib import micro_time_mask
+
+        info = self.detectors[det]
+        sel = outside & channel_mask(np.asarray(tttr.routing_channels), info.get("chs", []))
+        gates = info.get("micro_time_ranges")
+        if gates:
+            sel &= micro_time_mask(np.asarray(tttr.micro_times), gates)
+        return int(sel.sum())
+
+    def blind_irf(self, det: str) -> np.ndarray:
+        """The IRF of *det* estimated from the burst decay alone, the last resort.
+
+        Blind estimation (truncated exponential fit + Richardson-Lucy deconvolution, as the IRF
+        Estimation tool does it: :class:`~chisurf.core.fluorescence.tcspc.IRFEstimator`) on each
+        polarisation of the detector's burst photons in its gate. What a multi-exponential sample
+        leaves of its decay in that estimate is shed by fitting a skewed Gaussian to its prompt.
+        Each polarisation sums to one; zeros when the decay is empty.
+        """
+        from chisurf.core.fluorescence.burst.irf_bg import gaussian_prompt
+        from chisurf.core.fluorescence.tcspc import IRFEstimator
+
+        info = self.detectors[det]
+        tttr = self.current_tttr()
+        binning = max(1, int(self.settings.micro_time_binning))
+        photons = tttr[self.burst_index_array()]
+        row = vv_vh_histogram(
+            photons, info.get("chs", []), (0, 0), binning, normalize_counts=0, apply_vh_shift=False
+        )
+        half = row.size // 2
+        gates = [r for r in (info.get("micro_time_ranges") or []) if r and len(r) >= 2]
+        inside = np.ones(half, dtype=bool)
+        if gates:
+            inside[:] = False
+            for lo, hi in gates:
+                inside[int(lo) // binning : int(np.ceil(int(hi) / binning))] = True
+        parts = []
+        for decay in (row[:half], row[half:]):
+            decay = np.where(inside, decay, 0.0)
+            if decay.sum() <= 0:
+                parts.append(np.zeros(half))
+                continue
+            lo, hi = int(np.flatnonzero(inside)[0]), int(np.flatnonzero(inside)[-1]) + 1
+            estimate = np.zeros(half)
+            estimate[lo:hi] = np.clip(IRFEstimator(decay[lo:hi].reshape(-1, 1), dt=1.0).run()[:, 0], 0.0, None)
+            pulse = gaussian_prompt(estimate, 1.5)
+            parts.append(pulse / pulse.sum() if pulse.sum() > 0 else pulse)
+        return np.hstack(parts)
 
     # -- measured IRF / background files --------------------------------------------------------------------- #
     def _open_pattern_tttr(self, path: Path) -> Any:
@@ -1737,7 +1798,7 @@ class MleSession:
         raise ValueError(f"Unknown pattern kind {kind!r}: use 'irf' or 'bg'.")
 
     def auto_extract(self) -> None:
-        """One click: binning, IRF / background, fit window, fit (the wizard's ``auto_extract_irf_bg``)."""
+        """One click: binning, IRF / background, fit window, fit."""
         tttr = self.current_tttr()
         if tttr is None:
             self.status = "Load bursts first: no data to extract an IRF from"
@@ -1769,7 +1830,7 @@ class MleSession:
         return values, fixed
 
     def create_fit(self):
-        """The ``Fit2x`` of the current detector, IRF and background (the wizard's ``create_fit_instance``)."""
+        """The ``Fit2x`` of the current detector, IRF and background."""
         from chisurf.core.fluorescence.mle.fit2x import Fit2x, Fit2xModel, Fit2xSettings
 
         tttr = self.current_tttr()
@@ -1990,7 +2051,7 @@ class MleSession:
     def run_batch(
         self, progress=None, max_workers: int | None = None, should_stop=None
     ) -> list[dict]:
-        """Fit every burst of every loaded file and detector in worker processes (the wizard's ``process_bursts``).
+        """Fit every burst of every loaded file and detector in worker processes.
 
         The photon channels and micro times of each raw file go to the workers through shared memory; each worker
         returns one row per burst (``Tau (G|G)``, ``gamma (G|G)``, ...). Nothing is exported here: the rows are kept
@@ -2035,7 +2096,7 @@ class MleSession:
         for fname in dict.fromkeys(first_file.tolist()):
             mask = first_file == fname
             groups[fname] = list(zip(fp[mask].tolist(), lp[mask].tolist()))
-        # Per-photon H2MM states, when the batch is split by state (the wizard's ``_load_state_arrays``).
+        # Per-photon H2MM states, when the batch is split by state.
         state_arrays: dict[str, np.ndarray] = {}
         n_states = 0
         if self.split_by_state:
@@ -2208,7 +2269,7 @@ class MleSession:
         return {det: dataclasses.asdict(self.settings_of(det)) for det in self.detectors}
 
     def export_results(self, tick=None) -> list[Path]:
-        """Write the ``b?4`` tables of the last batch beside the burst folders (the wizard's export, without the dialogs)."""
+        """Write the ``b?4`` tables of the last batch beside the burst folders."""
         files_by_stem = self.batch_files_snapshot or self.measurement_files()
         rows = []
         for row in self.burst_results:

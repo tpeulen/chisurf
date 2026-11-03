@@ -6,7 +6,7 @@ a single-molecule measurement — the scatter and dark counts between molecules
 IRF/background patterns to the burst-MLE lifetime fit, so no separate scatter or
 buffer acquisition is needed.
 
-A Qt-free :class:`~.gui.view_model.IrfBackgroundViewModel` drives the detector
+A toolkit-free :class:`~.gui.view_model.IrfBackgroundViewModel` drives the detector
 channel-definition page, the file list, the IRF plot and the results table laid
 out from ``gui/irf_bg.view.json`` and drawn by the native emtk app in
 :mod:`.gui.app`. It is aggregated into the ``burst_analysis`` workflow hub

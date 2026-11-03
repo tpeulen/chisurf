@@ -1,10 +1,9 @@
-"""Split by H2MM state in the Qt-free engine (what the native Burst Analysis step 8 runs).
+"""Split by H2MM state in the engine (what the native Burst Analysis step 8 runs).
 
 The H2MM photon table is written here for the in-repository BH sample: within every burst of ``m000`` the first half
 of the photons is state 0 and the second half state 1. ``MleSession.run_batch`` with ``split_by_state`` must then give
 ``Tau S0 (G|G)`` / ``Tau S1 (G|G)`` beside ``Tau (G|G)``, a pooled lifetime per state and detector, and write
-``Info/state_lifetimes.csv`` beside the analysis. (The Qt wizard's state methods delegated to the same
-``state_split`` functions; the wizard is retired.)
+``Info/state_lifetimes.csv`` beside the analysis.
 """
 
 from __future__ import annotations

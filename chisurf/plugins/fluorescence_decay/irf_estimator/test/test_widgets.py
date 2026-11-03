@@ -1,4 +1,4 @@
-"""The native IRF estimator app builds with its controls (the Qt tool creation test, ported)."""
+"""The native IRF estimator app builds with its controls, disabled until a decay is loaded."""
 
 
 def test_irf_estimator_app_creation(tmp_path, monkeypatch):

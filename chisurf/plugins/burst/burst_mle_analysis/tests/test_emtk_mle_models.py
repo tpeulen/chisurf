@@ -1,8 +1,8 @@
-"""Fit-model selection, the model's parameter editor, the timing calibration and the demo in the Qt-free burst-MLE tool.
+"""Fit-model selection, the model's parameter editor, the timing calibration and the demo in the burst-MLE tool.
 
-These are the behaviours the retired Qt wizard's ``test/gui`` tests pinned (the registered fit models, a per-model
-parameter editor that remembers its edits, a saved LUT / clock reaching the photons and the fit timing, the demo
-starting from a clean slate), now stated against the view model, the engine session and the native app.
+The registered fit models, a per-model parameter editor that remembers its edits, a saved LUT / clock reaching the
+photons and the fit timing, the demo starting from a clean slate: stated against the view model, the engine session
+and the native app.
 """
 
 from __future__ import annotations
@@ -230,7 +230,7 @@ def test_auto_binning_uses_the_declared_choices_and_photon_counts():
 
     stream = tttrlib.TTTR(str(SOURCE), "SPC-130")
     everything = np.arange(len(stream))
-    choices = [1, 2, 4, 8, 16, 32, 64, 128]  # the Qt page offered these; the engine also offers 256
+    choices = [1, 2, 4, 8, 16, 32, 64, 128]  # and 256
     assert set(choices) <= set(engine.BINNING_CHOICES)
     pick = lambda target: engine.select_binning(  # noqa: E731
         stream, [8, 0, 3], everything, choices, target_counts_per_bin=target, irf_oversample=0

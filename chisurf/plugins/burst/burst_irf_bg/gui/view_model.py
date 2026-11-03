@@ -1,4 +1,4 @@
-"""Qt-free view-model backing the Burst IRF & Background tool.
+"""Toolkit-free view-model backing the Burst IRF & Background tool.
 
 :class:`IrfBackgroundViewModel` holds the dropped TTTR file list, the burst-search
 and baseline parameters, and the per-detector IRF/background results computed from
@@ -7,7 +7,7 @@ the **non-burst** photons via
 :func:`chisurf.core.fluorescence.burst.extract_mle_irf_background` (the vv_vh-
 stacked patterns the burst MLE consumes). Non-burst photons of several files are
 pooled per detector. The channel definition comes from the detector editor via an injected
-``channels_provider`` callable, keeping this model Qt-free and headlessly
+``channels_provider`` callable, keeping this model free of any GUI toolkit and headlessly
 testable. The emtk app (``gui.app``) owns the drawing.
 
 Mirrors :class:`chisurf.plugins.tttr.tttr_count_rate_analysis.gui.view_model.CountRateViewModel`.
@@ -32,7 +32,7 @@ _COLORS = ["#2ca02c", "#d62728", "#1f77b4", "#9467bd", "#ff7f0e", "#17becf"]
 
 
 class IrfBackgroundViewModel:
-    """State + logic for the Burst IRF & Background tool (no Qt)."""
+    """State + logic for the Burst IRF & Background tool (no GUI toolkit)."""
 
     def view_spec(self):
         """Resolve AutoForm's view spec from the authored ``irf_bg.view.json``."""

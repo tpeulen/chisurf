@@ -1,6 +1,6 @@
 """Layout of the IRF estimator at 1200x800 and 800x600, asserted on the recorded draw (after one real estimate).
 
-Defects the screenshots showed: parameter fields stretched across the dock without the spin arrows the Qt boxes have,
+Defects the screenshots showed: parameter fields stretched across the dock without spin arrows,
 toolbar buttons two per row and different widths at the two sizes, pictograms touching their captions, a long path
 wrapped mid-word.
 """

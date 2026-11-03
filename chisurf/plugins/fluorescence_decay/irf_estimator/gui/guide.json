@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour for blind IRF estimation. Steps target the view spec's controls by name and the Input section by the 'Load Decay' key (the app maps the spec names onto the Qt tour's names). Read by chisurf.gui.widgets.tools.guided_tour.",
+  "_comment": "Guided tour for blind IRF estimation. Steps target the view spec's controls by name and the Input section by the 'Load Decay' key (gui/app.py TOUR_KEYS maps the spec names onto these keys). Read by chisurf.gui.widgets.tools.guided_tour.",
   "steps": [
     {
       "title": "An IRF you did not measure",

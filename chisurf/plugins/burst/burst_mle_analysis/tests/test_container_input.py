@@ -173,7 +173,7 @@ def test_picking_a_run_in_the_input_section_fits_that_run(hermetic_env, containe
 
 
 def test_an_unchanged_request_is_not_fitted_again_and_restart_fits(model, monkeypatch):
-    """The reuse gate of the retired Qt wizard: same files + settings -> keep the rows."""
+    """The reuse gate: same files + settings -> keep the rows."""
 
     model.select_run(model.run_rows()[1])
     for det in model.session.detectors:
