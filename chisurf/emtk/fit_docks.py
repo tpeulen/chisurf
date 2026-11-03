@@ -119,14 +119,36 @@ def _results_under_sources(tree: _Rows, listed: list) -> _Rows:
     if not moved:
         return tree
     out = _Rows(r for r in tree if r not in moved)
-    for row in moved:
-        parent = result_of[str(row["uid"])]
-        row["parent"] = parent
-        at = next(i for i, r in enumerate(out) if str(r.get("uid")) == parent)
-        while at + 1 < len(out) and str(out[at + 1].get("parent")) == parent:
-            at += 1
-        out.insert(at + 1, row)
+    waiting = list(moved)
+    while waiting:  # a result of a result (a fusion of a run) waits until its parent is placed
+        placed = [r for r in waiting if any(str(o.get("uid")) == result_of[str(r["uid"])] for o in out)]
+        if not placed:  # a cycle cannot happen; never loop on one
+            out.extend(waiting)
+            break
+        for row in placed:
+            waiting.remove(row)
+            parent = result_of[str(row["uid"])]
+            row["parent"] = parent
+            at = next(i for i, r in enumerate(out) if str(r.get("uid")) == parent)
+            # after the parent and everything nested under it
+            inside = {parent}
+            while at + 1 < len(out) and str(out[at + 1].get("parent")) in inside:
+                at += 1
+                inside.add(str(out[at].get("uid")))
+            out.insert(at + 1, row)
     return out
+
+
+def _is_run_row(row: dict) -> bool:
+    """Whether *row* is a burst run of the project's analysis containers (its record is the
+    container, so removing it removes it there); a run of a dropped user file is not."""
+    from chisurf.core.fio.analysis_path import split_container_path
+    from chisurf.core.project.analysis import is_derived
+
+    address = str(row.get("address") or "")
+    if row.get("kind") != "bursts" or not address or not is_derived(address):
+        return False
+    return bool(split_container_path(address)[1])
 
 
 def _number(value: Any) -> float | None:
@@ -231,6 +253,11 @@ class DatasetsModel:
         self.selected: dict = {}
         #: Every selected dataset row (click, ctrl/shift-click): the table writes it, + Analysis reads it.
         self.selection: list = []
+        #: The unfolded rows (the table's ``expanded_attr``): a photon dataset opens when a result of
+        #: it arrives, so a new burst run is seen under its photons; the user folds it again.
+        self.expanded: set = set()
+        #: The results already shown once (each unfolds its parent only when it first arrives).
+        self.seen_results: set = set()
         self.datasets = _Rows()
         self.fits = _Rows()
         #: The kind the table is narrowed to (``""``: every kind), from the filter above it.
@@ -468,8 +495,18 @@ class DatasetsModel:
         """Remove every selected dataset (a member of a group removes its group)."""
         rows = self.selected_rows()
         if rows:
-            self.docks.remove_datasets([str(r["uid"]) for r in rows])
+            self._remove(rows)
             self.selected, self.selection = {}, []
+
+    def _remove(self, rows: list) -> None:
+        """Remove *rows*: a burst run of the project's analysis container is removed from the
+        container with the analyses derived from it (after a warning); the rest from the session."""
+        runs = [r for r in rows if _is_run_row(r)]
+        others = [str(r["uid"]) for r in rows if r not in runs]
+        if runs:
+            self.docks.remove_runs(runs, others)
+        else:
+            self.docks.remove_datasets(others)
 
     def open_in_items(self, record: Any = None) -> list:
         """The context menu's *Open in…* entries: one per tool that takes the selected rows
@@ -508,12 +545,17 @@ class DatasetsModel:
         """Delete on a row: the whole selection when the row is in it, else that row."""
         if not (isinstance(record, dict) and record.get("uid")):
             return
-        uid = str(record.get("parent") or record["uid"])
+        live = {str(r["uid"]): r for r in self.datasets}
+        parent = live.get(str(record.get("parent") or ""))
+        # only a group's member stands for its group; a result row is removed itself
+        row = parent if parent is not None and parent.get("group") else live.get(str(record["uid"]))
+        if row is None:
+            return
         rows = self.selected_rows()
-        if any(str(r["uid"]) == uid for r in rows):
+        if any(str(r["uid"]) == str(row["uid"]) for r in rows):
             self.remove_selected()
         else:
-            self.docks.remove_datasets([uid])
+            self._remove([row])
             self.selected = {}
 
 
@@ -1089,6 +1131,13 @@ class DataDocks:
                             }
                         )
                 tree = _results_under_sources(tree, listed)
+                # a result that just arrived (a burst run, a fusion) is shown: its parent unfolds
+                results = {str(d.get("uid", "")) for d in listed if d.get("result_of")}
+                for row in tree:
+                    uid = str(row.get("uid"))
+                    if uid in results and uid not in self.datasets.seen_results:
+                        self.datasets.expanded.add(str(row["parent"]))
+                        self.datasets.seen_results.add(uid)
                 tree.revision = self.datasets.datasets.revision + 1
                 self.datasets.datasets = tree
                 self._lengths = {}
@@ -1664,6 +1713,57 @@ class DataDocks:
         return self._start(
             tr("Removing the dataset…"), lambda: api.remove_datasets(dataset_uids=uids)
         )
+
+    def remove_runs(self, runs: list[dict], others: list[str] = ()) -> bool:
+        """Remove the run rows *runs* from their analysis containers, with every analysis derived
+        from them, after a warning that names those analyses; *others* (dataset uids) go with them.
+
+        A run of the project's analysis container is not a dataset of its own: the container is its
+        record, so a run that only left the workspace would come back with the next restore.
+        """
+        from chisurf.core.fio.analysis_path import run_path, split_container_path
+        from chisurf.core.project.analysis import remove_run, run_dependents
+
+        if not runs or self.session is None:
+            return False
+        names, dependents = [], []
+        for row in runs:
+            container, run = split_container_path(str(row.get("address") or ""))
+            names.append(f"{run} ({container.name})" if container is not None else run)
+            for other in run_dependents(row["address"]):
+                if run_path(container, other) not in {str(r.get("address")) for r in runs}:
+                    dependents.append(f"{other} ({container.name})")
+        message = tr("Remove {runs} from the project's analysis container?").format(
+            runs=", ".join(names)
+        )
+        if dependents:
+            message += "\n\n" + tr(
+                "These analyses were computed from it and are removed with it:\n{dependents}"
+            ).format(dependents="\n".join(f"• {d}" for d in dependents))
+        rows = [dict(r) for r in self.datasets.datasets]
+        api = self.session.api
+
+        def removal() -> Any:
+            gone: set[str] = set()
+            for row in runs:
+                gone.update(remove_run(row["address"]))
+            uids = list(others) + [
+                str(r["uid"]) for r in rows if str(r.get("address") or "") in gone
+            ]
+            return api.remove_datasets(dataset_uids=uids) if uids else {"ok": True}
+
+        def answered(yes: bool) -> None:
+            if yes:
+                self._start(tr("Removing the run…"), removal)
+
+        dialogs = getattr(getattr(self.shell, "project", None), "dialogs", None)
+        if dialogs is None:  # nothing can ask: a run is never removed unasked
+            self.status = tr("Cannot ask before removing a run; nothing was removed.")
+            return False
+        dialogs.confirm(
+            tr("Remove burst run"), message, answered, default=False, yes=tr("Remove"), no=tr("Cancel")
+        )
+        return True
 
     def group_datasets(self, indices: list[int]) -> bool:
         """Group the datasets at *indices* (``dataset.group``, as the Qt list's *Group*)."""
