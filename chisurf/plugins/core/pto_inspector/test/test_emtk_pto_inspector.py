@@ -1,4 +1,4 @@
-"""The native PTO inspector against the Qt tool: rows, details, payloads, actions, errors, drawing, no Qt.
+"""The PTO inspector app: rows, details, payloads, actions, errors, drawing, no Qt.
 
 Hermetic: the settings folder and the containers live in temporary folders (the container is built
 from a private copy of ``test/data/clsm/Leica_SP5.ptu`` by the plugin's own fixture); nothing reads or
@@ -7,7 +7,6 @@ writes ``~/.chisurf``, and no network is used (the MMFDB picker is stubbed).
 
 from __future__ import annotations
 
-import hashlib
 import json
 import shutil
 from pathlib import Path
@@ -68,10 +67,10 @@ def app(shared_container):
     a.close()
 
 
-# ── 1. numbers equal the container's and the Qt tool's ──────────────────
+# ── 1. numbers equal the container's ─────────────────────────────────────
 
 
-def test_rows_equal_the_container_and_the_qt_table(shared_container, app):
+def test_rows_equal_the_container(shared_container, app):
     # the container as the library reads it (not through the view model)
     with Measurement.open(shared_container, writable=False) as m:
         expected = {(o.name, o.kind) for o in m.artifacts()}
@@ -95,8 +94,7 @@ def test_rows_equal_the_container_and_the_qt_table(shared_container, app):
     ) == (32, "burst", "burst_selection", 1)
     assert by["lifetimes"]["parents"] == 2 and by["fcs"]["rows"] == 64
 
-    # the retired Qt table: headers Name, Kind, Operation, ... and one row per artifact, every cell the value
-    # the native table shows (both windows read one view model); the window opened on the last row
+    # one row per artifact with every column; the window opens on the last row
     keys = ["name", "kind", "operation", "grain", "rows", "size", "parents"]
     assert all(key in rows[0] for key in keys)
     assert app.model.selected.name == "fcs"
@@ -146,9 +144,8 @@ def test_selection_by_row_graph_node_and_double_click(app):
 # ── 2. every action and its error path ──────────────────────────────────
 
 
-def test_verify_says_what_the_qt_tool_says(shared_container, app):
+def test_verify_says_every_checksum_matches(shared_container, app):
     app.verify()
-    # the retired Qt tool showed ("Integrity", this text) in a message box
     assert app.notice == "Every recorded checksum matches the stored bytes."
     assert "Integrity" in app.model.summary_html()
 
@@ -181,17 +178,18 @@ def test_verify_with_nothing_open_reports_it():
         app.close()
 
 
-def test_export_equals_the_qt_tool_for_a_table_and_a_raw_payload(shared_container, app, tmp_path):
-    """Both exports are byte-identical (sha256) to what the retired Qt tool wrote for the same container."""
-    qt = json.loads((HERE / "qt_reference.json").read_text())
+def test_export_writes_the_planted_table_and_the_carried_file(shared_container, app, tmp_path):
+    """The CSV holds the burst table the fixture planted; the raw export is the instrument file itself."""
     for name, suffix in (("bursts", ".csv"), ("m.ptu", ".ptu")):
-        native_out = tmp_path / f"native_{name}{suffix}"
+        out = tmp_path / f"native_{name}{suffix}"
         app.model.select_uid(uid_of(app.model, name))
-        app.export_payload(native_out)
-        digest = hashlib.sha256(native_out.read_bytes()).hexdigest()
-        assert digest == qt[f"export_{name}"] and native_out.stat().st_size > 0
-        assert app.notice == f"Exported: {native_out}"
-    assert "First Photon" in (tmp_path / "native_bursts.csv").read_text().splitlines()[0]
+        app.export_payload(out)
+        assert out.stat().st_size > 0 and app.notice == f"Exported: {out}"
+    lines = (tmp_path / "native_bursts.csv").read_text().splitlines()
+    header = [h.strip() for h in lines[0].split(",")]
+    assert "First Photon" in header[0] and len(lines) == 1 + 32
+    first = [float(line.split(",")[0]) for line in lines[1:]]
+    np.testing.assert_array_equal(first, np.arange(32))
     assert (tmp_path / "native_m.ptu.ptu").read_bytes() == PTU.read_bytes()
 
 
@@ -216,7 +214,7 @@ def test_open_tool_picks_the_same_manifest_and_says_so_when_none_claims_it(share
             assert app.tools
         else:  # the carried instrument file has no operation
             assert app.tools == []
-    # the retired Qt tool said ("No tool for this step", ...) in a box; here the status line says it
+    # the status line says so
     assert app.open_tool() is None and app.notice == "No tool for this operation."
 
 
@@ -239,15 +237,13 @@ def test_open_tool_hands_the_file_to_a_ported_tool_and_reports_an_unported_one(
     )
 
 
-def test_a_broken_file_reports_what_the_qt_tool_reports(tmp_path):
+def test_a_broken_file_reports_it_cannot_be_opened(tmp_path):
     bad = tmp_path / "broken.pto"
     bad.write_bytes(b"not a pto")
     app = make_app()
     try:
         app.model.set_filename(str(bad))
-        assert app.model.status.startswith(
-            "Cannot open broken.pto: "
-        )  # the Qt status bar said the same
+        assert app.model.status.startswith("Cannot open broken.pto: ")
         assert app.model.inspection is None and app.artifacts.control.records == []
         strings = " ".join(draw(app).strings)
         assert "No container open" in strings and "not a PTO" in strings.replace("PTO.MFDB", "PTO")
@@ -462,7 +458,7 @@ def test_the_tour_waits_for_the_example_and_the_verify_press(
         app.close()
 
 
-def test_the_qt_tool_keeps_its_own_help():
+def test_the_help_documents_the_command_line_tool():
     assert "csg_pto_inspect" in (GUI / "help.md").read_text()
 
 

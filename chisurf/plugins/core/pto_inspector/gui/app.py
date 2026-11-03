@@ -697,7 +697,7 @@ def make_app():
 def receive_containers(app: PtoInspectorApp, payload: dict) -> None:
     """Hand-off receiver (manifest ``accepts`` ``containers``): open what ``payload["files"]``
     names -- a photon stream or burst run of a ``.pto`` opens that container; vendor photon files
-    are offered for packing into a new one (as the Qt tool offered dropped ones)."""
+    are offered for packing into a new one."""
     from chisurf.core.fio.address import container_of
     from chisurf.core.plugin.workspace_input import read_address
 

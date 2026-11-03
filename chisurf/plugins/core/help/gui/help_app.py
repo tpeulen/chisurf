@@ -863,7 +863,7 @@ class HelpModel:
     )
 
     def _build_home_content(self) -> str:
-        """The start page, built from the table of contents as the Qt help builds it."""
+        """The start page: the *Start here* pages, then one link per top section of the table of contents."""
         root = help_toc.repository_root()
         lines = [
             "# ChiSurf documentation",

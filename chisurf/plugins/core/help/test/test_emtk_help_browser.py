@@ -1,7 +1,7 @@
-"""The emtk help browser at parity with the Qt HelpWidget: start page, tree, breadcrumb, labels.
+"""The emtk help browser: start page, tree, breadcrumb, labels, settings, no Qt.
 
-The Qt facts are ``qt_reference.json``, recorded from the legacy ``HelpWidget`` and frozen as a rule
-over the docs tree (see ``QT`` below), so this file imports no Qt.
+The start page and the breadcrumb are a function of the docs tree, so the expected values are
+computed here from the table of contents (``expected_home_links`` / ``expected_breadcrumb``).
 """
 
 from __future__ import annotations
@@ -21,16 +21,8 @@ REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 PAGE = REPO / "docs" / "concepts" / "fret.md"
 EMOJI = re.compile("[\U0001f000-\U0001ffff☀-➿️]")
 
-#: The legacy Qt ``HelpWidget``'s facts, recorded from the live widget (offscreen) and frozen.
-#: Its start page and breadcrumb are a *function of the docs tree*, so what is frozen is the rule:
-#: ``qt_home_links`` / ``qt_breadcrumb`` below restate it Qt-free, and the record holds the live
-#: widget's output next to the rule's output on the same tree (``rule_*``), which were equal at
-#: ``_recorded.source_commit``. A docs edit then moves both sides together instead of going stale.
-QT = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
-
-
-def qt_home_links(toc, root: Path) -> list[tuple[str, str]]:
-    """The Qt start page's links ``(file name, title)``: *Start here*, then one per top section.
+def expected_home_links(toc, root: Path) -> list[tuple[str, str]]:
+    """The start page's links ``(file name, title)``: *Start here*, then one per top section.
 
     Parameters
     ----------
@@ -44,10 +36,11 @@ def qt_home_links(toc, root: Path) -> list[tuple[str, str]]:
     list of tuple of str
     """
     from chisurf.plugins.core.help.api import toc as help_toc
+    from chisurf.plugins.core.help.gui.help_app import HelpModel
 
     links = []
-    for relative, _description in QT["start_here"]:
-        path = root / relative
+    for stem, _description in HelpModel.START_HERE:
+        path = root / f"{stem}.md"
         if path.is_file():
             links.append((path.name, help_toc.page_title(path) or path.stem))
     for section in toc.children if toc else []:
@@ -57,8 +50,8 @@ def qt_home_links(toc, root: Path) -> list[tuple[str, str]]:
     return links
 
 
-def qt_breadcrumb(toc, page: Path) -> str:
-    """The Qt breadcrumb of *page*: the titles of the sections above it, joined by `` › ``.
+def expected_breadcrumb(toc, page: Path) -> str:
+    """The breadcrumb of *page*: the titles of the sections above it, joined by `` › ``.
 
     Parameters
     ----------
@@ -102,35 +95,24 @@ def _draw(app, size=(1200, 800), times=3):
     return painter
 
 
-# 0. the record: the live Qt widget's output was the rule's output on the same docs tree
-def test_the_recorded_qt_facts_are_the_rule():
-    assert [tuple(x) for x in QT["home_links"]] == [tuple(x) for x in QT["rule_home_links"]]
-    assert QT["breadcrumb"] == QT["rule_breadcrumb"] and QT["breadcrumb"]
-    from chisurf.plugins.core.help.gui.help_app import HelpModel
-
-    assert [(f"{stem}.md", text) for stem, text in HelpModel.START_HERE] == [
-        tuple(x) for x in QT["start_here"]
-    ]
-
-
-# 1. the start page lists the same pages, with the same titles, as the Qt start page
-def test_start_page_matches_the_qt_start_page(app):
+# 1. the start page lists Start here, then one link per top section of the docs tree
+def test_start_page_follows_the_docs_tree(app):
     from chisurf.plugins.core.help.api import toc as help_toc
 
     home = app.model._build_home_content()
     ours = [
         (Path(target).name, title) for title, target in re.findall(r"\[([^\]]+)\]\(([^)]+)\)", home)
     ]
-    assert ours == qt_home_links(app.model.toc, help_toc.repository_root())
+    assert ours == expected_home_links(app.model.toc, help_toc.repository_root())
     assert "Welcome to ChiSurf Documentation" not in home  # the earlier hard-coded page
 
 
-# 1b. the breadcrumb of an open page is the Qt one
-def test_breadcrumb_matches_the_qt_window(app):
+# 1b. the breadcrumb of an open page names the sections above it
+def test_breadcrumb_names_the_sections_above_the_page(app):
     app.model.open_page(PAGE)
     painter = _draw(app)
     crumb = " › ".join(app.model.breadcrumb())
-    assert crumb and crumb == qt_breadcrumb(app.model.toc, PAGE)
+    assert crumb and crumb == expected_breadcrumb(app.model.toc, PAGE)
     assert crumb in painter.strings
 
 
@@ -229,7 +211,7 @@ def test_settings_round_trip(app):
         other.close()
 
 
-# 2c. Developer docs (Qt authoring toolbar) adds the development section to the tree
+# 2c. Developer docs (authoring mode) adds the development section to the tree
 def test_developer_docs_toggle_lists_development_pages(app):
     titles = [n.title for n in app.model.toc.children]
     assert "Developing ChiSurf" not in titles
