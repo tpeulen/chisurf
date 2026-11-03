@@ -1,4 +1,4 @@
-"""Qt-free model of the emtk pixel-wise MLE window (the analysis is :class:`~.view_model.PixelMleViewModel`, shared with the Qt tool)."""
+"""Qt-free model of the emtk pixel-wise MLE window (the analysis is :class:`~.view_model.PixelMleViewModel`)."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ class PixelMleModel(EmtkModelMixin, PixelMleViewModel):
         self._busy_text = ""
         self.has_host = False
 
-    # the Qt status bar is the view model's ``status_text``
+    # the status line is the view model's ``status_text``
     @property
     def status_line(self) -> str:
         return self.status_text
@@ -150,7 +150,7 @@ class PixelMleModel(EmtkModelMixin, PixelMleViewModel):
 
     # -- running -------------------------------------------------------------------------- #
     def request_run(self) -> None:
-        """Fit every selected file in the background (the Qt Run)."""
+        """Fit every selected file in the background."""
         ok, reason = self.can_run()
         if not ok:
             self.status_text = reason
@@ -160,7 +160,7 @@ class PixelMleModel(EmtkModelMixin, PixelMleViewModel):
         self.run_job("fit_job")
 
     def fit_job(self) -> None:
-        """The worker body: the blocking ``run`` of the Qt tool."""
+        """The worker body: the view model's blocking ``run``."""
         self.run()
         self.notify("run")
 

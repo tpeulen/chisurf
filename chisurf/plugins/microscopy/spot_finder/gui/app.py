@@ -376,7 +376,7 @@ class SpotFinderApp(ImApp):
             for key in self.model.selection_columns()
         ]
 
-    # the input fields the Qt shared setup page carried, as attributes of the app for the spec
+    # the shared setup input fields, as attributes of the app for the spec
     @property
     def channel_field(self):
         return self.channel_text

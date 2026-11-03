@@ -1,8 +1,8 @@
-"""The native pixel-wise MLE tool against the Qt tool it replaces: numbers, every control with a real-input click test, the layout at two sizes.
+"""The pixel-wise MLE tool: numbers, every control with a real-input click test, the layout at two sizes.
 
 Hermetic: settings, MMFDB and its database in a temporary folder, a temporary HOME, the photon streams written into a temporary folder from a
-seed, no network (the database picker gets a stub client); a last test asserts the real ``~/.chisurf`` is untouched. References: the Qt tool's own view
-model run on the same files (the per-pixel fit itself is the plugin's core, unchanged).
+seed, no network (the database picker gets a stub client); a last test asserts the real ``~/.chisurf`` is untouched. Reference: the lifetimes
+planted in the stream (1 ns on the left half, 3 ns on the right) with an IRF at the excitation bin.
 """
 
 from __future__ import annotations
@@ -26,7 +26,6 @@ from chisurf.plugins.microscopy.imaging_emtk.testing import (
 from chisurf.plugins.microscopy.img_pixel_mle import core as mle_core
 from chisurf.plugins.microscopy.img_pixel_mle.gui.app import PixelMleApp, make_app
 from chisurf.plugins.microscopy.img_pixel_mle.gui.model import PixelMleModel
-from chisurf.plugins.microscopy.img_pixel_mle.gui.view_model import PixelMleViewModel
 from test.gui.emtk_layout_checks import (
     SIZES,
     assert_disjoint,
@@ -39,7 +38,6 @@ from test.gui.emtk_layout_checks import (
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "pixel_mle_emtk.view.json").read_text(encoding="utf-8"))
-QT_SPEC = json.loads((PLUGIN / "gui" / "pixel_mle.view.json").read_text(encoding="utf-8"))
 BIG = (1200, 800)
 _REAL_BEFORE = data.real_settings_state()
 
@@ -108,27 +106,19 @@ def fitted(app, drv, files, **settings):
     return m
 
 
-def qt_run(files, **settings):
-    qt = PixelMleViewModel()
-    qt.files, qt.irf_files = [str(files[0])], [str(files[1])]
-    for k, v in {**FIT, **settings}.items():
-        setattr(qt, k, v)
-    qt.run()
-    return qt
-
-
 # ── 1. the numbers ──────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_the_fitted_maps_and_tables_equal_the_qt_tool_on_the_same_files(app, drv, files):
+def test_the_fitted_lifetimes_are_the_ones_planted_in_each_half(app, drv, files):
+    """About 3 photons per pixel and frame: the per-pixel estimate scatters, its median lies near the planted lifetime."""
     m = fitted(app, drv, files)
-    qt = qt_run(files)
-    assert m.result_names == qt.result_names == ["scan"] and m.status_text == qt.status_text == ""
-    np.testing.assert_array_equal(m.tau_map_image(), qt.tau_map_image())
-    r, q = m.results[0], qt.results[0]
-    assert r.n_pixels_fit == q.n_pixels_fit and r.n_pixels_fit > 100
-    np.testing.assert_array_equal(r.tau, q.tau)
-    assert m.info_html() == qt.info_html() and m.summary_text.startswith("1 file(s),")
+    assert m.result_names == ["scan"] and m.status_text == ""
+    assert m.results[0].n_pixels_fit > 100 and m.summary_text.startswith("1 file(s),")
+    tau = m.tau_map_image()
+    left, right = np.nanmedian(tau[..., :16]), np.nanmedian(tau[..., 16:])
+    assert left == pytest.approx(data.TAU_LEFT_NS, rel=0.25)
+    assert right == pytest.approx(data.TAU_RIGHT_NS, rel=0.25)
+    assert right > 2 * left
 
 
 def test_the_csv_is_written_beside_the_input_and_the_fitted_lifetimes_are_physical(app, drv, files):
@@ -160,10 +150,39 @@ def test_the_csv_is_written_beside_the_input_and_the_fitted_lifetimes_are_physic
     ],
     ids=lambda c: "+".join(sorted(c)),
 )
-def test_every_setting_gives_what_the_qt_tool_gives_with_the_same_setting(app, drv, files, changes):
-    m = fitted(app, drv, files, **changes)
-    qt = qt_run(files, **changes)
-    np.testing.assert_allclose(m.tau_map_image(), qt.tau_map_image(), rtol=1e-12, equal_nan=True)
+def test_every_setting_reaches_the_fit_and_the_engines_agree(app, drv, files, changes, monkeypatch):
+    """Each setting set changes the lifetime map; the loop engine gives the map of the default (fast) one.
+
+    A flat background leaves the map of a fit with no scatter fraction as it was: it is checked to reach the core
+    fit as a flat pattern holding the typed counts per channel.
+    """
+    from chisurf.plugins.microscopy.img_pixel_mle import core as core_pkg
+
+    seen = []
+    original = core_pkg.PixelMleSettings
+
+    def recording(*args, **kwargs):
+        seen.append(kwargs.get("background"))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(core_pkg, "PixelMleSettings", recording)
+    m = fitted(app, drv, files)
+    before = m.tau_map_image().copy()
+    for k, v in changes.items():
+        setattr(m, k, v)
+    drv.click("request_run")
+    drv.settle(timeout=300)
+    assert not app.job.error, app.job.error
+    same = np.allclose(m.tau_map_image(), before, equal_nan=True)
+    if changes.get("use_bg"):
+        assert seen[0] is None
+        window = FIT["micro_time_stop"] - FIT["micro_time_start"]
+        pattern = np.asarray(seen[-1])
+        assert pattern.shape == (2 * window,)
+        assert pattern[:window].sum() == pytest.approx(changes["bg_p"])
+        assert pattern[window:].sum() == pytest.approx(changes["bg_s"])
+    else:
+        assert same if changes.get("engine") == "loop" else not same
 
 
 def test_a_failing_run_names_the_file_and_the_reason(app, drv, files, tmp_path):
@@ -264,7 +283,7 @@ def test_every_typed_setting_is_taken_on_enter(app, drv, attr, text, expected):
     assert getattr(app.model, attr) == expected
 
 
-def test_typed_numbers_are_clamped_to_the_qt_ranges(app, drv):
+def test_typed_numbers_are_clamped_to_the_field_ranges(app, drv):
     drv.type_into("min_photons", "99999999")
     assert app.model.min_photons == 10000000
     drv.type_into("micro_time_binning", "0")
@@ -581,7 +600,7 @@ def test_the_imaging_hub_drives_the_tool(files):
     app.close()
 
 
-# ── 7. static: spec, inventory, Qt-free, tooltips, layout ──────────────────────────────────────────────── #
+# ── 7. static: spec, Qt-free, tooltips, layout ──────────────────────────────────────────────── #
 
 
 def _labels(sections):
@@ -598,8 +617,8 @@ def _labels(sections):
     }
 
 
-def test_every_qt_control_has_an_emtk_equivalent():
-    qt, emtk = _labels(QT_SPEC["sections"]), _labels(EMTK_SPEC["sections"])
+def test_the_spec_has_the_files_the_window_the_settings_and_run():
+    emtk = _labels(EMTK_SPEC["sections"])
     assert {
         "CLSM imaging files",
         "IRF file",
@@ -609,22 +628,15 @@ def test_every_qt_control_has_an_emtk_equivalent():
         "Min photons",
         "Region",
         "Threshold",
+        "Subtract",
         "Run",
         "Engine",
         "Threads",
-        "Subtract",
         "2I* (P+2S)",
         "BIFL scatter",
-    } <= qt
-    assert qt - {"Lifetime map"} <= emtk | {
-        "Parallel channels",
-        "Perpendicular channels",
-        "Shift",
-        "bg",
-    }, sorted(qt - emtk)
-    assert {"Parallel channels (∥)", "Perpendicular channels (⊥)"} <= {
-        s.get("label") for s in walk(EMTK_SPEC["sections"])
-    }
+        "Parallel channels (∥)",
+        "Perpendicular channels (⊥)",
+    } <= emtk, sorted(emtk)
 
 
 def test_every_spec_attribute_and_action_exists_on_the_model():

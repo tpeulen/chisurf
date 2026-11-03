@@ -20,7 +20,7 @@ class EmtkModelMixin:
     busy : bool
         A worker is running: the form is greyed and the actions are disabled.
     status_line : str
-        The message shown under the window's Help / Guide row (what the Qt status bar showed).
+        The message shown under the window's Help / Guide row.
     folder : str
         Folder of the last file chosen, where the next dialog opens.
     """

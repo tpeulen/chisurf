@@ -333,7 +333,7 @@ class ClsmApp(TourTarget, ImApp):
         self.file_window.show()
 
     def _group_forms(self):
-        """(title, target group, spec) of the Acquisition and Brush & Decay panels, one spec per target of the Qt spec."""
+        """(title, target group, spec) of the Acquisition and Brush & Decay panels, one spec per target of the view spec."""
         panels = self.sections[1:3]
         out = []
         for panel in panels:

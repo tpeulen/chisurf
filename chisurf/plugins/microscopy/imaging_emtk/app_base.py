@@ -460,7 +460,7 @@ class ImagingToolApp(ImApp):
             self._round_to_decimals(panel)
 
     def _round_to_decimals(self, panel: dict) -> None:
-        """A typed number is kept to the decimals the field shows, as the Qt spin box did (the value is the one on screen)."""
+        """A typed number is kept to the decimals the field shows (the value is the one on screen)."""
         stack = [panel]
         while stack:
             section = stack.pop()
@@ -484,7 +484,7 @@ class ImagingToolApp(ImApp):
     CANCELLABLE = False
 
     def _toolbar(self) -> None:
-        """Help and Guide (and Cancel), then the status line (what the Qt status bar showed)."""
+        """Help and Guide (and Cancel), then the status line."""
         if action_button("help"):
             self.help_window.show()
         self.item_rects["help"] = im.get_item_rect()

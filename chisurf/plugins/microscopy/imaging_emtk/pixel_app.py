@@ -135,7 +135,7 @@ class PixelToolApp(DetectorEditorMixin, PlaneMixin, ImagingToolApp):
             self.apply_pipeline_context(pending["pipeline"])
 
     def next_step(self) -> None:
-        """Remember the source and the HDF5 and advance the pipeline (the Qt ``Next``)."""
+        """Remember the source and the HDF5 and advance the pipeline."""
         if self.coordinator is None:
             self.model.status_line = "Open this tool inside the Imaging Tools pipeline to use Next."
             return
@@ -280,7 +280,7 @@ class PixelToolApp(DetectorEditorMixin, PlaneMixin, ImagingToolApp):
         return super().key(key, text, modifiers)
 
     def close(self) -> None:
-        """A computed session flushes its standard HDF5 and container (the Qt tool's contract); ndX closes."""
+        """A computed session flushes its standard HDF5 and container; ndX closes."""
         try:
             self.model.flush_to_hdf5()
         except Exception:

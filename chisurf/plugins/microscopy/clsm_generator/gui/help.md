@@ -8,7 +8,6 @@ order shown in the lifetime list. Remove or clear maps to change the routing ord
 Expand **Simulation** to edit physical pixel size, dwell time, TAC channel count
 and width, Gaussian IRF centre and width, peak brightness, and intensity/lifetime
 quantization levels. The excitation period is channel count × channel width.
-These are the same settings and simulation engine as the original Qt tool.
 
 **Generate** runs off the UI thread. Browse input brightness, detector lifetimes
 and the reconstructed intensity with the Map selector. Colormap, levels and gamma

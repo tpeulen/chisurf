@@ -1,5 +1,5 @@
 {
-  "_comment": "Pixel-wise MLE, drawn by emtk. The Qt tool's AutoForm spec is pixel_mle.view.json.",
+  "_comment": "Pixel-wise MLE, drawn by emtk.",
   "window": {"width": 1100, "height": 720},
   "sections": [
     {

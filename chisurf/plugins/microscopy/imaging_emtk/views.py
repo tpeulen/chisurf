@@ -16,7 +16,7 @@ from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.image_canvas import ImageCanvas
 
-#: The playback speed field: a spin box as the Qt movie bar had (1 to 120 fps).
+#: The playback speed field: a spin box, 1 to 120 fps.
 FPS_SECTION = {
     "type": "value",
     "attr": "fps",
@@ -166,7 +166,7 @@ class ImagePanel:
     key : str
         Unique widget id.
     movie : bool
-        Draw Play / Loop / Stop / fps controls for a ``(frame, y, x)`` stack, as the Qt image dock does.
+        Draw Play / Loop / Stop / fps controls for a ``(frame, y, x)`` stack.
     fps : int
         Initial playback speed.
     clock : callable
@@ -301,7 +301,7 @@ class ImagePanel:
 
 
 def arrow_colour(magnitude: float, largest: float) -> tuple:
-    """Cool for the slowest arrow, warm for the fastest (the Qt quiver's ramp)."""
+    """Cool for the slowest arrow, warm for the fastest."""
     fraction = 0.0 if largest <= 0 else min(1.0, magnitude / largest)
     return (
         int(255 * min(1.0, 0.35 + 0.65 * fraction)),
@@ -396,7 +396,7 @@ class QuiverPanel:
 
     @staticmethod
     def _caption(drawn: int, total: int, speeds: list, scale: float, units: str) -> str:
-        """What the Qt section said under the field: how many arrows, how fast, at what display scale."""
+        """The line under the field: how many arrows, how fast, at what display scale."""
         if not drawn:
             return "No arrows \u2014 nothing passed the quality threshold, or the field is empty."
         unit = f" {units}" if units else ""

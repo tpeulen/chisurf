@@ -2,7 +2,7 @@
 
 ``flim_ptu(path)`` writes a small confocal photon stream with two lifetimes (left half 1.0 ns, right half 3.0 ns), an
 intensity gradient, an optional second detector and the scanner markers a reader needs. Everything is simulated from a seed,
-so the numbers a Qt capture and an emtk test see are the same.
+so every test sees the same numbers and can compare them with the counts and lifetimes it was built from.
 """
 
 from __future__ import annotations
@@ -20,6 +20,8 @@ TAU_LEFT_NS, TAU_RIGHT_NS = 1.0, 3.0
 LASER_PERIOD = 25e-9
 K_TICKS = int(round(0.5 * DWELL / LASER_PERIOD))  # sync pulses per half pixel dwell
 MICRO_RES = 0.032e-9  # 32 ps bins, 256 bins = 8.2 ns
+#: micro-time bin of the excitation: every decay starts here, and the IRF of :func:`irf_ptu` peaks here
+OFFSET_BINS = 20
 SEED = 7
 
 
@@ -60,7 +62,7 @@ def flim_ptu(path, n_channels: int = 1, seed: int = SEED) -> str:
         x = np.repeat(xs, flat)
         tau = np.where(x < pixels // 2, TAU_LEFT_NS, TAU_RIGHT_NS) * 1e-9
         t = rng.exponential(tau)
-        bins = np.minimum((t / MICRO_RES).astype(np.int64) + 20, 255).astype(np.uint16)
+        bins = np.minimum((t / MICRO_RES).astype(np.int64) + OFFSET_BINS, 255).astype(np.uint16)
         macros.append(macro)
         micros.append(bins)
         chans.append(np.full(macro.size, k, np.int8))
@@ -102,12 +104,12 @@ def flim_ptu(path, n_channels: int = 1, seed: int = SEED) -> str:
 
 
 def irf_ptu(path, seed: int = SEED + 5) -> str:
-    """A plain (marker-free) photon stream with a narrow IRF-like micro-time peak, as an IRF measurement."""
+    """A plain (marker-free) photon stream with a narrow micro-time peak at the excitation bin, as an IRF measurement."""
     import tttrlib
 
     rng = np.random.default_rng(seed)
     n = 200000
-    micro = np.clip(rng.normal(40, 2.0, n), 0, 255).astype(np.uint16)
+    micro = np.clip(rng.normal(OFFSET_BINS, 1.0, n), 0, 255).astype(np.uint16)
     macro = np.cumsum(rng.integers(1, 40, n)).astype(np.uint64)
     tttr = tttrlib.TTTR(macro, micro, rng.integers(0, 2, n).astype(np.int8), np.zeros(n, np.int8))
     tttr.header.set_macro_time_resolution(LASER_PERIOD)
