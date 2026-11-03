@@ -1,8 +1,8 @@
-"""The native κ² calculator at parity with the Qt Kappa2Dist.
+"""The κ² calculator window: it computes what its model computes, keeps edits, draws its spec.
 
-The model is the committed Qt tool's ``_Kappa2DistModel`` moved to ``gui/model.py``
-unchanged; the form is the Qt tool's spec (``k2dist.view.json``). The results are Monte-Carlo
-(seeded from numpy), so they are compared under one seed.
+The window runs ``_Kappa2DistModel`` (``gui/model.py``) on the backend handler; the form is
+``k2dist.view.json``. The results are Monte-Carlo (seeded from numpy), so the window and the model
+run directly are compared under one seed.
 """
 
 from __future__ import annotations
@@ -43,8 +43,8 @@ def _settle(app, timeout=60.0):
     assert not app.tool.busy
 
 
-# 1. the app computes what the Qt model computes, for the same seed
-def test_results_equal_the_qt_model_under_one_seed():
+# 1. the app computes what the model run directly computes, for the same seed
+def test_results_equal_the_model_run_directly_under_one_seed():
     from chisurf.plugins.calculator.kappa2_dist.backend.services import _kappa2_compute_handler
     from chisurf.plugins.calculator.kappa2_dist.gui.model import _Kappa2DistModel
 
@@ -90,11 +90,11 @@ def test_an_edit_while_computing_is_computed_too(monkeypatch):
     assert len(runs) == 3  # construction, the run in flight, the edit
 
 
-# 3. the form is the Qt tool's spec: radio labels, every field described
-def test_the_form_is_the_qt_spec():
+# 3. the form shows the three model labels and every field is described
+def test_the_form_labels_the_models_and_describes_every_field():
     app = make_app()
     painter = _draw(app)
-    # the model choice shows the Qt labels (a combo here: the radio row did not fit a narrow dock)
+    # the model choice is a combo: a radio row does not fit a narrow dock
     for label in ("WIC (Cone)", "r₀ (fund.)", "r_AD known (use δ)"):
         assert label in painter.strings, label
     choice = next(
@@ -106,7 +106,7 @@ def test_the_form_is_the_qt_spec():
     assert (
         choice["labels"] == ["WIC (Cone)", "DWT (Diffusion)", "Isotropic"] and "style" not in choice
     )
-    # No pictograms, as in the Qt tool -- except the shared vocabulary's Load example icon.
+    # No pictograms -- except the shared vocabulary's Load example icon.
     assert [s for s in painter.strings if PICTOGRAM.search(s.replace("\U0001f9ea", ""))] == []
     spec = json.loads((PLUGIN / "k2dist.view.json").read_text(encoding="utf-8"))
 

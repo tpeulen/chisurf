@@ -5,7 +5,7 @@ from chisurf.plugins.calculator.kappa2_dist.gui.app import make_app
 
 
 def test_make_demo_exports_the_distribution():
-    """The demo CSV is the tool's own answer in the shipped qt_saved.csv format."""
+    """The demo CSV is the tool's own answer in the format Save writes."""
     path = make_demo()
     text = path.read_text()
     assert text.startswith("# Kappa2 Distribution")

@@ -1,4 +1,4 @@
-"""Qt-free compute for the RICS-precision calculator.
+"""Compute for the RICS-precision calculator (no GUI toolkit).
 
 Wraps :mod:`chisurf.core.experiments.ics.precision` with the one operation a
 planning tool actually needs: a **sweep**. A single predicted error tells you how

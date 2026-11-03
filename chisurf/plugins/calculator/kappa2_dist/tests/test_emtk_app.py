@@ -112,7 +112,7 @@ def test_compute_now_recomputes_for_the_inputs_as_they_stand(widget):
     assert widget._model._k2hist is not None and np.sum(widget._model._k2hist) > 0
 
 
-def test_save_writes_the_csv_the_old_writer_wrote(widget, tmp_path):
+def test_save_writes_the_header_block_and_one_row_per_bin(widget, tmp_path):
     """The CSV format (header block + kappa2,probability rows) is unchanged."""
     widget.app.write_csv(tmp_path / "k2.csv")
     text = (tmp_path / "k2.csv").read_text()

@@ -28,7 +28,7 @@ from .volume_view import PSFVolumeView
 
 HERE = Path(__file__).parent
 SPEC = json.loads((HERE / "psf_emtk.view.json").read_text(encoding="utf-8"))
-#: Quiet period after the last edit before the volume is recomputed (the Qt tool's debounce), seconds.
+#: Quiet period after the last edit before the volume is recomputed (a debounce), seconds.
 DEBOUNCE = 0.25
 #: What the 3-D view's tooltip says about the camera and the shells.
 VOLUME_TOOLTIP = (

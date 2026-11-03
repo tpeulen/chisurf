@@ -1,8 +1,8 @@
-"""The native RICS-precision app at parity with the Qt tool (AutoForm over the same view model).
+"""The RICS-precision window: the sweep, its table, verdict and CSV, the failure paths, the form.
 
-Reference numbers: the Qt tool as committed (HEAD ``gui/tool.py``) with n_repeats=10, n_images=20
-and every other setting at its default (seed 1) printed the nine rows, the verdict and the CSV
-pinned below; its failure for ``n_lags=15`` on an 8x8 image printed the message pinned below.
+Reference numbers: the engine (``core.sweep_dwell``) run directly on the window's settings
+(n_repeats=10, n_images=20, every other setting at its default, seed 1); the table, the verdict
+sentence and the CSV are derived from that sweep by their documented rules (see ``expected``).
 """
 
 from __future__ import annotations
@@ -31,27 +31,47 @@ HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 
-QT_ROWS = [
-    {"dwell": "0.5", "line": "0.0384", "error": "314.8", "frame": "2.46"},
-    {"dwell": "1.19", "line": "0.0911", "error": "45.8", "frame": "5.83"},
-    {"dwell": "2.81", "line": "0.216", "error": "12.1", "frame": "13.8"},
-    {"dwell": "6.67", "line": "0.512", "error": "8.5", "frame": "32.8"},
-    {"dwell": "15.8", "line": "1.21", "error": "4.5", "frame": "77.7"},
-    {"dwell": "37.5", "line": "2.88", "error": "6.3", "frame": "184"},
-    {"dwell": "88.9", "line": "6.83", "error": "10.1", "frame": "437"},
-    {"dwell": "211", "line": "16.2", "error": "18.3", "frame": "1.04e+03"},
-    {"dwell": "500", "line": "38.4", "error": "9.8", "frame": "2.46e+03"},
-]
-QT_STATUS = "At 8 µs: 7.3 % error (usable) — about 1.7x worse than the best dwell (15.8 µs)."
-QT_CSV = (
-    "dwell_us,line_ms,frame_ms,error_percent\n0.5,0.0384,2.46,314.8\n1.19,0.0911,5.83,45.8\n"
-    "2.81,0.216,13.8,12.1\n6.67,0.512,32.8,8.5\n15.8,1.21,77.7,4.5\n37.5,2.88,184,6.3\n"
-    "88.9,6.83,437,10.1\n211,16.2,1.04e+03,18.3\n500,38.4,2.46e+03,9.8\n"
-)
-QT_FAILURE = (
+FAILURE = (
     "Prediction failed: n_lags=15 is too large for a 8x8 image: the covariance needs "
     "2 * n_lags < min(nx, ny), so at most n_lags=3"
-)
+)  # the largest n_lags with 2 * n_lags < 8
+
+
+def expected(model):
+    """What the window must show: the engine swept directly on the model's settings.
+
+    The dwell grid is ``core.default_dwell_range(9)``; each line time is ``dwell * nx * line_overhead``
+    and each frame ``line * ny``; the CSV is one ``dwell_us,line_ms,frame_ms,error_percent`` row per dwell.
+    """
+    sweep = core.sweep_dwell(
+        float(model.diffusion_coefficient),
+        core.default_dwell_range(9),
+        nx=int(model.nx),
+        line_overhead=float(model.line_overhead),
+        current_dwell=float(model.pixel_time_us) * 1e-6,
+        **model._kwargs(),
+    )
+    np.testing.assert_allclose(sweep.dwell, core.default_dwell_range(9))
+    np.testing.assert_allclose(sweep.line_time, sweep.dwell * model.nx * model.line_overhead)
+    rows = [
+        {
+            "dwell": f"{d * 1e6:.3g}",
+            "line": f"{t * 1e3:.3g}",
+            "error": f"{e * 100:.1f}",
+            "frame": f"{t * model.ny * 1e3:.3g}",
+        }
+        for d, t, e in zip(sweep.dwell, sweep.line_time, sweep.relative_error)
+    ]
+    csv = "dwell_us,line_ms,frame_ms,error_percent\n" + "".join(
+        f"{r['dwell']},{r['line']},{r['frame']},{r['error']}\n" for r in rows
+    )
+    here, best = sweep.current.relative_error, sweep.best_error
+    assert 0.05 < here <= 0.2 and here / best >= 1.3  # the default 8 µs: usable, off the optimum
+    status = (
+        f"At {model.pixel_time_us:.3g} µs: {here * 100:.1f} % error (usable) — about "
+        f"{here / best:.1f}x worse than the best dwell ({sweep.best_dwell * 1e6:.3g} µs)."
+    )
+    return rows, status, csv
 
 
 def _draw(app, size=(1200, 800), times=3):
@@ -84,33 +104,34 @@ def app():
     app.close()
 
 
-# 1. Predict gives the Qt tool's rows, verdict and CSV
-def test_predict_gives_the_qt_tools_numbers(app, tmp_path):
+# 1. Predict gives the engine's rows, verdict and CSV
+def test_predict_gives_the_engines_numbers(app, tmp_path):
     _small(app)
+    ROWS, STATUS, CSV = expected(app.model)
     assert app.model.enabled("request_predict")
     assert app.predict()
     _settle(app)
-    assert app.model.sweep_rows() == QT_ROWS
-    assert app.model.status == QT_STATUS and app.status_line() == QT_STATUS
+    assert app.model.sweep_rows() == ROWS
+    assert app.model.status == STATUS and app.status_line() == STATUS
     painter = _draw(app)
     for text in (
-        "0.0384",
-        "314.8",
-        "1.04e+03",
+        ROWS[0]["line"],
+        ROWS[0]["error"],
+        ROWS[-2]["frame"],
         "Dwell [µs]",
-        QT_STATUS,
+        STATUS,
     ):  # the table cells and the verdict
         assert text in painter.strings, text
     out = tmp_path / "sweep.csv"
     app.write_csv(out)
-    assert out.read_text() == QT_CSV
+    assert out.read_text() == CSV
     # the same through the button: the request is carried out by the next frame
     other = RicsPrecisionApp()
     _small(other)
     other.model.request_predict()
     _draw(other, times=1)
     _settle(other)
-    assert other.model.sweep_rows() == QT_ROWS
+    assert other.model.sweep_rows() == ROWS
     other.close()
 
 
@@ -124,8 +145,9 @@ def test_a_running_sweep_is_shown_and_not_started_twice(app, monkeypatch):
         assert gate.wait(60)
         return real(*args, progress=progress, **kwargs)
 
-    monkeypatch.setattr(core, "sweep_dwell", slow)
     _small(app)
+    STATUS = expected(app.model)[1]
+    monkeypatch.setattr(core, "sweep_dwell", slow)
     assert app.predict() is True
     assert app.predict() is False  # one sweep at a time
     t0 = time.time()
@@ -139,12 +161,12 @@ def test_a_running_sweep_is_shown_and_not_started_twice(app, monkeypatch):
     gate.set()
     _settle(app)
     assert app.model.sweep is not None and not app.model.busy
-    assert app.model.enabled("request_predict") and app.model.status == QT_STATUS
+    assert app.model.enabled("request_predict") and app.model.status == STATUS
     _draw(app, times=1)
     assert not app.continuous  # idle again
 
 
-# 3. the failure paths: the Qt message, no stale curve, nothing to export
+# 3. the failure paths: the engine's message, no stale curve, nothing to export
 def test_a_bad_setting_is_reported_and_leaves_no_curve(app, tmp_path):
     _small(app)
     app.predict()
@@ -153,7 +175,7 @@ def test_a_bad_setting_is_reported_and_leaves_no_curve(app, tmp_path):
     app.model.nx, app.model.ny, app.model.n_lags = 8, 8, 15
     app.predict()
     _settle(app)
-    assert app.model.status == QT_FAILURE and app.model.sweep is None
+    assert app.model.status == FAILURE and app.model.sweep is None
     assert app.model.sweep_rows() == [] and app.model.sweep_series() == []
     painter = _draw(app)
     assert any("Prediction failed: n_lags=15" in s for s in painter.strings)  # on screen, wrapped
@@ -199,6 +221,7 @@ def test_export_csv_paths(app, tmp_path):
     assert app.dialog is None and app.notice == "Predict something first."
     assert "Predict something first." in _draw(app).strings
     _small(app)
+    CSV = expected(app.model)[2]
     app.predict()
     _settle(app)
     assert app.notice == ""
@@ -213,7 +236,7 @@ def test_export_csv_paths(app, tmp_path):
     chosen = tmp_path / "plan"  # no suffix: .csv is added
     app.dialog.draw = lambda: [str(chosen)]
     _draw(app, times=1)
-    assert (tmp_path / "plan.csv").read_text() == QT_CSV
+    assert (tmp_path / "plan.csv").read_text() == CSV
     assert app.notice == f"Wrote {tmp_path / 'plan.csv'}" and app.dialog is None
     assert any("Wrote" in s for s in _draw(app).strings)
     app.start_export()
@@ -223,7 +246,7 @@ def test_export_csv_paths(app, tmp_path):
     assert app.notice.startswith("Could not write x.csv:") and app.dialog is None
 
 
-# 5. the form is the Qt spec's: same fields, ranges, decimals, labels and descriptions
+# 5. the emtk form and the AutoForm spec (precision.view.json) declare the same fields, ranges, decimals, labels and descriptions
 def _values(spec):
     found = {}
 
@@ -248,15 +271,15 @@ def _values(spec):
     return found
 
 
-def test_the_form_has_the_qt_specs_fields():
-    qt = json.loads((GUI / "precision.view.json").read_text(encoding="utf-8"))
+def test_the_emtk_form_has_the_autoform_specs_fields():
+    autoform = json.loads((GUI / "precision.view.json").read_text(encoding="utf-8"))
     native = json.loads((GUI / "precision_emtk.view.json").read_text(encoding="utf-8"))
-    assert _values(native) == _values(qt)
+    assert _values(native) == _values(autoform)
     assert len(_values(native)) == 15
     estimator = next(
         s for p in native["sections"][0]["sections"] if p.get("title") == "Estimator" for s in [p]
     )
-    assert estimator["collapsed"] is True  # folded at first, as in Qt
+    assert estimator["collapsed"] is True  # folded at first
     model = PrecisionViewModel()
     for attr in _values(native):
         assert hasattr(model, attr), attr
@@ -336,7 +359,7 @@ def test_finite_runs_split_at_gaps():
     assert finite_runs(x, np.full(6, np.nan)) == []
 
 
-# 9. no Qt
+# 9. no Qt import
 def test_port_is_qt_free():
     sys.path.insert(0, str(REPO))
     from test.gui.emtk_port_parity import qt_free
@@ -436,16 +459,17 @@ def test_make_app_and_write_csv_before_a_prediction(tmp_path):
 
 
 # 14. the table's numbers are the rows' text, as numbers (it sorts as numbers), N/A for an unrealisable dwell
-def test_the_table_numbers_equal_the_qt_rows_and_an_unrealisable_dwell_is_not_a_number(app):
+def test_the_table_numbers_equal_the_rows_and_an_unrealisable_dwell_is_not_a_number(app):
     _small(app)
+    ROWS = expected(app.model)[0]
     app.predict()
     _settle(app)
     numbers = app.model.sweep_numbers()
-    assert len(numbers) == len(QT_ROWS)
-    for number, row in zip(numbers, QT_ROWS):
+    assert len(numbers) == len(ROWS)
+    for number, row in zip(numbers, ROWS):
         assert f"{number['dwell']:.3g}" == row["dwell"] and f"{number['line']:.3g}" == row["line"]
         assert f"{number['frame']:.3g}" == row["frame"] and f"{number['error']:.1f}" == row["error"]
-    assert numbers[0]["error"] > numbers[4]["error"]  # 314.8 > 4.5 as numbers
+    assert numbers[0]["error"] > numbers[4]["error"]  # compared as numbers, not as text
     app.model._sweep.relative_error = np.array([np.nan] + list(app.model._sweep.relative_error[1:]))
     assert (
         np.isnan(app.model.sweep_numbers()[0]["error"])

@@ -56,10 +56,10 @@ INPUT_FIELDS = (
 #: What a computation writes (everything else on the model is an input).
 _RESULT_FIELDS = {"k2_mean", "k2_sd", "Rapp_mean", "RappSD", "delta_deg"}
 
-#: The input panels of the Qt tool's spec (k2dist.view.json): model, anisotropies, options.
+#: The input panels of the spec (k2dist.view.json): model, anisotropies, options.
 _SPEC_PATH = Path(__file__).resolve().parent.parent / "k2dist.view.json"
 
-#: The orientation statistics, declared (the Qt Results panel plus the two order parameters).
+#: The orientation statistics, declared (the five Results values plus the two order parameters).
 RESULTS_TABLE = {
     "sections": [
         {
@@ -115,16 +115,14 @@ class Kappa2Gui(TourTarget):
                 if s.get("type") == "panel" and s.get("title") != "Results"
             ]
         }
-        # The Qt radio row does not wrap in a narrow dock ("Isotropic" was cut at
+        # A radio row does not wrap in a narrow dock ("Isotropic" is cut at
         # 800 px); a combo with the same labels fits any width.
         for panel in self.input_spec["sections"]:
             for section in panel.get("sections", []):
                 if section.get("type") == "choice":
                     section.pop("style", None)
                 if section.get("type") == "value" and not section.get("read_only"):
-                    section["style"] = (
-                        "spin"  # the Qt fields were spin boxes: arrows step by the spec's step
-                    )
+                    section["style"] = "spin"  # arrows step by the spec's step
         self.form = FormState()
         self.results_form = FormState()
 
@@ -219,7 +217,7 @@ class Kappa2Gui(TourTarget):
         for name in changed:
             self.tour.notify_used(name)
         if changed:
-            # Parameter edits recompute, as the Qt tool's debounce timer did.
+            # Parameter edits recompute.
             self._schedule_compute()
 
     def _toolbar(self, busy: bool) -> None:
@@ -273,7 +271,7 @@ class Kappa2Gui(TourTarget):
                 im.new_line()
             else:
                 im.same_line()
-            # The Qt Save button was enabled only while a distribution with weight existed.
+            # Save is enabled only while a distribution with weight exists.
             im.begin_disabled(key == "save" and not self.has_results())
             if im.button(label + "###" + key.title()) and callable(action):
                 action()
@@ -286,7 +284,7 @@ class Kappa2Gui(TourTarget):
         return self.on_example() if callable(self.on_example) else None
 
     def has_results(self) -> bool:
-        """Whether a distribution with weight exists (the Qt Save button's enabling rule)."""
+        """Whether a distribution with weight exists (Save's enabling rule)."""
         hist = self.model._k2hist
         return hist is not None and bool(float(np.sum(hist)) > 0.0)
 
@@ -333,7 +331,7 @@ class Kappa2Gui(TourTarget):
         self.remember("results")
 
     def result_rows(self) -> list[dict]:
-        """The statistics table: the Qt Results panel's five values and the two order parameters."""
+        """The statistics table: the five Results values and the two order parameters."""
         m = self.model
         return [
             {"quantity": tr("Mean κ²"), "value": f"{m.k2_mean:.4f}"},
@@ -384,7 +382,7 @@ class Kappa2App(ImApp):
     def _render(self) -> None:
         self.kappa2_gui.draw()
 
-    # -- persistence: the inputs (the Qt tool remembered the window geometry only) --------- #
+    # -- persistence: the inputs --------- #
     def export_settings(self) -> dict:
         """The model choice and every input field (the distribution is recomputed on restore)."""
         model = self.tool._model
@@ -474,7 +472,7 @@ def make_app(kappa2: float = 0.667, **kwargs):
     Parameters
     ----------
     kappa2 : float
-        The assumed orientation factor the distance statistics refer to (the Qt tool's constructor argument).
+        The assumed orientation factor the distance statistics refer to (the ``kappa2`` constructor argument).
     """
     from chisurf.emtk.i18n import install
 
@@ -515,8 +513,8 @@ def make_app(kappa2: float = 0.667, **kwargs):
     import copy
     import threading
 
-    #: An edit arrived while a computation ran: run again when it is in (the Qt
-    #: tool's debounce timer computed after the last edit; this dropped it).
+    #: An edit arrived while a computation ran: run again when it is in, so the
+    #: last edit is always computed.
     pending = []
 
     def schedule():
@@ -587,7 +585,7 @@ def make_app(kappa2: float = 0.667, **kwargs):
         ]
         lines = [f"{x:.6f},{y:.6f}" for x, y in zip(m._k2scale[1:], m._k2hist)]
         path.write_text("\n".join(header + lines) + "\n")
-        # the Qt tool said so in a message box; the file name, as a long path would not wrap in the window
+        # the status line names the file and its folder separately, as a long path would not wrap in the window
         state.status = tr("Saved to {name} ({folder})").format(name=path.name, folder=path.parent)
 
     app.kappa2_gui.on_save = _install_save_dialog(app, write)
@@ -598,7 +596,7 @@ def make_app(kappa2: float = 0.667, **kwargs):
         state._model.compute(client)
 
     app.compute_now = compute_now
-    # The first computation runs on construction, as the Qt tool's did (synchronously, so the first frame has data).
+    # The first computation runs on construction (synchronously, so the first frame has data).
     state._model.compute(client)
     refresh_status()
     return app

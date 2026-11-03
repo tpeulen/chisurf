@@ -97,9 +97,9 @@ def test_typed_garbage_in_the_frequency_is_ignored_and_a_huge_value_is_clamped(d
     drv.type_into("frequency", "abc")
     assert model(drv).frequency == 80.0
     drv.type_into("frequency", "99999")
-    assert model(drv).frequency == 10000.0  # the Qt maximum
+    assert model(drv).frequency == 10000.0  # the field maximum
     drv.type_into("frequency", "0")
-    assert model(drv).frequency == pytest.approx(0.001)  # the Qt minimum
+    assert model(drv).frequency == pytest.approx(0.001)  # the field minimum
 
 
 def stepper(drv, name, direction):
@@ -121,9 +121,9 @@ def test_the_harmonic_arrows_and_typing_multiply_the_effective_frequency(drv):
     assert model(drv).harmonic == 2 and effective(drv) == "Effective f = 160 MHz"
     stepper(drv, "harmonic", -1)
     stepper(drv, "harmonic", -1)
-    assert model(drv).harmonic == 1  # the Qt minimum
+    assert model(drv).harmonic == 1  # the field minimum
     drv.type_into("harmonic", "99")
-    assert model(drv).harmonic == 16  # the Qt maximum
+    assert model(drv).harmonic == 16  # the field maximum
     drv.type_into("harmonic", "3")
     assert model(drv).harmonic == 3 and effective(drv) == "Effective f = 240 MHz"
 
@@ -135,9 +135,9 @@ def test_the_lifetimes_field_sets_the_reference_rows(drv):
     assert [r[0] for r in table_rows(drv)] == [
         "2",
         "5",
-    ]  # a bad token is skipped, as the Qt model did
+    ]  # a bad token is skipped
     drv.type_into("taus", "nonsense")
-    assert [r[0] for r in table_rows(drv)] == ["1"]  # nothing usable: the Qt model's fallback
+    assert [r[0] for r in table_rows(drv)] == ["1"]  # nothing usable: the model's fallback
 
 
 # -- the reference geometry -------------------------------------------------------------------------------------- #
@@ -163,7 +163,7 @@ def test_the_donor_lifetime_is_typed_and_stepped(drv):
     drv.type_into("tau_d0", "2.5")
     assert model(drv).tau_d0 == 2.5
     drv.type_into("tau_d0", "5000")
-    assert model(drv).tau_d0 == 1000.0  # the Qt maximum
+    assert model(drv).tau_d0 == 1000.0  # the field maximum
 
 
 # -- the folded groups ---------------------------------------------------------------------------------------- #
@@ -191,7 +191,7 @@ def test_the_two_component_line_toggle_and_its_four_fields(drv):
         drv.type_into(name, text)
         assert getattr(model(drv), name) == expected
     drv.type_into("g1", "5")
-    assert model(drv).g1 == 1.1  # the Qt maximum
+    assert model(drv).g1 == 1.1  # the field maximum
     stepper(drv, "s2", -1)
     assert model(drv).s2 == pytest.approx(0.49)
 
@@ -210,7 +210,7 @@ def test_the_mixing_region_toggle_and_the_fraction_move_the_mixture_point(drv):
         (0.2 * m.g1 + 0.8 * m.g2, 0.2 * m.s1 + 0.8 * m.s2)
     ) and moved != pytest.approx(half)
     drv.type_into("frac1", "7")
-    assert model(drv).frac1 == 1.0  # the Qt maximum
+    assert model(drv).frac1 == 1.0  # the field maximum
     stepper(drv, "frac1", -1)
     assert model(drv).frac1 == pytest.approx(0.95)
 
@@ -340,17 +340,17 @@ def test_settings_round_trip_clamp_and_ignore_garbage(app):
     other.restore_settings("garbage")  # does not raise
 
 
-def test_every_label_of_the_qt_spec_is_drawn(drv):
-    """The Qt tool rendered tests/qt_spec.json with AutoForm: each of its field labels is on screen (groups opened)."""
-    spec = json.loads((PLUGIN / "tests/qt_spec.json").read_text())
+def test_every_field_label_of_the_spec_is_drawn(drv):
+    """Each field label of the controls in ``gui/phasor_emtk.view.json`` is on screen (groups opened)."""
+    from chisurf.plugins.calculator.phasor_calculator.gui.app import SPEC
+
+    spec = SPEC["controls"]
     labels = []
 
     def walk(sections):
         for section in sections:
             if section.get("type") in ("value", "toggle") and section.get("label"):
-                labels.append(
-                    section["label"].replace("tau", "τ")
-                )  # AutoForm shows "Donor tau0" as "Donor τ0"
+                labels.append(section["label"])
             walk(section.get("sections", []))
 
     walk(spec["sections"])

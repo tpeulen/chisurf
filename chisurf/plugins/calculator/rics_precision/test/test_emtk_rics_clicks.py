@@ -1,12 +1,13 @@
 """The drawn RICS-precision app, driven with simulated pointer and keyboard events.
 
-Every control of the Qt tool (Predict, Export CSV, Guide, ?, the four setting panels, every
+Every control (Predict, Export CSV, Guide, ?, the four setting panels, every
 field and the Membrane check box, the table and the plot) is used the way a person uses it, and
 each test asserts what the next frame shows.
 """
 
 from __future__ import annotations
 
+import functools
 import time
 
 import pytest
@@ -14,19 +15,27 @@ from emtk.events import CONTROL_MODIFIER
 
 from chisurf.plugins.calculator.rics_precision.gui.app import RicsPrecisionApp
 from chisurf.plugins.calculator.rics_precision.test.pointer import KEY_ESCAPE, Pointer
-from chisurf.plugins.calculator.rics_precision.test.test_emtk_rics_parity import (
-    QT_CSV,
-    QT_FAILURE,
-    QT_ROWS,
-    QT_STATUS,
+from chisurf.plugins.calculator.rics_precision.test.test_emtk_rics_window import (
+    FAILURE,
+    expected,
 )
 from chisurf.plugins.emtk_layout import action_caption, help_close_caption
+
+
+@functools.lru_cache(maxsize=1)
+def reference():
+    """Rows, verdict and CSV of the engine swept directly on the fixture's settings."""
+    from chisurf.plugins.calculator.rics_precision.gui.view_model import PrecisionViewModel
+
+    model = PrecisionViewModel()
+    model.n_repeats, model.n_images = 10, 20
+    return expected(model)
 
 
 @pytest.fixture
 def ui():
     app = RicsPrecisionApp()
-    app.model.n_repeats, app.model.n_images = 10, 20  # a small estimator, as in the baseline
+    app.model.n_repeats, app.model.n_images = 10, 20  # a small estimator, as in reference()
     pointer = Pointer(app)
     yield pointer
     app.close()
@@ -65,9 +74,9 @@ def test_predict_button_runs_the_sweep_and_the_table_and_verdict_appear(ui):
     ui.click("Predict")
     assert ui.app.job.busy or ui.app.model.sweep is not None  # started by the click
     finish(ui)
-    assert ui.app.model.sweep_rows() == QT_ROWS
-    assert ui.drawn(QT_STATUS)  # the verdict line
-    for row in QT_ROWS:  # every table cell
+    assert ui.app.model.sweep_rows() == reference()[0]
+    assert ui.drawn(reference()[1])  # the verdict line
+    for row in reference()[0]:  # every table cell
         for key in ("dwell", "line", "frame", "error"):
             assert ui.drawn(row[key]), (row, key)
     assert not ui.drawn("press Predict to sweep the dwell time")  # the plot has its curve
@@ -101,7 +110,7 @@ def test_predict_is_greyed_while_the_sweep_runs_and_inputs_cannot_be_typed(ui, m
     assert ui.app.model.diffusion_coefficient == before  # the inputs are greyed too
     gate.set()
     finish(ui)
-    assert ui.app.model.sweep_rows() == QT_ROWS
+    assert ui.app.model.sweep_rows() == reference()[0]
 
 
 def test_a_failing_prediction_shows_the_message_and_clears_the_curve(ui):
@@ -113,8 +122,8 @@ def test_a_failing_prediction_shows_the_message_and_clears_the_curve(ui):
     set_field(ui, "ny", "8")
     ui.click("Predict")
     finish(ui)
-    assert ui.app.model.status == QT_FAILURE
-    assert any(QT_FAILURE.split(":")[0] in s for s in ui.strings) and ui.drawn(
+    assert ui.app.model.status == FAILURE
+    assert any(FAILURE.split(":")[0] in s for s in ui.strings) and ui.drawn(
         "press Predict to sweep the dwell time"
     )
     assert not ui.drawn("314.8")  # no stale table row
@@ -137,7 +146,7 @@ def test_export_csv_before_a_prediction_says_so_and_after_writes_the_file(
     assert ui.app.dialog is None and not list(tmp_path.iterdir())
     ui.click("Export CSV")
     ui.click("Save")  # the dialog's own default name
-    assert (tmp_path / "rics_precision.csv").read_text() == QT_CSV
+    assert (tmp_path / "rics_precision.csv").read_text() == reference()[2]
     assert (
         any(t.startswith("Wrote") for t in ui.strings)
         and ui.app.notice == f"Wrote {tmp_path / 'rics_precision.csv'}"
@@ -155,7 +164,7 @@ def test_export_csv_name_typed_without_a_suffix_gets_csv_and_the_dialog_x_closes
     ui.key(ord("A"), "a", CONTROL_MODIFIER)
     ui.type("plan")
     ui.click("Save")
-    assert (tmp_path / "plan.csv").read_text() == QT_CSV
+    assert (tmp_path / "plan.csv").read_text() == reference()[2]
     ui.click("Export CSV")
     x, y, w, h = ui.app.file_window.box
     ui.click((x + w - 14.0, y + 13.0))
@@ -187,7 +196,7 @@ def test_export_to_an_unwritable_place_is_reported(ui, tmp_path, monkeypatch):
 FieldCase = tuple[str, str, float, tuple[str, float, str, float]]
 
 FIELDS: list[FieldCase] = [
-    # attribute, typed text, expected value, the Qt spec's bound that clamps it
+    # attribute, typed text, expected value, the spec's bound that clamps it
     ("diffusion_coefficient", "250", 250.0, ("1e-06", 1e-06, "999999", 100000.0)),
     ("n_particles", "12.5", 12.5, ("0", 0.01, "9999999", 1000000.0)),
     ("brightness_khz", "40", 40.0, ("0", 0.001, "9999999", 100000.0)),
@@ -208,7 +217,7 @@ ESTIMATOR: list[FieldCase] = [
 
 
 @pytest.mark.parametrize(("name", "text", "expected", "limits"), FIELDS + ESTIMATOR)
-def test_each_field_takes_typed_text_and_clamps_to_the_qt_range(ui, name, text, expected, limits):
+def test_each_field_takes_typed_text_and_clamps_to_the_spec_range(ui, name, text, expected, limits):
     if (name, text, expected, limits) in ESTIMATOR:
         unfold(ui, "Estimator")
     set_field(ui, name, text)
@@ -235,7 +244,7 @@ def test_each_field_has_working_arrows(ui, name):
 
 
 def test_typed_values_reach_the_next_prediction(ui):
-    set_field(ui, "pixel_time_us", "15.8")  # the dwell the Qt run found best
+    set_field(ui, "pixel_time_us", "15.8")  # a dwell other than the default
     ui.click("Predict")
     finish(ui)
     assert ui.app.model.pixel_time_us == 15.8
@@ -249,12 +258,12 @@ def test_membrane_checkbox_switches_the_2d_geometry(ui):
     ui.click("Predict")
     finish(ui)
     membrane_rows = ui.app.model.sweep_rows()
-    assert membrane_rows != QT_ROWS  # another geometry, other numbers
+    assert membrane_rows != reference()[0]  # another geometry, other numbers
     ui.click(center(ui, "two_d"))
     assert ui.app.model.two_d is False
     ui.click("Predict")
     finish(ui)
-    assert ui.app.model.sweep_rows() == QT_ROWS
+    assert ui.app.model.sweep_rows() == reference()[0]
 
 
 # -- the panels --------------------------------------------------------------------------------------------
@@ -322,7 +331,7 @@ def test_the_plot_takes_the_wheel_and_a_drag_without_losing_the_curve(ui):
     px, py, pw, ph = ui.app.item_rects["plot"]
     ui.wheel((px + pw / 2, py + ph / 2), 3)  # zoom in
     ui.drag((px + pw * 0.5, py + ph * 0.5), (px + pw * 0.4, py + ph * 0.5))  # pan
-    assert ui.app.model.sweep_rows() == QT_ROWS and not ui.drawn(
+    assert ui.app.model.sweep_rows() == reference()[0] and not ui.drawn(
         "press Predict to sweep the dwell time"
     )
 

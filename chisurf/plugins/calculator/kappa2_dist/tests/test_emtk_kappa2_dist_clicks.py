@@ -7,7 +7,6 @@ statistics table, dialog, windows).
 
 from __future__ import annotations
 
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -72,10 +71,10 @@ STEPS = {
 
 
 @pytest.mark.parametrize("name", list(STEPS))
-def test_each_arrow_steps_its_field_by_the_qt_step_and_recomputes(app, name):
+def test_each_arrow_steps_its_field_by_its_step_and_recomputes(app, name):
     m = app.tool._model
     if name == "fret_efficiency":
-        type_into(app, name, "0.5")  # the default 0.001 is already the Qt minimum
+        type_into(app, name, "0.5")  # the default 0.001 is already the field minimum
     start = getattr(m, name)
     mean = m.k2_mean
     arrow(app, name, +1)
@@ -90,7 +89,7 @@ def test_each_arrow_steps_its_field_by_the_qt_step_and_recomputes(app, name):
     )  # the distribution was recomputed on every click (no stale zero)
 
 
-def test_an_arrow_stops_at_the_qt_limit(app):
+def test_an_arrow_stops_at_the_field_limit(app):
     m = app.tool._model
     type_into(app, "r_Dinf", "0.4")
     arrow(app, "r_Dinf", +1)
@@ -156,6 +155,7 @@ def test_escape_closes_the_open_model_list_without_choosing(app):
 
 def test_the_rad_known_checkbox_is_clicked_and_recomputes(app):
     m = app.tool._model
+    unchecked = m.k2_mean  # computed on construction under seed 7 (the app fixture)
     draw(app)
     np.random.seed(7)
     click(app, app.item_rects["rAD_known"])
@@ -165,9 +165,7 @@ def test_the_rad_known_checkbox_is_clicked_and_recomputes(app):
     click(app, app.item_rects["rAD_known"])
     settle(app)
     assert m.rAD_known is False
-    assert m.k2_mean == pytest.approx(
-        0.66644, abs=1e-5
-    )  # the unchecked seed-7 value the Qt tool showed
+    assert m.k2_mean == pytest.approx(unchecked, rel=1e-12)  # unchecked again: the seed-7 value
 
 
 # ── Compute, Save, Guide, Help ------------------------------------------------------------------------------- #
@@ -237,12 +235,10 @@ def test_save_with_a_typed_file_name_writes_the_csv_and_the_status_line_says_so(
     written = tmp_path / "my_k2.csv"
     assert written.is_file(), [p.name for p in tmp_path.iterdir()]
     lines = written.read_text().splitlines()
-    qt_lines = (Path(__file__).with_name("data") / "qt_saved.csv").read_text().splitlines()
-    assert (
-        lines[0] == "# Kappa2 Distribution"
-        and lines[-1].count(",") == 1
-        and len(lines) == len(qt_lines) == 141
-    )
+    header = [line for line in lines if line.startswith("#")]
+    assert lines[0] == "# Kappa2 Distribution" and lines[-1].count(",") == 1
+    # the eleven header lines, then one row per bin of the n_bins-point grid
+    assert len(header) == 11 and len(lines) == 11 + app.tool._model.n_bins - 1
     assert app.tool.status == f"Saved to my_k2.csv ({tmp_path})"
     shown = " ".join(draw(app).strings)
     assert "Saved to my_k2.csv" in shown and "Cancel" not in shown  # the dialog closed

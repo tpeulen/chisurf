@@ -2,8 +2,7 @@
 
 Only ``press`` / ``release`` / ``pointer_move`` / ``wheel`` / ``key`` at the rectangles the controls were drawn in (or at the text
 a list entry or a button drew) reach the window; the assertions read the visible outcome (the model, the summary, the status line,
-the dialogs, the exported files). The Qt tool
-had no file drops, so there is no drop test.
+the dialogs, the exported files). The window takes no file drops, so there is no drop test.
 """
 
 from __future__ import annotations
@@ -100,9 +99,9 @@ def test_each_number_field_is_typed_clamped_and_stepped_by_its_arrows(drv, name)
     stepper(drv, name, -1)
     assert getattr(model(drv), name) == pytest.approx(max(start - step, lo))
     drv.type_into(name, str(hi * 10))
-    assert getattr(model(drv), name) == pytest.approx(hi)  # the Qt maximum
+    assert getattr(model(drv), name) == pytest.approx(hi)  # the field maximum
     drv.type_into(name, "-5")
-    assert getattr(model(drv), name) == pytest.approx(lo)  # the Qt minimum
+    assert getattr(model(drv), name) == pytest.approx(lo)  # the field minimum
     drv.type_into(name, "abc")
     assert getattr(model(drv), name) == pytest.approx(lo)  # garbage is ignored
 

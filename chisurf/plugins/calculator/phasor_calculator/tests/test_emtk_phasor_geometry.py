@@ -1,14 +1,14 @@
-"""The native phasor calculator at parity with the retired Qt PhasorCalculatorTool.
+"""The phasor calculator window: overlay geometry and reference table against the phasor formulas.
 
-The Qt tool rendered ``tests/qt_spec.json`` (then ``gui/phasor.view.json``) with AutoForm over an inline model; the model moved
-unchanged to ``gui/model.py``. The Qt model's overlay geometry and results for the ``ON`` settings
-were recorded in ``qt_reference.json`` before the tool was deleted; they are compared with the emtk
-app's, and the reference table against the phasor formulas.
+A single-exponential decay of lifetime tau at angular frequency omega has the phasor
+``g = 1 / (1 + (omega tau)^2)``, ``s = omega tau / (1 + (omega tau)^2)``, on the universal semicircle.
+Every overlay drawn for the ``ON`` settings is checked against that geometry (iso-phase rays,
+iso-modulation arcs, polar grid, FRET trajectory, components, mixture and cursor); the form is
+``gui/phasor_emtk.view.json``.
 """
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -16,12 +16,13 @@ import numpy as np
 import pytest
 from emtk.testing import RecordingPainter
 
+from chisurf.plugins.calculator.phasor_calculator.gui.app import SPEC as VIEW
+from chisurf.plugins.calculator.phasor_calculator.gui.app import make_app
+
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-#: The AutoForm spec the Qt tool rendered, frozen as the parity inventory when the tool was retired.
-SPEC = json.loads((HERE / "qt_spec.json").read_text())
-
-from chisurf.plugins.calculator.phasor_calculator.gui.app import make_app  # noqa: E402
+#: The controls the window draws, as declared in ``gui/phasor_emtk.view.json``.
+SPEC = VIEW["controls"]
 
 ON = {
     "show_fret": True,
@@ -33,6 +34,8 @@ ON = {
     "harmonic": 2,
     "taus": "1, 3",
 }
+#: omega in rad/ns: the effective frequency is 40 MHz x harmonic 2 = 80 MHz.
+OMEGA = 2 * np.pi * 80e6 * 1e-9
 
 
 def _app(**settings):
@@ -57,35 +60,68 @@ def _fields(sections):
         yield from _fields(section.get("sections", []))
 
 
-#: What the Qt ``PhasorCalculatorTool`` model produced for ``ON`` (overlay geometry and the results table),
-#: recorded before the Qt tool was deleted.
-QT = json.loads((HERE / "qt_reference.json").read_text())
+def _phasor(tau):
+    wt = OMEGA * tau
+    return np.array([1 / (1 + wt**2), wt / (1 + wt**2)])
 
 
-# 1. the same geometry and the same reference table as the Qt tool
-def test_overlays_equal_the_recorded_qt_tools():
-    qt = QT
-    assert qt["settings"] == ON
+def _xy(overlay):
+    return np.asarray(overlay["x"], float), np.asarray(overlay["y"], float)
+
+
+# 1. the overlays are the phasor geometry of the settings
+def test_overlays_are_the_single_exponential_phasor_geometry():
     app = _app()
+    m = app.tool._model
     ours = {o["name"]: o for o in app.phasor_gui._overlays()}
-    for theirs in qt["overlays"]:
-        mine = ours[theirs["name"]]
-        assert np.asarray(mine["x"], float) == pytest.approx(np.asarray(theirs["x"]))
-        assert np.asarray(mine["y"], float) == pytest.approx(np.asarray(theirs["y"]))
-    assert "universal semicircle" in ours  # the emtk plot draws the circle itself
+
+    x, y = _xy(ours["universal semicircle"])
+    np.testing.assert_allclose((x - 0.5) ** 2 + y**2, 0.25, atol=1e-12)
+
+    ticks = np.column_stack(_xy(ours["lifetime ticks"]))
+    np.testing.assert_allclose(ticks, [_phasor(1.0), _phasor(3.0)], rtol=1e-12)
+    for tau in (1.0, 3.0):
+        end = _phasor(tau)
+        x, y = _xy(ours[f"tau_phi={tau:g} ns"])  # iso-phase: the ray at phase atan(omega tau)
+        np.testing.assert_allclose([x[0], y[0]], [0.0, 0.0], atol=1e-12)
+        np.testing.assert_allclose(y, OMEGA * tau * x, atol=1e-12)
+        np.testing.assert_allclose(np.hypot(x[-1], y[-1]), 1.0, rtol=1e-12)  # out to the unit circle
+        x, y = _xy(ours[f"tau_m={tau:g} ns"])  # iso-modulation: the arc of radius |P(tau)|
+        np.testing.assert_allclose(np.hypot(x, y), np.hypot(*end), rtol=1e-12)
+        np.testing.assert_allclose([x[-1], y[-1]], end, rtol=1e-12)
+
+    for r in (1 / 3, 2 / 3, 1.0):  # the polar grid: circles of radius r and rays every 30 degrees
+        name = "unit circle" if r == 1.0 else f"r={r:g}"
+        np.testing.assert_allclose(np.hypot(*_xy(ours[name])), r, rtol=1e-12)
+    for angle in range(0, 360, 30):
+        x, y = _xy(ours[f"angle={angle}"])
+        a = np.radians(angle)
+        np.testing.assert_allclose([x[-1], y[-1]], [np.cos(a), np.sin(a)], atol=1e-12)
+
+    # FRET: tau_DA = tau_D0 (1 - E) stays on the semicircle, from the donor-only phasor to (1, 0)
+    x, y = _xy(ours["FRET trajectory"])
+    np.testing.assert_allclose((x - 0.5) ** 2 + y**2, 0.25, atol=1e-12)
+    np.testing.assert_allclose([x[0], y[0]], _phasor(m.tau_d0), rtol=1e-12)
+    assert x[-1] > 0.99 and y[-1] < 0.03
+
+    c1, c2 = np.array([m.g1, m.s1]), np.array([m.g2, m.s2])
+    np.testing.assert_allclose(np.column_stack(_xy(ours["component line"])), [c1, c2])
+    np.testing.assert_allclose(np.column_stack(_xy(ours["components"])), [c1, c2])
+    mix = m.frac1 * c1 + (1 - m.frac1) * c2  # phasors add linearly with the intensity fractions
+    np.testing.assert_allclose(np.column_stack(_xy(ours["mixture"])), [mix])
+    for name, c in (("mix line 1", c1), ("mix line 2", c2)):
+        np.testing.assert_allclose(np.column_stack(_xy(ours[name])), [c, mix])
+
+    x, y = _xy(ours["cursor"])  # the gate: a circle around the cursor
+    np.testing.assert_allclose(np.hypot(x - m.cursor_g, y - m.cursor_s), m.cursor_radius, rtol=1e-9)
 
 
-def test_the_reference_table_holds_the_qt_results():
-    qt = QT
+def test_the_reference_table_holds_the_single_exponential_phasors():
     app = _app()
     rows = app.phasor_gui._rows()
     assert [t for t, _g, _s in rows] == [1.0, 3.0]
     for tau, g, s in rows:
-        assert f"<td>{tau:g}</td><td>{g:.3f}</td><td>{s:.3f}</td>" in qt["html"]
-        omega_tau = 2 * np.pi * 80e6 * tau * 1e-9  # effective f = 40 MHz x harmonic 2
-        assert g == pytest.approx(1 / (1 + omega_tau**2)) and s == pytest.approx(
-            omega_tau / (1 + omega_tau**2)
-        )
+        assert (g, s) == pytest.approx(tuple(_phasor(tau)))
 
 
 # 3. one spec: every field drawn, its description the tooltip, the groups folded as declared
@@ -160,7 +196,7 @@ def test_every_guide_target_is_drawn_and_folded_targets_unfold():
     gui.tour.active = False
 
 
-# 6/7. no Qt, tooltips
+# 6/7. no Qt import, tooltips
 def test_port_is_qt_free():
     sys.path.insert(0, str(REPO))
     from test.gui.emtk_port_parity import qt_free

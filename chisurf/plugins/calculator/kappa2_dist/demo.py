@@ -1,8 +1,8 @@
 """Example data for the k²-distribution calculator: a computed, exported distribution.
 
 The tool computes on construction, so the example is simply the tool's own
-answer: *Load example* recomputes and exports the distribution CSV the same way
-the old Qt tool's *Save* did — the format of the shipped ``qt_saved.csv``.
+answer: *Load example* recomputes and exports the distribution CSV that *Save*
+writes (a commented statistics header, then ``kappa2,probability`` rows).
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from pathlib import Path
 
 STEM = "kappa2_demo"
 #: Nothing is simulated: the example is the tool's answer for its shipped default inputs
-#: (no seed), exported in the CSV format of the old tool's Save.
+#: (no seed), exported in the CSV format of Save.
 DEMO = {"inputs": "shipped defaults", "export": "csv"}
 
 

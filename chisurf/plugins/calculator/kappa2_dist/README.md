@@ -28,10 +28,9 @@ not apply.
 ## Requirements
 
 - Python packages:
-  - PyQt5
+  - emtk (the window and its plot)
   - numpy
   - scipy
-  - matplotlib (for plotting)
 
 ## Documentation
 

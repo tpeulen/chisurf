@@ -1,7 +1,7 @@
 """Native emtk RICS-precision calculator: the planner for a raster scan.
 
 The settings form and the table of numbers are the view spec ``precision_emtk.view.json``
-(field names, ranges and descriptions are those of the Qt spec ``precision.view.json``)
+(field names, ranges and descriptions are those of the AutoForm spec ``precision.view.json``)
 drawn by :func:`emtk.view_form.draw_sections`; the table is its ``data_table``. Only the
 error-versus-dwell plot, the file dialog of Export CSV, Help and Guide are drawn here. All
 state and work is in :class:`~.view_model.PrecisionViewModel`; the sweep runs on a
@@ -31,7 +31,7 @@ from chisurf.plugins.emtk_layout import action_button, window_size
 from .view_model import PrecisionViewModel
 
 HERE = Path(__file__).parent
-#: Series colours carry data (the Qt plot's blue curve and orange marker).
+#: Series colours carry data (a blue curve and an orange marker for your setting).
 CURVE_COLOUR = (76, 155, 232, 255)
 YOURS_COLOUR = (232, 115, 76, 255)
 EXPORT_NAME = "rics_precision.csv"

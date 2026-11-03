@@ -368,7 +368,7 @@ class PhasorCalcApp(ImApp):
     def _render(self) -> None:
         self.phasor_gui.draw()
 
-    # -- persistence: the session's inputs (the Qt tool kept the window geometry only) ----------------------- #
+    # -- persistence: the session's inputs ----------------------- #
     def export_settings(self) -> dict:
         """Every value the controls edit."""
         model = self.tool._model

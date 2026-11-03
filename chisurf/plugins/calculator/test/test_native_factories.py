@@ -61,8 +61,8 @@ def test_fret_inverse_and_homo_backmap():
     h = app.homo.model
     time = h.t_RM
     app.homo._compute_backmap()
-    # R_DA is carried as the 2-decimal field shows it (as the Qt spin box did: 51.35, not 51.3521), so
-    # the back-mapped time is the Qt tool's 0.9998, not exactly 1.
+    # R_DA is carried as the 2-decimal field shows it (51.35, not 51.3521), so the back-mapped
+    # time is 0.9998, not exactly 1.
     assert h.t_RM == pytest.approx(time, rel=1e-3)
 
 

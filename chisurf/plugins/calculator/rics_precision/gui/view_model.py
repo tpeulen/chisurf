@@ -1,4 +1,4 @@
-"""Qt-free view model for the RICS-precision calculator."""
+"""View model for the RICS-precision calculator (no GUI toolkit)."""
 
 from __future__ import annotations
 
@@ -175,7 +175,7 @@ class PrecisionViewModel:
         return True
 
     def csv_text(self) -> str:
-        """The swept prediction as CSV, exactly as the Qt tool wrote it.
+        """The swept prediction as CSV: a header, then one ``dwell_us,line_ms,frame_ms,error_percent`` row per dwell.
 
         Raises
         ------

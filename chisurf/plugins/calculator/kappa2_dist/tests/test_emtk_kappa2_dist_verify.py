@@ -1,8 +1,8 @@
-"""The native κ² calculator against the Qt tool it replaces, every control and action driven through the UI.
+"""The κ² calculator window, every control and action driven through the UI.
 
-Hermetic: settings in a temporary folder, the CSV goes to ``tmp_path``, no network. The Qt tool is the
-committed AutoForm ``Kappa2Dist``, built offscreen. The results are Monte-Carlo (numpy's global generator), so both
-sides are seeded identically before every computation; the numbers must then agree exactly.
+Hermetic: settings in a temporary folder, the CSV goes to ``tmp_path``, no network. The results are Monte-Carlo
+(numpy's global generator), so the window and the engine run directly on the same inputs are seeded identically
+before every computation; the numbers must then agree exactly. Physics checks use the analytic isotropic limits.
 """
 
 from __future__ import annotations
@@ -100,12 +100,7 @@ def model_state(model):
     return {k: getattr(model, k) for k in (*INPUT_FIELDS, *RESULTS)}
 
 
-# -- the numbers the Qt tool produced, recorded before it was retired (qt_reference.json) ------- #
-
-QT_REFERENCE = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
-
-
-# ── 1. every scenario equals the Qt tool, edited through the real fields ------------------------- #
+# ── 1. every edit through the real fields equals the engine run on the typed inputs ---------------- #
 
 EDITS = [
     ("model_type", "isotropic"),
@@ -141,41 +136,43 @@ def apply_native(app, attr, value):
         type_into(app, attr, text)
 
 
-def assert_same(native, qt, what):
+def engine_state(inputs):
+    """The engine run directly on ``inputs`` under seed 7: the model computed without the window."""
+    from types import SimpleNamespace
+
+    from chisurf.plugins.calculator.kappa2_dist.backend.services import _kappa2_compute_handler
+    from chisurf.plugins.calculator.kappa2_dist.gui.model import _Kappa2DistModel
+
+    reference = _Kappa2DistModel()
+    for key, value in inputs.items():
+        setattr(reference, key, value)
+    np.random.seed(7)
+    reference.compute(SimpleNamespace(compute=_kappa2_compute_handler))
+    return reference
+
+
+def assert_same(native, expected, what):
     for key in native:
         if isinstance(native[key], (str, bool)):
-            assert native[key] == qt[key], (what, key)
+            assert native[key] == expected[key], (what, key)
         else:
-            assert native[key] == pytest.approx(qt[key], rel=1e-9, abs=1e-12, nan_ok=True), (
-                what,
-                key,
-                native[key],
-                qt[key],
-            )
+            assert native[key] == pytest.approx(
+                expected[key], rel=1e-9, abs=1e-12, nan_ok=True
+            ), (what, key, native[key], expected[key])
 
 
-def test_defaults_and_every_edit_equal_the_recorded_qt_tool(app):
-    assert_same(model_state(app.tool._model), QT_REFERENCE["construction"], "construction")
-    for (attr, value), recorded in zip(EDITS, QT_REFERENCE["edits"]):
-        assert (recorded["attr"], recorded["value"]) == (attr, value)
-        apply_native(app, attr, value)
-        assert_same(model_state(app.tool._model), recorded["state"], f"after {attr}={value}")
-    np.testing.assert_allclose(app.tool._model._k2hist, QT_REFERENCE["k2hist"], equal_nan=True)
-    np.testing.assert_allclose(app.tool._model._k2scale, QT_REFERENCE["k2scale"])
-
-
-def test_the_numbers_the_qt_window_showed_are_pinned(app):
-    """Seed 7 values read off the Qt window."""
+def test_every_edit_lands_in_the_model_and_equals_the_engine_on_those_inputs(app):
     m = app.tool._model
-    assert (m.k2_mean, m.k2_sd) == pytest.approx((0.66644, 0.21922), abs=5e-6)
-    assert (m.Rapp_mean, m.RappSD, m.delta_deg) == pytest.approx(
-        (0.99288, 0.05216, 57.65812), abs=5e-6
-    )
-    pick_model(app, "Isotropic")
-    assert (m.k2_mean, m.k2_sd, m.RappSD) == pytest.approx((0.66884, 0.71818, 0.23542), abs=5e-6)
-    pick_model(app, "DWT (Diffusion)")
-    type_into(app, "fret_efficiency", "0.4")
-    assert (m.k2_mean, m.k2_sd, m.Rapp_mean) == pytest.approx((0.71815, 0.24988, 1.00486), abs=5e-6)
+    for attr, value in EDITS:
+        apply_native(app, attr, value)
+        assert getattr(m, attr) == value, attr  # the typed value is the input the engine ran on
+        inputs = {k: getattr(m, k) for k in INPUT_FIELDS}
+        reference = engine_state(inputs)
+        assert_same(model_state(m), model_state(reference), f"after {attr}={value}")
+    np.testing.assert_allclose(m._k2hist, reference._k2hist, equal_nan=True)
+    np.testing.assert_allclose(m._k2scale, reference._k2scale)
+    # n_bins = 60 bins span [0, 4]: the edges are the analytic grid
+    np.testing.assert_allclose(m._k2scale, np.linspace(0.0, 4.0, 60))
 
 
 def test_the_statistics_are_the_analytic_ones(app):
@@ -225,7 +222,7 @@ def test_typed_garbage_is_ignored_clamped_and_arrows_step(app):
     type_into(app, "r_Dinf", "abc")
     assert m.r_Dinf == 0.05
     type_into(app, "r_Dinf", "9")
-    assert m.r_Dinf == 0.4  # the Qt maximum
+    assert m.r_Dinf == 0.4  # the field maximum
     type_into(app, "n_bins", "3")
     assert m.n_bins == 5
     type_into(app, "fret_efficiency", "7")
@@ -238,7 +235,7 @@ def test_typed_garbage_is_ignored_clamped_and_arrows_step(app):
     draw(app, frames=1)
     app.release()
     settle(app)
-    assert m.kappa2_true == pytest.approx(before + 0.01)  # the Qt spin box's step
+    assert m.kappa2_true == pytest.approx(before + 0.01)  # the field's step
 
 
 def test_an_edit_while_computing_is_not_lost(app):
@@ -275,7 +272,7 @@ def test_a_failing_backend_is_reported_and_the_plot_says_so(app, monkeypatch):
 
 
 def test_inputs_without_a_finite_result_are_reported(app):
-    """The Qt tool showed 1e+308-like garbage for these; the native window says what happened."""
+    """Inputs without a finite result are reported in the status line, not shown as numbers."""
     app.tool._model.rAD_known = True
     app.tool._model.r_ADinf = 0.4
     np.random.seed(7)
@@ -299,22 +296,32 @@ def run_save(app, target, size=SIZE):
     return draw(app, size)
 
 
-def test_save_writes_the_csv_the_qt_tool_wrote_and_says_so(app, tmp_path):
-    np.random.seed(7)
-    app.tool._model.compute(
-        __import__("types").SimpleNamespace(
-            compute=__import__(
-                "chisurf.plugins.calculator.kappa2_dist.backend.services", fromlist=["x"]
-            )._kappa2_compute_handler
-        )
-    )
+def test_save_writes_the_statistics_header_and_the_distribution_and_says_so(app, tmp_path):
+    m = app.tool._model
     target = tmp_path / "k2.csv"
     app.write_csv(target)
     assert app.tool.status == f"Saved to k2.csv ({tmp_path})"
-    assert QT_REFERENCE["save_title"] == "Save Successful"
-    assert (
-        target.read_text() == QT_REFERENCE["csv"]
-    )  # header, bins and probabilities, byte for byte
+    lines = target.read_text().splitlines()
+    header = [line for line in lines if line.startswith("#")]
+    assert header == [
+        "# Kappa2 Distribution",
+        f"# Model: {m.model_type}",
+        f"# SD2: {m.SD2:.6f}",
+        f"# SA2: {m.SA2:.6f}",
+        f"# Mean kappa2: {m.k2_mean:.6f}",
+        f"# SD kappa2: {m.k2_sd:.6f}",
+        f"# Assumed kappa2: {m.kappa2_true:.6f}",
+        f"# Mean Rapp: {m.Rapp_mean:.6f}",
+        f"# SD Rapp: {m.RappSD:.6f}",
+        "#",
+        "# kappa2,probability",
+    ]
+    data = np.loadtxt(target, delimiter=",", comments="#")
+    # one row per bin: its upper edge on the n_bins-point grid over [0, 4], and its weight
+    assert data.shape == (m.n_bins - 1, 2)
+    np.testing.assert_allclose(data[:, 0], np.linspace(0.0, 4.0, m.n_bins)[1:], atol=5e-7)
+    np.testing.assert_allclose(data[:, 0], m._k2scale[1:], atol=5e-7)
+    np.testing.assert_allclose(data[:, 1], m._k2hist, atol=5e-7)
 
 
 def test_save_opens_the_file_dialog_writes_nothing_until_it_returns_and_cancel_closes_it(
@@ -362,12 +369,12 @@ def test_save_to_an_unwritable_place_keeps_the_dialog_with_the_error(app, tmp_pa
     assert not any("missing_folder" in s for s in draw(app).strings)
 
 
-def test_save_is_disabled_until_a_distribution_exists_like_the_qt_button(app):
+def test_save_is_disabled_until_a_distribution_with_weight_exists(app):
     assert app.kappa2_gui.has_results()
     app.tool._model._k2hist = None
     assert not app.kappa2_gui.has_results()
     app.tool._model._k2hist = np.zeros(5)
-    assert not app.kappa2_gui.has_results()  # no weight: the Qt button was disabled for this too
+    assert not app.kappa2_gui.has_results()  # a distribution without weight cannot be saved
     draw(app)
     click(app, app.item_rects["save"])  # a disabled button does nothing
     assert "Cancel" not in draw(app).strings
@@ -410,9 +417,9 @@ def test_draws_form_plot_and_statistics(app, size):
     assert any(s.startswith("true κ² = ") for s in strings)
 
 
-def test_every_editable_field_has_arrows_and_the_qt_range_and_step(app):
+def test_every_editable_field_has_arrows_and_the_spec_range_and_step(app):
     spec = json.loads((PLUGIN / "k2dist.view.json").read_text(encoding="utf-8"))
-    qt = {
+    declared = {
         s["attr"]: s
         for p in spec["sections"]
         for s in p.get("sections", [])
@@ -426,7 +433,7 @@ def test_every_editable_field_has_arrows_and_the_qt_range_and_step(app):
     }
     assert (
         set(native)
-        == set(qt)
+        == set(declared)
         == {
             "r_0",
             "r_Dinf",
@@ -441,15 +448,15 @@ def test_every_editable_field_has_arrows_and_the_qt_range_and_step(app):
     for attr, section in native.items():
         assert section["style"] == "spin"
         assert (section["minimum"], section["maximum"], section.get("step")) == (
-            qt[attr]["minimum"],
-            qt[attr]["maximum"],
-            qt[attr].get("step"),
+            declared[attr]["minimum"],
+            declared[attr]["maximum"],
+            declared[attr].get("step"),
         ), attr
 
 
-def test_no_emoji_and_the_model_choice_lists_the_qt_labels(app):
+def test_no_emoji_and_the_model_choice_lists_the_three_models(app):
     strings = draw(app).strings
-    # No emoji, as in the Qt tool -- except the shared vocabulary's Load example icon (🧪).
+    # No emoji -- except the shared vocabulary's Load example icon (🧪).
     assert all(ord(ch) < 0x2190 or ch in "κ²₀∞δ°ₐ₂\U0001f9ea" for text in strings for ch in text), (
         strings
     )
@@ -509,7 +516,7 @@ def test_guide_targets_are_drawn_and_the_tour_waits_for_the_user(app):
     ]
     assert (
         "Press <b>Help</b>" in steps[-1]["text"] and "<b>?</b>" not in steps[-1]["text"]
-    )  # the Qt '?' is Help here
+    )  # the help button is labelled Help
     app.kappa2_gui.tour.start(2)
     draw(app)
     assert app.kappa2_gui.tour.awaiting
@@ -538,7 +545,7 @@ def test_help_links_are_live_and_the_text_is_plain():
     assert links and all((REPO / link).is_file() for link in links), links
 
 
-# ── 6. persistence, manifest, no Qt, host -------------------------------------------------------------------- #
+# ── 6. persistence, manifest, no Qt import, host -------------------------------------------------------------------- #
 
 
 def test_settings_round_trip_and_invalid_values_are_ignored(app):

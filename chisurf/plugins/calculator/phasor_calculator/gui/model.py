@@ -1,4 +1,4 @@
-"""Numerical calculator state, independent of Qt hosting."""
+"""Numerical calculator state; no GUI toolkit needed."""
 
 from __future__ import annotations
 

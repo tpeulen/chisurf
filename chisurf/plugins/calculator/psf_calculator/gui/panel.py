@@ -1,4 +1,4 @@
-"""The Qt-free view model behind the PSF window: what the specs of ``psf_emtk.view.json`` read and call."""
+"""The view model behind the PSF window: what the specs of ``psf_emtk.view.json`` read and call."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ class PSFPanel:
 
     # -- the specs' hooks --------------------------------------------------------------------------------- #
     def edited(self, *_value) -> None:
-        """A field committed: recompute once the user stops editing (the Qt tool's 250 ms debounce)."""
+        """A field committed: recompute once the user stops editing (a 250 ms debounce)."""
         self.app.schedule()
 
     def enabled(self, name: str) -> bool:
@@ -47,7 +47,7 @@ class PSFPanel:
         return True
 
     def summary_lines(self) -> str:
-        """The Qt summary without its markdown: a list of the volume, the two widths and the scalar prediction."""
+        """The summary without its markdown: a list of the volume, the two widths and the scalar prediction."""
         text = PSFModel.summary_text(self.app.model)
         return "\n".join(re.sub(r"^- ", "", line).replace("**", "") for line in text.splitlines())
 

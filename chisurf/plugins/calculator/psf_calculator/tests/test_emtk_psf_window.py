@@ -1,13 +1,13 @@
-"""The native PSF calculator against the numbers of the Qt tool it replaced (recorded in ``qt_reference.json``).
+"""The PSF calculator window: volume, summary and polarization overlay checked by construction; spec and layout.
 
-What the Qt tool handed its 3-D renderer (the volume, the colormap, threshold and gamma, the polarization segments) is compared;
-the rendered 3-D image itself is not comparable. Hermetic: temporary HOME and settings.
+The volume is a normalised peak at the lateral centre, the summary reports its interpolated half-maximum widths
+beside the scalar limit 0.51 lambda/NA, and the overlay strokes follow the pupil field of the chosen polarization.
+Hermetic: temporary HOME and settings.
 """
 
 from __future__ import annotations
 
 import json
-import pathlib
 import time
 
 import numpy as np
@@ -39,7 +39,7 @@ def app():
 
 
 def small(app):
-    """A small grid (fast), the Qt defaults otherwise."""
+    """A small grid (fast), the shipped defaults otherwise."""
     app.model.nxy, app.model.nz = 24, 7
 
 
@@ -49,111 +49,77 @@ def settle(app, size=BIG):
     return d
 
 
-# -- the same numbers as the retired Qt tool (recorded in qt_reference.json) ---------------------------- #
-#
-# ``qt_reference.json`` was recorded from the committed Qt ``PSFCalculator`` before it was deleted: for each scenario the
-# volume signature (shape, sum, max, argmax, 16 sampled voxels), the summary lines, what the tool handed its 3-D renderer
-# (colormap, threshold, gamma, polarization segments), the choice-list labels, the spec field table and the two export files.
-
-REF = json.loads((pathlib.Path(__file__).parent / "qt_reference.json").read_text())
+# -- the volume, the summary and the overlay against what they must be by construction ------------------- #
 
 
-def sig(a):
-    """The signature recorded for an array (see ``qt_reference.json``)."""
-    flat = np.asarray(a, dtype=float).ravel()
-    return (
-        flat.sum(),
-        flat.max(),
-        int(flat.argmax()),
-        flat[np.linspace(0, flat.size - 1, 16).astype(int)],
-    )
+def _half_max_width(profile, step_nm):
+    """FWHM of a sampled peak by linear interpolation of both half-maximum crossings (nm)."""
+    p = np.asarray(profile, float)
+    half = p.max() / 2.0
+    above = np.nonzero(p >= half)[0]
+    lo, hi = int(above[0]), int(above[-1])
+    # a peak that leaves the frame is cut at its last sample
+    left = lo - (p[lo] - half) / (p[lo] - p[lo - 1]) if lo > 0 else float(lo)
+    right = hi + (p[hi] - half) / (p[hi] - p[hi + 1]) if hi < p.size - 1 else float(hi)
+    return (right - left) * step_nm
 
 
-def assert_sig(array, ref):
-    """The array equals the recorded signature."""
-    arr = np.asarray(array)
-    assert list(arr.shape) == ref["shape"]
-    total, peak, argmax, samples = sig(arr)
-    assert total == pytest.approx(ref["sum"], rel=1e-9)
-    assert peak == pytest.approx(ref["max"], rel=1e-9)
-    assert argmax == ref["argmax"]
-    assert samples == pytest.approx(np.asarray(ref["samples"]), rel=1e-9, abs=1e-15)
-
-
-SCENARIOS = [r["params"] for r in REF["scenarios"]]
+@pytest.mark.parametrize("model", ["airy", "vectorial"])
+def test_the_volume_is_a_normalised_centred_peak_and_the_summary_reports_it(app, model):
+    small(app)
+    app.model.model = model
+    vol = app.model.compute()
+    m = app.model
+    assert vol.shape == (m.nz, m.nxy, m.nxy) and vol.max() == pytest.approx(1.0)
+    nz, ny, nx = vol.shape
+    lateral = _half_max_width(vol[nz // 2][ny // 2], m.pixel_size_nm)
+    axial = _half_max_width(vol[:, ny // 2, nx // 2], m.z_step_nm)
+    scalar = 0.51 * m.wavelength_nm / m.na  # the scalar diffraction limit
+    assert app.panel.summary_lines().splitlines() == [
+        f"volume {nz} x {ny} x {nx} ({m.pixel_size_nm:.0f} nm px, {m.z_step_nm:.0f} nm z)",
+        f"lateral FWHM {lateral:.0f} nm",
+        f"axial FWHM {axial:.0f} nm",
+        f"scalar 0.51 λ/NA = {scalar:.0f} nm ({lateral / scalar:.2f} x lateral)",
+    ]
+    if model == "airy":
+        assert lateral == pytest.approx(scalar, rel=0.05)  # the Airy disc is the scalar limit
 
 
 @pytest.mark.parametrize(
-    "ref",
-    REF["scenarios"],
-    ids=lambda r: (
-        "-".join(f"{k}={v}" for k, v in r["params"].items() if k not in ("nxy", "nz"))[:60]
-        or "defaults"
-    ),
+    "polarization, direction",
+    [
+        ("linear", lambda phi, a: (np.full_like(phi, np.cos(a)), np.full_like(phi, np.sin(a)))),
+        ("radial", lambda phi, a: (np.cos(phi), np.sin(phi))),
+        ("azimuthal", lambda phi, a: (-np.sin(phi), np.cos(phi))),
+    ],
 )
-def test_the_volume_the_summary_and_what_the_renderer_gets_equal_the_recorded_qt_tool(app, ref):
-    for k, v in ref["params"].items():
-        setattr(app.model, k, v)
+def test_the_polarization_overlay_strokes_follow_the_pupil_field(app, polarization, direction):
+    small(app)
+    app.model.polarization, app.model.angle_deg = polarization, 30.0
     app.model.compute()
-    assert_sig(app.model.volume, ref["volume"])
-    assert app.panel.summary_lines().splitlines() == ref["summary"]
-    renderer = ref["renderer"]
-    assert (renderer["colormap"], renderer["threshold"], renderer["gamma"]) == (
-        app.model.colormap,
-        app.model.threshold,
-        app.model.gamma,
-    )
-    segments = app.model.polarization_segments() if app.model.show_polarization else None
-    assert (ref["vectors"] is None) == (segments is None)
-    if segments is not None:
-        assert_sig(segments, ref["vectors"])
+    seg = app.model.polarization_segments()
+    assert seg.shape == (12, 2, 3)
+    phi = np.linspace(0.0, 2.0 * np.pi, 12, endpoint=False)
+    stroke = seg[:, 1, :2] - seg[:, 0, :2]
+    stroke /= np.linalg.norm(stroke, axis=1, keepdims=True)
+    ux, uy = direction(phi, np.deg2rad(30.0))
+    np.testing.assert_allclose(stroke, np.column_stack([ux, uy]), atol=1e-12)
+    centre = seg.mean(axis=1)[:, :2] - app.model.nxy / 2.0  # one stroke per pupil point on a ring
+    np.testing.assert_allclose(np.hypot(*centre.T), 0.38 * app.model.nxy, rtol=1e-12)
+    app.model.model = "airy"
+    assert app.model.polarization_segments() is None  # the scalar model has no polarization
 
 
-def test_every_field_of_the_qt_spec_is_in_the_emtk_spec_with_the_same_range_step_and_choices():
-    def leaves(sections):
-        for s in sections:
-            if "attr" in s:
-                yield s
-            yield from leaves(s.get("sections", []))
-
-    qt = REF["spec_fields"]
-    ours = {s["attr"]: s for s in leaves(SPEC["parameters"]["sections"])}
-    assert set(qt) - {"psf_volume_view"} <= set(ours) and set(ours) <= set(qt)
-    for name, theirs in ours.items():
-        for key in ("kind", "minimum", "maximum", "step", "decimals", "options", "labels", "label"):
-            assert theirs.get(key) == qt[name].get(key), (name, key)
-        if name == "quality":
-            assert (
-                theirs.get("style") is None and qt[name].get("style") == "radio"
-            )  # deliberate: the inline radios were cut at 800 px
-        else:
-            assert theirs.get("style") in (
-                qt[name].get("style"),
-                "spin",
-            )  # the number fields gain the Qt spin arrows
+def test_every_choice_lists_one_label_per_option_and_holds_its_value(app):
+    for panel in SPEC["parameters"]["sections"]:
+        for s in panel["sections"]:
+            if s.get("type") == "choice":
+                if s.get("labels"):
+                    assert len(s["labels"]) == len(s["options"]), s["attr"]
+                assert getattr(app.model, s["attr"]) in s["options"], s["attr"]
 
 
-def test_the_choice_lists_equal_the_recorded_qt_combo_labels():
-    ours = {
-        s["attr"]: s.get("labels") or s["options"]
-        for p in SPEC["parameters"]["sections"]
-        for s in p["sections"]
-        if s.get("type") == "choice"
-    }
-    assert REF["choices"] == ours
-
-
-def test_both_export_files_equal_the_recorded_qt_exports(app, tmp_path):
-    app.model.nxy, app.model.nz = 16, 5
-    app.model.compute()
-    exports = REF["exports"]
-    assert_sig(np.load(app.model.save(tmp_path / "ours.npy")), exports["npy"])
-    from chisurf.core.fio.image import imread
-
-    assert_sig(imread(app.model.save(tmp_path / "ours.tif")), exports["tif"])
-
-
-# -- spec, tooltips, Qt-free --------------------------------------------------------------------------------- #
+# -- spec, tooltips, no Qt import --------------------------------------------------------------------------------- #
 
 
 def walk(node):

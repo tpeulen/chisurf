@@ -64,7 +64,7 @@ class RecordingPainter:
 
 @pytest.fixture
 def tool():
-    """The native app, with ``tool.app`` the app and ``tool._model`` its model (the Qt tool's surface)."""
+    """The native app, with ``tool.app`` the app and ``tool._model`` its model (the surface hosts and tests use)."""
     from types import SimpleNamespace
 
     from chisurf.plugins.calculator.phasor_calculator.gui.app import make_app

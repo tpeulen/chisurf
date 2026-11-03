@@ -1,4 +1,4 @@
-"""The FRET calculator's native app builds with computed defaults (the Qt tool tests, ported)."""
+"""The FRET calculator's native app builds with computed defaults."""
 
 
 class TestFRETCalculator:
