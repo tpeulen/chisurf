@@ -1,6 +1,6 @@
 {
   "window": {"width": 1100, "height": 720},
-  "_comment": "Settings of the emtk H2MM app: AutoForm over H2mmViewModel. Same controls as the Qt tool's Settings tab (model selection, optimisation, decoder) plus the detector streams of its Channels tab as routing-channel lists.",
+  "_comment": "Settings of the emtk H2MM app: AutoForm over H2mmViewModel. Model selection, optimisation and decoder settings, plus the detector streams as routing-channel lists.",
   "sections": [
     {
       "description": "The donor, acceptor and acceptor-excitation detectors (the burst run is picked in the Input section, from the Datasets workspace).",

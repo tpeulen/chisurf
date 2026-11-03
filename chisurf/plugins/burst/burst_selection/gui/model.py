@@ -1,17 +1,12 @@
 """State and actions of the native Burst Selection app, without a toolkit.
 
-The Qt tool keeps this state in widgets: the files in a list widget, the filter settings in the shared photon-filter
-wizard page, the search parameters in a form generated from tttrlib's registry, the display settings in spin boxes.
-:class:`BurstSelectionModel` holds the same state as plain attributes, builds the same
-:class:`~..api.models.AnalysisSettings` from it, and runs the same backend call (``BurstSelectionClient.analyze_files``),
-so a search from the native app writes the same burst tables as one from the Qt tool. What the diagnostic plots draw
-is computed here too, as arrays, and the emtk app only draws them.
-
-Values the Qt tool reported wrongly are written correctly here (see ``okf/references/known-issues.md``): the
-``burst_detection.time_window`` is the macro-time cut in seconds (Qt wrote ``min_photons / 1000``), the CUSUM /
-Kalman / BOCPD fields carry their defaults (Qt filled them from unrelated widgets), and the parameters recorded with a
-run are this run's (Qt recorded a stale ``dT_min`` and ``use_gap_fill``). The registry search reads none of them, so
-the bursts are identical.
+:class:`BurstSelectionModel` holds the files, the photon-filter settings, the search parameters (from tttrlib's
+registry) and the display settings as plain attributes, builds :class:`~..api.models.AnalysisSettings` from them and
+runs the backend call (``BurstSelectionClient.analyze_files``). What the diagnostic plots draw is computed here too,
+as arrays, and the emtk app only draws them.
+``burst_detection.time_window`` is the macro-time cut in seconds, the CUSUM / Kalman / BOCPD fields carry their
+defaults, and the parameters recorded with a run are this run's (``dT_min``, ``use_gap_fill``). The registry search
+reads none of them.
 
 Nothing here imports Qt, emtk or ``chisurf.gui``.
 """
@@ -51,10 +46,10 @@ from ..api.models import (
 from . import diagnostics as diag_mod
 from .adapter import PROXIMITY_RATIO_COLUMN, UI_COLUMNS, burst_rows_for_display
 
-#: Bump in the same change that alters what this tool computes (shared with the Qt tool's cache tag).
+#: Bump in the same change that alters what this tool computes.
 ALGORITHM_VERSION = 1
 
-#: Advanced Gaussian-mixture settings (the Qt ``GMMSettingsDialog`` defaults).
+#: Advanced Gaussian-mixture settings.
 DEFAULT_GMM_SETTINGS: dict[str, Any] = {
     "covariance_type": "full",
     "random_state": 42,
@@ -65,7 +60,7 @@ DEFAULT_GMM_SETTINGS: dict[str, Any] = {
     "reg_covar": 1e-6,
 }
 
-#: The Qt "Settings > Metadata" dialog offers these keys first; the PDBx keys follow.
+#: Metadata keys offered first; the PDBx keys follow.
 COMMON_METADATA_KEYS = [
     "pH",
     "temperature",
@@ -88,10 +83,10 @@ COMMON_METADATA_KEYS = [
 #: "Do not restrict to one detector / micro-time window" (the wizard's spelling).
 ALL = "All"
 
-#: Default burst search (the first entry of tttrlib's registry, as the Qt combo starts on it).
+#: Default burst search (the first entry of tttrlib's registry).
 DEFAULT_ALGORITHM = "sliding_window"
 
-#: Plot point budget per curve (the Qt tool's thinning budget).
+#: Plot point budget per curve (curves are thinned to it).
 MAX_PLOT_POINTS = 20000
 #: A count-rate line is binned already; ~5 points per pixel of the plot keep every extremum (20 000 segments cost ~0.1 s a frame).
 TRACE_PLOT_POINTS = 4000
@@ -381,7 +376,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         self.mmfdb_output = False
         self.sample_id = ""
         self.metadata: dict[str, str] = {}
-        # -- display (the Qt tool's defaults) -------------------------------------------------------------- #
+        # -- display --------------------------------------------------------------------------------------- #
         self.show_all_photons = True
         self.show_selected_photons = True
         self.window_start_s = 0.0
@@ -440,7 +435,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
 
     # -- files ----------------------------------------------------------------------------------------------- #
     def add_paths(self, paths) -> int:
-        """Add TTTR files and the TTTR files of folders (sorted, as the Qt tool); return how many were added."""
+        """Add TTTR files and the TTTR files of folders (sorted); return how many were added."""
         from chisurf.core.fio.staging import TTTR_EXTENSIONS
 
         added = 0
@@ -618,7 +613,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         )
 
     def apply_setup_defaults(self, params: dict[str, Any]) -> None:
-        """A setup's saved ``burst_selection`` block (the keys the Qt page reads and writes)."""
+        """A setup's saved ``burst_selection`` block."""
         if "dT_min" in params:
             self.dt_min = float(params["dT_min"])
         if "dT_max" in params:
@@ -650,7 +645,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
             }
 
     def burst_selection_parameters(self) -> dict[str, Any]:
-        """This run's parameters in the setup / ``Info`` file vocabulary (the Qt page's keys, with true values)."""
+        """This run's parameters in the setup / ``Info`` file vocabulary."""
         params: dict[str, Any] = {
             "dT_min": float(self.dt_min),
             "dT_max": float(self.dt_max),
@@ -674,7 +669,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         return params
 
     def save_defaults_to_setup(self) -> str:
-        """Store the current filter and search as the selected setup's defaults (the Qt page's save button)."""
+        """Store the current filter and search as the selected setup's defaults."""
         if not self.setup_name:
             raise ValueError(
                 "No detector setup selected: choose or save one in the detector setup first."
@@ -693,7 +688,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         return [(name, str(spec.get("label", name))) for name, spec in self.algorithms.items()]
 
     def set_algorithm(self, name: str) -> None:
-        """Select a search; its parameters start from the registry defaults (as the Qt form does)."""
+        """Select a search; its parameters start from the registry defaults."""
         name = str(name)
         if name == self.algorithm or name not in self.algorithms:
             return
@@ -781,7 +776,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         return True
 
     def analysis_settings(self) -> AnalysisSettings:
-        """The :class:`AnalysisSettings` of a run (the fields the search reads equal the Qt tool's)."""
+        """The :class:`AnalysisSettings` of a run."""
         filter_settings = PhotonFilterSettings(
             channels=self.channels,
             microtime_ranges=self.microtime_ranges,
@@ -890,12 +885,12 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         return options
 
     def mmfdb_context(self) -> dict[str, Any] | None:
-        """The MMFDB archival context of a run (``None`` when MMFDB output is off), as the Qt tool builds it.
+        """The MMFDB archival context of a run (``None`` when MMFDB output is off).
 
         Raises
         ------
         RuntimeError
-            When no sample can be determined (the Qt tool asks in a dialog; here the Sample field says which).
+            When no sample can be determined (the Sample field says which).
         """
         if not self.mmfdb_output:
             return None
@@ -1039,7 +1034,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         return int(meta.get("n_bursts", 0))
 
     def summary_rows(self) -> list[dict[str, str]]:
-        """Key figures of the last run (the Qt Summary dock)."""
+        """Key figures of the last run (the Summary panel)."""
         meta = dict((self.result or {}).get("metadata") or {})
         frame = self.display_frame
         rows = [
@@ -1059,7 +1054,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
                 ("Duration (ms)", "Mean duration (ms)"),
                 ("Count Rate (KHz)", "Mean rate (kHz)"),
             ]
-            # mean photons per burst in each detector (the Qt info box's "Mean ph (G|G)" rows)
+            # mean photons per burst in each detector (rows "Mean ph (G|G)", ...)
             for detector in self.detectors:
                 column = f"Number of Photons ({detector})"
                 if column in names:
@@ -1177,7 +1172,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         )
 
     def fit_gmm(self) -> dict[str, Any]:
-        """Fit the feature histogram with a Gaussian mixture (the Qt ``_plot_gmm``); the result is kept for the plot."""
+        """Fit the feature histogram with a Gaussian mixture; the result is kept for the plot."""
         data = self.feature_data(self.hist_feature)
         hist = self.histogram()
         n = int(self.gmm_components)
@@ -1467,7 +1462,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         return concat_stores(frames) if frames else None
 
     def export_flr_cif(self, path) -> Path:
-        """Write the displayed table and the metadata as flrCIF (the Qt ``_write_flr_cif``)."""
+        """Write the displayed table and the metadata as flrCIF."""
         if self.display_frame is None or row_count(self.display_frame) == 0:
             raise ValueError("No burst data to export.")
         lines = [

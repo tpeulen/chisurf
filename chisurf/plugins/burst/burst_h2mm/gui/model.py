@@ -1,6 +1,6 @@
-"""Qt-free settings and result model behind the emtk H2MM app (card H0).
+"""Toolkit-free settings and result model behind the emtk H2MM app (card H0).
 
-Holds what the Qt ``H2mmTool`` keeps in its widgets and on itself: the burst folder, every setting that goes into
+Holds the burst folder, every setting that goes into
 :class:`~..api.models.H2mmSettings`, the detector-to-stream assignment, and the result of the last fit
 (``result``, ``bundle`` and the bootstrap ``uncertainty``). The actions run on a snapshot of this model through
 :class:`chisurf.emtk.jobs.SnapshotJob`; the numerical work is the unchanged :func:`..backend.services.run_analysis`.
@@ -25,10 +25,10 @@ from chisurf.plugins.core.pto_inspector.core import RunPickerMixin
 from ..api.models import H2mmSettings, StreamSettings
 
 #: Bump in the same change that alters what this tool computes, so results written by the previous version stop
-#: reading as current (shared by the Qt tool and the emtk app).
+#: reading as current.
 ALGORITHM_VERSION = 1
 
-#: Engines and decoders offered (same lists, same order as the Qt tool's combos).
+#: Engines and decoders offered, in the order the choices list them.
 ENGINES = [
     ("Fast EM (float32)", "em-float32"),
     ("Exact EM (float64)", "em"),
@@ -36,7 +36,7 @@ ENGINES = [
 ]
 DECODERS = [("Viterbi", "viterbi"), ("Jitter", "jitter"), ("FFBS", "ffbs")]
 CRITERIA = ["bic", "icl"]
-#: The "no third stream" entry of the acceptor-excitation choice (the Qt combo's wording).
+#: The "no third stream" entry of the acceptor-excitation choice.
 NO_AEX = "(none)"
 
 #: Fields saved to and loaded from a settings file.
@@ -89,7 +89,7 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
         self._cancel = threading.Event()
         #: Burst folder (``.bur`` tables, the photons they name beside them) or a measurement ``.pto``.
         self.data_folder: str = ""
-        # The detector definition (the Qt tool's Channels tab, edited by the shared detector editor) and which of its
+        # The detector definition (edited by the shared detector editor) and which of its
         # detectors is the donor, acceptor and (optional) acceptor-excitation stream.
         self.setup: dict = {
             "detectors": {
@@ -124,7 +124,7 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
         self.max_states: int = 3
         self.criterion: str = "bic"
         self.patience: int = 1  # -1 = off (scan all)
-        # Optimisation (defaults are the Qt tool's)
+        # Optimisation
         self.engine: str = "em-float32"
         self.restarts: int = 2
         self.seed: int = 0
@@ -201,7 +201,7 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
         )
 
     def streams(self) -> list[StreamSettings]:
-        """Donor, acceptor and optional acceptor-excitation stream (the Qt tool's ``_detector_streams``)."""
+        """Donor, acceptor and optional acceptor-excitation stream."""
         streams = [self._stream(self.donor), self._stream(self.acceptor)]
         if self.aex and self.aex != NO_AEX and self.aex in self.setup.get("detectors", {}):
             streams.append(self._stream(self.aex))
@@ -351,7 +351,7 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
         return str(container) if container is not None else ""
 
     def can_run(self) -> str:
-        """Why Run is unavailable (empty when it is available); the Qt tool's wording for the missing folder."""
+        """Why Run is unavailable (empty when it is available); it names the missing folder."""
         if not self.data_folder or not (
             pathlib.Path(self.data_folder).is_dir() or self.container_path()
         ):
@@ -373,7 +373,7 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
         return tables + list(source_inputs(self.data_folder))
 
     def analysis_fingerprint(self, settings) -> str:
-        """Fingerprint of the inputs, the settings, the read context and the code (the Qt tool's)."""
+        """Fingerprint of the inputs, the settings, the read context and the code."""
         from chisurf.core.runtime import analysis_cache
 
         return analysis_cache.fingerprint(
@@ -453,7 +453,7 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
         self.compute(force=True)
 
     def bootstrap(self, n_boot: int = 20) -> None:
-        """Bootstrap the selected model over bursts (the Qt tool's ``_uncertainty_worker``)."""
+        """Bootstrap the selected model over bursts."""
         from ..core.analysis import bootstrap_uncertainty
 
         if self.bundle is None:
@@ -483,7 +483,7 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
         self.notify("uncertainty")
 
     def ll_scan(self, n_points: int = 25) -> None:
-        """Profile the log-likelihood of every state's E (and S) (the Qt tool's ``_llscan_worker``)."""
+        """Profile the log-likelihood of every state's E (and S)."""
         from ..core.analysis import profile_likelihood
 
         if self.bundle is None:
@@ -558,7 +558,7 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
 
     def apply_workflow_context(self, context: dict) -> None:
         """Apply a burst-workflow context: the bursts (a run of a measurement container, or a legacy
-        folder) and the detector definition (the Qt tool's method)."""
+        folder) and the detector definition."""
         from chisurf.plugins.burst.workspace_io import is_burst_source
 
         folder = context.get("burst_folder") or context.get("analysis_folder")
