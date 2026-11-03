@@ -10,6 +10,16 @@ timestamp: '2026-07-05T00:00:00Z'
 ## Where to pick this up
 
 **Next, in order (2026-11-02, after the detector-name round):**
+0. **Burst MLE IRF without a measured IRF** (2026-11-03, DNA13bp_3.ptu / RVZMT150, folder has only
+   Rh110 and Alexa647 references, no buffer/scatter). The estimate from the non-burst photons is
+   fluorescence, not scatter: "Experimental" spans bins 8–39 (binning 4) and gives tau 1.0 ns, while
+   Gaussian gives 2.6 ns and Skewed 2.4 ns. The preview's single lifetime underfits the tail (model at
+   0.5–0.9 of the data): the summed decay mixes FRET and donor-only molecules. Gamma fixed at 0.1 is
+   the largest error: freeing it takes 2I* from 570 to 142. Measure: `scratchpad replay_variants.py`
+   pattern (copy ~/.chisurf/emtk + flr DB to a temp settings dir; never let a test hub save into
+   ~/.chisurf). Options: (a) gamma from the background rate, or free, in the preview; (b) an IRF
+   from a lifetime reference (Rh110, tau 4.0 ns) by reference convolution; (c) a Gaussian fitted
+   only to the steepest rise of the burst decay.
 1. **No HDF5 anywhere** (owner: "no HDF5! csv at most; better deprecate, only an exporter at most").
    Results live in the `.pto` container; loose files only through an explicit exporter, CSV at most.
    Still writing HDF5: `chisurf/core/datastore.py`, `plugins/microscopy/{img_pixel_intensity/gui/view_model,
