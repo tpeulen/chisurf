@@ -1,9 +1,8 @@
-"""The native Global View app: the host services the Qt GraphWizard gave its surface.
+"""The native Global View app: the host services its :class:`GlobalViewSurface` needs.
 
-``GraphWizard`` and this app draw the same :class:`GlobalViewSurface`; what the
-app must replace is what the Qt window answered for the model -- file dialogs,
-warnings, help, the guided tour, the refresh on fit events, the layout file.
-The Qt facts were recorded from ``GraphWizard`` into ``qt_reference.json``.
+The app answers the model's requests in emtk -- file dialogs, warnings, help, the guided tour,
+the refresh on fit events, the layout file. The session is ``test_model._session(3)``: three
+fits of ``c + a x²`` whose ``a`` follows the first fit's, so 3 owners, 6 parameters, 2 links.
 """
 
 from __future__ import annotations
@@ -49,31 +48,19 @@ def _draw(app, size=(1200, 800), times=3):
     return painter
 
 
-#: What the legacy Qt tool showed for the same inputs, recorded before the Qt host is retired
-#: (GraphWizard on test_model._session(3), 1200x800; captured 2026-10-12, QT_QPA_PLATFORM=offscreen).
-QT_REFERENCE = HERE / "qt_reference.json"
-
-
-@pytest.fixture(scope="module")
-def qt_facts():
-    return json.loads(QT_REFERENCE.read_text(encoding="utf-8"))
-
-
-# 1. the same fits give the same network summary and parameter table as the Qt window
-def test_same_network_as_the_qt_window(qt_facts):
+# 1. the planted session's network summary and parameter table; every request is answered
+def test_the_network_of_the_planted_session():
     app, _fits, _mutator = _app()
-    assert app.model.status == qt_facts["status"]
-    assert len(app.model.parameter_records()) == qt_facts["records"]
-    # every request the Qt window answered for the model is answered here too
-    hooks = sorted(
-        k
-        for k in ("ask_open_path", "ask_save_path", "warn", "open_help", "open_guide")
-        if getattr(app.model, k) is not None
+    # three fits with two parameters each; the a of fits 2 and 3 follows fit 1's
+    assert app.model.status == (
+        "3 owners · 6 parameters · 2 linked. Drag a parameter onto the one it should follow."
     )
-    assert hooks == qt_facts["hooks"]
+    assert len(app.model.parameter_records()) == 6
+    hooks = ("ask_open_path", "ask_save_path", "warn", "open_help", "open_guide")
+    assert all(getattr(app.model, k) is not None for k in hooks)
 
 
-# 2. the actions that needed the Qt host
+# 2. the actions answered in the app
 def test_export_runs_through_the_in_app_file_dialog(tmp_path):
     app, _fits, _mutator = _app()
     app.model.export_parameters()
@@ -114,7 +101,7 @@ def test_a_warning_is_an_in_app_message(tmp_path):
     assert app.message_window.open and "OK" in painter.strings
     app.message_window.hide()
     painter = _draw(app)
-    assert "OK" not in painter.strings  # the text stays in the status line, as in Qt
+    assert "OK" not in painter.strings  # the text stays in the status line
 
 
 def test_help_and_guide(tmp_path):
@@ -178,7 +165,7 @@ def test_draws_populated(size):
     assert {"fit", "free parameter", "linked parameter"} <= set(painter.strings)
 
 
-# 5. a fit changing elsewhere refreshes the network (the Qt window's fit-event subscription)
+# 5. a fit changing elsewhere refreshes the network (the fit-event subscription)
 def test_fit_events_refresh_the_network(monkeypatch):
     subscribed = {}
 
@@ -236,8 +223,8 @@ def test_every_control_has_a_tooltip():
     walk(spec["sections"])
 
 
-# 8. persistence: the dock layout file the Qt window used
-def test_layout_is_kept_where_the_qt_window_keeps_it(tmp_path, monkeypatch):
+# 8. persistence: the dock layout file
+def test_layout_is_kept_in_globalview_layout_json(tmp_path, monkeypatch):
     import chisurf.core.settings as settings
 
     monkeypatch.setattr(settings, "chisurf_settings_path", tmp_path, raising=False)

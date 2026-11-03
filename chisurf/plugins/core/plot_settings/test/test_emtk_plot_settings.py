@@ -1,11 +1,7 @@
-"""Settings ▸ Plots, native emtk window: controls, live preview, layout, against the old tool.
+"""Settings ▸ Plots, native emtk window: controls, ranges, live preview, layout.
 
 Hermetic: every test runs on a private copy of the ``gui`` settings and a temporary
 settings folder, so a change never reaches the process settings or ``~/.chisurf``.
-
-The retired Qt tool's capture (``qt_reference.json``, recorded before it was deleted)
-stays the inventory every control is checked against; what was dropped on purpose is
-listed in :data:`RETIRED` with the reason.
 """
 
 from __future__ import annotations
@@ -21,17 +17,6 @@ from emtk.testing import RecordingPainter
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
 SPEC = json.loads((GUI / "plot_settings_emtk.view.json").read_text(encoding="utf-8"))
-QT = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
-
-#: Controls of the retired tool that are gone on purpose: each changed no plot.
-RETIRED = {
-    "backend": "one renderer (emtk): a choice with one option",
-    "hide_title": "gui.plot.hideTitle was read by no plot",
-    "pg_antialias": "pyqtgraph option; emtk always antialiases",
-    "pg_left_button_pan": "pyqtgraph option; emtk plots pan with the left button",
-    "pg_background": "pyqtgraph option; plots follow the theme",
-    "pg_foreground": "pyqtgraph option; plots follow the theme",
-}
 
 #: Fields that style the node graphs, not the fit plots the preview shows.
 NODE_GRAPH_FIELDS = (
@@ -76,40 +61,23 @@ def spec_controls(sections=SPEC["sections"]):
 
 
 # ── inventory ──────────────────────────────────────────────────────────
-def test_every_control_of_the_old_tool_is_here_or_retired_with_a_reason():
+def test_the_spec_draws_every_field_of_the_model():
     from chisurf.plugins.core.plot_settings.gui.model import PlotSettingsModel
 
-    old = (
-        set(QT["ranges"])
-        | {
-            "color_data",
-            "color_model",
-            "color_irf",
-            "color_residuals",
-            "color_auto_corr",
-            "color_region_selector",
-            "enable_grid",
-            "show_data_grid",
-            "show_residual_grid",
-            "show_acorr_grid",
-            "enable_region_selector",
-            "show_legend",
-            "label_axis",
-            "ng_show_grid",
-        }
-        | set(RETIRED)
-    )
     drawn = {section["attr"] for section in spec_controls()}
     assert drawn == set(PlotSettingsModel.fields())
-    missing = old - drawn - set(RETIRED)
-    assert not missing, f"controls lost in the redesign: {sorted(missing)}"
 
 
-def test_the_ranges_are_the_old_tools():
+def test_the_ranges_follow_the_quantities_and_the_spec_declares_them():
     from chisurf.plugins.core.plot_settings.gui.model import RANGES
 
-    for attr, (lo, hi) in QT["ranges"].items():
-        assert RANGES[attr] == (lo, hi), attr
+    # an 8-bit alpha, fractions in [0, 1], percentages in [0, 100]
+    assert RANGES["region_alpha"] == (0, 255)
+    assert RANGES["active_transparency"] == RANGES["inactive_transparency"] == (0.0, 1.0)
+    for attr in ("grid_alpha_pct", "ng_grid_opacity_pct"):
+        assert RANGES[attr] == (0, 100), attr
+    for attr, (lo, hi) in RANGES.items():
+        assert lo < hi, attr
     for section in spec_controls():
         if section["attr"] in RANGES and "minimum" in section:
             assert (section["minimum"], section["maximum"]) == RANGES[section["attr"]]

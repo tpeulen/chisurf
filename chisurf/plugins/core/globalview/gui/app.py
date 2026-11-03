@@ -1,15 +1,13 @@
-"""Native Global View: the emtk surface with the host services the Qt window gave it.
+"""Native Global View: the emtk surface with the host services it needs.
 
-``GraphWizard`` (the retired Qt tool) hosted the same :class:`.surface.GlobalViewSurface`
-and answered the model's requests -- a file to save or open, a warning, the help
-modal, the guided tour, a refresh when a fit changes, and where the dock layout
-is kept. This app answers them in emtk, so the surface works without Qt.
+The :class:`.surface.GlobalViewSurface` asks its host for a file to save or open, a
+warning, the help modal, the guided tour, a refresh when a fit changes, and where the
+dock layout is kept. This app answers them in emtk, so the surface works without Qt.
 
 File choices are frame-driven here (an in-app :class:`emtk.file_dialog.FileDialog`)
-while the model asks synchronously, as a Qt dialog answers. The ask hook opens
-the dialog and answers "nothing yet"; when the user picks a file the action runs
-again with a hook that answers the chosen path, so the model's code is the Qt
-tool's, unchanged.
+while the model asks synchronously. The ask hook opens the dialog and answers
+"nothing yet"; when the user picks a file the action runs again with a hook that
+answers the chosen path, so the model's code stays synchronous.
 """
 
 from __future__ import annotations
@@ -99,7 +97,7 @@ class GlobalViewApp(GlobalViewSurface):
         return ""  # nothing yet: the action runs again on the answer
 
     def answer_file(self, path: str) -> None:
-        """Run the pending action with *path*, as if the Qt dialog had returned it."""
+        """Run the pending action with *path*, as if the ask hook had answered it."""
         action, self._dialog_action, self.dialog = self._dialog_action, "", None
         self.file_window.hide()
         if not action or not path:
@@ -175,12 +173,11 @@ class GlobalViewApp(GlobalViewSurface):
 
     # -- persistence ------------------------------------------------------------
     def export_settings(self) -> dict:
-        """Nothing beyond the dock layout, as the Qt window.
+        """Nothing beyond the dock layout.
 
-        The Qt window kept its geometry (the host's ``settings_key``) and the
-        dock arrangement in ``globalview_layout.json``; this app keeps the same
-        layout file (:func:`_layout_store`, saved on close), and the View
-        panel's settings start fresh in both.
+        The dock arrangement is kept in ``globalview_layout.json``
+        (:func:`_layout_store`, saved on close); the View panel's settings
+        start fresh.
         """
         return {}
 
