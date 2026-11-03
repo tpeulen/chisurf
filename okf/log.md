@@ -29,6 +29,7 @@
 - Burst MLE: the fit window is fitted as the user sets it, also past the detector gate (before, the gate clamped it and the line snapped back); the binning is the setup's (no MLE Binning field or auto pick); the fit background is always the non-burst photons, background files only correct a scatter IRF; the VV/VH IRF thresholds are background levels taken off every bin; the per-burst lifetime histogram is removed (it took a frame from 11 to 120 ms after a 15,693-burst fit). Tool hub: the steps rail resizes by its edge and folds to icons below 150 px. SnapshotJob replays form edits made during a job after merging the job's copy back (emtk f69d8e1 listen_to_edits), in every tool.
 - Tool hub rail grip (0b7468022): the grip is a window of its own over the rail's edge; inside the rail window its half over the tool could not be hit and the drag did nothing in the shell.
 - Navigation rails: chisurf.emtk.side_rail.SideRail (31f557c3a) gives the step hub, Settings, Imaging Tools and the MMFDB admin one rail that resizes by its edge (a grip window over the line), folds to its icons below 150 px and saves its width. emtk b1f0a83 (0.1.38): a double click on a dock tab shows that window over the whole dock area, Restore or a double click on its title brings the layout back.
+- Input section (every tool): a workspace row is also handed over by dragging it down into the tool (emtk c235291 on_table) or by the right-click Add to this tool.
 
 ## 2026-11-02
 
