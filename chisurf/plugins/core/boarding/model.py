@@ -1,18 +1,18 @@
 """Qt-free state of the onboarding wizard drawn by :mod:`.app`.
 
-The Qt wizard is an AutoForm ``wizard`` section: eight steps in a navigation list with a check
-mark for each completed step, a Back / Next bar and a Finish button on the last step. This model
-is that stepper without a toolkit. It extends :class:`~.view_model.BoardingViewModel`, which
+``boarding.view.json`` declares the wizard as an AutoForm ``wizard`` section: eight steps in a
+navigation list with a check mark for each completed step, a Back / Next bar and a Finish button
+on the last step. This model is that stepper without a toolkit. It extends :class:`~.view_model.BoardingViewModel`, which
 already holds the texts, the settings-folder actions (create missing files, restore defaults,
-update experiments) and the completion booleans, so the Qt wizard and this one cannot drift
-apart: both read and write the same files through :mod:`.utils`.
+update experiments) and the completion booleans; every file is read and written through
+:mod:`.utils`.
 
-What differs from the Qt model is only what a Qt-free app must do differently:
+On top of the view model:
 
 * the actions that open another window (settings editor, Help, Plugin Manager) go through a
   ``host`` callable the embedding application supplies, and say where to find the window when
   there is none;
-* *Restore defaults* asks before it replaces the user's settings (the Qt button did not);
+* *Restore defaults* asks before it replaces the user's settings;
 * the completion of a step is computed when something may have changed and kept, so drawing a
   frame never queries the metadata store.
 """
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 class Step(NamedTuple):
-    """One wizard step as ``boarding.view.json`` declares it for the Qt wizard."""
+    """One wizard step as ``boarding.view.json`` declares it."""
 
     id: str
     title: str
@@ -41,7 +41,7 @@ class Step(NamedTuple):
     optional: bool = False
 
 
-#: The steps, in the order and with the titles and subtitles of the Qt wizard.
+#: The steps, in the order and with the titles and subtitles of ``boarding.view.json``.
 STEPS: tuple[Step, ...] = (
     Step("welcome", "Welcome", "A quick guided setup for a new ChiSurf installation."),
     Step(
@@ -289,7 +289,7 @@ class BoardingModel(BoardingViewModel):
 
     # ------------------------------------------------------------ persistence
     def export_settings(self) -> dict:
-        """What is remembered: the current step (the Qt wizard stores it as ``<key>/step``)."""
+        """What is remembered: the current step."""
         return {"step": int(self.step)}
 
     def restore_settings(self, settings: dict) -> None:

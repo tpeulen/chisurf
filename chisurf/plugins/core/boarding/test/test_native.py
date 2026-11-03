@@ -1,7 +1,7 @@
-"""Smoke test of the native wizard (the full port tests are in test_emtk_boarding_parity.py).
+"""Smoke test of the native wizard (the full tests are in test_emtk_boarding.py).
 
 Updated for the eight-step wizard: the earlier four pages (Welcome, Repair settings, Status,
-Finish) are the steps of the Qt wizard now, and the remembered state is the step index.
+Finish) are steps of the eight-step wizard now, and the remembered state is the step index.
 """
 
 from __future__ import annotations

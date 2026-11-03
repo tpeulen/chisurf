@@ -1,11 +1,11 @@
-"""Native emtk onboarding wizard: the eight steps of the Qt wizard in one window.
+"""Native emtk onboarding wizard: the eight steps of ``boarding.view.json`` in one window.
 
-Left window: the step list (a check mark for a completed step, as the Qt navigation list) with
+Left window: the step list (a check mark for a completed step) with
 Back / Next / Finish below it and the Help / Guide buttons. Right window: the header of the
 current step and its page. Every page is a panel of the view spec ``boarding_emtk.view.json``
 drawn by :func:`emtk.view_form.draw_sections`; the two tables are ``data_table`` sections. Only
 what a spec cannot express is drawn here: the Markdown texts, the coloured outcome line and the
-two shared editors the Qt wizard embeds, the detector setup editor of the Setup: Channel
+two shared editors the wizard embeds, the detector setup editor of the Setup: Channel
 Definition tool (:class:`~chisurf.plugins.core.setup_channel_definition.gui.app.SetupChannelDefinitionApp`)
 and the FCS channel-pair editor of the Setup: FCS Definitions tool
 (:class:`~chisurf.plugins.fcs.fcs_channel_preset.gui.app.PresetApp`). Both are hosted, not
@@ -67,7 +67,7 @@ class BoardingApp(ImApp):
         embedding application (see :class:`~.model.BoardingModel`).
     detector_editor, fcs_editor : callable, optional
         Factories of the two embedded editors (default: the shared tools'); the editors are
-        built when their step is first shown, as the Qt wizard builds them with its page.
+        built when their step is first shown.
     """
 
     def __init__(
@@ -133,7 +133,7 @@ class BoardingApp(ImApp):
         return self.fcs
 
     def _leave_fcs(self) -> None:
-        """Close of the FCS editor: the Qt wizard closes the embedded widget; here we go on."""
+        """Close of the FCS editor: go on to the last step."""
         self.model.go_to(len(STEPS) - 1)
 
     # ------------------------------------------------------------------ frame
