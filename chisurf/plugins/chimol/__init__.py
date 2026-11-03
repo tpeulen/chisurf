@@ -3,9 +3,7 @@
 Importing this package costs **no GUI toolkit**, and the plugin has no Qt
 window: both ChiSurf shells open the emtk app (``app.make_app``), the
 ``--qt`` shell by hosting its surface. This file only places chimol's settings
-and hands it ChiSurf's structure reader. The Qt window it used to open
-(``chimol.hosts.qt.MolViewPluginWindow``) was retired at control parity; its
-recorded facts are ``test/qt_reference.json``.
+and hands it ChiSurf's structure reader.
 
 The manifest, the display name and the version stay eager: the plugin loader
 reads them, and none of them touches a toolkit.

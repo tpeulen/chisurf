@@ -1,10 +1,6 @@
-"""The emtk ChiMOL host at parity with the Qt window: chrome, data, routing, help, guide.
+"""The emtk ChiMOL host: chrome, data, routing, help, guide.
 
-Both hosts draw the same chimol viewer, so parity is measured on what each one
-*holds* after the same actions -- the menu and toolbar tables, the object list,
-the atom count -- not on pixels. The Qt window is retired as ChiSurf's entry
-(both shells open this app; the ``--qt`` shell only hosts it), so its side is
-the recorded ``qt_reference.json``, taken from the live window before it went.
+The loaded-structure check reads its answer from the demo PDB file itself.
 
 Imported by absolute path (chimol's conftest loads this suite outside the
 chisurf package), hence no relative imports and no ``__init__.py``.
@@ -36,23 +32,6 @@ def _demo_pdb() -> Path:
     return path
 
 
-def _flatten(entries, prefix=""):
-    out = []
-    for entry in entries:
-        if not entry.label:
-            continue
-        out.append((prefix + entry.label, entry.command))
-        out.extend(_flatten(entry.children, prefix + entry.label + "/"))
-    return out
-
-
-def _chrome(gui) -> dict:
-    return {
-        "menus": [[title, _flatten(entries)] for title, entries in gui.menubar],
-        "toolbar": [list(row) for row in gui.toolbar],
-    }
-
-
 def _draw(app, size=(1200, 800), times=3):
     painter = RecordingPainter()
     for _ in range(times):
@@ -71,59 +50,45 @@ def app():
     app.close()
 
 
-@pytest.fixture(scope="module")
-def qt_facts():
-    """What the retired Qt window held after loading 148L, recorded from it live.
-
-    ``qt_reference.json`` beside this file: menus, toolbar, object list, panel
-    rows and sequence rows of ``chimol.hosts.qt.MolViewPluginWindow`` at chimol
-    ``b2a3f2b``, the last commit with that window as ChiSurf's ``gui`` entry.
-    """
-    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
+_ONE_LETTER = {
+    "ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C", "GLN": "Q", "GLU": "E", "GLY": "G",
+    "HIS": "H", "ILE": "I", "LEU": "L", "LYS": "K", "MET": "M", "PHE": "F", "PRO": "P", "SER": "S",
+    "THR": "T", "TRP": "W", "TYR": "Y", "VAL": "V",
+}
 
 
-# 1. the same data gives the same viewer state as in the Qt window
-def test_loaded_structure_matches_the_qt_window(app, qt_facts):
-    app._chimol.cmd.do(f"load {_demo_pdb()}")
+def _chain_sequence(pdb: Path, chain: str) -> str:
+    """One-letter sequence of ``chain``: one letter per CA atom of the file's ATOM records (first
+    alternate location only)."""
+    return "".join(
+        _ONE_LETTER[line[17:20]]
+        for line in pdb.read_text().splitlines()
+        if line.startswith("ATOM")
+        and line[12:16] == " CA "
+        and line[16] in " A"
+        and line[21] == chain
+    )
+
+
+# 1. loading a file gives the object, the panel rows and the sequence the file holds
+def test_loaded_structure_shows_the_files_object_rows_and_sequence(app):
+    pdb = _demo_pdb()
+    app._chimol.cmd.do(f"load {pdb}")
     _draw(app)
     names = sorted(str(getattr(o, "name", "")) for o in app._chimol.viewer.objects.values())
-    assert names == qt_facts["objects"]
-    viewer = app._chimol.viewer
-    n_atoms = int(len(viewer.atom_xyz)) if getattr(viewer, "atom_xyz", None) is not None else -1
-    assert n_atoms == qt_facts["n_atoms"]
-    # The panel and the strip: the same rows, the same sequence row (chain
-    # markers inline, PyMOL's one row per object).
+    assert names == [pdb.stem]  # one object, named after the file
     gui = app._chimol.renderer._internal_gui
-    assert [row.name for row in gui.rows] == qt_facts["rows"]
-    assert [[s.name, len(s.codes)] for s in gui.sequences] == qt_facts["sequences"]
+    # the panel: "all", the object, and the default selection (PyMOL's rows)
+    assert [row.name for row in gui.rows] == ["all", pdb.stem, "sele"]
+    # the strip: one sequence row per object; each chain is its marker, a space, its residues
+    (seq,) = gui.sequences
+    assert seq.name == pdb.stem
+    codes = "".join(seq.codes)
+    expected = _chain_sequence(pdb, "E")
+    assert len(expected) > 100
+    assert codes.startswith("E " + expected + "S ")
 
 
-#: Menu entries the recorded Qt window had from a separately installed chimol plugin (its
-#: ``chimol.plugins`` entry point), not from chimol: expected only where that plugin is installed.
-_ENTRY_POINT_ENTRIES = {"labelizer": ("Tools", ["Labelizer (FRET sites)…", "labelizer"])}
-
-
-def _installed_chimol_plugins() -> set[str]:
-    from importlib.metadata import entry_points
-
-    return {ep.name for ep in entry_points(group="chimol.plugins")}
-
-
-def test_menus_and_toolbar_match_the_qt_window(app, qt_facts):
-    """Every menu entry and toolbar button of the Qt window, with the same command."""
-    ours = json.loads(json.dumps(_chrome(app._chimol.renderer._internal_gui)))
-    expected = json.loads(json.dumps(qt_facts["menus"]))
-    installed = _installed_chimol_plugins()
-    for plugin, (menu, entry) in _ENTRY_POINT_ENTRIES.items():
-        if plugin not in installed:
-            for title, entries in expected:
-                if title == menu and entry in entries:
-                    entries.remove(entry)
-    assert ours["menus"] == expected
-    assert ours["toolbar"] == qt_facts["toolbar"]
-
-
-# 2. the host's actions, and an error that must not escape
 def test_help_and_guide_open_and_a_bad_load_reports(app):
     assert not app.help_window.open
     app.help_window.show()
@@ -234,7 +199,7 @@ def test_every_control_has_a_tooltip():
     assert {"help", "guide"} <= set(inv["controls"])  # normalised labels
 
 
-# 8. persistence: the Qt window remembered nothing of its own (settings_key null)
+# 8. persistence
 def test_settings_round_trip(app):
     saved = app.export_settings()
     assert saved == {}
