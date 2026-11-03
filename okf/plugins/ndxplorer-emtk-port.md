@@ -264,7 +264,7 @@ Open front:
 1. **Red has no IRF in tttr-data**: the mirror lit only channels 0/1; channels
    4/5 are refused (> 50 % flat). The image table has no red phasor anyway.
 2. **A burst table**: `f_bg` is count based per row, so bursts need
-   `'Bg' * 'Duration (ms)'` in the f_bg equation (documented, not shipped: two
+   `'B_G|G' * 'Duration (ms)'` in the f_bg equation (documented, not shipped: two
    equations cannot share a name). Burst tables now carry three zero `f_bg`
    columns.
 3. **IRF from a `.pto`**: the dialog reads TTTR files only; cal1's `.pto`
@@ -815,14 +815,14 @@ layer (`pto_tag`, `pto_parents`, `pto_read_blob`, `pto_add_blob`,
 newest `pixel`-grain image table) and the provenance; `analysis/fret_background`
 reads the stored background (`stored_rates`); `io/fret_calibration_io` saves
 (locked, described blob, FIFO of 5), lists, loads and computes `restorable()`
-(newest saved calibration + background, newer wins Bg/Br/By). The emtk app
+(newest saved calibration + background, newer wins B_G|G/B_R|G/B_R|R). The emtk app
 applies `restorable()` on open (`AccurateFretFeature.restore_stored`, once per
 stored value); ChiSurf's bridge uses the same for the Qt window.
 
 Measure: `ndxplorer/tests/test_fret_backend_without_chisurf.py` (fresh process,
 `sys.modules["chisurf"/"IMP"/"IMP.bff"] = None`): cal1 and bh_spc132 `m000.pto`
 columns equal ChiSurf's `Measurement.get_store` + `deinterleave_bursts`;
-`background="measurement"` gives Bg/Br/By = the stored rates; save → load in a
+`background="measurement"` gives B_G|G/B_R|G/B_R|R = the stored rates; save → load in a
 copied `.pto`. Browser: `NDX_TTTRLIB_WHEEL=<tttrlib dev Pyodide wheel> python -m
 ndxplorer.app.web`, drop cal1: default FRET calibration γ 0.7502 α 0.1570 β
 1.0599 δ 0.0674 (desktop equal); measurement background γ 0.7737 α 0.1432 β

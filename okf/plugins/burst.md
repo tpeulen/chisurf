@@ -27,6 +27,17 @@ timestamp: '2026-07-05T00:00:00Z'
    floor, so a period under ~5 tau lifts it (a 16 ns period gave 3.4 ns for 4 ns); (d) the buffer
    correction of a scatter uses the buffer's counts/s pattern, which sums several buffer files
    instead of averaging them.
+0b. **Background: estimated with the bursts, one name** (2026-11-03). Done: when the bursts arrive
+   Burst Analysis runs the Background step (`_estimate_background` in `burst_analysis/gui/native.py`,
+   Simple and Advanced) and stores the per-detector rates in the measurement's analysis container
+   (`background` table: Detector, Rate); the window writes into the project containers only
+   (`model.in_project`), never beside the photons. Names everywhere: `B_G|G` / `B_R|G` / `B_R|R` (kHz) in
+   ndX and Accurate FRET, `B (kHz)` as the per-detector table column. Accurate FRET takes rates and
+   subtracts rate x burst duration (`core.subtract_background`, window and CLI); ndX's calibration
+   holds them fixed by default. DNA13bp_3.ptu: G|G 1.79, R|G 0.69, R|R 0.43 kHz. Open: the empty
+   second container a spawned worker makes (`chisurf-analysis/<worker pid>-*`, from `session_dir()`
+   per process); `accurate_fret` and `fret/calibration.py` still name the per-burst count factors
+   `Bg_DD`/`Bg_DA`/`Bg_AA` internally (a count, not a rate; not shown to the user).
 1. **No HDF5 anywhere** (owner: "no HDF5! csv at most; better deprecate, only an exporter at most").
    Results live in the `.pto` container; loose files only through an explicit exporter, CSV at most.
    Still writing HDF5: `chisurf/core/datastore.py`, `plugins/microscopy/{img_pixel_intensity/gui/view_model,

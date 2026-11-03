@@ -201,14 +201,14 @@ that loads it drifting apart. Headers earlier versions wrote (`r0`) still
 restore: a file already on disk cannot be asked to follow a newer schema.
 
 **The background comes back with it.** A measurement usually has its background
-measured long before its factors are determined, and ndX's `Bg` / `Br` / `By`
-are *rates*: `Fg(PIE) = Sg(PIE) − Bg` where `Sg(PIE)` is
+measured long before its factors are determined, and ndX's `B_G|G` / `B_R|G` / `B_R|R`
+are *rates*: `Fg(PIE) = Sg(PIE) − B_G|G` where `Sg(PIE)` is
 `S prompt G|G (kHz)`. So the container's per-detector rates go in as they
 stand — no duration, no conversion — and a measurement carrying only a
 background still restores something, which is the part the equations use most
 directly. They travel on the calibration object, because
 `calibration_to_ndx_constants` already maps `bg_dd`/`bg_da`/`bg_aa` onto
-`Bg`/`Br`/`By`, so one push carries both.
+`B_G|G`/`B_R|G`/`B_R|R`, so one push carries both.
 
 **Two traps, both load-bearing.** Writing constants directly is not enough: the
 values must reach the parameter *table*, since ndX's recompute throttle resets
@@ -273,8 +273,20 @@ range while the axis is log, which is what `fit_z_selection_to_axis` does.
 
 ## A background is a rate; the calibration works in counts
 
+**Names and the fixed default (owner, 2026-11-03).** The background constants are named
+after their detectors, `B_G|G` / `B_R|G` / `B_R|R` (kHz), the same names the Accurate FRET
+step uses and the per-detector tables show as `B (kHz)`; the old `Bg`/`Br`/`By` have no
+alias. Burst Analysis estimates the background when the bursts arrive and stores it in
+the measurement's container, so a window opened on it starts with measured rates. The
+calibration's background choice defaults to **`fixed`**: those rates, subtracted per burst
+as rate × duration (`fixed_background` in `fret_backend.py`), never changed by the
+calibration. `fit` stays but proved unreliable on real data (it needs well-populated
+donor-only and acceptor-only populations); the old `constants` choice, which subtracted a
+kHz rate as a count, is gone, and `measurement` without a stored table falls back to
+`fixed`.
+
 The two meet at this bridge, and they were not converted. ndX computes
-`Fg = Sg - Bg` where `Sg` is a count **rate** in kHz, so its `Bg`/`Br`/`By` are
+`Fg = Sg - B_G|G` where `Sg` is a count **rate** in kHz, so its `B_G|G`/`B_R|G`/`B_R|R` are
 rates. `chisurf.core.fluorescence.fret.accurate` works on **per-burst counts**
 and its `bg_dd`/`bg_da`/`bg_aa` are counts (`f_dd = i_dd - bg_dd`). The push
 mapped one onto the other by name.

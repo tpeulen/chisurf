@@ -74,7 +74,7 @@ fits), `BID/` (burst-ID files) and `Info/` (the Paris setup log). The raw
     is impossible. The gated bursts are resolved to per-file `(first, last)`
     photon intervals and handed to the analysis over RPC.
 11. Cross-checks used while driving: `Settings → Performance Settings`, the
-    **Parameters** tab (the MFD constants `gG/gR`, `Bg`, `Br`, `By`, `PhiA`,
+    **Parameters** tab (the MFD constants `gG/gR`, `B_G|G`, `B_R|G`, `B_R|R`, `PhiA`,
     `PhiD`, `alpha`, `tauD0`, `forster_radius` that feed the equations), the
     **Overlays** tab (analytic curves over the 2-D plot) and
     `View → Axis Control / Fit Gaussians / UMAP`.
