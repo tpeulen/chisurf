@@ -225,7 +225,7 @@
         {
           "type": "info",
           "source": "calibration_text",
-          "description": "The detector's G factor and leakages l1, l2 (set in the Detector setup tab) and the scatter rate of its background in counts per second."
+          "description": "The detector's G factor and leakages l1, l2 (set in the Detector setup tab) and the rate of its background: the photons outside the bursts over the time outside them, in kHz."
         },
         {
           "type": "value",

@@ -768,24 +768,39 @@ class MleViewModel(RunPickerMixin):
         anisotropy = self.anisotropy_text()
         if anisotropy:
             text += " " + anisotropy
+        share = self.background_share()
+        if share is not None:
+            text += " " + str(
+                tr("Background: {share:.1%} of the photons in the window (from the non-burst rate).")
+            ).format(share=share)
         for name in engine.fit_result_names(self.fit_model):
             text += str(tr(" {name}: {value:.0f} (0-based).")).format(
                 name=name, value=outcome.result.result(name)
             )
         return text
 
+    def background_share(self) -> float | None:
+        """The share of the photons in the fit window that the non-burst rate puts there."""
+        curves = self.fit_curves
+        if curves is None or curves.background is None:
+            return None
+        data = float(np.sum(curves.data))
+        return float(np.sum(curves.background)) / data if data > 0 else None
+
     def calibration_text(self) -> str:
-        """The current detector's polarisation corrections and the scatter rate of its background.
+        """The current detector's polarisation corrections and the rate of its background.
 
         The G factor and the leakages l1, l2 are the detector definition's (edit them in the Detector setup tab);
-        the scatter rate is the summed background, in counts per second.
+        the background rate is the non-burst photons' counts over the time outside the bursts, in kHz.
         """
         g, l1, l2 = self.session.polarisation()
         text = str(tr("G {g:.4f}, l1 {l1:.4f}, l2 {l2:.4f}.")).format(g=g, l1=l1, l2=l2)
         background = self.session.bg_np.get(self.session.current_detector)
-        if background is not None and np.asarray(background).size:
-            text += str(tr(" Scatter (background) rate: {rate:.4g} Hz.")).format(
-                rate=float(np.sum(self.session.background()))
+        times = self.session.time_in_bursts()
+        if background is not None and np.asarray(background).size and times and times[1] > times[0]:
+            # counts outside the bursts over the time outside them
+            text += str(tr(" Background rate: {rate:.4g} kHz.")).format(
+                rate=float(np.sum(background)) / (times[1] - times[0]) / 1e3
             )
         return text
 

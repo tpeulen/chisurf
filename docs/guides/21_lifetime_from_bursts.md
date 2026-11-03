@@ -224,7 +224,12 @@ free one 133. With the IRF from Rh110, 2I* was 87.
 
 The background of the fit is always taken from the photons outside the bursts
 (the reverse burst selection) of the measurement itself, whatever the IRF came
-from. The tab **IRF/BG files** replaces the IRF estimate from the non-burst
+from. Where molecules too dim to make a burst pass the focus, those photons are
+mostly fluorescence, so the background has the shape of a decay. The plot draws
+it at the level the bursts hold: the non-burst histogram times the time inside
+the bursts over the time outside them. The fit text gives that share of the
+photons in the fit window, to compare with the fitted gamma, and the **IRF** tab
+gives the background rate in kHz. The tab **IRF/BG files** replaces the IRF estimate from the non-burst
 photons by measurements; background (buffer) files only correct a scatter IRF
 for its background. An IRF file may be a scatter or a reference dye: a dye
 is recognised by its name and its IRF is recovered as above. **Add IRF files** and **Add background files** take any

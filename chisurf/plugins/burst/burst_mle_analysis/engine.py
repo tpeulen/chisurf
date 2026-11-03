@@ -1380,6 +1380,31 @@ class MleSession:
             self.bg_np.get(self.current_detector), self.settings.shift, self.irf()
         )
 
+    def time_in_bursts(self) -> tuple[float, float] | None:
+        """``(seconds inside the bursts, seconds of the measurement)`` of the current file."""
+        return self._memo("time_in_bursts", self._time_in_bursts)
+
+    def _time_in_bursts(self) -> tuple[float, float] | None:
+        tttr = self.current_tttr()
+        idx = self.burst_index_array()
+        if tttr is None or idx.size == 0:
+            return None
+        macro = np.asarray(tttr.macro_times, dtype=np.float64) * float(tttr.header.macro_time_resolution)
+        breaks = np.flatnonzero(np.diff(idx) != 1)
+        starts = np.r_[idx[0], idx[breaks + 1]]
+        ends = np.r_[idx[breaks], idx[-1]]
+        return float(np.sum(macro[ends] - macro[starts])), float(macro[-1] - macro[0])
+
+    def background_in_bursts(self) -> np.ndarray:
+        """The background as the burst decay holds it: the non-burst histogram times the time
+        inside the bursts over the time outside them (the counts it adds to the decay shown)."""
+        bg = self.background()
+        times = self.time_in_bursts()
+        if times is None or times[1] <= times[0]:
+            return bg
+        inside, total = times
+        return bg * (inside / (total - inside))
+
     def window_ranges(self) -> tuple[int, int, int, int]:
         return window_bins(
             self.detector.get("micro_time_ranges"),
@@ -1830,12 +1855,13 @@ class MleSession:
             d,
             model,
             self.irf(),
-            self.background(),
+            self.background_in_bursts(),
             self.window_ranges(),
             tail=self.settings.model == "tail",
             diverged=diverged,
             irf_range=(self.settings.irf_start, self.settings.irf_stop),
             data_all=self.decay_all(self.decay),
+            background_counts=True,
         )
         self.outcome = FitOutcome(
             np.asarray(res.x, dtype=float),
@@ -1897,11 +1923,12 @@ class MleSession:
             d,
             model,
             irf,
-            self.background(),
+            self.background_in_bursts(),
             self.window_ranges(),
             tail=True,
             diverged=False,
             data_all=self.decay_all(self.decay),
+            background_counts=True,
         )
         self.outcome = FitOutcome(x, score, list(TAIL_SCHEMA["properties"]), curves, model, d, res)
         self.status = "" if np.isfinite(score) else "Tail fit failed: non-finite score"

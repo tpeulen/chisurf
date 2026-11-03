@@ -733,6 +733,10 @@ class MleNativeApp(TourTarget, ImApp):
         plot_id = f"IRF##irf{session.current_detector}{session.settings.micro_time_binning}"
         if implot.begin_plot(plot_id, (-1, -1)):
             implot.setup_axes("Micro-time channel [bin]", "Counts")
+            # the legend in a row over the plot: inside it covered the prompt of the decay
+            implot.setup_legend(
+                implot.LOCATION_NORTH, implot.LEGEND_FLAGS_OUTSIDE | implot.LEGEND_FLAGS_HORIZONTAL
+            )
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
             implot.setup_axes_limits(
                 max(-0.5, lo - 15.5), min(half - 0.5, hi + 30.5), floor, peak * 3.0
@@ -829,6 +833,10 @@ class MleNativeApp(TourTarget, ImApp):
             return
         if implot.begin_plot("Decay histogram and fit", (-1, -1)):
             implot.setup_axes("Micro-time channel (VV, then VH)", "Photons")
+            # the legend in a row over the plot: inside it covered the prompt of the decay
+            implot.setup_legend(
+                implot.LOCATION_NORTH, implot.LEGEND_FLAGS_OUTSIDE | implot.LEGEND_FLAGS_HORIZONTAL
+            )
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
             x, data = curves.x_full, curves.data_full
             top = float(np.max(data)) * 3.0 if data.size and np.max(data) > 0 else 10.0

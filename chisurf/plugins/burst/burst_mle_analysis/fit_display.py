@@ -94,6 +94,7 @@ def decay_curves(
     diverged: bool = False,
     irf_range: tuple[int, int] = (-1, -1),
     data_all: np.ndarray | None = None,
+    background_counts: bool = False,
 ) -> DecayCurves:
     """Window and scale the fit's data, model, IRF and background for display.
 
@@ -114,6 +115,9 @@ def decay_curves(
         ``(irf_start, irf_stop)`` of the IRF clip in bins of one half (``-1``: that edge is open).
     data_all : numpy.ndarray, optional
         The decay with every channel, not cut to the fit window (same layout): the data shown.
+    background_counts : bool
+        *background* is already in counts of the shown decay (its expected share): drawn as it
+        is, not scaled to the data's total -- which drew a background as large as the decay.
     """
     data_full = np.asarray(data, dtype=float)
     model_full = np.asarray(model, dtype=float)
@@ -165,7 +169,7 @@ def decay_curves(
         data=data_rng,
         model=model_disp,
         irf=None if tail else _overlay(irf_rng, s_dat),
-        background=_overlay(bg_rng, s_dat),
+        background=bg_rng if background_counts else _overlay(bg_rng, s_dat),
         residuals=resid_rng,
         n_vv=n_vv,
         data_full=(
@@ -175,7 +179,7 @@ def decay_curves(
         ),
         model_full=model_full_disp,
         irf_full=None if tail else scaled(irf_arr, irf_rng),
-        background_full=scaled(bg_arr, bg_rng),
+        background_full=bg_arr if background_counts else scaled(bg_arr, bg_rng),
         fit_windows=(vv, (half + vh[0], half + vh[1])),
         irf_windows=() if tail else (support(irf_lo, irf_hi, 0), support(irf_lo, irf_hi, half)),
     )

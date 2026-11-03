@@ -35,6 +35,13 @@ def test_raw_primary_default_reaches_real_native_factory(tmp_path, monkeypatch):
         app.close()
 
 
+def _relocate(owner, tmp_path, monkeypatch) -> None:
+    """The plugin's views from ``tmp_path/gui``; its manifest (the Input section is read from it,
+    one folder up from the views) copied beside them."""
+    (tmp_path / "manifest.json").write_text((owner.HERE.parent / "manifest.json").read_text())
+    monkeypatch.setattr(owner, "HERE", tmp_path / "gui")
+
+
 def test_authored_primary_dimensions_reach_constructor(tmp_path, monkeypatch):
     """The raw declaration controls dimensions instead of a repeated fixed constant."""
     isolate(tmp_path, monkeypatch)
@@ -42,8 +49,9 @@ def test_authored_primary_dimensions_reach_constructor(tmp_path, monkeypatch):
 
     primary = json.loads((owner.HERE / "mle_native.view.json").read_text())
     primary["window"] = {"width": 960, "height": 640}
-    (tmp_path / "mle_native.view.json").write_text(json.dumps(primary))
-    monkeypatch.setattr(owner, "HERE", tmp_path)
+    (tmp_path / "gui").mkdir()
+    (tmp_path / "gui" / "mle_native.view.json").write_text(json.dumps(primary))
+    _relocate(owner, tmp_path, monkeypatch)
     app = owner.create_app()
     try:
         assert app.window_size == (960, 640)
@@ -59,8 +67,9 @@ def test_missing_primary_declaration_uses_family_fallback(tmp_path, monkeypatch)
 
     primary = json.loads((owner.HERE / "mle_native.view.json").read_text())
     primary.pop("window")
-    (tmp_path / "mle_native.view.json").write_text(json.dumps(primary))
-    monkeypatch.setattr(owner, "HERE", tmp_path)
+    (tmp_path / "gui").mkdir()
+    (tmp_path / "gui" / "mle_native.view.json").write_text(json.dumps(primary))
+    _relocate(owner, tmp_path, monkeypatch)
     app = owner.create_app()
     try:
         assert app.window_size == (1100, 720)
@@ -165,7 +174,7 @@ def test_real_demo_pooled_fit_preserves_photons_models_and_settings(tmp_path, mo
         settings = copy.deepcopy(session.settings_payload())
         for size in ((1100, 720), (900, 650)):
             driver = Driver(app, size=size)
-            for key in ("controls", "irf", "detectors", "decay", "inspect", "lifetimes", "results"):
+            for key in ("controls", "irf", "detectors", "decay", "inspect", "results"):
                 app.docks.focus(key)
                 driver.draw(3)
             np.testing.assert_array_equal(session.outcome.x, baseline.x)

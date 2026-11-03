@@ -436,14 +436,14 @@ def test_each_input_section_feeds_its_own_input(monkeypatch, app, burst_table):
 
 
 def test_the_detector_calibration_and_the_anisotropies_are_drawn(fitted):
-    """G, l1, l2 and the scatter rate of the detector, and rScatter / rExp of the Fit23 fit, are shown as text."""
+    """G, l1, l2 and the background rate of the detector, and rScatter / rExp of the Fit23 fit, are shown as text."""
     window, drv = fitted
     shown = " ".join(texts(drv.draw(3)))
     assert "r scatter" in shown and "r experimental" in shown
-    drv.click_text("IRF")
+    window.docks.focus("irf")  # the tab ("IRF" is also an entry of the plot's legend)
     shown = " ".join(texts(drv.draw(3)))
     assert "G 1.0000, l1 0.0308, l2 0.0368." in shown
-    assert "Scatter (background) rate:" in shown
+    assert "Background rate:" in shown and "kHz" in shown
 
 
 def test_the_current_file_and_the_inspected_bursts_file_are_named(fitted):
