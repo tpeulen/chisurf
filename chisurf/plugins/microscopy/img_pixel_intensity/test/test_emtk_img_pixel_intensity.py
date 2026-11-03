@@ -1,8 +1,8 @@
-"""The native intensity tool against the Qt tool it replaces: numbers, every control with a real-input click test, the layout at two sizes.
+"""The intensity tool: numbers, every control with a real-input click test, the layout at two sizes.
 
 Hermetic: settings, MMFDB and its database in a temporary folder, a temporary HOME, the photon streams written into a temporary folder from a
-seed, no network (the database picker gets a stub client). References: (a) the Qt tool's own view model run on the same file, (b) the photon
-counts written into the stream, (c) an independent tttrlib CLSM image, (d) what the Qt window showed (``data/qt_values.json``).
+seed, no network (the database picker gets a stub client). References: (a) the photon counts written into the stream and the
+pixel dwell it was written with, (b) an independent tttrlib CLSM image.
 """
 
 from __future__ import annotations
@@ -23,7 +23,6 @@ from chisurf.plugins.microscopy.imaging_emtk.testing import (
 )
 from chisurf.plugins.microscopy.img_pixel_intensity.gui.app import IntensityApp, make_app
 from chisurf.plugins.microscopy.img_pixel_intensity.gui.model import IntensityModel
-from chisurf.plugins.microscopy.img_pixel_intensity.gui.view_model import IntensityViewModel
 from test.gui.emtk_layout_checks import (
     SIZES,
     assert_disjoint,
@@ -37,10 +36,7 @@ from test.gui.emtk_layout_checks import (
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-DATA = HERE / "data"
-QT_VALUES = json.loads((DATA / "qt_values.json").read_text(encoding="utf-8"))
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "intensity_emtk.view.json").read_text(encoding="utf-8"))
-QT_SPEC = json.loads((PLUGIN / "gui" / "intensity.view.json").read_text(encoding="utf-8"))
 BIG = (1200, 800)
 
 TOOL = C.Tool(
@@ -57,6 +53,11 @@ TOOL = C.Tool(
 
 
 _REAL_BEFORE = data.real_settings_state()
+
+
+def written_rate(counts):
+    """The count-rate map the stream was built to give: photons over the summed pixel dwell of all frames (in µs)."""
+    return counts / (data.FRAMES * data.DWELL * 1e6)
 
 
 @pytest.fixture(autouse=True)
@@ -100,40 +101,16 @@ def drv(app):
 # ── 1. the numbers ──────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_the_maps_are_the_photon_counts_written_into_the_stream_and_the_qt_numbers(app, drv, flim):
+def test_the_maps_are_the_photon_counts_written_into_the_stream(app, drv, flim):
     m = C.computed(app, drv, flim)
     truth = data.counts(1)[0]
     np.testing.assert_array_equal(m.intensity_map(), truth.sum(axis=0))
     stack = np.asarray(m.frame_stack())
     assert stack.shape == truth.shape
     np.testing.assert_array_equal(stack.sum(axis=0), truth.sum(axis=0))
-    qt = QT_VALUES["intensity_map"]
-    assert m.intensity_map().sum() == qt["sum"] == QT_VALUES["truth_intensity_sum"] == truth.sum()
-    assert [qt["min"], qt["max"]] == [m.intensity_map().min(), m.intensity_map().max()]
-    assert m.results_text == QT_VALUES["results_text"] == "flim.ptu: 32x32 px.\nWindows: ch0."
-    assert float(m.count_rate_map().sum()) == pytest.approx(
-        QT_VALUES["count_rate_map"]["sum"], rel=1e-12
-    )
-
-
-def test_the_live_qt_view_model_gives_the_same_maps_on_the_same_file(app, drv, flim):
-    m = C.computed(app, drv, flim)
-    qt = IntensityViewModel()
-    qt.filename = str(flim)
-    assert qt.compute()
-    for name in ("intensity_map", "count_rate_map"):
-        np.testing.assert_array_equal(getattr(m, name)(), getattr(qt, name)())
-    assert set(m._columns) == set(qt._columns) == {
-        "Nc-p-all",
-        "Nc-s-all",
-        "Nc-all",
-        "ch0 Count Rate (KHz)",
-        "S prompt ch0 (kHz)",
-        "Number of Photons",
-    } or set(m._columns) == set(qt._columns)
-    for name in qt._columns:
-        np.testing.assert_array_equal(m._columns[name], qt._columns[name])
-    assert qt.results_text == m.results_text
+    assert m.results_text == "flim.ptu: 32x32 px.\nWindows: ch0."
+    np.testing.assert_allclose(m.count_rate_map(), written_rate(truth.sum(axis=0)), rtol=1e-12)
+    np.testing.assert_array_equal(m._columns["Number of Photons"], truth.sum(axis=0))
 
 
 def test_an_independent_clsm_image_counts_the_same_photons(app, drv, flim):
@@ -168,12 +145,10 @@ def test_the_detector_background_is_subtracted_from_the_rate_and_clipped_at_zero
         "ch0": {"chs": [0], "ch_p": [], "ch_s": [], "micro_time_ranges": [], "bg": 0.1}
     }
     m = C.computed(app, drv, flim)
-    plain = IntensityViewModel()
-    plain.filename = str(flim)
-    plain.compute()
+    plain = written_rate(data.counts(1)[0].sum(axis=0))
     rate = m.count_rate_map()
-    assert rate.min() >= 0 and rate.max() <= plain.count_rate_map().max()
-    np.testing.assert_allclose(rate, np.clip(plain.count_rate_map() - 0.1, 0, None))
+    assert rate.min() >= 0 and rate.max() <= plain.max()
+    np.testing.assert_allclose(rate, np.clip(plain - 0.1, 0, None))
 
 
 def test_the_real_leica_scan_counts_what_an_independent_reader_counts(app, drv, tmp_path):
@@ -395,28 +370,23 @@ def test_the_hub_calibration_background_reaches_the_rate(app, drv, flim):
     app.apply_calibration({"ch0": {"bg_vv": 0.05, "bg_vh": 0.0}})
     assert app.model.detectors["ch0"]["bg"] == pytest.approx(0.05)
     m = C.computed(app, drv, flim)
-    plain = IntensityViewModel()
-    plain.filename = str(flim)
-    plain.compute()
-    np.testing.assert_allclose(m.count_rate_map(), np.clip(plain.count_rate_map() - 0.05, 0, None))
+    plain = written_rate(data.counts(1)[0].sum(axis=0))
+    np.testing.assert_allclose(m.count_rate_map(), np.clip(plain - 0.05, 0, None))
 
 
-# ── 8. static: spec, inventory, Qt-free, tooltips, layout ──────────────────────────────────────────────────── #
+# ── 8. static: spec, Qt-free, tooltips, layout ──────────────────────────────────────────────────── #
 
 
-def test_every_qt_control_has_an_emtk_equivalent():
-    qt_labels = {s.get("label") for s in walk(QT_SPEC["sections"]) if s.get("label")}
-    assert qt_labels == {"TTTR file"}
+def test_the_spec_has_the_file_the_actions_the_window_and_the_three_map_tabs():
     emtk = {s.get("label") for s in walk(EMTK_SPEC["sections"]) if s.get("label")} | {
         b["label"] for s in walk(EMTK_SPEC["sections"]) for b in s.get("buttons", [])
     }
     assert {"TTTR file", "Run", "Create imaging HDF5", "ndX", "Next", "Detector window"} <= emtk
-    qt_tabs = [s["title"] for s in walk(QT_SPEC["sections"]) if s.get("type") == "custom"]
-    assert (
-        qt_tabs
-        == ["Intensity", "Count rate (kHz)", "Frames (movie)"]
-        == [p["title"] for p in EMTK_SPEC["sections"][1:]]
-    )
+    assert [p["title"] for p in EMTK_SPEC["sections"][1:]] == [
+        "Intensity",
+        "Count rate (kHz)",
+        "Frames (movie)",
+    ]
 
 
 def test_every_spec_attribute_and_action_exists_on_the_model():

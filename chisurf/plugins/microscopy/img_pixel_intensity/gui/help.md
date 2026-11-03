@@ -30,11 +30,11 @@ image. The **Frames (movie)** tab plays the scanner frames: **Play**, **Loop**, 
 
 - **Create imaging HDF5** writes the per-pixel table with the back-reference to the photon file. When the pipeline already remembers a file it is written
   there, otherwise a file is asked for.
-- **Save container** writes the same table as a pixel-map artifact into the container beside the photon file (the Qt tool did this when it closed).
+- **Save container** writes the same table as a pixel-map artifact into the container beside the photon file.
 - **ndX** opens the live table in the explorer; **Back to the maps** returns.
 - **Next** remembers the file and the HDF5 and goes on to the next analysis step; it is available inside the Imaging Tools pipeline only.
 
-Closing a computed session flushes the standard HDF5 and the container, as the Qt tool does.
+Closing a computed session flushes the standard HDF5 and the container.
 
 ## Further reading
 

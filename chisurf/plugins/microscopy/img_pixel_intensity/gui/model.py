@@ -1,6 +1,6 @@
 """Qt-free model of the emtk intensity window.
 
-The analysis is :class:`~.view_model.IntensityViewModel` (unchanged, shared with the Qt tool); the actions, status line, dialogs
+The analysis is :class:`~.view_model.IntensityViewModel`; the actions, status line, dialogs
 and the worker hand-off are :class:`~chisurf.plugins.microscopy.imaging_emtk.pixel_model.PixelModelMixin`.
 """
 

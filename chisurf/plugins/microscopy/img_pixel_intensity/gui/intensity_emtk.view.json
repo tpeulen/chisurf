@@ -1,5 +1,5 @@
 {
-  "_comment": "Per-pixel intensity, drawn by emtk. The settings window on the left (file, detector window, the actions), the maps as tabs on the right. The Qt tool's AutoForm spec is intensity.view.json.",
+  "_comment": "Per-pixel intensity, drawn by emtk. The settings window on the left (file, detector window, the actions), the maps as tabs on the right.",
   "window": {"width": 1100, "height": 720},
   "sections": [
     {
@@ -15,7 +15,7 @@
           "buttons": [
             {"action": "run_maps", "label": "Run", "role": "primary", "icon": "▶️", "description": "Compute the per-pixel photon counts and count rates of every detector window, in the background. Nothing is recomputed when neither the file nor the detector windows changed."},
             {"action": "request_hdf5", "label": "Create imaging HDF5", "description": "Write the per-pixel table (counts, count rates, number of photons, the back-reference to the photon file) to the imaging HDF5 the next analysis steps enrich. With a file already remembered by the pipeline it is written there; otherwise a file is asked for."},
-            {"action": "save_container", "label": "Save container", "description": "Write the same table as a pixel-map artifact into the container beside the photon file (the Qt tool did this when it closed)."},
+            {"action": "save_container", "label": "Save container", "description": "Write the same table as a pixel-map artifact into the container beside the photon file."},
             {"action": "open_ndx", "label": "ndX", "description": "Explore the per-pixel table in ndX, the shared live dataset. A Back button returns to the maps."},
             {"action": "next_step", "label": "Next", "description": "Remember the file and the HDF5 and go to the next analysis step. Only available inside the Imaging Tools pipeline."}
           ]
