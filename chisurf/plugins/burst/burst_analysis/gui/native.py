@@ -675,7 +675,12 @@ class BurstAnalysisHubApp(ToolHubApp):
         if controller is None:
             return
         if self.context.raw_files and not child.model.files:
-            controller.add_files([str(p) for p in self.context.raw_files])
+            # each file's rates go into its workspace dataset's analysis container, where ndX
+            # reads them (B_G|G, B_R|G, B_R|R), never beside the photons
+            data = self.children.get("data")
+            sources = getattr(getattr(data, "model", None), "sources", None) or {}
+            paths = [str(p) for p in self.context.raw_files]
+            controller.take_photons(paths, [sources.get(p, "") for p in paths])
         # Compute on arrival: nothing is asked that the data cannot answer.
         reason = getattr(child.model, "can_estimate", lambda: None)()
         if (
@@ -760,8 +765,11 @@ class BurstAnalysisHubApp(ToolHubApp):
         )
 
     def _run_in_background(self) -> None:
-        """Simple mode: the steps not shown (BVA, 2CDE) run with their defaults once the bursts are
-        there, so their results exist for the browser and the export."""
+        """Once the bursts are there: the background is estimated (in either mode) and stored in
+        each measurement's container, so ndX and the accurate-FRET correction open with measured
+        B_G|G / B_R|G / B_R|R; in Simple mode the steps not shown (BVA, 2CDE) run with their
+        defaults too, so their results exist for the browser and the export."""
+        self._estimate_background()
         if self.advanced:
             return
         for role in ("bva", "two_cde"):
@@ -787,6 +795,18 @@ class BurstAnalysisHubApp(ToolHubApp):
                     controller.run(force=True, explicit=False)
             except Exception as exc:  # noqa: BLE001 - a background check must not stop the pipeline
                 self.status = f"{role}: {type(exc).__name__}: {exc}"
+
+    def _estimate_background(self) -> None:
+        """Run the Background step on the files (it computes on arrival and writes the rates into
+        the containers), unless it already has a result."""
+        try:
+            child = self.ensure_child("background")
+            if child is None or getattr(getattr(child, "model", None), "diagnostics", None):
+                return
+            self.on_select("background", child)
+        except Exception as exc:  # noqa: BLE001 - a missing estimate must not stop the pipeline
+            logging.getLogger(__name__).exception("background estimate")
+            self.status = f"background: {type(exc).__name__}: {exc}"
 
     def summary(self, width: float = 1200.0) -> str:
         """The status line: the setup, the files and the bursts the later steps read (shorter when narrow, so it

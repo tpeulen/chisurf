@@ -623,7 +623,7 @@ class IrfBackground:
             [
                 {
                     "Detector": d.name,
-                    "Background (kHz)": d.background_khz,
+                    "B (kHz)": d.background_khz,
                     "Prompt (ns)": d.prompt_ns,
                     "Non-burst photons": d.n_background_photons,
                     "Burst photons": d.n_burst_photons,

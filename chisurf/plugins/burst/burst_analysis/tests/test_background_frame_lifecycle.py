@@ -113,8 +113,20 @@ def test_background_publishes_through_a_lazy_host(tmp_path=None):
         assert app.context.burst_folder is not None, (
             f"the burst search never finished (status: {app.status})"
         )
-        app.select("background")
+        # The bursts' arrival already estimated the background (it is stored for ndX and
+        # Accurate FRET); wait for that run, then estimate again from the step itself.
         child = app.children.get("background")
+        deadline = time.monotonic() + 300
+        while child is not None and child.controller.running and time.monotonic() < deadline:
+            driver.draw(2)
+            time.sleep(0.1)
+        assert child is not None and child.model.diagnostics, (
+            f"the bursts' arrival estimated no background (status: {app.status})"
+        )
+        app.select("background")
+        child.model.diagnostics.clear()  # what the new run publishes, it publishes afresh
+        child.model.backgrounds.clear()
+        child.controller.run()
         deadline = time.monotonic() + 120
         while time.monotonic() < deadline:
             driver.draw(2)

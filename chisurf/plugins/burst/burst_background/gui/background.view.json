@@ -136,9 +136,9 @@
                   "label": "Detector"
                 },
                 {
-                  "description": "Background count rate in kHz (1000 counts per second).",
+                  "description": "Background rate B of the row's detector in kHz (1000 counts per second): B_G|G, B_R|G, B_R|R in Accurate FRET and ndX, which read it from the measurement.",
                   "key": "rate_khz",
-                  "label": "Rate (kHz)"
+                  "label": "B (kHz)"
                 }
               ]
             }

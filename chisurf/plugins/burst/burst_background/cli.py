@@ -76,7 +76,7 @@ def save_results_as_txt(
 
     try:
         with open(output_file, "w", encoding="utf-8") as f:
-            headers = ["File", "Detector", "Background (kHz)"]
+            headers = ["File", "Detector", "B (kHz)"]
             f.write("\t".join(headers) + "\n")
 
             for path, det_bg in backgrounds.items():

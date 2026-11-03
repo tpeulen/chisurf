@@ -288,6 +288,56 @@ def lightpath_prior(
 # ---------------------------------------------------------------------------
 
 
+#: The background rates (kHz) in the order of the channels I_DD, I_DA, I_AA, named
+#: after their detectors as ndX names them, and the detector of each.
+BACKGROUND_RATES = (("B_G|G", "G|G"), ("B_R|G", "R|G"), ("B_R|R", "R|R"))
+
+
+def burst_durations_ms(columns, detector: str):
+    """That detector's per-burst durations (ms), else the burst's, else ``None``."""
+    for name in (f"Duration ({detector}) (ms)", "Duration (ms)"):
+        if name in columns:
+            return np.asarray(columns[name], dtype=float)
+    return None
+
+
+def subtract_background(channels, rates, columns):
+    """The channels with their background taken off, burst by burst.
+
+    A background is a rate (kHz); a burst carries the rate times its duration
+    (kHz x ms = counts), so a 4 ms burst loses four times what a 1 ms one does.
+
+    Parameters
+    ----------
+    channels : sequence
+        ``(I_DD, I_DA, I_AA)`` per burst; an entry may be ``None``.
+    rates : sequence of float
+        ``(B_G|G, B_R|G, B_R|R)`` in kHz.
+    columns : mapping
+        The burst table, for the durations.
+
+    Returns
+    -------
+    tuple
+        ``(channels, missing)``: the corrected channels (never negative) and the
+        rates that could not be subtracted for want of a duration column.
+    """
+    out, missing = [], []
+    for values, rate, (name, detector) in zip(channels, rates, BACKGROUND_RATES):
+        rate = float(rate or 0.0)
+        if values is None or not rate:
+            out.append(values)
+            continue
+        values = np.asarray(values, dtype=float)
+        durations = burst_durations_ms(columns, detector)
+        if durations is None or durations.shape != values.shape:
+            missing.append(name)
+            out.append(values)
+            continue
+        out.append(np.clip(values - rate * durations, 0.0, None))
+    return out, missing
+
+
 def calibrate(
     i_dd,
     i_da,
@@ -324,7 +374,8 @@ def calibrate(
     linker_sigma : float, optional
         Width of the linker distance distribution (Å) used for the static line.
     background : tuple of float, optional
-        ``(Bg_DD, Bg_DA, Bg_AA)`` per burst, in the units of the channels.
+        Constant background counts per burst ``(I_DD, I_DA, I_AA)``; a rate
+        (``B_G|G``, kHz) is taken off first with :func:`subtract_background`.
     gamma_source : str, optional
         ``"auto"``, ``"es"``, ``"lifetime"`` or ``"combined"``.
     n_bootstrap : int, optional

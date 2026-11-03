@@ -35,6 +35,11 @@ _CLASS_STYLE = {
 }
 
 
+
+#: The background rates (kHz) and the fields holding them, in the order of the
+#: channels I_DD, I_DA, I_AA: named after their detectors as ndX names them.
+BACKGROUND_FIELDS = (("B_G|G", "background_dd"), ("B_R|G", "background_da"), ("B_R|R", "background_aa"))
+
 class AccurateFretViewModel:
     """State and logic of the accurate-FRET calibration tool (no Qt)."""
 
@@ -128,6 +133,7 @@ class AccurateFretViewModel:
             return
         self._map_columns()
         self._result = None
+        self.take_stored_background()
         missing = [k for k in ("i_dd", "i_da") if not getattr(self, f"column_{k}")]
         head = (
             f"{pathlib.Path(path).name}: "
@@ -150,6 +156,36 @@ class AccurateFretViewModel:
         else:
             self.results_text = head + f" Please map {', '.join(missing)} by hand."
         self.notify("file")
+
+    def take_stored_background(self) -> bool:
+        """Fill B_G|G / B_R|G / B_R|R with the rates the measurement's container stores.
+
+        Burst Analysis estimates the background when the bursts arrive and stores it in
+        the container; a table read from one starts with those rates (kHz). Returns
+        whether any was taken.
+        """
+        try:
+            from chisurf.plugins.ndxplorer.calibration_bridge import background_from_container
+
+            rates = background_from_container(self.filename) if self.filename else {}
+        except Exception:  # noqa: BLE001 - a table without a container keeps its values
+            logger.debug("no stored background for %s", self.filename, exc_info=True)
+            rates = {}
+        taken = False
+        for constant, attr in BACKGROUND_FIELDS:
+            if constant in rates:
+                setattr(self, attr, float(rates[constant]))
+                taken = True
+        return taken
+
+    def _background_subtracted(self, channels):
+        """The channels with B_G|G / B_R|G / B_R|R (rate x burst duration) taken off, and a note."""
+        rates = [getattr(self, attr) for _constant, attr in BACKGROUND_FIELDS]
+        out, missing = _core.subtract_background(channels, rates, self._columns)
+        note = (
+            f" No burst duration in this table: {', '.join(missing)} not subtracted." if missing else ""
+        )
+        return out, note
 
     def _has_detector_columns(self) -> bool:
         """Whether the loaded table splits its photons by detector at all."""
@@ -425,9 +461,12 @@ class AccurateFretViewModel:
             return False
         if progress:
             progress(0.1, "Reading columns")
-        i_dd = self._channel(self.column_i_dd)
-        i_da = self._channel(self.column_i_da)
-        i_aa = self._channel(self.column_i_aa)
+        if not (self.background_dd or self.background_da or self.background_aa):
+            self.take_stored_background()  # estimated after the table was read
+        (i_dd, i_da, i_aa), background_note = self._background_subtracted(
+            [self._channel(self.column_i_dd), self._channel(self.column_i_da),
+             self._channel(self.column_i_aa)]
+        )
         tau_f = self._channel(self.column_tau_f)
         if progress:
             progress(0.3, "Calibrating")
@@ -440,7 +479,7 @@ class AccurateFretViewModel:
                 donor_lifetime=self.donor_lifetime,
                 forster_radius=self.forster_radius,
                 linker_sigma=self.linker_sigma,
-                background=(self.background_dd, self.background_da, self.background_aa),
+                background=(0.0, 0.0, 0.0),  # subtracted per burst above
                 gamma_source=self.gamma_source,
                 n_bootstrap=self.n_bootstrap,
                 lightpath=self._lightpath_argument(),
@@ -463,7 +502,7 @@ class AccurateFretViewModel:
             return False
         if progress:
             progress(1.0, "Done")
-        self.results_text = self._result.calibration.report()
+        self.results_text = self._result.calibration.report() + background_note
         self._write_container()
         self._publish_parameters()
         self.notify("result")

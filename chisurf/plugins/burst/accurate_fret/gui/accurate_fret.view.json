@@ -180,7 +180,7 @@
               ]
             },
             {
-              "description": "Mean background counts per burst in each channel, subtracted before the correction factors are estimated.",
+              "description": "Background rate of each detector (kHz), subtracted from every burst as rate × burst duration before the correction factors are estimated. Burst Analysis fills them with the background it estimated for the measurement; the calibration never changes them.",
               "type": "panel",
               "title": "Background",
               "collapsed": true,
@@ -189,26 +189,26 @@
                 {
                   "type": "value",
                   "attr": "background_dd",
-                  "label": "Bg I_DD",
+                  "label": "B_G|G (kHz)",
                   "kind": "float",
                   "decimals": 4,
-                  "description": "Background of the donor channel, in the units of the columns. Uncorrected background biases low-efficiency populations most."
+                  "description": "Background rate of the donor detector G|G (I_DD), kHz. Uncorrected background biases low-efficiency populations most."
                 },
                 {
                   "type": "value",
                   "attr": "background_da",
-                  "label": "Bg I_DA",
+                  "label": "B_R|G (kHz)",
                   "kind": "float",
                   "decimals": 4,
-                  "description": "Background of the FRET channel."
+                  "description": "Background rate of the FRET detector R|G (I_DA), kHz."
                 },
                 {
                   "type": "value",
                   "attr": "background_aa",
-                  "label": "Bg I_AA",
+                  "label": "B_R|R (kHz)",
                   "kind": "float",
                   "decimals": 4,
-                  "description": "Background of the acceptor-excitation channel."
+                  "description": "Background rate of the acceptor-excitation detector R|R (I_AA), kHz."
                 }
               ]
             },

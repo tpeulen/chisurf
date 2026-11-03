@@ -160,7 +160,7 @@ def test_compute_without_files_says_why_and_a_click_on_a_loaded_demo_recovers_it
     assert strings.count("Extracted IRF + background for 2 detector(s).") == 1
     assert {
         "Detector",
-        "Background (kHz)",
+        "B (kHz)",
         "Prompt (ns)",
         "Non-burst",
         "Burst",
@@ -489,7 +489,7 @@ def test_a_click_on_a_row_and_on_the_headers_sorts_and_changes_no_result(app, me
     before = {r["detector"]: r["background_khz"] for r in app.model.results_rows()}
     click(app, text_rect(draw(app), "G|G"))
     for _ in range(2):  # a header click sorts, again flips
-        header = [t[:4] for t in draw(app).texts if "Backgr" in t[5]][0]
+        header = [t[:4] for t in draw(app).texts if "B (kHz)" in t[5]][0]
         click(app, header)
     assert before == {r["detector"]: r["background_khz"] for r in app.model.results_rows()}
     assert {"G|G", "R|G"} <= set(draw(app).strings)
@@ -648,7 +648,7 @@ def test_draws_empty_and_populated(app, measurement, size):
     compute(app, size)
     strings = draw(app, size).strings
     assert "IRF (non-burst scatter)" in strings
-    assert {"Detector", "Background (kHz)", "Prompt (ns)", "Non-burst", "Burst"} <= set(strings)
+    assert {"Detector", "B (kHz)", "Prompt (ns)", "Non-burst", "Burst"} <= set(strings)
     rows = app.model.results_rows()
     assert rows and all(
         f"{r['background_khz']:.3f}" in strings and r["detector"] in strings for r in rows

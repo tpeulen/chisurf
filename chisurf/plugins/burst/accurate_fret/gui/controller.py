@@ -154,7 +154,16 @@ class AccurateFretController:
             if self._action in ("load", "calibrate"):
                 if self._action == "load":
                     self.model.filename, self.model._columns = value.filename, value._columns
-                    for field in ("column_i_dd", "column_i_da", "column_i_aa", "column_tau_f"):
+                    for field in (
+                        "column_i_dd",
+                        "column_i_da",
+                        "column_i_aa",
+                        "column_tau_f",
+                        # the B_G|G / B_R|G / B_R|R the measurement stores, read with the table
+                        "background_dd",
+                        "background_da",
+                        "background_aa",
+                    ):
                         setattr(self.model, field, getattr(value, field))
                     self.model._result = None
                 else:

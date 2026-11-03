@@ -61,6 +61,8 @@ class BackgroundController:
         #: Which workspace dataset each file came from: its results go into that dataset's
         #: analysis container in the project, never beside the photons.
         self.model.sources = {}
+        #: The window writes into the project's analysis containers, never beside the photons.
+        self.model.in_project = True
 
     def _channels_changed(self, settings):
         self.detectors = settings["detectors"]

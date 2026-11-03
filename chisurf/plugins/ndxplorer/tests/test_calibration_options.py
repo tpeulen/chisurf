@@ -47,9 +47,9 @@ def _window(**constants):
                 "alpha": 0.0,
                 "beta": 0.0,
                 "r": 1.0,
-                "Bg": 0.0,
-                "Br": 0.0,
-                "By": 0.0,
+                "B_G|G": 0.0,
+                "B_R|G": 0.0,
+                "B_R|R": 0.0,
                 "PhiA": 1.0,
                 "PhiD": 1.0,
                 "forster_radius": 52.0,
@@ -124,20 +124,20 @@ def test_the_options_map_onto_the_bridge():
 def test_a_missing_stored_background_falls_back_to_the_constants():
     """Asking for the measured background must not throw the typed one away.
 
-    A container that never had a background step has nothing to subtract. Zeroing
-    the window's own numbers *and* subtracting nothing in their place is strictly
-    worse than the setting it replaced.
+    A container that never had a background step has nothing to subtract, so the
+    window's own rates are used as "fixed" uses them; they survive unchanged.
     """
-    ndx = _window(Bg=2.0, Br=3.0, By=4.0)
+    ndx = _window(**{"B_G|G": 2.0, "B_R|G": 3.0, "B_R|R": 4.0})
     result = _run(ndx, background="measurement")
     assert result["ok"]
-    assert result["background_per_burst"] == [], "this fixture has no container"
+    # the fixture has no burst durations, so nothing could be subtracted per burst
+    assert result["background_per_burst"] == []
     # The typed values survived into the calibration.
-    assert ndx.constants["Bg"] == pytest.approx(2.0)
+    assert ndx.constants["B_G|G"] == pytest.approx(2.0)
 
 
 def test_none_really_means_zero():
-    ndx = _window(Bg=2.0, Br=3.0, By=4.0)
+    ndx = _window(**{"B_G|G": 2.0, "B_R|G": 3.0, "B_R|R": 4.0})
     result = _run(ndx, background="none")
     assert result["ok"]
     assert result["background"] == "none"
@@ -224,9 +224,9 @@ def _physical_window(bg_dd=2.0, bg_da=1.2, bg_aa=2.8, alpha=0.06, n=8000, seed=1
                 "alpha": 0.0,
                 "beta": 0.0,
                 "r": 1.0,
-                "Bg": 0.0,
-                "Br": 0.0,
-                "By": 0.0,
+                "B_G|G": 0.0,
+                "B_R|G": 0.0,
+                "B_R|R": 0.0,
                 "PhiA": 1.0,
                 "PhiD": 1.0,
                 "forster_radius": 52.0,
@@ -254,7 +254,7 @@ def test_the_fitted_background_reaches_the_window_as_a_rate():
     """What the window receives must be kHz, because that is what it means.
 
     ndX computes ``Fg = Sg - Bg`` with ``Sg`` a count *rate*, so a per-burst
-    count written into ``Bg`` is a background inflated by roughly the burst
+    count written into ``B_G|G`` is a background inflated by roughly the burst
     duration in ms — the over-correction that started this: a median of 8
     photons per burst arriving as 8 kHz against a real background near 3.
     """
@@ -264,7 +264,7 @@ def test_the_fitted_background_reaches_the_window_as_a_rate():
 
     # Mean burst duration here is ~2.8 ms, so the old counts-as-rate path put
     # roughly 2.8x each rate into these constants -- well outside the tolerance.
-    for constant, expected in (("Bg", 2.0), ("Br", 1.2), ("By", 2.8)):
+    for constant, expected in (("B_G|G", 2.0), ("B_R|G", 1.2), ("B_R|R", 2.8)):
         assert float(window.constants[constant]) == pytest.approx(expected, abs=0.6), constant
 
 
@@ -367,7 +367,7 @@ def test_a_measurement_without_one_changes_nothing(tmp_path):
 def test_restoring_keeps_what_the_measurement_does_not_carry(container):
     """Quantum yields are the window's; backgrounds are the measurement's.
 
-    The container stores per-detector background rates, and ndX's Bg/Br/By are
+    The container stores per-detector background rates, and ndX's B_G|G / B_R|G / B_R|R are
     exactly those rates, so those *are* restored. What has no counterpart in the
     measurement — PhiA, PhiD — is left alone.
     """
@@ -376,7 +376,7 @@ def test_restoring_keeps_what_the_measurement_does_not_carry(container):
     )
 
     target = _container_with_calibration(container, **PLANTED)
-    ndx = _window(Bg=2.5, Br=3.5, By=4.5, PhiA=0.8, PhiD=0.4)
+    ndx = _window(**{"B_G|G": 2.5, "B_R|G": 3.5, "B_R|R": 4.5}, PhiA=0.8, PhiD=0.4)
     restore_calibration_from_container(ndx, target)
     assert ndx.constants["alpha"] == pytest.approx(PLANTED["alpha"])
     assert ndx.constants["beta"] == pytest.approx(PLANTED["delta"])  # ndX's name for delta
@@ -433,7 +433,7 @@ def test_the_writer_and_the_reader_share_one_declaration():
 
 
 def test_the_stored_background_rates_are_read(tmp_path):
-    """NdX's Bg/Br/By are rates, so a stored rate goes in as it stands.
+    """NdX's B_G|G / B_R|G / B_R|R are rates, so a stored rate goes in as it stands.
 
     ``Fg(PIE) = Sg(PIE) - Bg`` and ``Sg(PIE)`` is ``S prompt green (kHz)``, so
     the constant is in kHz — the same unit the background step writes. No
@@ -447,7 +447,7 @@ def test_the_stored_background_rates_are_read(tmp_path):
     if not source.exists():
         pytest.skip("the ALEX calibration container is not on this machine")
     rates = background_from_container(source)
-    assert set(rates) <= {"Bg", "Br", "By"}
+    assert set(rates) <= {"B_G|G", "B_R|G", "B_R|R"}
     assert rates, "this container carries a background artifact"
     for value in rates.values():
         assert np.isfinite(value) and value >= 0.0
@@ -491,12 +491,12 @@ def test_a_measurement_with_only_a_background_still_restores(tmp_path):
     )
 
     assert calibration_from_container(target) == {}, "no factors in this fixture"
-    ndx = _window(Bg=99.0, Br=99.0, By=99.0)
+    ndx = _window(**{"B_G|G": 99.0, "B_R|G": 99.0, "B_R|R": 99.0})
     applied = restore_calibration_from_container(ndx, target)
     assert applied, "a background alone must still restore"
-    assert ndx.constants["Bg"] == pytest.approx(1.25)
-    assert ndx.constants["Br"] == pytest.approx(2.5)
-    assert ndx.constants["By"] == pytest.approx(3.75)
+    assert ndx.constants["B_G|G"] == pytest.approx(1.25)
+    assert ndx.constants["B_R|G"] == pytest.approx(2.5)
+    assert ndx.constants["B_R|R"] == pytest.approx(3.75)
 
 
 # ── and it repopulates when the measurement changes ──────────────────────────
@@ -514,9 +514,9 @@ def _window_on(container):
                 "alpha": 0.0,
                 "beta": 0.0,
                 "r": 1.0,
-                "Bg": 9.0,
-                "Br": 9.0,
-                "By": 9.0,
+                "B_G|G": 9.0,
+                "B_R|G": 9.0,
+                "B_R|R": 9.0,
                 "PhiA": 1.0,
                 "PhiD": 1.0,
                 "forster_radius": 52.0,
@@ -610,9 +610,9 @@ def test_a_value_the_user_tuned_survives_a_revisit(container):
     _write_background(container, 1.0, 2.0, 3.0)
     ndx = _window_on(container)
     refresh_stored_parameters(ndx)
-    ndx.constants["Bg"] = 42.0
+    ndx.constants["B_G|G"] = 42.0
     assert refresh_stored_parameters(ndx) == {}
-    assert ndx.constants["Bg"] == pytest.approx(42.0)
+    assert ndx.constants["B_G|G"] == pytest.approx(42.0)
 
 
 def test_re_running_the_background_step_repopulates(container):
@@ -624,9 +624,9 @@ def test_re_running_the_background_step_repopulates(container):
     refresh_stored_parameters(ndx)
     _write_background(container, 2.24, 3.17, 1.05)
     assert refresh_stored_parameters(ndx), "a re-run must reach the window"
-    assert ndx.constants["Bg"] == pytest.approx(2.24)
-    assert ndx.constants["Br"] == pytest.approx(3.17)
-    assert ndx.constants["By"] == pytest.approx(1.05)
+    assert ndx.constants["B_G|G"] == pytest.approx(2.24)
+    assert ndx.constants["B_R|G"] == pytest.approx(3.17)
+    assert ndx.constants["B_R|R"] == pytest.approx(1.05)
 
 
 # ── the quantum yields, and what is derived from them ────────────────────────
@@ -773,7 +773,7 @@ def test_one_unreadable_artifact_does_not_hide_the_rest(container):
     _write_saved_calibration(container, {"gG/gR": 0.5})
     _write_background(container, 1.0, 2.0, 3.0)
     rates = background_from_container(container)
-    assert rates == pytest.approx({"Bg": 1.0, "Br": 2.0, "By": 3.0}), (
+    assert rates == pytest.approx({"B_G|G": 1.0, "B_R|G": 2.0, "B_R|R": 3.0}), (
         "a JSON artifact aborted the scan before the background was reached"
     )
 

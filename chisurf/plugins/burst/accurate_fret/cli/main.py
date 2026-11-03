@@ -48,8 +48,9 @@ from .. import core as _core
     "--background",
     nargs=3,
     type=float,
-    default=(0.0, 0.0, 0.0),
-    help="Backgrounds Bg_DD Bg_DA Bg_AA in the units of the columns.",
+    default=None,
+    help="Background rates B_G|G B_R|G B_R|R in kHz, subtracted as rate x burst duration "
+    "(default: the rates the measurement's container stores, else none).",
 )
 @click.option(
     "--gamma-source",
@@ -164,15 +165,25 @@ def cli(
     if lightpath:
         prior = _core.lightpath_prior(lightpath)
 
+    if background is None:
+        from chisurf.plugins.ndxplorer.calibration_bridge import background_from_container
+
+        stored = background_from_container(burst_table)
+        background = [stored.get(name, 0.0) for name, _detector in _core.BACKGROUND_RATES]
+    (i_dd, i_da, i_aa), missing = _core.subtract_background(
+        [_column("i_dd"), _column("i_da"), _column("i_aa")], background, columns
+    )
+    if missing:
+        click.echo(f"no burst duration in the table: {', '.join(missing)} not subtracted", err=True)
+
     result = _core.calibrate(
-        _column("i_dd"),
-        _column("i_da"),
-        _column("i_aa"),
+        i_dd,
+        i_da,
+        i_aa,
         _column("tau_f"),
         donor_lifetime=tau_d0,
         forster_radius=r0,
         linker_sigma=linker_sigma,
-        background=background,
         gamma_source=gamma_source,
         n_bootstrap=bootstrap,
         lightpath=prior,

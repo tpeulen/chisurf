@@ -436,8 +436,11 @@ class BackgroundViewModel:
             names = list(diags)
             uid = sources.get(str(path), "")
             # A workspace dataset's results go into its analysis container in the project (the
-            # photons linked, not copied); a file named through the API keeps its own container.
-            target = {"out_dir": container_dir(uid), "raw_data": "sidecar"} if uid else {}
+            # photons linked, not copied), and so does every file the window was given
+            # (``in_project``: never a container beside the user's photons); only a file named
+            # through the API keeps its own container.
+            in_project = uid or getattr(self, "in_project", False)
+            target = {"out_dir": container_dir(uid), "raw_data": "sidecar"} if in_project else {}
             try:
                 with open_measurement(path, **target) as measurement:
                     rates = store_from_arrays(

@@ -14,8 +14,8 @@ the efficiency means anything outside your own setup:
 With them the accurate efficiency and stoichiometry are
 
 ```
-F_DD = I_DD − Bg_DD                    F_AA = I_AA − Bg_AA
-F_DA = (I_DA − Bg_DA) − α·F_DD − δ·F_AA
+F_DD = I_DD − B_G|G·T                  F_AA = I_AA − B_R|R·T
+F_DA = (I_DA − B_R|G·T) − α·F_DD − δ·F_AA
 E    = F_DA / (F_DA + γ·F_DD)
 S    = (γ·F_DD + F_DA) / (γ·F_DD + F_DA + F_AA/β)
 ```
@@ -86,7 +86,9 @@ offset.
   `E = 0`; an error here tilts the entire lifetime-based calibration.
 * **Linker width** — sets the curvature of the static line. 6 Å is typical.
 * **R0** — affects only the distance, never the efficiency.
-* **Background** — subtract it. Uncorrected background biases the low-efficiency
+* **Background** — `B_G|G`, `B_R|G`, `B_R|R`: the rate (kHz) of each detector, taken off
+  every burst as rate × its duration *T*. Burst Analysis fills them with the background it
+  estimated for the measurement. Uncorrected background biases the low-efficiency
   populations most.
 * **Bootstrap resamples** — they produce the factor uncertainties, which are
   used twice: to weigh the data against the optics prior, and to propagate into

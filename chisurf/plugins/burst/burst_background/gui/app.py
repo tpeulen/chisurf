@@ -367,8 +367,8 @@ class BurstBackgroundGui:
         if rows:
             rx, ry = im.get_cursor_screen_pos()
             self.remember("bg_rate_plot", (rx, ry, half_w, avail_h - 10.0))
-            if implot.begin_plot("Background Rate (kHz)##rate_bars", (half_w, avail_h - 10.0)):
-                implot.setup_axes("Detector", "Rate (kHz)")
+            if implot.begin_plot("Background rate B (kHz)##rate_bars", (half_w, avail_h - 10.0)):
+                implot.setup_axes("Detector", "B (kHz)")
                 xs = np.arange(len(rows), dtype=float)
                 implot.setup_axis_ticks(
                     implot.AXIS_X1, xs, labels=[r.get("detector", "") for r in rows]
@@ -409,7 +409,7 @@ class BurstBackgroundGui:
             im.table_setup_scroll_freeze(0, 1)
             im.table_setup_column("File")
             im.table_setup_column("Detector")
-            im.table_setup_column("Rate (kHz)")
+            im.table_setup_column("B (kHz)")
             im.table_headers_row()
 
             for r in res_rows:

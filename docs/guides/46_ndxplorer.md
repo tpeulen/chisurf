@@ -263,7 +263,7 @@ defaults meaning *no correction*): `g_irf`, `s_irf` per channel (1, 0),
 the period). The background fraction is photon-count based, as tttrlib
 subtracts a background histogram from the counts; a burst table can make it
 rate based by editing the `f_bg (G|G)` equation to
-`'Bg' * 'Duration (ms)' / 'Number of Photons (G|G)'`.
+`'B_G|G' * 'Duration (ms)' / 'Number of Photons (G|G)'`.
 
 **FRET > Phasor reference from IRF…** fills the constants from measurements
 with tttrlib: an IRF (scatter or mirror; or a dye of known **reference
