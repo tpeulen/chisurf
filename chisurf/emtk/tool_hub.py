@@ -127,6 +127,22 @@ class ToolHubApp(ImApp):
     #: last used one opens instead; a named setup is always restored.
     library_setup_wins = False
 
+    @staticmethod
+    def _library_version(setup_state: dict) -> dict:
+        """A restored named setup as the library holds it now: the session's copy may carry edits
+        never saved under that name (detected windows taken in), which then came back on every
+        start under a name that says otherwise. Unchanged when the library lacks the name."""
+        from chisurf.core.setup_channel_definition import ChannelDefinition
+
+        name = str(setup_state.get("setup_name") or "")
+        try:
+            stored = (ChannelDefinition().read_setups_payload().get("setups") or {}).get(name)
+        except Exception:  # noqa: BLE001 - the library is unreachable: the session's copy
+            return setup_state
+        if not isinstance(stored, dict):
+            return setup_state
+        return {**stored, "setup_name": name}
+
     def __init__(
         self,
         title: str,
@@ -925,6 +941,8 @@ class ToolHubApp(ImApp):
             # An unsaved working copy (e.g. detectors proposed from a file) does not outlive the
             # session: the library's last used setup opens instead, and every stored one is listed.
             setup_state, dropped_setup = None, True
+        elif isinstance(setup_state, dict) and self.library_setup_wins:
+            setup_state = self._library_version(setup_state)
         if isinstance(setup_state, dict):
             from chisurf.core.setup_channel_definition import ChannelDefinition
 

@@ -138,3 +138,20 @@ def test_a_restored_named_setup_is_kept(store):
     setup = hub.children["setup"]
     assert hub.setup_model.current_name == "TP_20261031 DNA PIE"
     assert not setup.open_last_used and setup.autoload  # kept, and the store is still listed
+
+
+def test_a_restored_named_setup_comes_back_as_the_library_holds_it(store):
+    """A session saved RVZMT150 with detected windows taken in but never saved (prompt 10-31, the
+    green decay cut away); every start restored that copy under the name. The library's wins."""
+    from chisurf.plugins.burst.burst_analysis.gui.native import create_app
+
+    hub = create_app()
+    stale = {
+        "setup_name": "RVZMT150",
+        "detectors": {"G|G": {"chs": [0, 3], "micro_time_ranges": [[10, 31]]}},
+        "windows": {"prompt": [10, 31], "delayed": [31, 503]},
+    }
+    hub.restore_settings({"selected": "setup", "setup": stale, "children": {"setup": {"page": {}}}})
+    assert hub.setup_model.current_name == "RVZMT150"
+    assert hub.setup_model.data["detectors"]["R|G"]["chs"] == [1, 2]  # the library's detectors
+    assert "micro_time_ranges" not in hub.setup_model.data["detectors"]["G|G"]
