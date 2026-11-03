@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour of the native converter. 'name' is the emtk control (a spec action, or the history table). The Qt tool keeps guide.json.",
+  "_comment": "Guided tour of the native converter. 'name' is the emtk control (a spec action, or the history table).",
   "steps": [
     {
       "title": "What you pick decides the direction",

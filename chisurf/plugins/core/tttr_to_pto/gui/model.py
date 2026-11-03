@@ -8,8 +8,7 @@ together are packed into one container in file-name order, and nothing is ever
 deleted. What a conversion writes enters the workspace as children of the
 dataset it came from. The calls
 are :func:`~chisurf.plugins.core.tttr_to_pto.api.convert` and
-:func:`~chisurf.plugins.core.tttr_to_pto.api.extract`, the same ones the Qt
-drop tool uses.
+:func:`~chisurf.plugins.core.tttr_to_pto.api.extract`.
 """
 
 from __future__ import annotations

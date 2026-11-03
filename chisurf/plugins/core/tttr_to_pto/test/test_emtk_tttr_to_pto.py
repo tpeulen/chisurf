@@ -1,4 +1,4 @@
-"""The native TTTR <-> .pto converter against the Qt drop tool: results, rows, actions, errors, drawing.
+"""The TTTR <-> .pto converter: round trip, rows, actions, errors, drawing.
 
 Hermetic: the settings folder and every vendor/container file live in ``tmp_path`` (private copies
 of the burst_selection BH fixture); nothing reads or writes ``~/.chisurf``.
@@ -69,15 +69,12 @@ def table(app):
     return app.form.tables["records"].control
 
 
-# ── 1. results equal the Qt tool's ──────────────────────────────────────
-
-
-QT = json.loads((Path(__file__).parent / "qt_reference.json").read_text(encoding="utf-8"))
+# ── 1. pack and unpack round trip ───────────────────────────────────────
 
 
 @needs_data
-def test_pack_and_unpack_equal_the_qt_tool(tmp_path):
-    """The native app writes and recovers what the retired Qt drop tool did (rows and files recorded)."""
+def test_pack_and_unpack_round_trip_the_files_byte_for_byte(tmp_path):
+    """Two vendor files and a sidecar are packed into one .pto and come back out unchanged."""
     native_dir = tmp_path / "native"
     originals = make_folder(native_dir)
 
@@ -91,20 +88,19 @@ def test_pack_and_unpack_equal_the_qt_tool(tmp_path):
     finally:
         app.close()
 
-    # the rows say what the Qt list said
-    assert (
-        QT["pack_row"] == f"{pack['files']} → {pack['result']}" == "m000.spc, m001.spc → m000.pto"
-    )
-    assert QT["unpack_row"] == f"m000.pto → {unpack['result']}"
+    # vendor files handed over together are packed in file-name order into one container named
+    # after the first; unpacking it gives back what went in, the sidecar included
+    assert f"{pack['files']} → {pack['result']}" == "m000.spc, m001.spc → m000.pto"
+    assert unpack["files"] == "m000.pto"
+    assert sorted(unpack["result"].split(", ")) == sorted(originals)
     assert (pack["status"], pack["action"], unpack["status"], unpack["action"]) == (
         "Verified",
         "Pack",
         "Verified",
         "Unpack",
     )
-    # the same files exist as the Qt tool left, byte for byte equal to the originals; the sidecar rode along
     native_bytes = {p.name: p.read_bytes() for p in native_dir.iterdir()}
-    assert sorted(native_bytes) == QT["names"]
+    assert sorted(native_bytes) == sorted([*originals, "m000.pto"])
     for name, payload in originals.items():
         assert native_bytes[name] == payload
     with Measurement.open(native_dir / "m000.pto", writable=False) as m:
@@ -112,7 +108,7 @@ def test_pack_and_unpack_equal_the_qt_tool(tmp_path):
 
 
 @needs_data
-def test_an_unreadable_container_fails_with_the_text_the_qt_tool_shows(tmp_path):
+def test_an_unreadable_container_fails_and_is_left_alone(tmp_path):
     bad = tmp_path / "bad.pto"
     bad.write_bytes(b"not a PTO")
     app = make_app()
@@ -121,9 +117,6 @@ def test_an_unreadable_container_fails_with_the_text_the_qt_tool_shows(tmp_path)
         finish(app)
         record = app.model.records[0]
         assert (record["status"], record["action"]) == ("Failed", "Unpack")
-        assert QT["bad_row"].format(result=record["result"]) == (
-            f"bad.pto: could not unpack ({record['result']})"
-        )
         assert "not an EBML file" in record["result"]
         assert bad.read_bytes() == b"not a PTO"
     finally:
@@ -131,15 +124,14 @@ def test_an_unreadable_container_fails_with_the_text_the_qt_tool_shows(tmp_path)
 
 
 @needs_data
-def test_the_accept_rule_equals_the_qt_filter(tmp_path):
+def test_photon_files_and_containers_are_accepted_sidecars_and_text_are_not(tmp_path):
     make_folder(tmp_path)
     (tmp_path / "x.pto").write_bytes(b"x")
     (tmp_path / "notes.txt").write_text("hi")
-    for name in ("m000.spc", "m000.set", "x.pto", "notes.txt"):
-        assert TttrToPtoModel.accepts(tmp_path / name) == QT["accepts"][name], name
-    assert not TttrToPtoModel.accepts(
-        tmp_path / "missing.ptu"
-    )  # the Qt drop only offers existing paths
+    expected = {"m000.spc": True, "m000.set": False, "x.pto": True, "notes.txt": False}
+    for name, accepted in expected.items():
+        assert TttrToPtoModel.accepts(tmp_path / name) is accepted, name
+    assert not TttrToPtoModel.accepts(tmp_path / "missing.ptu")  # only existing paths
 
 
 # ── 2. every action and its error path ──────────────────────────────────
@@ -481,11 +473,9 @@ def test_help_exists_and_draws():
         app.close()
 
 
-def test_the_qt_tool_keeps_its_own_help_and_guide():
-    """The legacy Qt tool still reads help.md and guide.json untouched."""
-    assert json.loads((GUI / "guide.json").read_text())["steps"][2]["await"]["hint"].startswith(
-        "Drop a vendor"
-    )
+def test_the_hub_help_and_the_plain_guide_load():
+    """``help.md`` is what the tool hub opens for this plugin; ``guide.json`` must stay valid."""
+    assert json.loads((GUI / "guide.json").read_text())["steps"]
     assert "TTTR ⇄ PTO" in (GUI / "help.md").read_text()
 
 
