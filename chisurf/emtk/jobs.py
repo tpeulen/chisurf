@@ -10,6 +10,13 @@ from chisurf.emtk import job_gate
 
 
 class SnapshotJob:
+    """Run a method of a copy of *model* on a thread and merge the copy back when it is done.
+
+    What the user types into the model's forms while the job runs is kept: the edits are
+    recorded (:func:`emtk.view_form.listen_to_edits`) and written again after the merge, so a
+    finished job never puts a field back to the value it had when the job started.
+    """
+
     def __init__(self, model):
         self.model = model
         self.busy = False
@@ -17,6 +24,28 @@ class SnapshotJob:
         self.progress = ""
         self.messages = queue.SimpleQueue()
         self.thread = None
+        #: ``(attr, value)`` of the form edits made to the model while the job runs, in order.
+        self.edits: list[tuple[str, object]] = []
+
+    def _record_edit(self, model, attr, value) -> None:
+        if model is self.model and self.busy:
+            self.edits.append((attr, value))
+
+    def _listen(self, active: bool) -> None:
+        try:
+            from emtk.view_form import listen_to_edits
+        except ImportError:  # an emtk without the hook: nothing to replay
+            return
+        listen_to_edits(self._record_edit, active)
+
+    def _replay_edits(self) -> None:
+        """Write the edits made during the job again, over the merged copy (newest last)."""
+        edits, self.edits = self.edits, []
+        for attr, value in edits:
+            try:
+                setattr(self.model, attr, value)
+            except Exception:  # noqa: BLE001 - a value the merged state no longer takes
+                continue
 
     def start(self, method, *args, **kwargs):
         if self.busy:
@@ -63,6 +92,8 @@ class SnapshotJob:
             )
 
         snapshot._observers = [progress]
+        self.edits = []
+        self._listen(True)
         self.busy = True
         self.error = ""
         self.progress = method.replace("_", " ").capitalize() + "…"
@@ -108,6 +139,7 @@ class SnapshotJob:
             else:
                 _, snapshot, error, events = item
                 self.busy = False
+                self._listen(False)
                 # A model whose copy locks it against edits (``__copy__`` arms a guard) is told
                 # the job ended -- done, failed, or stopped while held before it computed --
                 # since only the first of those merges a snapshot that could reset the guard.
@@ -120,8 +152,11 @@ class SnapshotJob:
                     for key, value in vars(snapshot).items():
                         if key != "_observers":
                             setattr(self.model, key, value)
+                    self._replay_edits()
                     for event in dict.fromkeys(events):
                         self.model.notify(event)
                     self.model.notify("updated")
                     changed = True
+                else:
+                    self.edits = []
         return changed

@@ -38,6 +38,13 @@ PLUGINS = Path(__file__).resolve().parents[1] / "plugins"
 HEADER = 62.0
 #: Height of the status bar with Back / Next.
 BAR = 30.0
+#: The rail (the steps): its width until the user drags its edge, the width below which it folds
+#: to a strip of icons (as a dock folds to its title), and the strip's width.
+RAIL_WIDTH = 230.0
+RAIL_FOLD = 150.0
+RAIL_FOLDED = 44.0
+#: The grip on the rail's right edge that resizes it.
+RAIL_GRIP = 6.0
 
 
 def plugin_factory(panel: dict) -> tuple[Callable[[], Any] | None, str]:
@@ -190,6 +197,9 @@ class ToolHubApp(ImApp):
         #: in the rail only in Advanced; every tool hears the mode (``set_advanced``) and shows
         #: only its essential inputs in Simple.
         self.advanced = False
+        #: The rail's width as the user dragged it (``None``: the default); below
+        #: :data:`RAIL_FOLD` it folds to the icons (:meth:`rail_width_now`).
+        self.rail_width: float | None = None
         #: Set by Finish (after the user confirmed): the shell closes the hub.
         self.close_requested = False
         from emtk.message_dialog import MessageDialogs
@@ -651,73 +661,75 @@ class ToolHubApp(ImApp):
         finally:
             self._painter = None
 
+    @property
+    def rail_folded(self) -> bool:
+        """The rail is narrower than :data:`RAIL_FOLD`: only the icons of the steps show."""
+        return self.rail_width is not None and self.rail_width < RAIL_FOLD
+
+    def rail_width_now(self, width: float) -> float:
+        """The rail's width in a window *width* wide: the dragged width (at most 60 % of the
+        window), the icon strip when folded, else the default."""
+        if self.rail_folded:
+            return RAIL_FOLDED
+        if self.rail_width is None:
+            return min(RAIL_WIDTH, width * 0.26)
+        return max(RAIL_FOLD, min(float(self.rail_width), width * 0.6))
+
+    def _rail_grip(self, left: float, width: float, height: float) -> None:
+        """The rail's right edge drags its width; below :data:`RAIL_FOLD` the rail folds to
+        its icons and dragged out again it unfolds. A double click restores the default.
+
+        A window of its own, drawn over the others and centred on the edge: inside the rail
+        window the grip's half right of the edge belonged to the tool's window and could not
+        be hit, and nothing showed where to grab."""
+        flags = (
+            im.WindowFlags.NO_DECORATION
+            | im.WindowFlags.NO_BACKGROUND
+            | im.WindowFlags.NO_MOVE
+            | im.WindowFlags.NO_SAVED_SETTINGS
+            | im.WindowFlags.NO_SCROLLBAR
+            | im.WindowFlags.NO_SCROLL_WITH_MOUSE
+            | im.WindowFlags.NO_NAV
+        )
+        box = (left - RAIL_GRIP, 0.0, 2.0 * RAIL_GRIP, height)
+        im.set_next_window_pos(box[:2], im.Cond.ALWAYS)
+        im.set_next_window_size(box[2:], im.Cond.ALWAYS)
+        if im.begin(f"{self.title} rail grip", flags=flags):
+            changed, new_left, _ = im.splitter_behavior(
+                box, im.get_id("##rail_grip"), im.Axis.X, left, width - left, RAIL_FOLDED - 8.0, 300.0
+            )
+            if changed:
+                self.rail_width = float(new_left)
+            hovered = im.is_mouse_hovering_rect(box[:2], (box[0] + box[2], box[3]))
+            held = changed or (hovered and im.is_mouse_down(0))
+            colour = im.get_style().color(
+                im.Col.SEPARATOR_ACTIVE if held else im.Col.SEPARATOR_HOVERED if hovered else im.Col.SEPARATOR
+            )
+            bar = 3.0 if hovered or held else 1.0
+            im.get_window_draw_list().add_rect_filled(
+                (left - bar / 2.0, 0.0), (left + bar / 2.0, height), colour
+            )
+            if hovered:
+                im.set_tooltip(
+                    tr("Drag to resize the steps; narrow, they fold to their icons. Double click: default width.")
+                )
+                if im.is_mouse_double_clicked(0):
+                    self.rail_width = None
+        im.end()
+
     def render(self):
         width, height = im.get_main_viewport().size
-        left = min(230.0, width * 0.26)
+        left = self.rail_width_now(width)
+        folded = self.rail_folded
         im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
         im.set_next_window_size((left, height), im.Cond.ALWAYS)
         if im.begin(self.title, flags=im.WindowFlags.NO_RESIZE):
-            if action_button("help"):
-                self.help.show()
-            self.item_rects["help"] = im.get_item_rect()
-            im.same_line()
-            if action_button("guide"):
-                self.tour.start()
-            self.item_rects["guide"] = im.get_item_rect()
-            if self.has_modes:
-                changed, value = im.checkbox(tr("Advanced") + "##hub_mode", self.advanced)
-                if changed:
-                    self.set_advanced(value)
-                self.item_rects["mode"] = im.get_item_rect()
-                im.set_item_tooltip(
-                    tr(
-                        "Simple: only the essential steps and inputs (the setup of step 0 covers the "
-                        "detectors; checks run with their defaults in the background). Advanced: every "
-                        "step, every setting."
-                    )
-                )
-            # The rail scrolls under the search field: more tools than the window is tall (a small
-            # window, the interface magnified) stay reachable, and the field stays in sight.
-            _, self.filter = im.begin_filtered_list(
-                "rail",
-                self.filter,
-                tr("Search…"),
-                tooltip=tr("Find tools by name or description."),
-            )
-            self.item_rects["search"] = im.get_item_rect()
-            matching = {p["role"] for p in self.matching_panels()}
-            for panel in self.panels:
-                if panel.get("separator"):
-                    if not self.filter and self.shown(panel):  # an Advanced group has an Advanced caption
-                        if panel.get("name"):
-                            im.text_disabled(tr(panel["name"]))
-                        else:
-                            im.separator()
-                    continue
-                if panel["role"] not in matching or not self.shown(panel):
-                    continue
-                enabled = self.panel_enabled(panel["role"])
-                im.begin_disabled(not enabled)
-                if im.selectable(
-                    tr(panel["name"]) + _marker(panel) + "##" + panel["role"],
-                    self.selected == panel["role"],
-                    size=(left - 8, 28),
-                    icon=panel.get("icon"),
-                ):
-                    self.select(panel["role"])
-                im.end_disabled()
-                tip = " ".join(
-                    [tr(panel.get("description", ""))]
-                    + [panel[flag + "_message"] for flag in MATURITY if panel.get(flag)]
-                )
-                if not enabled:
-                    tip += " " + self.disabled_reason(panel["role"])
-                im.set_item_tooltip(tip)
-                self.item_rects["nav." + panel["role"]] = im.get_item_rect()
-            if not matching:
-                im.text_wrapped(tr("No matching tools."))
-            im.end_filtered_list()
+            if folded:
+                self._folded_rail(left)
+            else:
+                self._rail(left)
         im.end()
+
         im.set_next_window_pos((left, 0), im.Cond.ALWAYS)
         im.set_next_window_size((width - left, HEADER), im.Cond.ALWAYS)
         if im.begin(
@@ -807,11 +819,97 @@ class ToolHubApp(ImApp):
             im.end()
         if self._pending_next or self._ff_queue:
             self._advance()
+        self._rail_grip(left, width, height)
         self.help.draw((0, 0, width, height))
         self.dialogs.draw((0, 0, width, height))
         if self.child_help:
             self.child_help.draw((0, 0, width, height))
         self.tour.draw(width, height)
+
+    def _rail(self, left: float) -> None:
+        """The rail unfolded: help, guide, mode, the search field and the steps by name."""
+        if action_button("help"):
+            self.help.show()
+        self.item_rects["help"] = im.get_item_rect()
+        im.same_line()
+        if action_button("guide"):
+            self.tour.start()
+        self.item_rects["guide"] = im.get_item_rect()
+        if self.has_modes:
+            changed, value = im.checkbox(tr("Advanced") + "##hub_mode", self.advanced)
+            if changed:
+                self.set_advanced(value)
+            self.item_rects["mode"] = im.get_item_rect()
+            im.set_item_tooltip(
+                tr(
+                    "Simple: only the essential steps and inputs (the setup of step 0 covers the "
+                    "detectors; checks run with their defaults in the background). Advanced: every "
+                    "step, every setting."
+                )
+            )
+        # The rail scrolls under the search field: more tools than the window is tall (a small
+        # window, the interface magnified) stay reachable, and the field stays in sight.
+        _, self.filter = im.begin_filtered_list(
+            "rail",
+            self.filter,
+            tr("Search…"),
+            tooltip=tr("Find tools by name or description."),
+        )
+        self.item_rects["search"] = im.get_item_rect()
+        matching = {p["role"] for p in self.matching_panels()}
+        for panel in self.panels:
+            if panel.get("separator"):
+                if not self.filter and self.shown(panel):  # an Advanced group has an Advanced caption
+                    if panel.get("name"):
+                        im.text_disabled(tr(panel["name"]))
+                    else:
+                        im.separator()
+                continue
+            if panel["role"] not in matching or not self.shown(panel):
+                continue
+            enabled = self.panel_enabled(panel["role"])
+            im.begin_disabled(not enabled)
+            if im.selectable(
+                tr(panel["name"]) + _marker(panel) + "##" + panel["role"],
+                self.selected == panel["role"],
+                size=(left - 8, 28),
+                icon=panel.get("icon"),
+            ):
+                self.select(panel["role"])
+            im.end_disabled()
+            tip = " ".join(
+                [tr(panel.get("description", ""))]
+                + [panel[flag + "_message"] for flag in MATURITY if panel.get(flag)]
+            )
+            if not enabled:
+                tip += " " + self.disabled_reason(panel["role"])
+            im.set_item_tooltip(tip)
+            self.item_rects["nav." + panel["role"]] = im.get_item_rect()
+        if not matching:
+            im.text_wrapped(tr("No matching tools."))
+        im.end_filtered_list()
+
+    def _folded_rail(self, left: float) -> None:
+        """The rail folded to a strip: one icon per step, its name and state in the tooltip."""
+        matching = {p["role"] for p in self.matching_panels()}
+        for panel in self.panels:
+            if panel.get("separator") or panel["role"] not in matching or not self.shown(panel):
+                continue
+            enabled = self.panel_enabled(panel["role"])
+            im.begin_disabled(not enabled)
+            if im.selectable(
+                "##" + panel["role"],
+                self.selected == panel["role"],
+                size=(left - 8, 28),
+                icon=panel.get("icon") or tr(panel["name"])[:2],
+            ):
+                self.select(panel["role"])
+            im.end_disabled()
+            tip = tr(panel["name"]) + _marker(panel)
+            if not enabled:
+                tip += " " + self.disabled_reason(panel["role"])
+            im.set_item_tooltip(tip)
+            self.item_rects["nav." + panel["role"]] = im.get_item_rect()
 
     # ── input: the child gets what lands on it ────────────────────────────
 
@@ -834,6 +932,8 @@ class ToolHubApp(ImApp):
 
     def _inside(self, x, y):
         bx, by, bw, bh = self.child_box
+        if abs(x - bx) <= RAIL_GRIP:  # the rail's grip on the edge, not the tool
+            return False
         return bx <= x < bx + bw and by <= y < by + bh
 
     def pointer_press(self, x, y, button, modifiers=0, clicks=1):
@@ -923,6 +1023,8 @@ class ToolHubApp(ImApp):
             if callable(export):
                 children[role] = export()
         state = {"selected": self.selected, "children": children, "advanced": self.advanced}
+        if self.rail_width is not None:
+            state["rail_width"] = float(self.rail_width)
         if self.uses_setup:
             state["setup"] = json.loads(
                 json.dumps(self.setup_model.get_settings(), default=lambda value: value.tolist())
@@ -931,6 +1033,8 @@ class ToolHubApp(ImApp):
 
     def restore_settings(self, state):
         self.advanced = bool((state or {}).get("advanced", self.advanced))
+        if isinstance((state or {}).get("rail_width"), (int, float)):
+            self.rail_width = float(state["rail_width"])
         setup_state = (state or {}).get("setup") if self.uses_setup else None
         dropped_setup = False
         if (
