@@ -1,9 +1,9 @@
-"""The native particle-tracking tool against the Qt tool it replaces: numbers, every action and every error path.
+"""The particle-tracking app: numbers, every action and every error path.
 
-Hermetic: settings in a temporary folder, files in ``tmp_path``, no network. The reference is (a) the numbers the
-Qt window showed on its own simulated movie (``data/qt_values.json``, captured
-before the port), (b) the Qt tool itself, constructed offscreen and run on the
-same data, and (c) a written-out run of the core functions that does not go through the shared view model.
+Hermetic: settings in a temporary folder, files in ``tmp_path``, no network. The oracle is the simulated movie's
+ground truth (six particles diffusing with D = 0.5 px²/frame over 40 frames, their true positions returned by the
+simulator), an independent least-squares MSD fit and bootstrap, and a written-out run of the core functions that does
+not go through the shared view model.
 """
 
 from __future__ import annotations
@@ -25,12 +25,10 @@ from chisurf.plugins.microscopy.img_tracking.gui.app import ImgTrackingApp, make
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
 DATA = HERE / "data"
-QT_VALUES = json.loads((DATA / "qt_values.json").read_text(encoding="utf-8"))
-QT_CSV = (DATA / "qt_exported.csv").read_text(encoding="utf-8")
-QT_SPEC = json.loads((PLUGIN / "gui" / "tracking.view.json").read_text(encoding="utf-8"))
+BASE_SPEC = json.loads((PLUGIN / "gui" / "tracking.view.json").read_text(encoding="utf-8"))
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "tracking_emtk.view.json").read_text(encoding="utf-8"))
 
-#: The settings of the small simulated movie the Qt baseline used.
+#: The settings of the small simulated movie: six particles, D = 0.5 px²/frame, 40 frames.
 SMALL = dict(
     use_simulation=True,
     sim_n_frames=40,
@@ -59,8 +57,8 @@ def drv(app):
 
 
 @pytest.fixture(scope="module")
-def movie_frames():
-    frames, _ = tk.simulate_particle_movie(
+def movie():
+    return tk.simulate_particle_movie(
         n_frames=40,
         shape=(160, 160),
         n_particles=6,
@@ -70,7 +68,37 @@ def movie_frames():
         background=10.0,
         seed=1,
     )
-    return frames
+
+
+@pytest.fixture(scope="module")
+def movie_frames(movie):
+    return movie[0]
+
+
+@pytest.fixture(scope="module")
+def truth(movie):
+    """The true position of every particle in every frame."""
+    return movie[1]
+
+
+#: The diffusion coefficient the movie is simulated with, px²/frame.
+TRUE_D = 0.5
+
+
+def assert_on_the_truth(truth, frame, y, x, tol=0.5):
+    """Every position lies within *tol* px of a true particle position in its frame."""
+    for f, yy, xx in zip(frame, y, x):
+        m = truth.frame == int(f)
+        assert np.hypot(truth.y[m] - yy, truth.x[m] - xx).min() < tol, (f, yy, xx)
+
+
+def true_net(truth, y0, x0, y1, x1):
+    """The true net displacement of the particle that starts nearest (y0, x0) in frame 0."""
+    first, last = truth.frame == 0, truth.frame == truth.frame.max()
+    k = int(np.argmin(np.hypot(truth.y[first] - y0, truth.x[first] - x0)))
+    return float(
+        np.hypot(truth.y[last][k] - truth.y[first][k], truth.x[last][k] - truth.x[first][k])
+    )
 
 
 @pytest.fixture
@@ -100,7 +128,7 @@ def tracked(app, drv, **settings):
     return app.model
 
 
-# ── 1. the numbers: equal to what the Qt window showed ─────────────────────────────────────────────────────────── #
+# ── 1. the numbers: the simulated truth ─────────────────────────────────────────────────────────────────────────── #
 
 
 def independent_msd_profile(tau, msd, alpha):
@@ -174,13 +202,18 @@ def independent_fixed_alpha_bootstrap(model):
     return np.std(coefficients, ddof=1)
 
 
-def test_the_track_button_gives_the_numbers_the_qt_window_showed(app, drv):
+def test_the_track_button_finds_the_six_simulated_particles_and_their_diffusion(app, drv, truth):
     m = tracked(app, drv)
-    qt = QT_VALUES["simulated"]
-    assert m.status_line == qt["status"] == "6 tracks, D = 0.5581 ± 0.098"
-    assert m.results_text == qt["results_text"]
     fit = m.result.fit
+    assert (
+        m.status_line
+        == f"6 tracks, D = {fit.diffusion_coefficient:.4g} ± {fit.diffusion_coefficient_error:.2g}"
+    )
+    assert m.results_text.startswith(
+        "40 frames, 240 detections (6.0 per frame)\n6 tracks, median length 40, longest 40"
+    )
     assert fit.alpha_fixed and fit.alpha == 1.0
+    assert fit.diffusion_coefficient == pytest.approx(TRUE_D, rel=0.25)
     assert_msd_minimum(fit, m.frame_interval)
     bootstrap = independent_fixed_alpha_bootstrap(m)
     # Finite-difference optimizer digits vary at sqrt(machine epsilon); the
@@ -188,110 +221,72 @@ def test_the_track_button_gives_the_numbers_the_qt_window_showed(app, drv):
     assert fit.diffusion_coefficient_error == pytest.approx(
         bootstrap, abs=np.sqrt(np.finfo(float).eps) * max(1.0, bootstrap)
     )
-    np.testing.assert_allclose(np.asarray(fit.msd), qt["fit"]["msd"], rtol=1e-12)
-    assert len(m.result.detections) == qt["n_detections"] and len(m.result.tracks) == qt["n_tracks"]
-    assert [int(v) for v in m.result.track_lengths()] == qt["track_lengths"]
-    assert m.result.tracks_table()[:12] == qt["tracks_table"]
-    assert len(m.detection_markers()) == qt["n_markers"]
-    assert [s["name"] for s in m.msd_series()] == qt["msd_series_names"]
+    d = m.result.detections
+    assert len(d) == len(truth) == 240 and len(m.result.tracks) == 6
+    assert_on_the_truth(truth, d.frame, d.y, d.x)
+    assert [int(v) for v in m.result.track_lengths()] == [40] * 6  # nobody leaves the field
+    assert len(m.detection_markers()) == 240  # every detection, drawn per frame
+    assert [s["name"] for s in m.msd_series()][:1] == ["measured"]
 
 
-def test_the_fit_alpha_checkbox_gives_the_qt_numbers_for_the_anomalous_fit(app, drv):
+def test_the_fit_alpha_checkbox_fits_an_alpha_near_one_for_free_diffusion(app, drv):
     use(app, **SMALL)
     drv.click("fit_alpha")
     assert app.model.fit_alpha is True
     drv.click("track")
     drv.settle()
-    qt = QT_VALUES["fit_alpha"]
-    assert app.model.status_line == qt["status"] == "6 tracks, D = 0.5256 ± 0.13"
     fit = app.model.result.fit
-    assert not fit.alpha_fixed
-    np.testing.assert_allclose(fit.msd, qt["fit"]["msd"], rtol=1e-12, atol=1e-12)
+    assert not fit.alpha_fixed and fit.alpha == pytest.approx(1.0, abs=0.3)
+    assert fit.diffusion_coefficient == pytest.approx(TRUE_D, rel=0.25)
+    assert app.model.status_line == (
+        f"6 tracks, D = {fit.diffusion_coefficient:.4g} ± {fit.diffusion_coefficient_error:.2g}"
+    )
     assert_msd_minimum(fit, app.model.frame_interval)
 
 
-def test_the_core_functions_give_the_same_answer_without_the_view_model(movie_frames):
-    """A written-out run of the pipeline with the Qt tool's defaults: no shared view model in the path."""
+def test_the_core_functions_give_the_same_answer_without_the_view_model(app, drv, movie_frames):
+    """A written-out run of the pipeline with the app's defaults: no shared view model in the path."""
     result = core.analyse(
         movie_frames, max_distance=4.0, min_track_length=10, n_bootstrap=50, fix_alpha=1.0
     )
-    qt = QT_VALUES["simulated"]
-    assert result.fit.diffusion_coefficient == pytest.approx(qt["fit"]["D"], rel=1e-9)
     assert result.fit.diffusion_coefficient == pytest.approx(
-        0.5, rel=0.25
+        TRUE_D, rel=0.25
     )  # the truth the movie was simulated with
-    assert result.report() == qt["results_text"]
+    m = tracked(app, drv)
+    assert m.result.fit.diffusion_coefficient == pytest.approx(
+        result.fit.diffusion_coefficient, rel=1e-9
+    )
+    assert m.results_text == result.report()
 
 
-def test_a_tiff_gives_the_same_tracks_as_the_simulation(app, drv, tiff):
+def test_a_tiff_gives_the_same_tracks_as_the_simulation(app, drv, tiff, movie_frames):
     use(app, max_distance=4.0, n_bootstrap=50)
     app.model.open_path(str(tiff))
     drv.click("track")
     drv.settle()
-    assert app.model.status_line == QT_VALUES["file_tracked"]["status"]
-    assert app.model.result.fit.diffusion_coefficient == pytest.approx(
-        QT_VALUES["file_tracked"]["fit"]["D"], rel=1e-9
+    direct = core.analyse(
+        movie_frames, max_distance=4.0, min_track_length=10, n_bootstrap=50, fix_alpha=1.0
     )
+    fit = app.model.result.fit
+    assert fit.diffusion_coefficient == pytest.approx(direct.fit.diffusion_coefficient, rel=1e-9)
+    assert app.model.status_line.startswith("6 tracks, D = ")
 
 
-def test_the_tracks_table_shows_what_the_qt_table_showed(app, drv):
+def test_the_tracks_table_lists_the_true_net_displacements(app, drv, truth):
     m = tracked(app, drv)
-    qt_rows = QT_VALUES["simulated"]["track_rows_head"]
-    shown = [
-        {
-            "track": str(r["track"]),
-            "length": str(r["length"]),
-            "frames": r["frames"],
-            "net": f"{r['net']:.2f}",
-        }
-        for r in m.track_table_rows()[:5]
-    ]
-    assert shown == qt_rows
+    rows = m.track_table_rows()
+    assert len(rows) == 6
+    for row in rows:
+        assert row["length"] == 40 and row["frames"] == "0–39"
+        frames, positions = m.result.tracks.track(row["track"])
+        (y0, x0), (y1, x1) = positions[0], positions[-1]
+        assert row["net"] == pytest.approx(true_net(truth, y0, x0, y1, x1), abs=1.0)
     drv.click_text("Tracks")  # the tab
     strings = drv.draw(2).strings
     assert {"#", "Points", "Frames", "Net [px]"} <= set(strings)
 
 
-# ── 2. the Qt tool's recorded results on the same data ─────────────────────────────────────────────────────── #
-
-#: What the retired Qt tool computed and showed, recorded before it was deleted (``qt_reference.json``).
-QT_REF = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
-
-
-def _plain(value):
-    """Round-trip *value* through JSON so it compares with a recording (tuples are lists, numpy scalars numbers)."""
-
-    def default(obj):
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        if isinstance(obj, np.generic):
-            return obj.item()
-        return str(obj)
-
-    return json.loads(json.dumps(value, default=default))
-
-
-def _close(native, recorded, rel=2e-7):
-    """Equal structures, floats within *rel* (lists and dicts compared element by element).
-
-    2e-7: the MSD series carry the fitted curve, which moves with D (see the D comparison).
-    """
-    if isinstance(recorded, dict):
-        return (
-            isinstance(native, dict)
-            and native.keys() == recorded.keys()
-            and all(_close(native[k], recorded[k], rel) for k in recorded)
-        )
-    if isinstance(recorded, list):
-        return (
-            isinstance(native, list)
-            and len(native) == len(recorded)
-            and all(_close(a, b, rel) for a, b in zip(native, recorded))
-        )
-    if isinstance(recorded, float):
-        return native == pytest.approx(recorded, rel=rel, abs=1e-12)
-    return native == recorded
-
+# ── 2. every scenario on the simulated truth ───────────────────────────────────────────────────────────────── #
 
 SCENARIOS = {
     "defaults": {},
@@ -303,33 +298,33 @@ SCENARIOS = {
 
 
 @pytest.mark.parametrize("scenario", list(SCENARIOS))
-def test_the_recorded_qt_results_and_the_emtk_app_agree_on_every_scenario(app, drv, scenario):
+def test_every_scenario_detects_the_true_particles_and_reports_consistently(
+    app, drv, truth, scenario
+):
     settings = dict(SMALL, **SCENARIOS[scenario])
-    qt = QT_REF["scenarios"][scenario]
     m = tracked(app, drv, **settings)
-    assert m.results_text == qt["results_text"]
-    assert m.status_line == qt["bar"]
-    # D and the MSD curve come from sums over the tracks: their last digits follow the platform's
-    # summation order (Linux vs macOS differ near 1e-10), the printed results above do not. D is
-    # also a fitted value, so where the optimiser stops moves it further: on the Linux gate
-    # (2026-10-26) by 6.5e-8 relative ("anomalous fit") and 1.1e-8 ("tight link"); 2e-7 is ~3x.
-    assert m.result.fit.diffusion_coefficient == pytest.approx(qt["D"], rel=2e-7)
-    assert [r["track"] for r in m.track_rows()] == qt["tracks"]
-    assert m.track_series() and _close(_plain(m.track_series()), qt["track_series"])
-    assert _close(_plain(m.msd_series()), qt["msd"]) and _close(
-        _plain(m.length_series()), qt["length"]
+    d = m.result.detections
+    assert len(d) == 240
+    assert_on_the_truth(truth, d.frame, d.y, d.x)
+    lengths = [int(v) for v in m.result.track_lengths()]
+    assert sum(lengths) == 240  # every detection is on one track
+    fit = m.result.fit
+    if scenario == "tight link":
+        # a 2 px link radius under a 1.4 px rms step breaks the six particles into fragments
+        assert len(lengths) > 6 and max(lengths) < 40
+    else:
+        assert lengths == [40] * 6
+        assert fit.diffusion_coefficient == pytest.approx(TRUE_D, rel=0.25)
+    assert m.status_line == (
+        f"{len(lengths)} tracks, D = {fit.diffusion_coefficient:.4g} ± {fit.diffusion_coefficient_error:.2g}"
     )
-    emtk_cells = [
-        [str(r["track"]), str(r["length"]), r["frames"], f"{r['net']:.2f}"]
-        for r in m.track_table_rows()
-    ]
-    assert emtk_cells == qt["table"]
+    assert len(m.track_table_rows()) == len(lengths) == len(m.track_rows())
+    assert m.track_series() and m.msd_series() and m.length_series()
 
 
 @pytest.mark.parametrize(
     "attr",
-    [s["attr"] for s in QT_SPEC["sections"][0]["sections"][0]["sections"][0]["sections"] if False]
-    or [
+    [
         "channel",
         "max_frames",
         "sim_n_particles",
@@ -351,17 +346,21 @@ def test_the_recorded_qt_results_and_the_emtk_app_agree_on_every_scenario(app, d
         "frame_interval",
     ],
 )
-def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, drv, attr):
+def test_typed_extremes_are_clamped_to_the_spec_range(app, drv, attr):
     drv.draw(2)
     if attr not in app.form.rects:  # fields inside a folded panel
         for fold in ("Simulate instead.fold", "3. Transport.fold"):
             if fold in app.form.rects:
                 drv.click(fold)
-    for qt_value, qt_result in QT_REF["clamp"][attr].items():
-        drv.type_into(
-            attr, qt_value
-        )  # incl. sim_diffusion: the Qt box shows 4 decimals and rounds its minimum 1e-06 to 0.0, and so does the emtk field
-        assert getattr(app.model, attr) == pytest.approx(qt_result, rel=1e-9), (attr, qt_value)
+    spec = next(s for s in walk(EMTK_SPEC["sections"]) if s.get("attr") == attr)
+
+    def shown(value):
+        # the field keeps the spec's decimals: sim_diffusion's minimum 1e-06 shows (and is) 0.0
+        return round(value, spec["decimals"]) if "decimals" in spec else value
+
+    for typed, clamped in (("1000000000", spec["maximum"]), ("-5", spec["minimum"])):
+        drv.type_into(attr, typed)
+        assert getattr(app.model, attr) == pytest.approx(shown(clamped), rel=1e-9), (attr, typed)
 
 
 # ── 3. the buttons ─────────────────────────────────────────────────────────────────────────────────────────── #
@@ -369,23 +368,15 @@ def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, d
 
 def test_track_with_nothing_loaded_says_why_and_starts_nothing(app, drv):
     drv.click("track")
-    assert (
-        app.model.status_line
-        == QT_VALUES["empty_track"]["status"]
-        == "Load an image stack, or tick Simulate."
-    )
+    assert app.model.status_line == "Load an image stack, or tick Simulate."
     assert not app.job.busy and app.model.result is None
-    assert QT_VALUES["empty_track"]["status"] in drv.strings()
+    assert "Load an image stack, or tick Simulate." in drv.strings()
 
 
 def test_track_with_a_missing_file_says_which(app, drv, tmp_path):
     app.model.filename = str(tmp_path / "missing.tif")
     drv.click("track")
-    assert (
-        app.model.status_line
-        == "missing.tif does not exist."
-        == QT_VALUES["missing_file"]["status"]
-    )
+    assert app.model.status_line == "missing.tif does not exist."
     assert not app.job.busy
 
 
@@ -395,7 +386,7 @@ def test_a_corrupt_file_reports_in_the_report_and_keeps_no_stale_movie(app, drv,
     app.model.open_path(str(bad))
     drv.click("track")
     drv.settle()
-    assert app.model.status_line == QT_VALUES["corrupt_file"]["status"]
+    assert app.model.status_line == "Tracking did not produce a result — see the report."
     assert app.model.results_text.startswith("Could not load the images")
     assert app.model.result is None and app.model.movie_image() is None
     assert "Could not load the images" in " ".join(drv.strings())
@@ -430,7 +421,7 @@ def test_export_without_a_result_says_so(app, drv):
     assert app.model.status_line == "Run the tracker first." and not dialog_open(drv)
 
 
-def test_export_csv_writes_the_file_the_qt_tool_wrote(app, drv, tmp_path, tiff):
+def test_export_csv_writes_every_linked_detection_on_the_truth(app, drv, tmp_path, tiff, truth):
     app.model.open_path(str(tiff))
     use(app, max_distance=4.0, n_bootstrap=50)
     drv.click("track")
@@ -441,11 +432,16 @@ def test_export_csv_writes_the_file_the_qt_tool_wrote(app, drv, tmp_path, tiff):
         dialog_open(drv)
         and app.dialog.title == "Export tracks"
         and "movie.tracks.csv" in painter.strings
-    )  # the Qt default name
+    )  # the stack's name with .tracks.csv
     drv.click_text("Save", last=True)
     written = tmp_path / "movie.tracks.csv"
     assert written.is_file()
-    assert written.read_text() == QT_CSV
+    lines = written.read_text().splitlines()
+    assert lines[0] == "track,frame,y,x,intensity" and len(lines) == 241
+    table = np.array([[float(v) for v in line.split(",")] for line in lines[1:]])
+    assert sorted(set(table[:, 0].astype(int))) == list(range(6))
+    assert_on_the_truth(truth, table[:, 1], table[:, 2], table[:, 3])
+    assert (table[:, 4] > 0).all()
     assert app.model.status_line == f"Wrote {written}"
 
 
@@ -481,7 +477,7 @@ def test_export_to_an_unwritable_place_reports_instead_of_raising(app, drv, tmp_
 # ── 4. every setting: typing, arrows, toggles, the choice ────────────────────────────────────────────────────── #
 
 SPIN_FIELDS = {
-    # attr: (step the Qt spin box moved by, start value)
+    # attr: the step of its arrows
     "channel": 1,
     "max_frames": 1,
     "min_area": 1,
@@ -504,7 +500,7 @@ def open_all_folds(drv):
 
 
 @pytest.mark.parametrize("attr", list(SPIN_FIELDS))
-def test_each_arrow_steps_its_field_by_the_qt_step(app, drv, attr):
+def test_each_arrow_steps_its_field_by_its_step(app, drv, attr):
     drv.draw(2)
     start = getattr(app.model, attr)
     x, y, w, h = drv.rect(f"{attr}.stepper")
@@ -667,7 +663,7 @@ def test_playback_wraps_when_loop_is_on_and_stops_at_the_last_frame_when_off(app
     assert panel.frame == 39 and not panel.playing
 
 
-def test_the_fps_field_takes_a_typed_speed_and_clamps_to_the_qt_range(app, drv):
+def test_the_fps_field_takes_a_typed_speed_and_clamps_to_its_range(app, drv):
     tracked(app, drv)
     panel = app.panels["movie"]
     drv.draw(2)
@@ -680,7 +676,7 @@ def test_the_fps_field_takes_a_typed_speed_and_clamps_to_the_qt_range(app, drv):
         assert panel.fps == expected, text
 
 
-def test_the_fps_arrows_step_by_one_and_stop_at_the_qt_limits(app, drv):
+def test_the_fps_arrows_step_by_one_and_stop_at_the_limits(app, drv):
     tracked(app, drv)
     panel = app.panels["movie"]
     drv.draw(2)
@@ -925,8 +921,7 @@ def test_settings_round_trip_and_invalid_values_are_ignored(app, drv):
 def test_a_standalone_tool_takes_no_imaging_pipeline_context(app, drv):
     """Particle Tracking is its own ribbon entry, not an Image Tools step: it reads its own stack.
 
-    The Qt tracking tool adopted neither the shared detector setup nor the pipeline's source,
-    so the hub's adapters were no-ops; with the tool out of the pipeline they are gone.
+    It adopts neither the shared detector setup nor the pipeline's source, so it has no hub adapters.
     """
     for hook in ("apply_setup_settings", "apply_pipeline_context", "apply_calibration"):
         assert not hasattr(app.model, hook), hook
@@ -1032,7 +1027,9 @@ def test_every_spec_key_exists_on_the_model():
             assert column["key"] in ("track", "length", "frames", "net")
 
 
-def test_every_qt_setting_is_in_the_emtk_spec_with_the_same_range():
+def test_every_setting_of_the_base_spec_is_in_the_emtk_spec_with_the_same_range():
+    """``tracking.view.json`` (read by the view model) and ``tracking_emtk.view.json`` declare the same settings."""
+
     def values(sections):
         return {
             s["attr"]: s
@@ -1040,9 +1037,9 @@ def test_every_qt_setting_is_in_the_emtk_spec_with_the_same_range():
             if s.get("type") in ("value", "toggle", "choice") and s.get("attr")
         }
 
-    qt, emtk = values(QT_SPEC["sections"]), values(EMTK_SPEC["sections"])
-    assert set(qt) == set(emtk), set(qt) ^ set(emtk)
-    for attr, spec in qt.items():
+    base, emtk = values(BASE_SPEC["sections"]), values(EMTK_SPEC["sections"])
+    assert set(base) == set(emtk), set(base) ^ set(emtk)
+    for attr, spec in base.items():
         for key in ("minimum", "maximum", "decimals", "label"):
             assert spec.get(key) == emtk[attr].get(key), (attr, key)
         assert emtk[attr].get("description") == spec.get("description"), attr

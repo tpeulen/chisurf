@@ -1,5 +1,5 @@
 {
-  "_comment": "Particle tracking, drawn by emtk (view_form + the imaging views). Top-level panels are dock windows: the settings form on the left, the report above the views on the right. The Qt tool's AutoForm spec is tracking.view.json.",
+  "_comment": "Particle tracking, drawn by emtk (view_form + the imaging views). Top-level panels are dock windows: the settings form on the left, the report above the views on the right. The settings mirror tracking.view.json, which the view model reads.",
   "window": {
     "width": 1100,
     "height": 720

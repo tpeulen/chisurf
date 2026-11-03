@@ -1,6 +1,6 @@
 """Qt-free model of the emtk particle-tracking window.
 
-The analysis is :class:`~.view_model.ImgTrackingViewModel` (unchanged, shared with the Qt tool); this adds
+The analysis is :class:`~.view_model.ImgTrackingViewModel` ; this adds
 what a window without a toolbar and a status bar needs: the action methods the spec's buttons call, a status
 line, the file-dialog requests and a worker hand-off.
 """
@@ -12,7 +12,7 @@ import pathlib
 from ...imaging_emtk.model_base import EmtkModelMixin
 from .view_model import ImgTrackingViewModel
 
-#: Files the Open dialog lists (the Qt dialog's filter).
+#: Files the Open dialog lists.
 IMAGE_FILE_FILTER = (
     "Images and photon streams (*.pto *.tif *.tiff *.ptu *.ht3 *.spc *.hdf *.h5);;All files (*)"
 )
@@ -52,11 +52,11 @@ class TrackingModel(EmtkModelMixin, ImgTrackingViewModel):
 
     # -- the buttons --------------------------------------------------------- #
     def enabled(self, name: str) -> bool:
-        """Actions are greyed while a run is in flight (the Qt actions stayed live and queued a second run)."""
+        """Actions are greyed while a run is in flight (a second run is not queued)."""
         return not self.busy
 
     def track(self) -> None:
-        """Detect, link and fit (the Qt toolbar's Track): say why when it cannot run."""
+        """Detect, link and fit: say why when it cannot run."""
         reason = self.can_run()
         if reason:
             self.status_line = reason
@@ -65,7 +65,7 @@ class TrackingModel(EmtkModelMixin, ImgTrackingViewModel):
         self.run_job("compute_job")
 
     def compute_job(self) -> None:
-        """The worker body: run, then say what came out (the Qt ``_on_finished`` messages)."""
+        """The worker body: run, then say what came out."""
         ok = bool(self.compute(progress=self._progress))
         result = self.result
         if ok and result is not None:
@@ -82,7 +82,7 @@ class TrackingModel(EmtkModelMixin, ImgTrackingViewModel):
             self.status_line = "Tracking did not produce a result — see the report."
 
     def open_file(self) -> None:
-        """Choose an image stack or photon-stream file (the Qt Open)."""
+        """Choose an image stack or photon-stream file."""
         self.request_dialog("open")
 
     def open_path(self, path: str) -> None:
@@ -98,7 +98,7 @@ class TrackingModel(EmtkModelMixin, ImgTrackingViewModel):
         self.open_path(str(value))
 
     def request_export(self) -> None:
-        """Choose where to write the linked detections (the Qt Export CSV)."""
+        """Choose where to write the linked detections."""
         if self.result is None:
             self.status_line = "Run the tracker first."
             return
@@ -130,7 +130,7 @@ class TrackingModel(EmtkModelMixin, ImgTrackingViewModel):
         return self.results_text
 
     def track_table_rows(self) -> list[dict]:
-        """The per-track table with numbers, so a header click sorts by value (the Qt table held strings)."""
+        """The per-track table with numbers, so a header click sorts by value."""
         if self.result is None:
             return []
         return [
