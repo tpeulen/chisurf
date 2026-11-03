@@ -32,7 +32,7 @@ Paste it and it is saved and tested straight away.
 and the field shows it as coming from the environment. A key you type here takes
 precedence over the environment.
 
-The key is drawn as stars. **Show key** (the eye button of the Qt window) shows it
+The key is drawn as stars. **Show key** shows it
 in clear text for this session only; changing the provider hides it again and the
 choice is never saved. Enter, or a click elsewhere, saves the key and tests the
 endpoint.

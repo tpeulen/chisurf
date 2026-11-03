@@ -1,4 +1,4 @@
-"""The native AI Settings app against the Qt tool: fields, providers, key, network, save, no Qt.
+"""The native AI Settings app: fields, providers, key, network, save, no Qt import.
 
 Hermetic: the settings file is a temporary one (``CHISURF_SETTINGS_DIR`` and the module's
 path function both point into ``tmp_path``), the provider key variables are removed from the
@@ -22,7 +22,7 @@ from emtk.view_form import _commit, parse_value
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
 SPEC_FILE = GUI / "ai_settings_emtk.view.json"
-QT_SPEC_FILE = GUI / "ai_settings.view.json"
+MODEL_SPEC_FILE = GUI / "ai_settings.view.json"
 FAKE_KEY = "sk-test-0000"
 MODELS = {
     "data": [
@@ -176,41 +176,42 @@ def saved():
 
 
 # --------------------------------------------------------------------------- #
-# 1. model defaults and the provider table equal the Qt widget's
+# 1. model defaults and the provider table come from the settings module
 # --------------------------------------------------------------------------- #
-def test_provider_options_and_defaults_equal_the_qt_tool():
-    """Every provider of the retired Qt choice is offered, in its order; a fresh model equals its
-    model (recorded). Providers added since the Qt tool are named here: parity forbids losing one,
-    not gaining one."""
-    added_since_qt = {"Z.ai (GLM)"}
-    qt = json.loads((HERE / "qt_reference.json").read_text())
+def test_provider_options_and_defaults_come_from_the_settings_module():
+    """The choice offers every entry of ``PROVIDERS`` in its order, and a fresh model holds the
+    Mistral defaults of ``DEFAULT_PROVIDER_SETTINGS``."""
+    from chisurf.core.settings.ai_settings import DEFAULT_PROVIDER_SETTINGS, PROVIDERS
+
     app = make_app()
-    labels = [label for _key, label in app.model.available_providers()]
-    assert [label for label in labels if label not in added_since_qt] == qt["labels"]
-    assert added_since_qt <= set(labels)
-    for attr, value in qt["defaults"].items():
-        assert getattr(app.model, attr) == value, attr
+    assert app.model.available_providers() == [(key, label) for label, (key, *_r) in PROVIDERS.items()]
+    assert next(iter(PROVIDERS)) == "Mistral (EU)"
     assert app.model.provider == "mistral"
+    mistral = DEFAULT_PROVIDER_SETTINGS["mistral"]
+    for attr in ("base_url", "text_model", "image_model", "temperature", "top_p", "max_tokens"):
+        assert getattr(app.model, attr) == mistral[attr], attr
+    assert app.model.api_key == ""
     assert app.model.base_url == "https://api.mistral.ai/v1"
     assert (app.model.temperature, app.model.top_p, app.model.max_tokens) == (0.3, 0.9, 4096)
 
 
-def test_numeric_ranges_equal_the_qt_spec():
-    """Temperature, Top-p and Max tokens carry the Qt spinbox ranges, steps and decimals."""
-    qt = {
+def test_numeric_ranges_equal_the_model_view_spec():
+    """Temperature, Top-p and Max tokens in the emtk spec carry the ranges, steps and decimals of
+    the model's own view spec (``ai_settings.view.json``), as spin fields."""
+    ref = {
         s["attr"]: s
-        for s in walk(json.loads(QT_SPEC_FILE.read_text())["sections"])
+        for s in walk(json.loads(MODEL_SPEC_FILE.read_text())["sections"])
         if s.get("attr") in ("temperature", "top_p", "max_tokens")
     }
-    assert set(qt) == {"temperature", "top_p", "max_tokens"}
-    for attr, qt_section in qt.items():
+    assert set(ref) == {"temperature", "top_p", "max_tokens"}
+    for attr, ref_section in ref.items():
         (mine,) = find_fields(attr)
         for key in ("kind", "minimum", "maximum", "step", "decimals"):
-            assert mine.get(key) == qt_section.get(key), (attr, key)
-        assert mine.get("style") != "slider", "Qt has spin boxes, not sliders"
-    assert (qt["temperature"]["minimum"], qt["temperature"]["maximum"]) == (0.0, 2.0)
-    assert (qt["top_p"]["minimum"], qt["top_p"]["maximum"]) == (0.0, 1.0)
-    assert (qt["max_tokens"]["minimum"], qt["max_tokens"]["maximum"]) == (1, 1000000)
+            assert mine.get(key) == ref_section.get(key), (attr, key)
+        assert mine.get("style") != "slider", "spin fields, not sliders"
+    assert (ref["temperature"]["minimum"], ref["temperature"]["maximum"]) == (0.0, 2.0)
+    assert (ref["top_p"]["minimum"], ref["top_p"]["maximum"]) == (0.0, 1.0)
+    assert (ref["max_tokens"]["minimum"], ref["max_tokens"]["maximum"]) == (1, 1000000)
 
 
 @pytest.mark.parametrize(
@@ -227,7 +228,7 @@ def test_numeric_ranges_equal_the_qt_spec():
         ("max_tokens", "abc", None),
     ],
 )
-def test_numbers_are_clamped_to_the_qt_ranges_and_typos_are_ignored(attr, typed, expected):
+def test_numbers_are_clamped_to_their_ranges_and_typos_are_ignored(attr, typed, expected):
     (section,) = find_fields(attr)
     assert parse_value(typed, section) == expected
 
@@ -241,7 +242,7 @@ def test_a_typed_number_reaches_the_model_and_the_settings_file(env):
 
 
 # --------------------------------------------------------------------------- #
-# 2. changing the provider updates Base URL and models as in Qt
+# 2. changing the provider updates Base URL and models
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize("key", ["mistral", "local", "openai", "openrouter", "acp", "custom"])
 def test_changing_the_provider_loads_its_defaults(key):
@@ -255,10 +256,10 @@ def test_changing_the_provider_loads_its_defaults(key):
     assert app.model.text_model == defaults["text_model"]
     assert app.model.image_model == defaults["image_model"]
     assert app.model.api_key == ""
-    # the Qt tool does the same through the same model call
-    qt_like = make_model()
-    qt_like.set_provider(key)
-    assert (qt_like.base_url, qt_like.text_model, qt_like.image_model) == (
+    # a bare model (no window) gives the same answer through the same call
+    bare = make_model()
+    bare.set_provider(key)
+    assert (bare.base_url, bare.text_model, bare.image_model) == (
         app.model.base_url,
         app.model.text_model,
         app.model.image_model,
@@ -375,7 +376,7 @@ def test_the_key_is_sent_as_a_bearer_token_to_the_models_url(env):
 
 
 def test_a_pasted_key_is_saved_and_checked(env):
-    """Enter on the key field saves the key and tests the endpoint (the Qt ``apply_token``)."""
+    """Enter on the key field saves the key and tests the endpoint."""
     app = make_app()
     commit_field(app, "api_key", FAKE_KEY)
     settle(app)
@@ -408,11 +409,11 @@ def test_fetch_models_fills_the_pick_lists_through_the_job(env):
     )
     text = _all_text(app)
     assert "Fetched text models" in text and "Fetched image models" in text
-    # identical to what the Qt tool's model produces for the same answer
-    qt_like = make_model()
-    qt_like.fetch_models()
-    assert qt_like.available_text_models() == model.available_text_models()
-    assert qt_like.available_image_models() == model.available_image_models()
+    # a bare model (no window) lists the same models for the same answer
+    bare = make_model()
+    bare.fetch_models()
+    assert bare.available_text_models() == model.available_text_models()
+    assert bare.available_image_models() == model.available_image_models()
 
 
 def test_picking_a_fetched_model_sets_and_saves_it(env):
@@ -454,10 +455,10 @@ def test_test_connection_ok_and_failed(env):
     click(app, "test_connection")
     settle(app)
     assert app.model.status_text == 'Connection failed: API error 401: {"message":"Unauthorized"}'
-    # the same wording as the Qt tool's model
-    qt_like = make_model()
-    qt_like.test_connection()
-    assert qt_like.status_text == app.model.status_text
+    # a bare model (no window) reports the same wording
+    bare = make_model()
+    bare.test_connection()
+    assert bare.status_text == app.model.status_text
 
 
 @pytest.mark.parametrize(
@@ -545,9 +546,9 @@ def test_an_answer_for_a_provider_that_was_left_is_dropped(env):
 
 
 # --------------------------------------------------------------------------- #
-# 5. validation messages as in the Qt tool
+# 5. validation messages
 # --------------------------------------------------------------------------- #
-def test_an_empty_base_url_is_refused_with_the_qt_messages(env):
+def test_an_empty_base_url_is_refused_with_a_message(env):
     app = make_app()
     commit_field(app, "provider", "custom")
     assert app.model.base_url == ""
@@ -558,10 +559,10 @@ def test_an_empty_base_url_is_refused_with_the_qt_messages(env):
     settle(app)
     assert app.model.status_text == "No base URL provided."
     assert env.http.calls == [], "nothing was sent"
-    qt_like = make_model()
-    qt_like.set_provider("custom")
-    qt_like.fetch_models()
-    assert qt_like.status_text == "Enter a base URL first."
+    bare = make_model()
+    bare.set_provider("custom")
+    bare.fetch_models()
+    assert bare.status_text == "Enter a base URL first."
 
 
 def test_the_base_url_is_trimmed_and_a_blank_one_falls_back_to_the_default_on_save(env):
@@ -661,15 +662,15 @@ def test_sign_in_opens_the_providers_key_page_and_says_when_there_is_none(env):
 # --------------------------------------------------------------------------- #
 # 7. layout: sections and their fold state, labels beside the fields
 # --------------------------------------------------------------------------- #
-def test_the_three_sections_have_the_qt_fold_state(env):
+def test_the_three_sections_have_the_fold_state_of_the_model_view_spec(env):
     panels = [s for s in walk(spec()["sections"]) if s.get("collapsible")]
     assert [(p["title"], p["collapsed"]) for p in panels] == [
         ("API Configuration", False),
         ("Models", False),
         ("Generation Settings", True),
     ]
-    qt = [s for s in walk(json.loads(QT_SPEC_FILE.read_text())["sections"]) if s.get("collapsible")]
-    assert [(p["title"], p["collapsed"]) for p in qt] == [
+    ref = [s for s in walk(json.loads(MODEL_SPEC_FILE.read_text())["sections"]) if s.get("collapsible")]
+    assert [(p["title"], p["collapsed"]) for p in ref] == [
         (p["title"], p["collapsed"]) for p in panels
     ]
 

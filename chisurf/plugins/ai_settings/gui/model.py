@@ -146,7 +146,7 @@ class AISettingsModel:
         """Return the fetched image-capable model ids for the image-model combo."""
         return list(self._image_models)
 
-    # -- emtk-facing members (the Qt tool ignores them) -------------------------
+    # -- members the emtk window reads ------------------------------------------
     @property
     def has_text_models(self) -> bool:
         """Whether a model list was fetched for the text-model pick list."""

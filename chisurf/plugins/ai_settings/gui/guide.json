@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour of AI Settings (Qt tool and emtk app). Steps point at real controls and wait for the user to press them. 'name' is the emtk control (a field's attr, a button's action); 'attr'/'action' are what the Qt tool resolves.",
+  "_comment": "Guided tour of AI Settings. Steps point at real controls and wait for the user to press them. 'name' is the emtk control (a field's attr, a button's action); 'attr'/'action' name the same control by its model attribute or action.",
   "steps": [
     {
       "title": "Pick a provider",
@@ -11,7 +11,7 @@
     },
     {
       "title": "The key, and where it lives",
-      "text": "Paste a key and it is saved and tested immediately (press Enter, or click elsewhere). It is drawn as stars; the <b>Show key</b> check box (the eye in the Qt window) shows it in clear text for this session only. It goes into <code>ai_api_settings.json</code> in your settings directory, written so only your account can read it.<br><br>If you already export <code>MISTRAL_API_KEY</code> or <code>OPENAI_API_KEY</code> in your shell, you can leave this empty — ChiSurf finds it.",
+      "text": "Paste a key and it is saved and tested immediately (press Enter, or click elsewhere). It is drawn as stars; the <b>Show key</b> check box shows it in clear text for this session only. It goes into <code>ai_api_settings.json</code> in your settings directory, written so only your account can read it.<br><br>If you already export <code>MISTRAL_API_KEY</code> or <code>OPENAI_API_KEY</code> in your shell, you can leave this empty — ChiSurf finds it.",
       "target": {
         "name": "api_key",
         "attr": "api_key"

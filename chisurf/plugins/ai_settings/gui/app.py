@@ -1,6 +1,6 @@
-"""Native emtk AI Settings tool (Qt-free), at parity with the Qt tool.
+"""Native emtk AI Settings tool (Qt-free).
 
-The form -- the three collapsible sections of the Qt tool (API Configuration,
+The form -- three collapsible sections (API Configuration,
 Models, Generation Settings), the Test connection / Save / Reset row and the
 result line -- is the view spec ``ai_settings_emtk.view.json`` drawn by
 :func:`emtk.view_form.draw_sections`. Only the Help / Guide buttons are drawn
