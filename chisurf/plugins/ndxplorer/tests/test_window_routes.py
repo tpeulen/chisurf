@@ -1,14 +1,13 @@
 """Every route into ndX opens the same window: the emtk app.
 
-The menu opens ndX through the manifest; tools hand it a file or a table. They
-used to build ChiSurf's Qt ``NdxWindow`` (the app in a ``ChisurfDockTool``);
-that window is retired, as is the Qt shell. The manifest names only the emtk
+The menu opens ndX through the manifest; tools hand it a file or a table. The
+manifest names only the emtk
 factory (:func:`chisurf.plugins.ndxplorer.gui.app.make_app`), which the emtk
 shell docks. Tools reach the open app through
 :func:`~chisurf.plugins.ndxplorer.gui.app.open_in_ndx` and
 :func:`~chisurf.plugins.ndxplorer.gui.app.show_table_in_ndx`.
 
-What the Qt window added to the app is kept and tested here without Qt: the
+What ChiSurf adds to ndX's app is tested here: the
 ChiSurf RPC client, the session autosave, the Global View slot (published while
 open, withdrawn on close, kept by a newer window), closing when the host's
 window goes (also when embedded in another window), File > Import > From MMFDB
@@ -59,7 +58,7 @@ def test_the_manifest_names_only_the_emtk_factory():
     assert manifest.entrypoints.gui is None
     emtk = "chisurf.plugins.ndxplorer.gui.app:make_app"
     assert manifest.entrypoints.emtk == emtk
-    # The hosted window remembers its geometry, as the Qt window's did.
+    # The hosted window remembers its geometry.
     assert manifest.statefulness.window.enabled
     source = (PLUGIN_DIR / "__init__.py").read_text()
     assert 'if __name__ == "plugin"' not in source, "the package must not open a window"

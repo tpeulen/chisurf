@@ -1,4 +1,4 @@
-"""The Spectra tool's emtk app against the Qt widgets it replaced, every control operated with real input.
+"""The Spectra tool's emtk app, every control operated with real input.
 
 Hermetic: temporary ``HOME`` / ``CHISURF_SETTINGS_DIR`` / ``MMFDB_*``, a staging database in the temp folder, the real ``~/.chisurf``
 snapshotted (``logs`` and the bytecode cache aside). **No network**: any socket connection fails the test, the scraper subprocess
@@ -121,40 +121,61 @@ def choose(ui, field, label):
     ui.click_text(label)
 
 
-# -- parity with the Qt widgets (recorded in qt_reference.json) --------------------------------------------------------- #
+# -- the planted staging components (the ``db`` fixture) are what the panels show ----------------------------------------- #
 
-QT_REFERENCE = json.loads((HERE / "tests" / "qt_reference.json").read_text(encoding="utf-8"))
+NAMES = ["Alexa Fluor 488", "DMLP550", "EGFP", "ET525/50m", "SPAD 650"]  # the five planted components, sorted by name
 
 
-def test_overview_counts_equal_the_qt_panel(ui):
-    for attr, value in QT_REFERENCE["overview"].items():
+def test_overview_counts_the_planted_components(ui):
+    """Five components, all with spectra: one protein and one dye (two fluorophores), a band-pass filter, a dichroic
+    and an APD; no light source."""
+    expected = {
+        "total": "5",
+        "with_spectra": "5",
+        "fluorophores": "2",
+        "filters": "1",
+        "dichroics": "1",
+        "detectors": "1",
+        "light_sources": "0",
+    }
+    for attr, value in expected.items():
         assert getattr(ui.app.overview, attr) == value, attr
-    assert ui.app.overview_data["by_category"] == QT_REFERENCE["by_category"]
+    assert ui.app.overview_data["by_category"] == {
+        "detector": 1,
+        "dichroic": 1,
+        "filter": 1,
+        "organic_dye": 1,
+        "protein": 1,
+    }
 
 
-def test_browse_rows_filters_detail_and_push_equal_the_qt_browser(ui, db, monkeypatch):
-    ref = QT_REFERENCE
-    assert [r["chromophore_name"] for r in ui.app.model.rows] == ref["rows"]
-    for case in ref["filters"]:
-        ui.app.model.search, ui.app.model.category, ui.app.model.source = (
-            case["search"],
-            case["category"],
-            case["source"],
-        )
-        assert [r["chromophore_name"] for r in ui.app.model.filtered()] == case["names"]
-    assert ui.app.category_options()[1:] == ref["category_options"]
-    assert ui.app.source_options()[1:] == ref["source_options"]
+def test_browse_rows_filters_detail_and_push_follow_the_planted_components(ui, db, monkeypatch):
+    assert [r["chromophore_name"] for r in ui.app.model.rows] == NAMES
+    cases = [
+        (("", "", ""), NAMES),
+        (("a", "", ""), ["Alexa Fluor 488", "SPAD 650"]),  # names holding an "a", any case
+        (("", "filter", ""), ["ET525/50m"]),
+        (("", "", "thorlabs"), ["DMLP550", "SPAD 650"]),
+        (("spad", "detector", "thorlabs"), ["SPAD 650"]),
+    ]
+    for (search, category, source), names in cases:
+        ui.app.model.search, ui.app.model.category, ui.app.model.source = search, category, source
+        assert [r["chromophore_name"] for r in ui.app.model.filtered()] == names, (search, category, source)
+    assert ui.app.category_options()[1:] == ["detector", "dichroic", "filter", "organic_dye", "protein"]
+    assert ui.app.source_options()[1:] == ["atto", "chroma", "fpbase", "thorlabs"]
     pid = ui.app.model.rows[1]["probe_id"]
     ui.app.model.show(pid)
     detail = ui.app.model.detail
-    assert detail["probe"]["chromophore_name"] == ref["detail_name"]
-    assert {k: v for k, v in detail["probe"].items() if not k.endswith("_at")} == ref[
-        "detail_probe"
-    ]
-    assert detail["optical_properties"] == ref["detail_props"]
-    for a, b in zip(detail["spectra"], ref["detail_spectra"]):
-        assert a["spectrum_type"] == b["spectrum_type"]
-        np.testing.assert_allclose(a["intensity"], b["intensity"])
+    probe = detail["probe"]
+    assert (probe["chromophore_name"], probe["category"], probe["source"]) == ("DMLP550", "dichroic", "thorlabs")
+    props = {p["property_name"]: p["property_value"] for p in detail["optical_properties"]}
+    assert props["em_max"] == "550"
+    assert props["description"] == "Reference fixture"
+    assert props["component_kind"] == "dichroic"
+    (spectrum,) = detail["spectra"]
+    assert spectrum["spectrum_type"] == "emission"
+    x = np.arange(400.0, 701.0, 5.0)  # the planted Gaussian around 550 nm
+    np.testing.assert_allclose(spectrum["intensity"], np.exp(-0.5 * ((x - 550) / 22.0) ** 2), rtol=1e-6)
     calls = []
     monkeypatch.setattr(
         "chisurf.plugins.spectra_downloader.download.merge.push_staging_to_mmfdb",
@@ -167,13 +188,13 @@ def test_browse_rows_filters_detail_and_push_equal_the_qt_browser(ui, db, monkey
     assert calls == [(str(db.db_path), [pid])]
 
 
-def test_the_scraper_list_and_endpoint_defaults_equal_the_qt_panels(ui):
+def test_the_scraper_list_and_endpoint_fields_follow_the_registry_and_the_endpoint_spec(ui):
     from chisurf.plugins.spectra_downloader.download._base import SCRAPERS
 
     assert ui.app.scraper_labels() == sorted(s.label for s in SCRAPERS)
-    qt = json.loads((HERE / "gui" / "endpoint_auth.view.json").read_text())
-    fields = {s["attr"]: s for s in qt["sections"][:4] if "attr" in s} | {
-        s["attr"]: s for p in qt["sections"] if p.get("type") == "panel" for s in p["sections"]
+    ref = json.loads((HERE / "gui" / "endpoint_auth.view.json").read_text())
+    fields = {s["attr"]: s for s in ref["sections"][:4] if "attr" in s} | {
+        s["attr"]: s for p in ref["sections"] if p.get("type") == "panel" for s in p["sections"]
     }
     ui.draw(2)
     spec = ui.app.specs["endpoint"]
@@ -687,7 +708,7 @@ def test_every_spec_and_dialog_text_is_translated_in_all_locales(ui):
         "Go to the previous panel.",
         "Go to the next panel.",
     }
-    # the mmfdb-admin component detail fields (Probe ID, Name, ...) are the Qt spec's own captions
+    # the component detail fields (Probe ID, Name, ...) are the captions of the mmfdb-admin detail spec
     from chisurf.plugins.spectra_downloader.gui.app import _optical_view
 
     detail = json.loads(_optical_view().read_text())

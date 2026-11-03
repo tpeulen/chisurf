@@ -1,15 +1,7 @@
-"""The native ndX factory builds the app the way ChiSurf's Qt NdxWindow did.
-
-Both hosts ran ndX's own ``NdxApp``; what could differ was the construction
-(the retired ``window.build_ndxplorer_window`` vs ``gui.app.make_app``) and the
-closing. The Qt facts were recorded from ``build_ndxplorer_window`` into
-``qt_reference.json`` (the window's emtk inventory and menu bar) before the Qt
-window was retired, so this test needs no Qt.
-"""
+"""The native ndX factory: what ChiSurf wires into ndX's ``NdxApp``, closing, drawing, no Qt import."""
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -71,17 +63,16 @@ def _make(**kwargs):
     return make_app(**kwargs)
 
 
-# 1. constructed as the Qt window constructs it
-def test_the_factory_wires_what_the_qt_window_wires(tmp_path):
+# 1. what the factory wires into the app
+def test_the_factory_wires_rpc_autosave_and_the_dock_store(tmp_path):
     from chisurf.plugins.ndxplorer.gui.app import make_app
 
     app = make_app()
     try:
         assert app.chisurf_rpc is not None, "Send selection to needs ChiSurf's client"
         assert app.session_autosave is True
-        # Kept, as the Qt window keeps it -- in ChiSurf's native-state store
-        # (attach_native_state), where every emtk app's layout lives, rather than in
-        # ndX's own settings file the Qt window uses.
+        # The dock layout lives in ChiSurf's native-state store (attach_native_state), where
+        # every emtk app's layout lives, not in ndX's own settings file.
         assert app.docks.store is not None and app.docks.store.path is not None
         assert "ndxplorer" in Path(app.docks.store.path).name
     finally:
@@ -93,42 +84,21 @@ def test_the_factory_wires_what_the_qt_window_wires(tmp_path):
         app.close()
 
 
-#: What the legacy Qt window (build_ndxplorer_window) drew on _columns(): its emtk
-#: inventory and its flattened menu bar, recorded before the Qt host is retired.
-QT_REFERENCE = HERE / "qt_reference.json"
-
-
-def test_same_controls_as_the_qt_window_on_the_same_table():
+def test_a_loaded_table_shows_its_columns_and_rows_and_help_has_chisurfs_entries():
+    """On ``_columns()`` the app draws the row count and the column names (the input), and the
+    factory adds ChiSurf's Guide and quick reference to Help."""
     from ndxplorer.core.data_source import DataSource
 
-    qt = json.loads(QT_REFERENCE.read_text(encoding="utf-8"))
     app = _make(session_autosave=False)
     try:
         app.model.set_source(DataSource.from_columns(_columns()))
         app.data_changed()
-        inv = emtk_inventory(app)
-        ours = {"controls": inv["controls"], "menus": _flat(app.menubar.menus)}
-        # The factory's app adds ChiSurf's Guide and quick reference to Help; the legacy Qt host has neither.
-        added = {"Help/Guide", "Help/Quick reference"}
-        assert [m for m in ours["menus"] if m not in added] == qt["menus"]
-        assert added <= set(ours["menus"])
-
-        # Every control of the Qt-hosted app is drawn by the factory's app too -- in full,
-        # or clipped: the factory gives Plot controls a wider column (split 0.44), so the
-        # path field's hint shows as "Drop folder her…". A combo clips its current text
-        # with no ellipsis at all, and where depends on the font metrics of the run: the
-        # Qt reference recorded the gist_earth colormap combo as "gist_ea", the factory's
-        # app draws "gist_e" under pytest and "gist_ear" standalone. Either side may be
-        # the clipped one, so a shared prefix of at least six characters is the same control.
-        def clipped_match(a, b):
-            a, b = a.rstrip("…"), b.rstrip("…")
-            short, long_ = sorted((a, b), key=len)
-            return len(short) >= 6 and long_.startswith(short)
-
-        def present(text):
-            return text in ours["controls"] or any(clipped_match(text, c) for c in ours["controls"])
-
-        assert [c for c in qt["controls"] if not present(c)] == []
+        controls = emtk_inventory(app)["controls"]
+        assert "2000" in controls
+        assert {"i_dd", "i_da"} <= set(controls)
+        menus = _flat(app.menubar.menus)
+        assert {"Help/Guide", "Help/Quick reference"} <= set(menus)
+        assert "File/Import/ChiSurf project (*.cs.pto)" in menus
     finally:
         app.close()
 

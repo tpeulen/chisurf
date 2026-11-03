@@ -1,10 +1,10 @@
 """The Spectra tool: staging overview, component browser, scraper runner and MMFDB import, drawn by emtk.
 
-Four panels as in the Qt tool (Overview, Browse, Download, Add to MMFDB) behind a navigation list. Every form is a
+Four panels (Overview, Browse, Download, Add to MMFDB) behind a navigation list. Every form is a
 spec drawn by ``emtk.view_form`` with this app (or a small model) as the model: the Overview fields and the endpoint
-form are the Qt tool's own ``overview.view.json`` / ``endpoint_auth.view.json``, the component detail is the
+form are ``overview.view.json`` / ``endpoint_auth.view.json``, the component detail is the
 mmfdb-admin ``fluorophore.view.json``, and the rest is ``spectra_emtk.view.json``. Tables are ``data_table`` sections.
-The scrapers run as the Qt tool ran them (a subprocess streamed into the log), an import into the MMFDB is asked for
+Each scraper runs as a subprocess streamed into the log, an import into the MMFDB is asked for
 and logged; nothing here touches the network except what the user starts.
 """
 
