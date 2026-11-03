@@ -39,6 +39,9 @@ __all__ = ["COARSE_BINS", "DARK", "MARGIN_S", "detect_pie_windows", "rising_edge
 
 #: Coarse bins of the edge search.
 COARSE_BINS = 256
+#: Narrowest coarse bin of the edge search: a laser pulse rises over a few hundred ps, so on
+#: fine channels (80 ps, 500 per period) no single channel step is steep enough to see it.
+COARSE_MIN_S = 0.25e-9
 #: How far before its pulse's rise a window starts.
 MARGIN_S = 0.3e-9
 #: A detector is dark under an excitation when its rate there is below this fraction of its rate
@@ -210,21 +213,31 @@ def detect_pie_windows(
             "measure longer and detect again."
         )
         return out
-    k = max(1, n // COARSE_BINS)
+    k = max(1, n // COARSE_BINS, int(round(COARSE_MIN_S / res)) if res > 0 else 1)
     w = max(1, k // 2)
     sources = [(names[i], H[i]) for i in range(len(names)) if H[i].sum() >= min_photons / 4]
-    if len(sources) > 1:
-        sources.append(("", H.sum(axis=0)))
-    edges: list[tuple[int, float, np.ndarray]] = []  # (coarse bin, sigmas, fine histogram)
-    for _, h in sources:
-        for o, sig in rising_edges(_coarse(h, k)):
-            edges.append((o, sig, h))
     nb = -(-n // k)
     min_sep = max(3, int(np.ceil(MIN_SEPARATION_S / res / k))) if res > 0 else 3
-    merged: list[tuple[int, float, np.ndarray]] = []
-    for o, sig, h in sorted(edges, key=lambda e: -e[1]):
-        if all(min(abs(o - m[0]), nb - abs(o - m[0])) > min_sep for m in merged):
-            merged.append((o, sig, h))
+
+    def apart(a: int, b: int) -> int:
+        return min(abs(a - b), nb - abs(a - b))
+
+    def pulses_of(h: np.ndarray) -> list[tuple[int, float, np.ndarray]]:
+        found: list[tuple[int, float, np.ndarray]] = []
+        for o, sig in sorted(rising_edges(_coarse(h, k)), key=lambda e: -e[1]):
+            if all(apart(o, m[0]) > min_sep for m in found):
+                found.append((o, sig, h))
+        return found
+
+    # Pulses are counted within one detector, never across detectors: detectors differ by their
+    # cable and electronics delays (a red and a green detector rise 1-2 ns apart under the same
+    # laser pulse), and an edge of one beside an edge of the other is one pulse, not two. The
+    # detector that sees the most pulses (the acceptor's, in PIE) says how many there are.
+    per_source = [pulses_of(h) for _, h in sources]
+    if not any(per_source) and len(sources) > 1:
+        per_source = [pulses_of(H.sum(axis=0))]  # each too weak alone: their sum
+    merged = max(per_source, key=lambda e: (len(e), sum(x[1] for x in e)), default=[])
+    others = [e for found in per_source if found is not merged for e in found]
     if not merged:
         out.message = (
             "No excitation pulse in the micro time (flat: continuous-wave excitation, µs-ALEX "
@@ -234,6 +247,13 @@ def detect_pie_windows(
     pulses = []
     for o, sig, h in merged:
         rise, peak, core = _refine(h, o, k, w)
+        # the same pulse rises earlier in another detector: its window starts at the earliest
+        for oo, _sig, hh in others:
+            if min(merged, key=lambda m: apart(oo, m[0]))[0] != o:
+                continue  # an edge of another pulse
+            other_rise = _refine(hh, oo, k, w)[0]
+            if 0 < (rise - other_rise) % n < n // 2:
+                rise = other_rise
         pulses.append((rise, peak, core, sig))
     pulses.sort(key=lambda p: p[0])
     out.confidence = float(min(p[3] for p in pulses))

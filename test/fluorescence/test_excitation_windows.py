@@ -342,3 +342,30 @@ def test_a_gate_missing_the_only_pulse_is_worded():
     r = detect_pie_windows(h, 32e-12)
     c = check_windows({}, r, gates={"green": [[1700, 3000]]}, histograms=h)
     assert c.mismatch and "Detector gates do not match" in windows_message(c)
+
+
+def _decay(n, rise, width_ch, tau_ch, height, base, rng):
+    """A pulse rising over *width_ch* channels from *rise*, decaying with *tau_ch*, on *base*."""
+    x = np.arange(n, dtype=float)
+    t = (x - rise) % n
+    up = np.clip(t / max(width_ch, 1), 0, 1)
+    return rng.poisson(base + height * up * np.exp(-np.maximum(t - width_ch, 0) / tau_ch))
+
+
+def test_detector_delays_are_not_pulses_and_a_slow_rise_on_fine_channels_is_found():
+    """DNA13bp_3.ptu (80 ps channels, 500 per 40 ns period, PIE): the red detectors rise ~1.6 ns
+    before the green ones under the same donor pulse, and the acceptor pulse rises over ~0.8 ns.
+    The search took the detector delay for two pulses (prompt 11-31: the green decay cut away) and
+    missed the acceptor pulse, because it compared one 80 ps channel with the next."""
+    from chisurf.core.fluorescence.excitation.pie import detect_pie_windows
+
+    rng = np.random.default_rng(1)
+    n = 500
+    green = _decay(n, 35, 4, 60, 40000, 2000, rng)
+    red = _decay(n, 12, 4, 60, 20000, 1800, rng) + _decay(n, 275, 10, 60, 5000, 0, rng)
+    found = detect_pie_windows({"G1": green, "G2": green, "R1": red, "R2": red}, 80e-12, n_channels=n)
+    assert found.kind == "pie"
+    prompt, delayed = found.windows["prompt"], found.windows["delayed"]
+    assert prompt[0] <= 12 and 260 <= prompt[1] <= 285  # the green rise at 35 is inside prompt
+    assert delayed[0] == prompt[1]
+    assert [p.role for p in sorted(found.pulses, key=lambda p: p.rise)] == ["donor", "acceptor"]
