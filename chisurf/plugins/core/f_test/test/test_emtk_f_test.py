@@ -1,15 +1,12 @@
-"""The native F-test calculator at parity with the Qt FTestTool.
+"""The emtk F-test calculator: loads, edits, the From fit menu, errors, drawing, no Qt.
 
-The Qt tool's results were recorded in ``qt_reference.json``: the same two
-fits were loaded into the same targets through its "From fit" menu actions, the
-same fields edited; the resulting statistics and menu entries are compared
-with the emtk app's. The menu itself is driven with pointer presses on the rows
-where the pixel painter draws them.
+The statistics after each load and edit are checked against the F-distribution rules written
+out with scipy (``_reference_trail``), independent of the shared model. The menu is driven with
+pointer presses on the rows where the pixel painter draws them.
 """
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -47,16 +44,6 @@ def _fits():
     ]
 
 
-#: What the legacy Qt tool showed for the same inputs, recorded before the Qt host is retired
-#: (FTestTool on FIT_DATA, LOADS, EDITS and STATS, driven through its From-fit menu; captured 2026-10-12, QT_QPA_PLATFORM=offscreen).
-QT_REFERENCE = HERE / "qt_reference.json"
-
-
-@pytest.fixture(scope="module")
-def qt():
-    return json.loads(QT_REFERENCE.read_text(encoding="utf-8"))
-
-
 #: Pointer tests draw small: the toolbar and its menu sit top-left, and the pixel painter's cost
 #: grows with the area (1200x800 took ~1.5 s a frame).
 POINTER_SIZE = (480, 360)
@@ -84,31 +71,13 @@ def _menu_rows(app):
     return [(x + 60.0, y + h + row_h * (k + 0.5)) for k in range(len(app.fits) * len(LOAD_TARGETS))]
 
 
-# 1. the same statistics after every one of the same loads and edits (a final-state
-#    comparison alone hides a wrong recompute that a later edit overwrites). Both hosts
-#    now run the shared model, so this guards the wiring; the rules themselves are
-#    checked against the independent reference below.
-def test_loads_and_edits_match_the_qt_tool(qt):
-    app = FTestApp(fit_provider=_fits)
-    app.refresh_fits()
-    trail = []
-    for index, target in LOADS:
-        assert app.load_fit_into(index, target)
-        trail.append({k: getattr(app.model, k) for k in STATS})
-    for attr, value in EDITS:
-        app.model.edit_field(attr, value)
-        trail.append({k: getattr(app.model, k) for k in STATS})
-    assert len(trail) == len(qt["trail"])
-    for step, (ours, theirs) in enumerate(zip(trail, qt["trail"])):
-        assert ours == pytest.approx(theirs), step
-
-
 def _reference_trail():
-    """The committed Qt tool's rules written out with scipy, independent of the shared model.
+    """The F-test rules written out with scipy, independent of the shared model.
 
-    Load (``FTestTool._load_fit`` before the port): model 1 sets χ²₁, n₁ and solves χ²₂;
+    Every step is recorded (a final-state comparison alone hides a wrong recompute that a later
+    edit overwrites). Load: model 1 sets χ²₁, n₁ and solves χ²₂;
     model 2 sets χ²₂, n₂ and recomputes the confidence; χ²-max sets χ²min, params, ν.
-    Edit (``_on_field_edited``): χ²₂/n₁/n₂ → confidence; χ²₁/confidence → χ²₂;
+    Edit: χ²₂/n₁/n₂ → confidence; χ²₁/confidence → χ²₂;
     χ²min/params/ν/confidence₂ → χ²max.
     """
     from scipy.stats import f
@@ -155,7 +124,7 @@ def _reference_trail():
     return trail
 
 
-def test_loads_and_edits_follow_the_committed_qt_rules():
+def test_loads_and_edits_follow_the_f_test_rules():
     app = FTestApp(fit_provider=_fits)
     app.refresh_fits()
     trail = []
@@ -169,12 +138,13 @@ def test_loads_and_edits_follow_the_committed_qt_rules():
         assert ours == pytest.approx(ref, rel=1e-9), step
 
 
-# 1. the same menu: one row per fit and target, with the Qt labels
-def test_from_fit_menu_matches_the_qt_menu(qt):
+# 1. the menu: one row per open fit and target
+def test_from_fit_menu_has_a_row_per_fit_and_target():
     app = FTestApp(fit_provider=_fits)
     app.refresh_fits()
     ours = [f"{fit.name}  {label}" for fit in app.fits for _target, label in LOAD_TARGETS]
-    assert ours == qt["menu"]
+    targets = ["→ F-test model 1 (χ²₁, n₁)", "→ F-test model 2 (χ²₂, n₂)", "→ χ²-max (χ²min, params, ν)"]
+    assert ours == [f"{name}  {t}" for name, *_ in FIT_DATA for t in targets]
 
 
 # 5. end to end: open the menu, press each row where it is drawn
@@ -302,8 +272,8 @@ def test_port_is_qt_free():
     assert result["ok"], result["output"]
 
 
-# 7. tooltips, the From fit one as the Qt button's
-def test_every_control_has_a_tooltip(qt, monkeypatch):
+# 7. tooltips, the From fit one says what it loads
+def test_every_control_has_a_tooltip(monkeypatch):
     sys.path.insert(0, str(REPO))
     from emtk import im
 
@@ -313,4 +283,4 @@ def test_every_control_has_a_tooltip(qt, monkeypatch):
     tips = []
     monkeypatch.setattr(im, "set_item_tooltip", tips.append)
     _frames(make_app(), 1, painter=RecordingPainter)
-    assert qt["tooltip"] in tips
+    assert any("from an open fit" in tip for tip in tips)

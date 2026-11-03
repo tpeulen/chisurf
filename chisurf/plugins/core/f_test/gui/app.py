@@ -17,7 +17,7 @@ from chisurf.plugins.emtk_layout import action_button, action_caption, action_to
 
 from .model import _CHI2_2_ATTRS, _CHI2_MAX_ATTRS, _CONF_ATTRS, FTestModel
 
-#: The Qt tool's "From fit" menu: three load targets per open fit.
+#: The "From fit" menu: three load targets per open fit.
 LOAD_TARGETS = (
     ("model1", "→ F-test model 1 (χ²₁, n₁)"),
     ("model2", "→ F-test model 2 (χ²₂, n₂)"),
@@ -105,7 +105,7 @@ class FTestApp(ImApp):
         )
 
     def refresh_fits(self) -> None:
-        """Re-read the open fits (the Qt menu rebuilds itself each time it opens)."""
+        """Re-read the open fits (the menu is rebuilt each time it opens)."""
         try:
             self.fits = list(self.fit_provider())
             self.status = ""
@@ -147,7 +147,7 @@ class FTestApp(ImApp):
         self.tour.notify_used("load_example")
 
     def draw_toolbar(self) -> None:
-        """The Qt toolbar: the From fit menu, Guide and ?."""
+        """The toolbar: the From fit menu, Guide and ?."""
         im.begin_menu_bar()
         opened = im.begin_menu("From fit")
         self.item_rects["From fit"] = im.get_item_rect()
