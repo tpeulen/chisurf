@@ -1,8 +1,7 @@
-"""The native Number Quest against the retired Qt chigame view.
+"""The native Number Quest: rounds against the core rules, the documented keys, sound, drawing.
 
-The Qt view's ``submit`` is transcribed below from its last committed source over the shared core
-rules (:class:`..core.game.NumberQuestGame`); the same rounds are played on the emtk app and
-compared, and the view's key bindings are frozen from the same source.
+The oracle for a round is the core (:class:`..core.game.NumberQuestGame`) played directly, with the
+app's lifetime wording for the hints; the keys are the ones ``gui/help.md`` documents.
 """
 
 from __future__ import annotations
@@ -12,7 +11,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from emtk.keys import KEY_ENTER, KEY_LEFT, KEY_RIGHT
+from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.emtk_layout import SOUND_OFF_ICON, action_caption
@@ -23,20 +22,24 @@ HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 ROUNDS = [[10], [90], [37], [10, 20, 30, 40, 50, 60, 70], [50, 25, 37]]
 
-#: The Qt view's bindings (last committed ``gui/tool.py``), key -> chigame action name.
-QT_BINDINGS = {
-    "ArrowLeft": "LEFT",
-    "ArrowRight": "RIGHT",
-    "Enter": "CONFIRM",
-    " ": "CONFIRM",
-    "r": "CANCEL",
-    "q": "SHOULDER_L",
-    "e": "SHOULDER_R",
+#: The controls ``gui/help.md`` lists: key -> the app action that does it.
+DOCUMENTED_KEYS = {
+    "ArrowLeft": "left",  # fine step down
+    "ArrowDown": "left",
+    "ArrowRight": "right",  # fine step up
+    "ArrowUp": "right",
+    "q": "coarse_left",  # steps of ten
+    "e": "coarse_right",
+    "Enter": "confirm",  # submit
+    " ": "confirm",
+    "r": "restart",
+    "Escape": "restart",
+    "m": "sound",
 }
 
 
-def _qt_view_rounds():
-    """Play ROUNDS the way the retired view's ``submit`` did, over the core rules."""
+def _core_rounds():
+    """Play ROUNDS on the core rules directly, hints worded as lifetimes."""
     rounds = []
     for seq in ROUNDS:
         game = NumberQuestGame()
@@ -60,21 +63,19 @@ def _qt_view_rounds():
     return rounds
 
 
-#: Qt chigame actions -> the emtk app's action names.
-ACTION = {
-    "LEFT": "left",
-    "RIGHT": "right",
-    "CONFIRM": "confirm",
-    "CANCEL": "restart",
-    "SHOULDER_L": "coarse_left",
-    "SHOULDER_R": "coarse_right",
+KEYCODE = {
+    "ArrowLeft": (KEY_LEFT, ""),
+    "ArrowRight": (KEY_RIGHT, ""),
+    "ArrowDown": (KEY_DOWN, ""),
+    "ArrowUp": (KEY_UP, ""),
+    "Enter": (KEY_ENTER, ""),
+    "Escape": (KEY_ESCAPE, ""),
 }
-KEYCODE = {"ArrowLeft": (KEY_LEFT, ""), "ArrowRight": (KEY_RIGHT, ""), "Enter": (KEY_ENTER, "")}
 
 
-# 1. the same rounds end the same way
-def test_rounds_match_the_qt_game():
-    for seq, qt_trail in zip(ROUNDS, _qt_view_rounds()):
+# 1. the app's rounds end as the core rules end them
+def test_rounds_follow_the_core_rules():
+    for seq, core_trail in zip(ROUNDS, _core_rounds()):
         app = NumberQuestApp()
         app.game.reset(target=37)
         trail = []
@@ -84,16 +85,16 @@ def test_rounds_match_the_qt_game():
             trail.append(
                 [app.message, app.game.attempts_remaining, app.game.score, app.game.status.value]
             )
-        assert trail == qt_trail, seq
+        assert trail == core_trail, seq
 
 
-# 2. the same keys do the same things
-def test_bindings_match_the_qt_game():
-    for key, action in QT_BINDINGS.items():
+# 2. the documented keys
+def test_the_documented_keys_are_bound():
+    for key, action in DOCUMENTED_KEYS.items():
         code, text = KEYCODE.get(
             key, (ord(key) if len(key) == 1 else 0, key if len(key) == 1 else "")
         )
-        assert NumberQuestApp.binding(code, text) == ACTION[action], key
+        assert NumberQuestApp.binding(code, text) == action, key
 
 
 def test_sound_is_greyed_without_an_audio_output_and_works_with_one():

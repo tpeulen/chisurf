@@ -1,4 +1,4 @@
-"""Capture populated native boards (the legacy Qt renders are recorded as ``renders/qt-game-*.png``)."""
+"""Capture populated native boards into ``renders/``."""
 
 from pathlib import Path
 

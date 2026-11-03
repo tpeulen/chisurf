@@ -1,9 +1,4 @@
-"""The native Tetris against the retired Qt chigame view.
-
-Both drove :class:`..model.TetrisModel` (the Qt ``TetrisGame`` subclassed it; the committed Qt
-rules equalled it apart from action names and the draw helpers that moved to the view). Compared here: the Qt bindings (frozen
-from the last committed ``tetris.py``) against the emtk keys, scripted keys, the Sound switch.
-"""
+"""The native Tetris: the keys ``gui/help.md`` documents, scripted keys, the Sound switch, drawing."""
 
 from __future__ import annotations
 
@@ -12,7 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from emtk.keys import KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_UP
+from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.emtk_layout import SOUND_OFF_ICON, action_caption
@@ -21,41 +16,36 @@ from chisurf.plugins.misc.games.tetris.app import TetrisApp, make_app
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 
-#: The Qt view's bindings (last committed ``tetris.py``): key -> chigame action name.
-QT_BINDINGS = {
-    "ArrowLeft": "LEFT",
-    "ArrowRight": "RIGHT",
-    "ArrowDown": "DOWN",
-    "ArrowUp": "CONFIRM",
-    " ": "SHOULDER_R",
-    "p": "MENU",
-    "r": "CANCEL",
-}
-
-ACTION = {
-    "LEFT": "left",
-    "RIGHT": "right",
-    "DOWN": "down",
-    "CONFIRM": "confirm",
-    "MENU": "menu",
-    "CANCEL": "cancel",
-    "SHOULDER_R": "shoulder_r",
+#: The controls ``gui/help.md`` lists: key -> the model action that does it.
+DOCUMENTED_KEYS = {
+    "ArrowLeft": "left",  # move
+    "ArrowRight": "right",
+    "ArrowDown": "down",  # faster descent
+    "ArrowUp": "confirm",  # rotate
+    "Enter": "confirm",
+    " ": "shoulder_r",  # drop
+    "p": "menu",  # pause / resume
+    "r": "cancel",  # restart
+    "Escape": "cancel",
+    "m": "shoulder_l",  # mute flag
 }
 KEYCODE = {
     "ArrowLeft": (KEY_LEFT, ""),
     "ArrowRight": (KEY_RIGHT, ""),
     "ArrowDown": (KEY_DOWN, ""),
     "ArrowUp": (KEY_UP, ""),
+    "Enter": (KEY_ENTER, ""),
+    "Escape": (KEY_ESCAPE, ""),
 }
 
 
-def test_bindings_match_the_qt_game():
-    for key, action in QT_BINDINGS.items():
+def test_the_documented_keys_are_bound():
+    for key, action in DOCUMENTED_KEYS.items():
         code, text = KEYCODE[key] if key in KEYCODE else (ord(key), key)
-        assert TetrisApp.binding(code, text) == ACTION[action], key
+        assert TetrisApp.binding(code, text) == action, key
 
 
-def test_keys_drive_the_game_like_the_qt_controller():
+def test_keys_pause_resume_and_hard_drop():
     app = make_app()
     game = app.game
     app.key(ord("p"), "p")

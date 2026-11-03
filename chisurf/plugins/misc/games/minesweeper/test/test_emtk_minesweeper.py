@@ -1,8 +1,7 @@
-"""The native Minesweeper against the retired Qt chigame view.
+"""The native Minesweeper: a scripted game against the core rules, the documented keys, sound, drawing.
 
-The Qt view forwarded confirm/flag presses to the shared core rules, so the oracle for a scripted
-game is the core (:class:`..core.game.MinesweeperGame`) driven directly on the same fixed board;
-the view's key bindings are frozen below from its last committed source.
+The oracle for a scripted game is the core (:class:`..core.game.MinesweeperGame`) driven directly on
+the same fixed board; the keys are the ones ``gui/help.md`` documents.
 """
 
 from __future__ import annotations
@@ -11,7 +10,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_LEFT, KEY_RIGHT, KEY_UP
+from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.emtk_layout import SOUND_OFF_ICON, action_caption
@@ -24,23 +23,24 @@ REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 #: (action, row, col) presses: scan, flag, scan a mine, then input after the loss.
 SCRIPT = [("confirm", 8, 5), ("menu", 0, 1), ("confirm", 2, 4), ("confirm", 7, 0), ("menu", 6, 6)]
 
-#: The Qt view's bindings (last committed ``gui/tool.py``), key -> chigame action name.
-QT_BINDINGS = {
-    "ArrowUp": "UP",
-    "ArrowDown": "DOWN",
-    "ArrowLeft": "LEFT",
-    "ArrowRight": "RIGHT",
-    "Enter": "CONFIRM",
-    " ": "CONFIRM",
-    "f": "MENU",
-    "r": "CANCEL",
-    "q": "SHOULDER_L",
-    "e": "SHOULDER_R",
+#: The controls ``gui/help.md`` lists: key -> what it does.
+DOCUMENTED_KEYS = {
+    "ArrowUp": ("move", (-1, 0)),
+    "ArrowDown": ("move", (1, 0)),
+    "ArrowLeft": ("move", (0, -1)),
+    "ArrowRight": ("move", (0, 1)),
+    "Enter": ("reveal",),
+    " ": ("reveal",),
+    "f": ("flag",),
+    "r": ("restart",),
+    "Escape": ("restart",),
+    "q": ("change_difficulty", -1),
+    "e": ("change_difficulty", 1),
 }
 
 
 def _core_trail():
-    """The retired view's trail: the core rules, one press at a time, as the view forwarded them."""
+    """The core rules played directly, one press at a time."""
     game = MinesweeperGame()
     game.configure(*DIFFICULTIES[next(iter(DIFFICULTIES))])
     game._fixed_mine_positions = MINES
@@ -75,27 +75,17 @@ def test_a_scripted_game_matches_the_core_rules():
     assert trail == _core_trail()
 
 
-# 2. the same keys
-def test_bindings_match_the_qt_view():
+# 2. the documented keys
+def test_the_documented_keys_do_what_the_help_says():
     keycode = {
         "ArrowUp": KEY_UP,
         "ArrowDown": KEY_DOWN,
         "ArrowLeft": KEY_LEFT,
         "ArrowRight": KEY_RIGHT,
         "Enter": KEY_ENTER,
+        "Escape": KEY_ESCAPE,
     }
-    effect = {
-        "UP": ("move", (-1, 0)),
-        "DOWN": ("move", (1, 0)),
-        "LEFT": ("move", (0, -1)),
-        "RIGHT": ("move", (0, 1)),
-        "CONFIRM": ("reveal",),
-        "MENU": ("flag",),
-        "CANCEL": ("restart",),
-        "SHOULDER_L": ("change_difficulty", -1),
-        "SHOULDER_R": ("change_difficulty", 1),
-    }
-    for key, action in QT_BINDINGS.items():
+    for key, effect in DOCUMENTED_KEYS.items():
         app = make_app()
         seen = []
         app.move = lambda dr, dc: seen.append(("move", (dr, dc)))
@@ -105,7 +95,7 @@ def test_bindings_match_the_qt_view():
         app.change_difficulty = lambda step: seen.append(("change_difficulty", step))
         code = keycode.get(key, ord(key) if len(key) == 1 else 0)
         assert app.key(code, key if len(key) == 1 else ""), key
-        assert seen == [effect[action]], key
+        assert seen == [effect], key
 
 
 def test_sound_is_greyed_without_an_audio_output_and_works_with_one():
@@ -150,7 +140,7 @@ def test_every_control_has_a_tooltip():
     assert emtk_inventory(build_emtk_app("minesweeper"))["controls_without_tooltip"] == []
 
 
-def test_a_held_direction_repeats_like_the_qt_view():
+def test_a_held_direction_repeats():
     """One step on the press, then one per 0.07 s after a 0.30 s delay; host repeats ignored."""
     app = make_app()
     app.cursor_row, app.cursor_col = 0, 0

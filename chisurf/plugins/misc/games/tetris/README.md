@@ -1,10 +1,10 @@
 # Tetris Game Plugin
 
-Spectral Tetris is available through the retained Qt widget and the standalone
-EMTK factory `chisurf.plugins.misc.games.tetris.app:make_app`. The native factory
-imports no Qt bindings, GUI host or chigame GPU package.
+Spectral Tetris is the standalone EMTK factory
+`chisurf.plugins.misc.games.tetris.app:make_app`. It imports no Qt bindings,
+GUI host or chigame GPU package.
 
-The two views share `TetrisModel`: a 10 × 22 well, seven tetrominoes, the original
+The view drives `TetrisModel`: a 10 × 22 well, seven tetrominoes, the original
 rotation and collision rules, delayed direction repeat, line scoring and faster
 falling every ten cleared lines. The model has no GUI or GPU imports.
 
@@ -29,16 +29,13 @@ be clicked to restart.
 
 EMTK currently provides no audio backend. Native music and sound effects are
 unavailable and its Sound control is disabled with a localized explanation.
-The Qt widget retains its existing sound control. No platform-only audio
-dependencies were added. Neither current view has a next-piece preview; older
-metadata described one that the current rules and reference do not contain.
+No platform-only audio dependencies were added. There is no next-piece
+preview; older metadata described one that the current rules do not contain.
 
 Verification:
 
 - `python -m pytest chisurf/plugins/misc/games/tetris/test -q`
-- `python -m chisurf.plugins.misc.games.tetris.test.capture_qt`
 - `python -m chisurf.plugins.misc.games.tetris.test.capture_native`
 
-Capture commands require a working GPU adapter. Genuine populated Qt and native
-normal/narrow screenshots are in `test/renders/`, alongside the visual verdict
-(95/100). Native renders include populated, paused and game-over states.
+Capture commands require a working GPU adapter. Native normal/narrow
+screenshots of populated, paused and game-over states are in `test/renders/`.

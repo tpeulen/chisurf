@@ -1,9 +1,4 @@
-"""The native Pong against the retired Qt chigame view.
-
-Both drove :class:`..model.PongModel` (the Qt ``PongGame`` subclassed it; the committed Qt rules
-equalled it method for method apart from action names and a host guard). Compared here: the Qt bindings (frozen
-from the last committed ``pong.py``) against the emtk keys, a scripted rally, the Sound switch.
-"""
+"""The native Pong: the keys ``gui/help.md`` documents for both players, scripted keys, the Sound switch."""
 
 from __future__ import annotations
 
@@ -12,7 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_UP
+from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.emtk_layout import SOUND_OFF_ICON, action_caption
@@ -21,44 +16,45 @@ from chisurf.plugins.misc.games.pong.app import PongApp, make_app
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 
-#: The Qt view's bindings (last committed ``pong.py``): key -> chigame action name.
-QT_P1 = {
-    "ArrowUp": "UP",
-    "ArrowDown": "DOWN",
-    "Enter": "CONFIRM",
-    " ": "CONFIRM",
-    "p": "MENU",
-    "r": "CANCEL",
-    "m": "SHOULDER_L",
-    "n": "SHOULDER_R",
+#: The controls ``gui/help.md`` lists for the first paddle: key -> the model action that does it.
+PLAYER_1 = {
+    "ArrowUp": "up",
+    "ArrowLeft": "up",
+    "ArrowDown": "down",
+    "ArrowRight": "down",
+    "Enter": "confirm",  # another round after a winner
+    " ": "confirm",
+    "p": "menu",  # pause / resume
+    "r": "cancel",  # restart
+    "Escape": "cancel",
+    "m": "shoulder_l",  # computer / two-player
+    "n": "shoulder_r",  # mute flag
 }
-QT_P2 = {"w": "UP", "s": "DOWN"}
-
-ACTION = {
-    "UP": "up",
-    "DOWN": "down",
-    "CONFIRM": "confirm",
-    "MENU": "menu",
-    "CANCEL": "cancel",
-    "SHOULDER_L": "shoulder_l",
-    "SHOULDER_R": "shoulder_r",
+#: ... and for the second paddle in two-player mode.
+PLAYER_2 = {"w": "up", "s": "down"}
+KEYCODE = {
+    "ArrowUp": (KEY_UP, ""),
+    "ArrowDown": (KEY_DOWN, ""),
+    "ArrowLeft": (KEY_LEFT, ""),
+    "ArrowRight": (KEY_RIGHT, ""),
+    "Enter": (KEY_ENTER, ""),
+    "Escape": (KEY_ESCAPE, ""),
 }
-KEYCODE = {"ArrowUp": (KEY_UP, ""), "ArrowDown": (KEY_DOWN, ""), "Enter": (KEY_ENTER, "")}
 
 
 def _code(key):
     return KEYCODE.get(key, (ord(key) if len(key) == 1 else 0, key if len(key) == 1 else ""))
 
 
-# 2. the same keys, both players
-def test_bindings_match_the_qt_game():
-    for key, action in QT_P1.items():
-        assert PongApp.binding(*_code(key)) == (ACTION[action], False), key
-    for key, action in QT_P2.items():
-        assert PongApp.binding(*_code(key)) == (ACTION[action], True), key
+# 2. the documented keys, both players
+def test_the_documented_keys_are_bound():
+    for key, action in PLAYER_1.items():
+        assert PongApp.binding(*_code(key)) == (action, False), key
+    for key, action in PLAYER_2.items():
+        assert PongApp.binding(*_code(key)) == (action, True), key
 
 
-def test_keys_drive_the_game_like_the_qt_controller():
+def test_keys_pause_switch_the_opponent_and_restart():
     app = make_app()
     game = app.game
     game.serve_timer = 0.0

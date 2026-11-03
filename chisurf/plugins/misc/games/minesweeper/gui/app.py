@@ -1,7 +1,7 @@
 """Standalone EMTK detector-array Minesweeper; the existing rules own the round.
 
-The glyph JSON is the ASCII string art from chigame/pixelfont.py. Keeping the
-asset here avoids importing the Qt-bearing legacy GUI package in a native app.
+The glyph JSON is the ASCII string art of the chigame pixel font, kept here as
+plugin data so the app imports no GUI package for it.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from chisurf.plugins.misc.games._keys import blocked
 from ..core.game import DIFFICULTIES, GameStatus, MinesweeperGame
 from .translations import install_translations
 
-#: Held-direction auto-repeat, as the Qt view's (gui/tool.py REPEAT_DELAY / REPEAT_RATE).
+#: Held-direction auto-repeat: first repeat after REPEAT_DELAY s, then one step per REPEAT_RATE s.
 REPEAT_DELAY = 0.30
 REPEAT_RATE = 0.07
 
@@ -132,7 +132,7 @@ class MinesweeperApp(GameApp):
         self.cursor_col = min(max(self.cursor_col + dc, 0), self.game.columns - 1)
 
     def reveal(self):
-        # As the Qt view: a finished board ignores Confirm/Menu, so the result
+        # A finished board ignores Confirm/Menu, so the result
         # ("Boom! You found a mine." / the win) stays on screen until a reset.
         if self.game.status is not GameStatus.ACTIVE:
             return
@@ -201,7 +201,7 @@ class MinesweeperApp(GameApp):
         return False
 
     def advance(self, dt):
-        """Step held directions, as the Qt view's _move_cursor does."""
+        """Step held directions at REPEAT_RATE once their REPEAT_DELAY has passed."""
         dt = min(max(float(dt), 0.0), 0.1)
         for step in list(self.held):
             self.held[step] += dt
