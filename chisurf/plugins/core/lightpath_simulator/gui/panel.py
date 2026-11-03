@@ -1,8 +1,8 @@
-"""The Qt-free view model behind the light-path window: the actions, the form fields and the result tables.
+"""The view model behind the light-path window: the actions, the form fields and the result tables.
 
 ``LightPathPanel`` wraps :class:`~.controller.LightPathController` and the graph control for the specs of
 ``lightpath.view.json`` (drawn by ``emtk.view_form``). An action returns nothing and reports a problem on
-:attr:`message`; the app shows it in a dialog and on the status line, as the Qt tool showed its error boxes.
+:attr:`message`; the app shows it in a dialog and on the status line.
 """
 
 from __future__ import annotations
@@ -223,7 +223,7 @@ class LightPathPanel:
     def _try(self, title: str, function: Callable, *args) -> Any:
         try:
             return function(*args)
-        except Exception as exc:  # noqa: BLE001 - reported, as the Qt tool's error box
+        except Exception as exc:  # noqa: BLE001 - reported in the window, not raised
             self.controller.status = f"Error: {exc}"
             self.message = (title, str(exc))
             return None

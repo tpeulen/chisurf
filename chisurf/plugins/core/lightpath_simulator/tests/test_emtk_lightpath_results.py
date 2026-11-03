@@ -1,8 +1,8 @@
-"""The native light-path window against the Qt tool it replaced.
+"""The light-path window: simulated numbers, result tables, default path, spec, drawing.
 
 Hermetic: temporary settings, HOME and spectra catalogue (generated spectra, tests/catalog.py), an in-process RPC client.
-The Qt tool is retired; its answers over the same catalogue are frozen in ``qt_reference.json`` (recorded from the live
-tool) and the native window must reproduce them exactly.
+The catalogue's spectra are analytic, so every simulated number has a closed form here (:func:`expected_excitation`,
+:func:`expected_emission`) that the window must reproduce.
 """
 
 from __future__ import annotations
@@ -10,10 +10,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
 import pytest
 from emtk.testing import RecordingPainter
 
-from .catalog import build_catalogue
+from .catalog import WAVELENGTHS, _band, build_catalogue
 from .driving import BIG, PLUGIN, SMALL, clipped_texts, draw_clip, layout_problems
 
 SPEC = json.loads((PLUGIN / "gui/lightpath.view.json").read_text(encoding="utf-8"))
@@ -86,96 +87,121 @@ def populated(app, ids):
     return app
 
 
-#: The retired Qt tool's answers over the same generated catalogue (recorded from the live tool; see ``_source``).
-QT = json.loads((Path(__file__).with_name("qt_reference.json")).read_text(encoding="utf-8"))
+# -- the planted answer ------------------------------------------------------------------------------------ #
+#: The dyes and channels of tests/catalog.py: Gaussian absorption/emission bands (centre, sigma 18 / 22 nm),
+#: quantum yield and extinction coefficient; a 561 nm sigmoid long-pass splitter sends the long side to the red
+#: filter (BP 650/60) and the short side to the green one (BP 500/50); both filters pass 0.92, both detectors have
+#: a flat quantum efficiency of 0.6. The default path excites at 488 and 640 nm with power 1.
+DYES = {"Atto 488": (500.0, 520.0, 0.8, 90000.0), "Atto 647N": (645.0, 668.0, 0.65, 150000.0)}
+LASERS = {"488 nm": 488.0, "640 nm": 640.0}
+QE, FILTER_T = 0.6, 0.92
+#: Detector signals at or below this are not reported (``LightPathSimulator.get_detector_signals``).
+SIGNAL_FLOOR = 1e-12
 
 
-# -- numbers: the same graph, the same catalogue, the same results ------------------------------------------ #
-
-
-def _close(native, recorded, rel=1e-9):
-    """Equal structures, floats within *rel* (lists and dicts compared element by element)."""
-    if isinstance(recorded, dict):
-        return (
-            isinstance(native, dict)
-            and native.keys() == recorded.keys()
-            and all(_close(native[k], recorded[k], rel) for k in recorded)
-        )
-    if isinstance(recorded, (list, tuple)):
-        return (
-            isinstance(native, (list, tuple))
-            and len(native) == len(recorded)
-            and all(_close(a, b, rel) for a, b in zip(native, recorded))
-        )
-    if isinstance(recorded, float) and not isinstance(recorded, bool):
-        return native == pytest.approx(recorded, rel=rel)
-    return native == recorded
-
-
-def test_the_qt_tool_and_the_native_window_simulate_the_same_graph_to_the_same_numbers(
-    app, catalogue
-):
-    populated(app, catalogue)
-    assert [n.type for n in app.controller.document.nodes] == QT["nodes"]
-    assert len(app.controller.probes) == QT["probes"] == 7
-    native = app.controller.result
-    # The intensities are spectral integrals (numpy sums over the dye, filter and detector
-    # curves); summation order differs between platforms in the last digits, so numbers compare
-    # at 1e-9 relative and everything else exactly.
-    assert _close(native["detector_signals"], QT["signals"])
-    for kind in ("excitation", "emission", "detected"):
-        assert _close(native["crosstalk_matrices"][kind]["rows"], QT["matrices"][kind]["rows"])
-        assert native["crosstalk_matrices"][kind]["columns"] == QT["matrices"][kind]["columns"]
-
-
-def test_the_result_tables_hold_the_cells_the_qt_tables_showed(app, catalogue):
-    populated(app, catalogue)
-    tabs = {
-        "Signals": app.panel.signals,
-        "Excitation": app.panel.excitation,
-        "Emission": app.panel.emission,
-        "Detected": app.panel.detected,
+def _channels(x):
+    long_pass = 1.0 / (1.0 + np.exp(-(WAVELENGTHS - 561.0) / 4.0))
+    green = ((WAVELENGTHS > 475) & (WAVELENGTHS < 525)) * FILTER_T
+    red = ((WAVELENGTHS > 620) & (WAVELENGTHS < 680)) * FILTER_T
+    interp = lambda curve: np.interp(x, WAVELENGTHS, curve)  # noqa: E731
+    return {
+        "Green Channel": interp(1.0 - long_pass) * interp(green),
+        "Red Channel": interp(long_pass) * interp(red),
     }
-    for name, table in tabs.items():
-        qt = QT["tables"][name]
-        rows = table.rows()
-        if name == "Signals":
-            keys = ["laser", "detector", "dye", "intensity"]
-            assert qt["header"] == ["Laser Source", "Detector Name", "Dye", "Detected Intensity"]
-            assert [
-                [r[k] if k != "intensity" else f"{r[k]:.4e}" for k in keys] for r in rows
-            ] == qt["cells"]
-        else:
-            columns = table.columns()
-            assert [c["title"] for c in columns[1:]] == qt["header"]
-            assert [[f"{r[c['key']]:.4e}" for c in columns[1:]] for r in rows] == qt["cells"]
-            assert [r["row"] for r in rows] == QT["matrices"][name.lower()]["rows"]
 
 
-def test_the_palette_lists_the_components_the_qt_palette_listed(app):
-    assert [r["title"] for r in app.panel.palette_rows()] == QT["palette_items"]
+def expected_excitation(laser, dye):
+    """Extinction coefficient times the absorption band, linearly interpolated at the laser line."""
+    absorption_centre, _, _, ext_coeff = DYES[dye]
+    return ext_coeff * float(np.interp(LASERS[laser], WAVELENGTHS, _band(absorption_centre, 18.0)))
 
 
-def test_the_toolbar_has_every_qt_action_with_the_qt_tooltips(app):
-    qt_actions = QT["toolbar_tooltips"]
-    spec = {b["label"]: b["description"] for b in SPEC["toolbar"]["sections"][0]["buttons"]}
-    assert set(qt_actions) <= set(spec) | {"Save to MMFDB"}
-    for label, tip in qt_actions.items():
-        assert (
-            spec[label].split(".")[0].lower().split()[-1] in tip.lower() or label in spec
-        )  # present with a description
+def expected_emission(dye, detector):
+    """Quantum yield times QE times the fraction of the emission band the channel passes (1 nm grid)."""
+    _, emission_centre, qy, _ = DYES[dye]
+    x = np.arange(WAVELENGTHS[0], WAVELENGTHS[-1] + 0.5, 1.0)
+    emission = np.interp(x, WAVELENGTHS, _band(emission_centre, 22.0))
+    return qy * QE * float(np.sum(emission * _channels(x)[detector]) / np.sum(emission))
 
 
-def test_the_default_path_is_the_qt_default_path(app, catalogue):
+DEFAULT_TYPES = ["light_source", "sample", "splitter", "filter", "detector", "filter", "detector",
+                 "forster_radius"]
+
+
+# -- numbers: the simulation against the planted spectra --------------------------------------------------- #
+
+
+def test_the_simulation_reproduces_the_planted_spectra(app, catalogue):
+    populated(app, catalogue)
+    assert sorted(n.type for n in app.controller.document.nodes) == sorted(DEFAULT_TYPES)
+    assert len(app.controller.probes) == len(catalogue) == 7
+    matrices = app.controller.result["crosstalk_matrices"]
+
+    excitation = matrices["excitation"]
+    assert excitation["rows"] == list(LASERS) and excitation["columns"] == list(DYES)
+    for i, laser in enumerate(LASERS):
+        for j, dye in enumerate(DYES):
+            assert excitation["values"][i][j] == pytest.approx(expected_excitation(laser, dye), rel=1e-9)
+
+    emission = matrices["emission"]
+    assert emission["rows"] == list(DYES) and emission["columns"] == ["Green Channel", "Red Channel"]
+    for i, dye in enumerate(DYES):
+        for j, detector in enumerate(emission["columns"]):
+            assert emission["values"][i][j] == pytest.approx(expected_emission(dye, detector), rel=1e-6)
+
+    # what a detector sees is the excitation times the emission probability of that channel
+    detected = matrices["detected"]
+    assert detected["rows"] == [f"{laser} | {dye}" for laser in LASERS for dye in DYES]
+    signals = {(s["laser"], s["detector"], s["dye"]): s["intensity"]
+               for s in app.controller.result["detector_signals"]}
+    for i, row in enumerate(detected["rows"]):
+        laser, dye = row.split(" | ")
+        for j, detector in enumerate(detected["columns"]):
+            expected = expected_excitation(laser, dye) * expected_emission(dye, detector)
+            if expected <= SIGNAL_FLOOR:  # the simulator drops signals at or below the floor
+                assert detected["values"][i][j] == 0.0 and (laser, detector, dye) not in signals
+                continue
+            assert detected["values"][i][j] == pytest.approx(expected, rel=1e-6)
+            assert signals[(laser, detector, dye)] == pytest.approx(expected, rel=1e-6)
+    # each dye lands in its own channel; the leak into the other one is orders of magnitude below
+    assert signals[("488 nm", "Green Channel", "Atto 488")] > 1e5 * signals[("488 nm", "Red Channel", "Atto 488")]
+    assert signals[("640 nm", "Red Channel", "Atto 647N")] > 1e9 * signals[("640 nm", "Green Channel", "Atto 647N")]
+
+
+def test_the_result_tables_show_the_simulated_numbers(app, catalogue):
+    populated(app, catalogue)
+    result = app.controller.result
+    rows = app.panel.signals.rows()
+    assert [[r["laser"], r["detector"], r["dye"], r["intensity"]] for r in rows] == [
+        [s["laser"], s["detector"], s["dye"], s["intensity"]] for s in result["detector_signals"]
+    ]
+    for kind in ("excitation", "emission", "detected"):
+        table, matrix = getattr(app.panel, kind), result["crosstalk_matrices"][kind]
+        columns = table.columns()[1:]
+        assert [c["title"] for c in columns] == matrix["columns"]
+        assert [r["row"] for r in table.rows()] == matrix["rows"]
+        assert [[r[c["key"]] for c in columns] for r in table.rows()] == matrix["values"]
+
+
+def test_the_palette_offers_every_registered_component_once(app):
+    rows = app.panel.palette_rows()
+    ids = [r["id"] for r in rows]
+    assert len(ids) == len(set(ids)) and set(DEFAULT_TYPES) <= set(ids)
+    assert all(r["title"] for r in rows)
+
+
+def test_the_default_path_picks_its_components_from_the_catalogue_by_name(app, catalogue):
     load_catalogue(app)
     app.controller.reset()
-    assert [n.type for n in app.controller.document.nodes] == QT["nodes"]
-    assert len(app.controller.document.nodes) == QT["after_reset_nodes"]
-    sample = next(n for n in app.controller.document.nodes if n.type == "sample")
-    qt_dyes = {s["dye"] for s in QT["signals"]}
-    assert sorted(sample.config["probe_ids"]) == sorted(catalogue[d] for d in qt_dyes)
-    splitter = next(n for n in app.controller.document.nodes if n.type == "splitter")
+    nodes = app.controller.document.nodes
+    assert [n.type for n in nodes] == DEFAULT_TYPES
+    by_id = {n.id: n for n in nodes}
+    sample = next(n for n in nodes if n.type == "sample")
+    assert sorted(sample.config["probe_ids"]) == sorted(catalogue[d] for d in DYES)
+    splitter = next(n for n in nodes if n.type == "splitter")
     assert splitter.config["probe_id"] == catalogue["561LP dichroic"]
+    assert by_id["green_filter"].config["probe_id"] == catalogue["BP 500/50 filter"]
+    assert by_id["red_filter"].config["probe_id"] == catalogue["BP 650/60 filter"]
 
 
 def test_a_saved_graph_reloads_to_the_same_nodes(app, catalogue, tmp_path):
@@ -183,7 +209,7 @@ def test_a_saved_graph_reloads_to_the_same_nodes(app, catalogue, tmp_path):
     path = tmp_path / "graph.json"
     app.controller.save_graph(path)
     saved = json.loads(path.read_text())
-    assert len(saved["nodes"]) == QT["graph_saved_nodes"]
+    assert len(saved["nodes"]) == len(DEFAULT_TYPES)
     app.controller.reset()
     app.controller.load_graph(path)
     assert sorted(n.id for n in app.controller.document.nodes) == sorted(
@@ -191,7 +217,7 @@ def test_a_saved_graph_reloads_to_the_same_nodes(app, catalogue, tmp_path):
     )
 
 
-# -- spec, tooltips, Qt-free ------------------------------------------------------------------------------ #
+# -- spec, tooltips, no Qt ------------------------------------------------------------------------------ #
 
 
 def walk(node):

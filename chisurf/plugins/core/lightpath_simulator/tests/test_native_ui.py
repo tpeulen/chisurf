@@ -1,9 +1,8 @@
 """UI-level checks for the light-path window and its frame economy.
 
-The window is the emtk app; both shells open it from the manifest's ``emtk`` entry (the ``--qt`` shell hosts
-it in a ``ControlHost``), so there is no Qt tool of its own any more. The app must not repaint at full frame
-rate while idle (the whole UI went laggy), and closing it must shut the controller down -- the executor, the
-state file and the registered parameters live there. Formerly these ran on the Qt host window.
+The window is the emtk app; both shells open it from the manifest's ``emtk`` entry. The app must not repaint
+at full frame rate while idle (the whole UI went laggy), and closing it must shut the controller down -- the
+executor, the state file and the registered parameters live there.
 """
 
 from __future__ import annotations
@@ -18,7 +17,7 @@ PLUGIN = Path(__file__).resolve().parents[1]
 
 def test_the_manifest_opens_the_native_app_and_names_no_qt_window(app):
     manifest = json.loads((PLUGIN / "manifest.json").read_text(encoding="utf-8"))
-    assert "gui" not in manifest["entrypoints"], "the shells host the emtk app; there is no Qt tool"
+    assert "gui" not in manifest["entrypoints"], "the shells host the emtk app; there is no other entry"
     module, factory = manifest["entrypoints"]["emtk"].split(":")
     import importlib
 
@@ -54,7 +53,7 @@ def test_window_close_shuts_the_controller_down(app, monkeypatch):
 
 
 def test_the_module_helpers_for_the_headless_consumers():
-    """The JSON helpers the Qt tool kept (``_json_safe`` / ``_deserialize_numpy``) are the controller's."""
+    """The JSON helpers for headless consumers (``json_safe`` / ``deserialize``) live on the controller."""
     from chisurf.plugins.core.lightpath_simulator.gui.controller import deserialize, json_safe
 
     assert json_safe(np.array([1.0, 2.0])) == [1.0, 2.0]
@@ -107,8 +106,8 @@ def test_loaded_probes_reach_both_dropdown_sources(app):
     assert app.content.probes == probes
 
 
-def test_the_window_settings_carry_the_graph_the_qt_host_saved_on_close(app):
-    """The Qt host wrote the graph to QSettings on close; the shells persist ``export_settings`` instead."""
+def test_the_window_settings_carry_the_graph(app):
+    """The shells persist ``export_settings``, and the graph is in it."""
     settings = app.export_settings()
     assert [n["type"] for n in settings["graph"]["nodes"]] == [
         n.type for n in app.controller.document.nodes

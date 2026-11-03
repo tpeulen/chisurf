@@ -243,7 +243,7 @@ class MessageDialog(_Modal):
 
 
 class SavedChooser(_Modal):
-    """Choose one of the simulations stored in MMFDB (the Qt tool's input-item dialog)."""
+    """Choose one of the simulations stored in MMFDB."""
 
     size = (460.0, 330.0)
 
@@ -418,7 +418,7 @@ class LightPathApp(TourTarget, ImApp):
             ) = view
 
     def _restore_last_config(self) -> None:
-        """Open on the configuration last simulated (as the Qt Easy Mode did), unless a saved graph was loaded.
+        """Open on the configuration last simulated, unless a saved graph was loaded.
 
         The shell's ``restore_settings`` runs after this and replaces it with the window's own saved graph.
         """
@@ -604,7 +604,7 @@ class LightPathApp(TourTarget, ImApp):
                     self.graph_control.fit()
 
     def _after_poll(self):
-        """Announce what a finished backend call means to the user, as the Qt tool's message boxes did."""
+        """Announce what a finished backend call means to the user (a message box and the status line)."""
         controller, panel = self.controller, self.panel
         if panel.message is not None and not isinstance(self.dialog, MessageDialog):
             title, text = panel.message

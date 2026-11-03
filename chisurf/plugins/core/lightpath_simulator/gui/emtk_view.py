@@ -48,9 +48,8 @@ __all__ = ["BeampathContent", "PROBE_CATEGORY"]
 logger = logging.getLogger(__name__)
 
 #: Which probes each node type may be assigned, as a predicate over the probe
-#: records the backend hands back. Taken from the Qt factories so the same
-#: filter reaches the same list; a filter node offering detector responses is
-#: how a beam path acquires a component that cannot be there.
+#: records the backend hands back; a filter node offering detector responses
+#: is how a beam path acquires a component that cannot be there.
 PROBE_CATEGORY: dict = {
     "filter": lambda p: (
         p.get("category") == "filter"
@@ -73,7 +72,7 @@ PROBE_CATEGORY: dict = {
 #: something would be asking for a fraction of itself.
 PLOT_SIZE: tuple = (200.0, 96.0)
 
-#: Curve colours, matching the Qt version so a user recognises the picture.
+#: Curve colours: grey for the input spectrum, near-white for the output.
 INPUT_COLOUR: tuple = (150, 150, 150, 255)
 OUTPUT_COLOUR: tuple = (235, 235, 235, 255)
 CHARACTERISTIC_COLOUR: tuple = (80, 220, 120, 255)

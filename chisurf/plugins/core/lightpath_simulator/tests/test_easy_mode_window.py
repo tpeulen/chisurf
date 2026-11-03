@@ -1,7 +1,6 @@
-"""Easy Mode of the light-path window: what the retired Qt Easy Mode widget did, on the emtk window.
+"""Easy Mode of the light-path window, driven through its Easy Mode dock.
 
-The Qt ``LightPathEasyWidget`` (and its ``LightPathEasyDialog``) are retired; these are its behaviours driven through
-the window's Easy Mode dock: a template picked from the list replaces the optical path (its topology too), the
+A template picked from the list replaces the optical path (its topology too), the
 component pickers show the configuration's spectra, the last simulated configuration is kept for the PDA models and
 reopened with the window, κ² and n are the user's FRET settings, and a simulation needs a dye.
 """
@@ -11,7 +10,7 @@ from __future__ import annotations
 import json
 
 from .driving import BIG, LPDriver
-from .test_emtk_lightpath_parity import in_process_client, load_catalogue
+from .test_emtk_lightpath_results import in_process_client, load_catalogue
 
 
 def easy(app):
@@ -71,8 +70,8 @@ def test_the_default_paths_detectors_are_named_as_the_qt_easy_mode_named_them(ap
     assert "Green Channel" in strings and "Red Channel" in strings
 
 
-def test_the_pickers_show_the_configuration_like_the_qt_probe_tables(app, catalogue):
-    """The Qt test of the two-detector template: one Dichroic splitter, an excitation dichroic, C1/C2 rows."""
+def test_the_pickers_show_the_configuration(app, catalogue):
+    """The two-detector template: one Dichroic splitter, an excitation dichroic, C1/C2 rows."""
     load_catalogue(app)
     config = {
         "excitation_dichroic_probe_id": catalogue["561LP dichroic"],
@@ -178,7 +177,7 @@ def test_persist_fret_setting_writes_the_user_settings_file(tmp_path, monkeypatc
 
 
 def test_a_simulation_without_a_dye_says_so_and_runs_nothing(app, catalogue):
-    """The Qt Easy Mode refused with "Select at least one dye."; so does the window's."""
+    """Without a dye Easy Mode refuses with "Select at least one dye." and starts nothing."""
     load_catalogue(app)
     app.easy.config["dyes"] = {}
     started = []
@@ -189,7 +188,7 @@ def test_a_simulation_without_a_dye_says_so_and_runs_nothing(app, catalogue):
 
 
 def test_the_detector_wizards_simulation_keeps_the_configuration_for_the_pda_models(catalogue):
-    """The retired Qt ``LightPathEasyDialog`` (the Detector Wizard's light path) wrote the last configuration too."""
+    """The Detector Wizard's light path writes the last configuration too."""
     from chisurf.emtk.optical_configuration import OpticalConfigurationWidget
     from chisurf.plugins.core.lightpath_simulator.core.easy_config import (
         last_config_path,

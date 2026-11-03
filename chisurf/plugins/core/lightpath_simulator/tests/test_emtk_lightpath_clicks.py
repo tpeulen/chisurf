@@ -16,7 +16,7 @@ from emtk import keys
 from chisurf.plugins.emtk_layout import action_caption
 
 from .driving import BIG, SMALL, LPDriver
-from .test_emtk_lightpath_parity import in_process_client, load_catalogue, populated
+from .test_emtk_lightpath_results import in_process_client, load_catalogue, populated
 
 
 @pytest.fixture(autouse=True)
@@ -92,7 +92,7 @@ def test_save_graph_opens_the_dialog_and_a_typed_name_writes_the_graph(drv, monk
     monkeypatch.chdir(tmp_path)
     drv.click("save_graph")
     assert dialog_open(drv) and drv.app.dialog.title == "Save Graph"
-    assert "lightpath.json" in drv.draw(2).strings  # the Qt default
+    assert "lightpath.json" in drv.draw(2).strings  # the default file name
     drv.click_text("lightpath.json")
     drv.select_all()
     drv.type_text("mygraph")
@@ -149,7 +149,7 @@ def test_save_preset_asks_for_a_name_and_writes_it_where_easy_mode_reads(drv, tm
         and drv.app.dialog.title == "Save Optical Path Preset"
     )
     drv.draw(2)
-    drv.click_text("OK")  # empty name: nothing written, as the Qt tool did
+    drv.click_text("OK")  # empty name: nothing written
     folder = tmp_path / "home/.chisurf/presets/lightpath_optical"
     assert not folder.exists() or not list(folder.glob("*.json"))
     drv.click("save_preset")
@@ -175,7 +175,7 @@ def test_save_to_mmfdb_asks_for_a_name_and_confirms_the_operation(drv):
     assert (
         isinstance(drv.app.dialog, TextInputDialog)
         and drv.app.dialog.value == "Light path simulation"
-    )  # the Qt default
+    )  # the default file name
     drv.draw(2)
     drv.click_text("OK")
     drv.settle()

@@ -7,7 +7,7 @@ import time
 import pytest
 
 from .driving import BIG, LPDriver
-from .test_emtk_lightpath_parity import load_catalogue
+from .test_emtk_lightpath_results import load_catalogue
 
 
 @pytest.fixture(autouse=True)

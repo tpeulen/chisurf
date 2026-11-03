@@ -149,13 +149,13 @@ class LightPathController:
         self.status = "Optical nodes arranged by signal flow."
 
     def reset(self):
-        """Restore the Qt tool's default path: laser, sample, dichroic, a filter and a detector per colour, Foerster radius."""
+        """Restore the default path: laser, sample, dichroic, a filter and a detector per colour, Foerster radius."""
         self.load_document(self.default_graph(self.probes))
         self.status = "Default optical path restored."
 
     @staticmethod
     def default_graph(probes):
-        """The canonical default light-path graph of the Qt tool's ``_build_default_path`` (same nodes, ids, positions, wiring)."""
+        """The default light-path graph, its components picked from *probes* by name (Atto 488/647N, 561LP, BP 500 and 650)."""
         green_dye = red_dye = dichroic = green_filter = red_filter = None
         for p in probes:
             name = str(p.get("name", "")).lower().replace("-", " ")
@@ -206,7 +206,7 @@ class LightPathController:
         green_d.config["detector_name"] = "Green Channel"
         forster = node(
             "forster_radius", (300.0, 560.0)
-        )  # the Qt tool put it at y=460, over the sample node
+        )  # below the sample node, not over it
         for n in (source, sample, splitter, red_f, red_d, green_f, green_d, forster):
             document.add_node(n)
         for src, sp, dst, dp in (
@@ -438,7 +438,7 @@ class LightPathController:
                     if callable(self.on_probes):
                         self.on_probes(result)
                     if self.revision == self._default_revision:
-                        # Nothing was edited yet: the default path picks its components from the catalogue (as the Qt tool did).
+                        # Nothing was edited yet: the default path picks its components from the catalogue.
                         self.load_document(self.default_graph(result))
                         self._default_revision = self.revision
                     self.status = f"{len(result)} optical spectra available."
