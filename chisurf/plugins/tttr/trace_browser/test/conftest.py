@@ -81,7 +81,7 @@ ALEX = {
     "tttr_reading": {"file_type": "PTO", "micro_time_binning": 1, "excitation_period": 8000},
 }
 
-#: Overlapping, unsorted channels (the Qt setup page's own default detector layout): the
+#: Overlapping, unsorted channels (several detectors share a channel): the
 #: derived channel list must be the sorted union without duplicates.
 OVERLAP = {
     "setup_name": "Overlap",
@@ -111,3 +111,68 @@ OVERLAP = {
     },
     "tttr_reading": {"file_type": "Auto", "micro_time_binning": 1},
 }
+
+
+def gated_photons(path, setup):
+    """``(photons, last macro time)`` per detector of *setup*, read straight from the file.
+
+    A detector's photons are those on its routing channels inside one of its micro-time
+    gates (inclusive); the last macro time is ``None`` for a detector without photons.
+    """
+    import numpy as np
+    import tttrlib
+
+    data = tttrlib.TTTR(str(path), "SPC-130")
+    routing = np.asarray(data.routing_channels)
+    micro = np.asarray(data.micro_times)
+    macro = np.asarray(data.macro_times, dtype=np.int64)
+    out = []
+    for detector in setup["detectors"].values():
+        gate = np.zeros(len(micro), bool)
+        for lo, hi in detector["micro_time_ranges"]:
+            gate |= (micro >= lo) & (micro <= hi)
+        mask = np.isin(routing, detector["chs"]) & gate
+        out.append((int(mask.sum()), int(macro[mask][-1]) if mask.any() else None))
+    return out
+
+
+def trace_bins(path, setup, window_s):
+    """Bins of a trace by the binner's rule.
+
+    A bin holds ``floor(window / macro-time resolution)`` clocks; each detector's trace runs to
+    its own last photon (``last // clocks + 1`` bins) and the traces are padded to the longest.
+    """
+    import math
+
+    import tttrlib
+
+    resolution = float(tttrlib.TTTR(str(path), "SPC-130").header.macro_time_resolution)
+    clocks = max(1, int(math.floor(window_s / resolution)))
+    return max(last // clocks + 1 for _, last in gated_photons(path, setup) if last is not None)
+
+
+def expected_trace(path, setup, window_s):
+    """``(time_axis, counts)`` of *setup* on the file by the trace's definition.
+
+    Column *k* counts detector *k*'s gated photons per window of ``floor(window / resolution)``
+    clocks; the time axis is ``arange(bins) * window``.
+    """
+    import math
+
+    import numpy as np
+    import tttrlib
+
+    data = tttrlib.TTTR(str(path), "SPC-130")
+    routing = np.asarray(data.routing_channels)
+    micro = np.asarray(data.micro_times)
+    macro = np.asarray(data.macro_times, dtype=np.int64)
+    clocks = max(1, int(math.floor(window_s / float(data.header.macro_time_resolution))))
+    bins = trace_bins(path, setup, window_s)
+    counts = np.zeros((bins, len(setup["detectors"])))
+    for k, detector in enumerate(setup["detectors"].values()):
+        gate = np.zeros(len(micro), bool)
+        for lo, hi in detector["micro_time_ranges"]:
+            gate |= (micro >= lo) & (micro <= hi)
+        mask = np.isin(routing, detector["chs"]) & gate
+        counts[:, k] = np.bincount(macro[mask] // clocks, minlength=bins)[:bins]
+    return np.arange(bins) * window_s, counts

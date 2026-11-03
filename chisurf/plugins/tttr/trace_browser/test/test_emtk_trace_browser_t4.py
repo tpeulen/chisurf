@@ -1,9 +1,9 @@
 """The native Trace Browser, card T4: Export, CSV, DOCX, Delete, hand-offs, Help and Guide, manifest entry.
 
 Everything runs on temporary COPIES of ``test/data/tttr/BH/132/BH_SPC132.spc``. Export, CSV and Delete write only
-inside the pytest temp folders. The reference for the ALEX setup on that file is the one the legacy engine
-gave (``test_binning_trace_browser.py``): 6233 bins of 10 ms, per-detector sums ``[22443, 56257, 0]`` for
-``green``, ``red``, ``yellow`` (62329 bins at 1 ms). ``python-docx`` is not installed in every environment, so
+inside the pytest temp folders. With the ALEX setup the file gives 6233 bins of 10 ms
+(62329 at 1 ms) and per-detector sums ``[22443, 56257, 0]`` for ``G|G``, ``R|G``, ``R|R``: the photons of each
+detector's channels inside its micro-time gate (none of this file's photons is as late as the R|R gate). ``python-docx`` is not installed in every environment, so
 the DOCX tests inject a stand-in module that records what the report would hold; the button's disabled state
 without the package is tested by making the import fail.
 """
@@ -403,18 +403,25 @@ def test_csv_falls_back_to_the_local_export_when_the_rpc_gives_nothing(work, tmp
     assert [int(sum(float(r[i]) for r in rows[1:])) for i in (1, 2, 3)] == SUMS
 
 
-#: What the retired Qt tool's *CSV* handler wrote for ``m000.spc`` with the ALEX setup (recorded 2026-10-10).
-QT_CSV = {
-    "name": "m000_trace.csv",
-    "sha256": "00f3385dcabc2b149a2e5237a486bb39f95a75b3aa81aa5dda6b41365a3757ec",
-    "size": 129458,
-}
+def gated_photons(path, setup):
+    """Photons of each detector of *setup*: its routing channels inside its micro-time gate."""
+    import numpy as np
+    import tttrlib
+
+    data = tttrlib.TTTR(str(path), "SPC-130")
+    routing, micro = np.asarray(data.routing_channels), np.asarray(data.micro_times)
+    sums = []
+    for detector in setup["detectors"].values():
+        inside = np.isin(routing, detector["chs"])
+        gate = np.zeros(len(micro), bool)
+        for lo, hi in detector["micro_time_ranges"]:
+            gate |= (micro >= lo) & (micro <= hi)
+        sums.append(int(np.sum(inside & gate)))
+    return sums
 
 
-def test_the_emtk_app_exports_the_csv_the_qt_widget_wrote(work, tmp_path):
-    """The app writes the same name and the same bytes for the same file as the Qt tool did."""
-    import hashlib
-
+def test_the_csv_export_holds_every_gated_photon_per_detector(work, tmp_path):
+    """``<stem>_trace.csv``: a time column, then one column per detector, one row per 10 ms bin."""
     only = tmp_path / "only"
     only.mkdir()
     shutil.copy(work / "m000.spc", only / "m000.spc")
@@ -427,16 +434,12 @@ def test_the_emtk_app_exports_the_csv_the_qt_widget_wrote(work, tmp_path):
         written = app.model.export_csv_files(app_out, [only / "m000.spc"])
     finally:
         app.close()
-    assert [pathlib.Path(w).name for w in written] == [QT_CSV["name"]]
-    data = (app_out / QT_CSV["name"]).read_bytes()
-    # Byte-identical to the Qt tool's file except the header, which now names the unit the values are in.
-    data = data.replace(b"time_s,", b"time_ms,", 1)
-    # ... and the detectors under their names (G|G, R|G, R|R), where the Qt tool's setup said
-    # green, red, yellow.
-    data = data.replace(b"time_ms,G|G,R|G,R|R", b"time_ms,green,red,yellow", 1)
-    assert len(data) == QT_CSV["size"]
-    assert hashlib.sha256(data).hexdigest() == QT_CSV["sha256"]
-    assert len(rows_of(app_out / QT_CSV["name"])) - 1 == BINS_10MS
+    assert [pathlib.Path(w).name for w in written] == ["m000_trace.csv"]
+    rows = rows_of(app_out / "m000_trace.csv")
+    assert rows[0] == ["time_s"] + list(ALEX["detectors"])
+    assert len(rows) - 1 == BINS_10MS
+    sums = [round(sum(float(r[i]) for r in rows[1:])) for i in (1, 2, 3)]
+    assert sums == gated_photons(only / "m000.spc", ALEX) == SUMS  # R|R: no photon that late
 
 
 # ---- DOCX -----------------------------------------------------------------------------------------
@@ -469,7 +472,7 @@ def test_docx_report_holds_every_selected_file_with_rating_note_and_picture(
         assert [p[1] for p in pictures] == ["m000.png", "m001.png"]
         assert all(p[2] is True for p in pictures)  # a PNG header
         assert all(p[3] > 1000 for p in pictures)  # a real picture, not an empty file
-        assert all(p[4] == ["inches", 6] for p in pictures)  # six inches wide, as in Qt
+        assert all(p[4] == ["inches", 6] for p in pictures)  # six inches wide
     finally:
         app.close()
 
@@ -979,7 +982,7 @@ def test_settings_round_trip_has_no_selection_or_request_state(work):
 def test_the_manifest_declares_the_emtk_entry_and_no_qt_one():
     manifest = json.loads((GUI.parent / "manifest.json").read_text())
     assert manifest["entrypoints"]["emtk"] == ENTRY
-    assert "gui" not in manifest["entrypoints"], "the Qt tool was retired"
+    assert "gui" not in manifest["entrypoints"], "the trace browser has no Qt entrypoint"
     module, attribute = manifest["entrypoints"]["emtk"].split(":")
     import importlib
 

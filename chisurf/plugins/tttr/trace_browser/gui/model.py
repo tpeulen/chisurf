@@ -1,16 +1,14 @@
 """Qt-free state and actions of the Trace Browser.
 
-:class:`TraceBrowserModel` holds what the Qt workspace
-(:class:`chisurf.plugins.tttr.trace_browser.widget.TraceBrowser`) used to keep
-inside its widgets: the current folder, the include-subfolders flag, the setup
-(detector / channel definition) and the channels derived from it, the file rows
-(name, path, size, rating, notes), the rating filter, the bin window, the y range,
-the selection and the loaded trace.  The work the Qt tool did on that state is
-here as plain methods -- scan a folder and fill the rows, filter them, read and
-write ratings and notes (persisted through :mod:`..core.metadata`), clear, clear
-the caches, and compute or load a trace (through :mod:`..core.trace` and the
-RPC client, with the in-memory and on-disk caches) -- so the Qt tool and a later
-native emtk app share one implementation.
+:class:`TraceBrowserModel` holds the browser's state: the current folder, the
+include-subfolders flag, the setup (detector / channel definition) and the
+channels derived from it, the file rows (name, path, size, rating, notes), the
+rating filter, the bin window, the y range, the selection and the loaded trace.
+The work on that state is here as plain methods -- scan a folder and fill the
+rows, filter them, read and write ratings and notes (persisted through
+:mod:`..core.metadata`), clear, clear the caches, and compute or load a trace (through :mod:`..core.trace` and the
+RPC client, with the in-memory and on-disk caches) -- so the emtk app, the RPC
+backend and the tests share one implementation.
 
 Heavy methods (:meth:`~TraceBrowserModel.scan`,
 :meth:`~TraceBrowserModel.precompute_all_traces`,
@@ -18,9 +16,8 @@ Heavy methods (:meth:`~TraceBrowserModel.scan`,
 :class:`chisurf.emtk.jobs.SnapshotJob`; the model provides ``notify(event)``,
 ``_observers`` and ``add_observer`` for that.
 
-The module imports no Qt binding.  Computing a trace that is not cached still
-needs the binning engine of the ``intensity_trace`` plugin (a Qt widget class,
-imported lazily by :func:`..core.trace.load_trace` on a cache miss only).
+The module imports no Qt binding.  A trace that is not cached is computed by the
+Qt-free binner :mod:`..core.binning` (through :func:`..core.trace.load_trace`).
 """
 
 from __future__ import annotations
@@ -59,7 +56,7 @@ FILTER_LABELS = (
     "Only 0★",
 )
 
-#: Highest rating (a whole number 0..this); the Qt star widget has 3 stars.
+#: Highest rating (a whole number 0..this): three stars.
 RATING_MAX = 3
 
 #: Name of the per-folder trace cache directory (beside the data files).
@@ -201,8 +198,8 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
         self.error_text = ""
         #: Why the trace of the current file could not be loaded (empty when it could).
         self.trace_error = ""
-        #: Compute the traces of every listed file in the background after a scan (the Qt
-        #: browser did this after every scan, on a modal progress dialog).
+        #: Compute the traces of every listed file in the background after a scan, so
+        #: browsing them afterwards reads the cache.
         self.precompute_after_scan = True
         #: Set by :meth:`scan` and :meth:`precompute_traces`; the host starts the job and clears it.
         self.precompute_pending = False
@@ -288,8 +285,8 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
         Returns
         -------
         str or None
-            The ``tttr_reading.file_type``; ``None`` for ``Auto`` or when absent (as
-            the Qt setup page's ``filetype`` property).
+            The ``tttr_reading.file_type``; ``None`` for ``Auto`` or when absent
+            (every supported extension is then listed).
         """
         reading = (settings or {}).get("tttr_reading") or {}
         text = str(reading.get("file_type") or "").strip()
@@ -405,7 +402,7 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
 
     @property
     def folder_text(self) -> str:
-        """The folder label of the Browser page (the Qt label's text)."""
+        """The folder label of the Browser page."""
         return str(self.current_folder) if self.current_folder else "No folder selected"
 
     @property
@@ -661,8 +658,8 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
         ]
         keep = {r["path"] for r in self.rows}
         self.selected_files = [s for s in self.selected_files if s in keep]
-        # A file the filter hides (or that vanished) is no longer shown: the Qt browser cleared its
-        # plot and annotation as soon as the selected row disappeared from the table.
+        # A file the filter hides (or that vanished) is no longer shown: its plot and
+        # annotation clear as soon as its row leaves the table.
         if self.current_file is not None and (
             not self.current_file.exists() or str(self.current_file) not in keep
         ):
@@ -779,8 +776,8 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
         self.files = [self._make_row(p) for p in files]
         self.precompute["message"] = ""
         self.apply_filter()
-        # The Qt browser selects the first row after every scan and plots it (or clears the
-        # plot when nothing is listed), then precomputes the traces of the listed files.
+        # After every scan the first row is selected and plotted (or the plot cleared when
+        # nothing is listed), then the traces of the listed files are precomputed.
         if self.rows:
             self.select_row(self.rows[0])
             self.precompute_pending = bool(self.precompute_after_scan)
@@ -1352,7 +1349,7 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
         self.notify("caches")
         return removed_dirs
 
-    # ── selection set, export, delete and hand-offs (the Qt toolbar's actions) ──────────
+    # ── selection set, export, delete and hand-offs (the toolbar's actions) ──────────
     def selection_paths(self) -> list[pathlib.Path]:
         """The files the export, delete and hand-off actions work on, in table order.
 
@@ -1387,7 +1384,7 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
 
     @staticmethod
     def ndx_available() -> bool:
-        """Whether the ndX components can be imported (the Qt tool tested the same)."""
+        """Whether the ndX components can be imported (the NDX button is greyed without them)."""
         return importlib.util.find_spec("ndxplorer") is not None
 
     # -- Export (copy the files) -----------------------------------------------------
@@ -1399,11 +1396,10 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
     def export_files(self, dest: str | pathlib.Path, paths: list | None = None) -> int:
         """Copy *paths* (default: the selection) into the folder *dest* with their metadata kept.
 
-        The Qt tool's ``_on_export`` (``shutil.copy2`` into the chosen folder, flat, by file
-        name) for the selected files instead of every listed file. A name that two selected
+        ``shutil.copy2`` into the chosen folder, flat, by file name. A name that two selected
         files share (files of different sub-folders) gets ``__2``, ``__3`` ... so the second
         does not overwrite the first; a file that already exists in *dest* from before is
-        overwritten, as in Qt.
+        overwritten.
 
         Returns
         -------
@@ -1454,7 +1450,7 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
     def export_csv_files(self, dest: str | pathlib.Path, paths: list | None = None) -> list[str]:
         """Write the binned trace of each of *paths* (default: the selection) as CSV into *dest*.
 
-        As the Qt ``_on_export_csv``: the plugin's RPC export first (one
+        The plugin's RPC export first (one
         ``<stem>_trace.csv`` per file: the header ``time_s`` then one column per series, one
         row per bin at the current bin window); when that gives nothing, the local fallback
         (``<stem>_bin<window>ms.csv``, header ``time_s``, image-like files skipped).
@@ -1497,7 +1493,7 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
     def _export_csv_local(
         self, files: list[pathlib.Path], out: pathlib.Path, window_ms: float
     ) -> list[str]:
-        """The Qt tool's local CSV fallback (cut and pasted from ``_on_export_csv``)."""
+        """The local CSV fallback: ``<stem>_bin<window>ms.csv`` per file, binned here."""
         written: list[str] = []
         for p in files:
             try:
@@ -1546,7 +1542,7 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
     def write_docx(self, paths: list | None = None) -> pathlib.Path | None:
         """Write ``<folder name>.docx`` into the open folder: one section per file.
 
-        The Qt tool's ``_on_export_docx``: a heading, then per file its name, folder, rating,
+        A heading, then per file its name, folder, rating,
         annotation and a picture of its trace (drawn here from the loaded trace with
         :mod:`emtk.figure`, which needs no toolkit; no picture when the trace cannot be read).
 
@@ -1623,8 +1619,7 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
     def plan_delete(self, paths: list | None = None) -> list[pathlib.Path]:
         """The files a delete moves: *paths* plus every sibling sharing a file name stem.
 
-        As the Qt ``_on_delete_selected`` (a measurement's ``.spc`` and its companion files
-        move together). Only existing files inside the open folder and outside ``.trash`` are
+        A measurement's ``.spc`` and its companion files move together. Only existing files inside the open folder and outside ``.trash`` are
         taken; nothing else is ever touched.
         """
         folder = self.current_folder
@@ -1710,7 +1705,7 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
     def delete_files(self, paths: list) -> int:
         """Move *paths* into ``.trash`` (keeping sub-folders), drop their metadata, refresh the list.
 
-        The Qt ``_on_delete_selected`` body: an existing target gets a ``__<timestamp>``
+        An existing target gets a ``__<timestamp>``
         suffix instead of being overwritten; the selection moves to the row nearest the first
         removed one; the plot clears when the shown file moved.
 
@@ -1774,7 +1769,7 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
         self.notify("request")
 
     def _channels_for(self, path: pathlib.Path) -> list[int]:
-        """The routing channels of a hand-off: the setup's, else those used in *path* (Qt: ``[0, 2]``)."""
+        """The routing channels of a hand-off: the setup's, else those used in *path*."""
         if self.selected_channels is not None:
             return list(self.selected_channels)
         try:
@@ -1819,12 +1814,11 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
         self.request("prepare_ndx", str(paths[0]))
 
     def prepare_ndx(self, source: str | pathlib.Path) -> pathlib.Path | None:
-        """The Qt one-click ndX pipeline, up to opening the window.
+        """The one-click ndX pipeline, up to opening the window.
 
-        Cut from ``_on_open_in_ndxplorer``: window the file by the bin window, write the burst
+        Window the file by the bin window, write the burst
         table (``bi4_bur/<stem>.bur``) and ``Info`` beside the data in ``<stem>_TW_<ms>ms`` and
-        record the hand-off ``open_ndxplorer`` with that folder. (The Qt tool also saved the
-        windows to a temporary ``.bst`` file that nothing read; that is not written here.)
+        record the hand-off ``open_ndxplorer`` with that folder.
 
         Returns
         -------

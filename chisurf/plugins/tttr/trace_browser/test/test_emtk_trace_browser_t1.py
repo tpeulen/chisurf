@@ -124,7 +124,7 @@ def test_setup_page_draws_empty_and_with_a_setup(size, setups_file, tmp_path):
     app = make(setups_file)
     try:
         text = " | ".join(frames(app, size))
-        # the last used saved setup is selected, as in the Qt setup page
+        # the last used saved setup is selected
         assert app.editor.model.current_name == "ALEX Suite (auto)"
         assert text.count("ALEX Suite (auto)") >= 1  # the Setup drop-down shows it
         assert "Continue" in text
@@ -176,37 +176,35 @@ def test_continue_without_a_setup_auto_detects_channels(tmp_path):
         app.close()
 
 
-# 4. selected_channels and the labels, against the values the retired Qt widget derived
-#    (recorded 2026-10-10 from ``TraceBrowser._on_continue`` / ``_setup_filetype`` / ``_build_channel_labels``
-#    for ``every`` = the setup's channels plus the unnamed channel 5)
-QT_DERIVED = {
-    "ALEX": {
-        "setup": ALEX,
-        "selected": [0, 1],
-        "filetype": "PTO",
-        "labels": ["R|G, 616-3784 + R|R, 4278-7762", "G|G, 616-3784", "5"],
-    },
-    "Overlap": {
-        "setup": OVERLAP,
-        "selected": [0, 1, 2, 3, 8, 9],
-        "filetype": None,
-        "labels": [
-            "G|G, 0-4095",
-            "R|G, 0-2048 + R|R, 2048-4095",
-            "R|G, 0-2048 + R|R, 2048-4095",
-            "G|G, 0-4095",
-            "G|G, 0-4095",
-            "R|G, 0-2048 + R|R, 2048-4095",
-            "5",
-        ],
-    },
-}
+# 4. selected_channels, the file type and the labels, by their rule from the setup:
+#    the selected channels are the sorted union of the detectors' channels; the file type is the
+#    reading block's unless it is "auto"; a channel's label lists every detector holding it
+#    ("name, lo-hi", joined by " + ") and an unnamed channel is its number.
+def derived(setup):
+    channels = sorted({c for d in setup["detectors"].values() for c in d["chs"]})
+    file_type = (setup.get("tttr_reading") or {}).get("file_type")
+    filetype = None if str(file_type).lower() in ("auto", "none") else file_type
+
+    def label(channel):
+        named = [
+            f"{name}, {lo}-{hi}"
+            for name, d in setup["detectors"].items()
+            if channel in d["chs"]
+            for lo, hi in d["micro_time_ranges"]
+        ]
+        return " + ".join(named) or str(channel)
+
+    every = channels + [5]
+    return {"selected": channels, "filetype": filetype, "labels": [label(c) for c in every]}
 
 
-@pytest.mark.parametrize("key", sorted(QT_DERIVED))
-def test_the_app_derives_the_channels_the_qt_widget_derived(key, tmp_path):
-    case = QT_DERIVED[key]
-    setup = case["setup"]
+SETUPS = {"ALEX": ALEX, "Overlap": OVERLAP}
+
+
+@pytest.mark.parametrize("key", sorted(SETUPS))
+def test_the_app_derives_the_channels_file_type_and_labels_from_the_setup(key, tmp_path):
+    setup = SETUPS[key]
+    case = derived(setup)
     path = tmp_path / "setups.json"
     path.write_text(
         json.dumps({"setups": {setup["setup_name"]: setup}, "last_used": setup["setup_name"]})

@@ -1,4 +1,4 @@
-"""The Qt-free Trace Browser model, and its agreement with the values the retired Qt widget produced.
+"""The Qt-free Trace Browser model: scan, filter, metadata, traces, caches, hand-offs.
 
 Everything runs on a temporary COPY of repository sample data: the browser writes
 ``.trace_browser_meta.json`` and a ``.tttr_trace_cache`` folder beside the data and
@@ -80,39 +80,42 @@ def _names(rows):
     return sorted((r["name"], r["rating"]) for r in rows)
 
 
-# Reference: pre-change Qt widget (git HEAD ``TraceBrowser._open_folder`` + table, offscreen,
-# a fresh widget per case) on ``fake_dir``; visible table rows (name, rating) per
-# (include_subfolders, filter_index).  (A reused widget keeps stale row-hidden flags by row
-# index across scans, so its visible rows depend on history; the model has no such state.)
-LEGACY_ROWS = {
-    (False, 0): [("a.ptu", 3), ("b.PTU", 2), ("c.spc", 0), ("h.h5", 0)],
-    (False, 1): [("a.ptu", 3), ("b.PTU", 2)],
-    (False, 2): [("a.ptu", 3), ("b.PTU", 2)],
-    (False, 3): [("a.ptu", 3)],
-    (False, 4): [("c.spc", 0), ("h.h5", 0)],
-    (True, 0): [
-        ("a.ptu", 3),
-        ("b.PTU", 2),
-        ("c.spc", 0),
-        ("deep/x/y.pt3", 2),
-        ("h.h5", 0),
-        ("sub/e.ht3", 1),
-    ],
-    (True, 1): [("a.ptu", 3), ("b.PTU", 2), ("deep/x/y.pt3", 2), ("sub/e.ht3", 1)],
-    (True, 2): [("a.ptu", 3), ("b.PTU", 2), ("deep/x/y.pt3", 2)],
-    (True, 3): [("a.ptu", 3)],
-    (True, 4): [("c.spc", 0), ("h.h5", 0)],
+#: (name, rating) of the photon files in ``fake_dir`` (``d.txt`` and ``.trash`` are never listed).
+FAKE_RATINGS = {
+    "a.ptu": 3,
+    "b.PTU": 2,
+    "c.spc": 0,
+    "sub/e.ht3": 1,
+    "deep/x/y.pt3": 2,
+    "h.h5": 0,
 }
+#: The rating filters in FILTER_LABELS order: All, >= 1, >= 2, >= 3, only 0.
+KEEPS = (
+    lambda r: True,
+    lambda r: r >= 1,
+    lambda r: r >= 2,
+    lambda r: r >= 3,
+    lambda r: r == 0,
+)
+
+
+def expected_rows(recursive, idx):
+    """The rows a scan must show: top level only unless recursive, then the filter's ratings."""
+    return sorted(
+        (name, rating)
+        for name, rating in FAKE_RATINGS.items()
+        if (recursive or "/" not in name) and KEEPS[idx](rating)
+    )
 
 
 @pytest.mark.parametrize("recursive", [False, True])
 @pytest.mark.parametrize("idx", range(5))
-def test_scan_and_filter_match_the_legacy_widget(fake_dir, recursive, idx):
+def test_scan_and_filter_list_the_rated_photon_files(fake_dir, recursive, idx):
     m = TraceBrowserModel()
     m.include_subfolders = recursive
     m.filter_index = idx
     assert m.open_folder(fake_dir)
-    assert _names(m.rows) == sorted(LEGACY_ROWS[(recursive, idx)])
+    assert _names(m.rows) == expected_rows(recursive, idx)
     # .trash content is never listed
     assert not any(".trash" in r["path"] for r in m.files)
 
@@ -144,7 +147,7 @@ def test_filter_relaxes_from_all_scanned_files(fake_dir):
     ],
 )
 def test_setup_filetype_restricts_extensions(filetype, expected):
-    # Reference: the legacy widget's ``_allowed_exts_for_setup`` (tttrlib 0.27 supported set).
+    # A container type lists the extensions of its own files only.
     m = TraceBrowserModel()
     m.setup_filetype = filetype
     assert sorted(m.allowed_exts()) == expected
@@ -160,18 +163,18 @@ def test_apply_setup_selects_the_union_of_channels():
     assert m.selected_channels is None
 
 
-def test_api_list_files_is_not_the_widget_scan(fake_dir):
-    """``api.io.list_files`` differs from the widget scan, so the model keeps the widget's."""
+def test_api_list_files_is_not_the_model_scan(fake_dir):
+    """``api.io.list_files`` lists differently, so the model scans the folder itself."""
     from chisurf.plugins.tttr.trace_browser.api.io import list_files
 
     api_names = sorted(r["name"] for r in list_files(str(fake_dir)))
     m = TraceBrowserModel()
     m.open_folder(fake_dir)
     model_names = sorted(r["name"] for r in m.rows)
-    # api: fixed extension set without .spc/.h5, case-sensitive-free; widget: tttrlib's set
+    # api: fixed extension set without .spc/.h5; model: every extension tttrlib reads
     assert api_names == ["a.ptu", "b.PTU"]
     assert model_names == ["a.ptu", "b.PTU", "c.spc", "h.h5"]
-    # api lists inside .trash when recursive, the widget never does
+    # api lists inside .trash when recursive, the model never does
     rec = sorted(r["path"] for r in list_files(str(fake_dir), recursive=True))
     assert any(".trash" in p for p in rec)
 
@@ -255,21 +258,22 @@ def test_observers_are_notified(fake_dir):
 
 
 # ---- traces (computed by the Qt-free binner, core.binning) -----------------------------
-def test_trace_matches_the_reference(real_dir):
-    # Reference: pre-change Qt widget, ``TraceBrowser._compute_trace_cached`` (git HEAD) on a
-    # copy of test/data/tttr/BH/132/BH_SPC132.spc with the default ALEX setup, offscreen.
+def test_the_trace_is_each_detectors_gated_photons_per_window(real_dir):
+    """Against the trace's definition computed from the file (``conftest.expected_trace``)."""
+    import numpy as np
+
+    from chisurf.plugins.tttr.trace_browser.test.conftest import expected_trace
+
     m = TraceBrowserModel()
     m.image_probe = lambda p: False
     m.apply_setup(SETUP)
     m.open_folder(real_dir)
-    for ms, bins, last in ((10.0, 6233, 62.32), (1.0, 62329, 62.328)):
+    for ms in (10.0, 1.0):
         ta, pad, labels = m.compute_trace_cached(real_dir / "m000.spc", ms)
-        assert labels == ["G|G", "R|G", "R|R"]
-        assert pad.shape == (bins, 3)
-        assert [int(x) for x in pad.sum(axis=0)] == [22443, 56257, 0]
-        assert ta[-1] == pytest.approx(last)
-    ta, pad, _ = m.compute_trace_cached(real_dir / "m000.spc", 10.0)
-    assert int(pad.max()) == 467
+        want_t, want = expected_trace(real_dir / "m000.spc", SETUP, ms / 1000.0)
+        assert labels == list(SETUP["detectors"])
+        np.testing.assert_array_equal(pad, want)
+        np.testing.assert_allclose(ta, want_t)
 
 
 def test_load_trace_uses_and_fills_the_disk_cache(real_dir):
@@ -333,22 +337,22 @@ def test_trace_job_runs_on_a_snapshot(real_dir):
     assert m.trace["counts"].shape == (6233, 3)
 
 
-# ---- the model agrees with what the retired Qt widget did --------------------------------------
-def test_the_model_lists_what_the_qt_widget_listed_for_the_same_folder(fake_dir):
+# ---- listing, persistence, probing ---------------------------------------------------------------
+def test_the_model_lists_the_rated_photon_files_for_every_filter(fake_dir):
     m = TraceBrowserModel()
     for recursive in (False, True):
         for idx in range(5):
             m.include_subfolders, m.filter_index = recursive, idx
             m.open_folder(fake_dir)
-            assert _names(m.rows) == sorted(LEGACY_ROWS[(recursive, idx)])
+            assert _names(m.rows) == expected_rows(recursive, idx)
     assert m.current_folder == fake_dir
-    # the setup file type drives the extensions (the widget read ``detector_page.filetype``)
+    # the setup file type drives the extensions
     m.setup_filetype = "PTU"
     assert m.allowed_exts() == {".ptu"}
 
 
 def test_rating_and_notes_persist_through_the_model(fake_dir):
-    """What the widget's rating cell and ``_flush_meta_to_disk`` did, through the model."""
+    """A rating set and flushed is read back by a new model on the same folder."""
     w = TraceBrowserModel()
     w.open_folder(fake_dir)
     w.set_rating(fake_dir / "c.spc", 4)
@@ -358,19 +362,19 @@ def test_rating_and_notes_persist_through_the_model(fake_dir):
     assert m.get_rating(fake_dir / "c.spc") == 4
 
 
-def test_default_image_probe_matches_the_widget(real_dir, fake_dir):
-    """``TraceBrowser._is_image_tttr`` answered False for both (recorded 2026-10-10)."""
+def test_the_default_image_probe_says_no_image(real_dir, fake_dir):
+    """The sample point measurement and an unreadable stand-in file are not images."""
     m = TraceBrowserModel()
     for p in (real_dir / "m000.spc", fake_dir / "a.ptu"):
         assert m.probe_image(p) is False
 
 
 def test_fractional_bin_widths_have_distinct_cache_signatures():
-    """The widget's ``_trace_signature``: 0.25 and 0.75 ms must not collapse to one (integer truncation)."""
+    """0.25 and 0.75 ms must not collapse to one cache signature (no integer truncation)."""
     m = TraceBrowserModel()
     p = pathlib.Path(__file__)
     assert m.trace_signature(p, 0.25) != m.trace_signature(p, 0.75)
-    # and the form takes them: the widget's spin box had >= 3 decimals and a minimum below 1 ms
+    # and the form takes them: >= 3 decimals and a minimum below 1 ms
     spec = json.loads((HERE.parent / "gui" / "trace_browser_emtk.view.json").read_text())
 
     def find(node):

@@ -1,7 +1,8 @@
 """The Qt-free trace binner (``core.binning``) and uncached ``core.trace.load_trace``.
 
-Equality with the legacy ``IntensityTrace`` engine is proven by the numbers recorded from it
-(see ``REFERENCE``): the legacy engine needs Qt and a saved setup and is not run here.
+On the real sample the trace is checked against its definition, computed here from the file
+(``conftest.expected_trace``): per detector, its gated photons counted per window of
+``floor(window / resolution)`` clocks, as long as the longest detector trace.
 Everything uses temporary COPIES of repository sample data.
 """
 
@@ -20,20 +21,22 @@ pytest.importorskip("tttrlib")
 
 from chisurf.plugins.tttr.trace_browser.core import trace as core_trace  # noqa: E402
 from chisurf.plugins.tttr.trace_browser.core.binning import bin_trace  # noqa: E402
-from chisurf.plugins.tttr.trace_browser.test.conftest import ALEX  # noqa: E402
+from chisurf.plugins.tttr.trace_browser.test.conftest import (  # noqa: E402
+    ALEX,
+    expected_trace,
+    gated_photons,
+    trace_bins,
+)
 
 HERE = pathlib.Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 BH132 = REPO / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
 
-# Recorded from the legacy engine (``IntensityTrace.process_ptu`` via the pre-change widget's
-# ``_compute_trace_cached``) on a copy of BH_SPC132.spc with the "ALEX Suite (auto)" setup.
-REFERENCE = {
-    10.0: {"bins": 6233, "last": 62.32},
-    1.0: {"bins": 62329, "last": 62.328},
-}
-SUMS = [22443, 56257, 0]
-LABELS = ["G|G", "R|G", "R|R"]
+if BH132.exists():
+    SUMS = [n for n, _ in gated_photons(BH132, ALEX)]  # [22443, 56257, 0]
+else:  # the tests that need the sample skip without it
+    SUMS = []
+LABELS = list(ALEX["detectors"])
 
 
 @pytest.fixture
@@ -59,24 +62,23 @@ class FakeTTTR:
 
 
 @pytest.mark.parametrize("window_ms", [10.0, 1.0])
-def test_reference_numbers_of_the_legacy_engine(spc, window_ms):
+def test_the_trace_is_the_gated_photons_per_window(spc, window_ms):
     ta, counts, labels = bin_trace(spc, window_ms / 1000.0, detectors=ALEX["detectors"])
-    ref = REFERENCE[window_ms]
+    want_t, want = expected_trace(spc, ALEX, window_ms / 1000.0)
     assert labels == LABELS
-    assert counts.shape == (ref["bins"], 3) and counts.dtype == np.float64
-    assert ta.shape == (ref["bins"],) and ta.dtype == np.float64
-    assert ta[-1] == pytest.approx(ref["last"])
+    assert counts.shape == want.shape and counts.dtype == np.float64
+    assert ta.shape == want_t.shape and ta.dtype == np.float64
+    np.testing.assert_allclose(ta, want_t)
+    np.testing.assert_array_equal(counts, want)
     assert [int(x) for x in counts.sum(axis=0)] == SUMS
-    if window_ms == 10.0:
-        assert int(counts.max()) == 467
 
 
 def test_channel_list_gives_one_series_per_routing_channel(spc):
     ta, counts, labels = bin_trace(spc, 0.01, channels=[1, 0])
     assert labels == ["Ch1", "Ch0"]
     assert counts.shape[1] == 2
-    # no micro-time gating: more photons than the gated detectors of the reference
-    assert counts[:, 0].sum() >= 22443 and counts[:, 1].sum() >= 56257
+    # no micro-time gating: at least the photons of the gated detectors on those channels
+    assert counts[:, 0].sum() >= SUMS[0] and counts[:, 1].sum() >= SUMS[1]
     # a channel absent from the file is an all-zero column, not an error
     _, c, lab = bin_trace(spc, 0.01, channels=[0, 5])
     assert lab == ["Ch0", "Ch5"] and c[:, 1].sum() == 0 and c[:, 0].sum() > 0
@@ -96,7 +98,7 @@ def test_selected_names_filter_and_order_detectors(spc):
         spc, 0.01, detectors=ALEX["detectors"], selected=["R|G", "nope", "G|G"]
     )
     assert labels == ["R|G", "G|G"]
-    assert [int(x) for x in c.sum(axis=0)] == [56257, 22443]
+    assert [int(x) for x in c.sum(axis=0)] == [SUMS[1], SUMS[0]]
     assert bin_trace(spc, 0.01, detectors=ALEX["detectors"], selected=["nope"])[2] == []
 
 
@@ -157,7 +159,10 @@ def test_speed_of_the_one_millisecond_window(spc):
 # ---- core.trace.load_trace: uncached, hermetic, no Qt ---------------------------------------
 def test_load_trace_computes_an_uncached_trace_with_the_binner(spc):
     out = core_trace.load_trace(str(spc), 10.0, setup_settings=ALEX)
-    assert out["labels"] == LABELS and np.asarray(out["counts"]).shape == (6233, 3)
+    assert out["labels"] == LABELS and np.asarray(out["counts"]).shape == (
+        trace_bins(spc, ALEX, 0.010),
+        3,
+    )
     assert [int(x) for x in np.asarray(out["counts"]).sum(axis=0)] == SUMS
     assert core_trace.load_cached(spc, spc.parent, 10.0, ALEX, None) is not None
     again = core_trace.load_trace(str(spc), 10.0, setup_settings=ALEX)
@@ -187,7 +192,7 @@ sys.meta_path.insert(0, BlockQt())
 from chisurf.plugins.tttr.trace_browser.core import binning, trace
 det = {{"G|G": {{"chs": [1], "micro_time_ranges": [[616, 3784]]}}}}
 out = trace.load_trace({str(spc)!r}, 10.0, setup_settings={{"detectors": det}})
-assert out["labels"] == ["G|G"] and int(sum(r[0] for r in out["counts"])) == 22443, out["labels"]
+assert out["labels"] == ["G|G"] and int(sum(r[0] for r in out["counts"])) == {SUMS[0]}, out["labels"]
 bad = sorted(x for x in sys.modules if x == 'chisurf.gui' or x.startswith('chisurf.gui.'))
 assert not bad, bad[:5]
 print('QT-FREE OK')

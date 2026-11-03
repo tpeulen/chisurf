@@ -1,9 +1,10 @@
 """The native Trace Browser, card T3b: trace plot, annotation, first-row selection, precompute.
 
 Everything runs on temporary COPIES of ``test/data/tttr/BH/132/BH_SPC132.spc`` (the browser writes the
-metadata ``.trace_browser_meta.json`` and a trace cache beside the data). The reference for the ALEX setup
-on that file is the one the legacy engine gave (recorded in ``test_binning_trace_browser.py``): 6233 bins
-of 10 ms with the per-detector sums ``[22443, 56257, 0]`` for ``green``, ``red``, ``yellow``. The plots are
+metadata ``.trace_browser_meta.json`` and a trace cache beside the data). The numbers for the ALEX setup
+on that file come from the file itself (``conftest.gated_photons`` / ``trace_bins``): each detector's sum is
+its photons on its channels inside its micro-time gate (6233 bins of 10 ms, sums ``[22443, 56257, 0]`` for
+``G|G``, ``R|G``, ``R|R``). The plots are
 ``emtk.implot`` calls; the tests record them by wrapping ``implot.plot_line`` and the axis set-up calls.
 """
 
@@ -15,7 +16,7 @@ import numpy as np
 import pytest
 from emtk import im, implot
 
-from chisurf.plugins.tttr.trace_browser.test.conftest import ALEX
+from chisurf.plugins.tttr.trace_browser.test.conftest import ALEX, gated_photons, trace_bins
 from chisurf.plugins.tttr.trace_browser.test.test_emtk_trace_browser_t2 import (
     BH132,
     ENTRY,
@@ -32,10 +33,14 @@ from chisurf.plugins.tttr.trace_browser.test.test_emtk_trace_browser_t2 import (
     table,
 )
 
-LABELS = ["G|G", "R|G", "R|R"]
-SUMS = [22443, 56257, 0]
-BINS_10MS = 6233
-BINS_1MS = 62329
+#: The ALEX detectors, their photons in the sample and its trace lengths, read from the file.
+LABELS = list(ALEX["detectors"])
+if BH132.exists():
+    SUMS = [n for n, _ in gated_photons(BH132, ALEX)]  # [22443, 56257, 0]
+    BINS_10MS = trace_bins(BH132, ALEX, 0.010)  # 6233
+    BINS_1MS = trace_bins(BH132, ALEX, 0.001)  # 62329
+else:  # the tests that need the sample skip without it
+    SUMS, BINS_10MS, BINS_1MS = [], 0, 0
 
 
 # ---- helpers ---------------------------------------------------------------------------------
@@ -222,7 +227,7 @@ def test_the_y_range_is_applied_to_the_trace_axis(alex_dir, recorder):
         y_limits = [a for a in recorder.limits if a[0] == implot.AXIS_Y1]
         assert y_limits and all(
             a[1:3] == (0.0, 1000.0) for a in y_limits
-        )  # the Qt defaults: 0..1000
+        )  # the default y range: 0..1000
         commit(app, "y_min", 5.0)
         commit(app, "y_max", 300.0)
         recorder.last_frame_lines(app)
@@ -232,7 +237,7 @@ def test_the_y_range_is_applied_to_the_trace_axis(alex_dir, recorder):
         )
         recorder.last_frame_lines(app)  # unchanged: ONCE, so a zoom is not undone
         assert all(a[3] == implot.COND_ONCE for a in recorder.limits if a[0] == implot.AXIS_Y1)
-        # entered the wrong way round: swapped, as the Qt tool does
+        # entered the wrong way round: swapped
         commit(app, "y_min", 400.0)
         recorder.last_frame_lines(app)
         assert [a[1:3] for a in recorder.limits if a[0] == implot.AXIS_Y1] == [(300.0, 400.0)] * 2
@@ -508,7 +513,7 @@ def test_a_filter_that_hides_the_shown_file_clears_the_plot(alex_dir):
         edit_cell(app, "m001.spc", "rating", "3")
         commit(app, "rating_filter", "≥ 3★★★")  # only m001 passes; m000 was shown
         settle_all(app)
-        assert app.model.current_file is None and app.model.trace is None  # as the Qt plot cleared
+        assert app.model.current_file is None and app.model.trace is None  # the plot is cleared
         assert [r["name"] for r in app.model.rows] == ["m001.spc"]
     finally:
         app.close()
@@ -662,7 +667,7 @@ def test_the_model_precompute_methods_run_headless(many_dir):
     )
 
 
-# 7. the page draws populated at both sizes; tooltips; Qt free; Qt agreement
+# 7. the page draws populated at both sizes; tooltips; Qt free; the series totals
 @pytest.mark.parametrize("size", [(1200, 800), (800, 600)])
 def test_the_page_draws_populated_with_the_trace(alex_dir, size):
     app = make_alex_app()
@@ -771,17 +776,18 @@ def test_settings_round_trip_includes_the_precompute_toggle(alex_dir):
         app.close()
 
 
-def test_the_emtk_app_shows_the_series_the_qt_widget_plotted(alex_dir):
-    """Same file, same setup: the series and sums the retired Qt plot drew (recorded 2026-10-10)."""
-    qt_series = {"G|G": 22443.0, "R|G": 56257.0, "R|R": 0.0, "Sum": 78700.0}
+def test_the_series_totals_are_each_detectors_gated_photons(alex_dir):
+    """Each detector's series holds its photons inside its gate; ``Sum`` holds all of them."""
+    expected = {
+        label: float(n) for label, (n, _) in zip(LABELS, gated_photons(alex_dir / "m000.spc", ALEX))
+    }
+    expected["Sum"] = sum(expected.values())
     app = make_alex_app()
     try:
         open_and_show(app, alex_dir)
-        emtk_series = {e["label"]: e["total"] for e in app._view.series}
-        assert set(qt_series) == set(emtk_series) == set(LABELS) | {"Sum"}
-        assert [qt_series[k] for k in LABELS] == [float(v) for v in SUMS]
-        assert qt_series["Sum"] == float(sum(SUMS))
-        for label in qt_series:
-            assert emtk_series[label] == pytest.approx(qt_series[label])
+        shown = {e["label"]: e["total"] for e in app._view.series}
+        assert set(shown) == set(expected) == set(LABELS) | {"Sum"}
+        for label in expected:
+            assert shown[label] == pytest.approx(expected[label])
     finally:
         app.close()

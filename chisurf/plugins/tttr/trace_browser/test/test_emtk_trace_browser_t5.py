@@ -4,8 +4,7 @@ A press on *HMM*, *TW* or *NDX* records a request; ``gui/handoffs.py`` turns it 
 hand-off (:mod:`chisurf.core.plugin.handoff`) to the tool that declares the payload in its
 manifest's ``accepts``: Intensity Trace (``tttr_trace``), TTTR Time Window (``tttr_files``) and ndX
 (``open_path``). The shell (``python -m chisurf``) opens that tool as a dock and hands it the
-payload once it is built. The Qt adapter that did this for the ``--qt`` window (``gui/host.py``)
-is retired; its tests are ported here to the real shell, driven with :class:`emtk.testing.Driver`
+payload once it is built. The tests drive the real shell with :class:`emtk.testing.Driver`
 -- real clicks on the browser's buttons inside its dock.
 
 Everything uses temporary COPIES of ``test/data/tttr/BH/132/BH_SPC132.spc`` (6233 bins of 10 ms
@@ -224,7 +223,7 @@ def test_hmm_follows_the_bin_window_of_the_browser(shell, work):
 
 
 def test_a_second_hand_off_reuses_the_open_dock_and_previews_the_new_file(shell, work):
-    """Deliberate difference to the Qt adapter, which opened a new window per press: a tool is one dock."""
+    """A tool is one dock: a second hand-off reuses it instead of opening another window."""
     shell, driver = shell
     hosted, browser = open_browser(shell, driver, work)
     select(browser, driver, "m000.spc")

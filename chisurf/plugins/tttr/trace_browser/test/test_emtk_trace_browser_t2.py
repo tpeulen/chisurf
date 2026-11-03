@@ -376,7 +376,7 @@ def test_rating_filter_through_the_spec_choice(fake_dir):
         app.close()
 
 
-# 6. include subfolders: the toggle really rescans (the Qt toolbar checkbox did nothing)
+# 6. include subfolders: the toggle really rescans
 def test_include_subfolders_really_rescans(data_dir):
     app = make_app()
     try:
@@ -520,7 +520,7 @@ def test_a_changed_setup_rescans_the_open_folder(data_dir, tmp_path):
         app.close()
 
 
-# 11. the start page: the Qt constructor continues with the setup it has
+# 11. the start page: the app continues with the setup it has
 def test_the_app_opens_on_the_browser_page_when_a_setup_is_available(tmp_path):
     from chisurf.plugins.tttr.trace_browser.gui.app import TraceBrowserApp
 
@@ -637,26 +637,30 @@ def test_port_is_qt_free():
     assert result["ok"], result["output"]
 
 
-# 15. the app lists the rows the retired Qt widget listed for the same folder
-#     (recorded 2026-10-10 from ``TraceBrowser._open_folder`` + the filter combo + the Subfolders box on
-#     the ``fake_dir`` above with the Overlap setup; key = (include_subfolders, filter index))
-QT_ROWS = {
-    (False, 0): [("a.ptu", 3), ("b.PTU", 2), ("c.spc", 0)],
-    (False, 1): [("a.ptu", 3), ("b.PTU", 2)],
-    (False, 2): [("a.ptu", 3), ("b.PTU", 2)],
-    (False, 3): [("a.ptu", 3)],
-    (False, 4): [("c.spc", 0)],
-    (True, 0): [("a.ptu", 3), ("b.PTU", 2), ("c.spc", 0), ("sub/e.ht3", 1)],
-    (True, 1): [("a.ptu", 3), ("b.PTU", 2), ("sub/e.ht3", 1)],
-    (True, 2): [("a.ptu", 3), ("b.PTU", 2)],
-    (True, 3): [("a.ptu", 3)],
-    (True, 4): [("c.spc", 0)],
-}
+# 15. the app lists the folder's photon files the rating filter lets through: subfolders only
+#     when asked, never ``.trash`` or a text file. (name, rating) of the photon files in ``fake_dir``:
+FAKE_RATINGS = {"a.ptu": 3, "b.PTU": 2, "c.spc": 0, "sub/e.ht3": 1}
+#: The rating filters in FILTER_LABELS order: All, >= 1, >= 2, >= 3, only 0.
+KEEPS = (
+    lambda r: True,
+    lambda r: r >= 1,
+    lambda r: r >= 2,
+    lambda r: r >= 3,
+    lambda r: r == 0,
+)
+
+
+def expected_rows(ratings, recursive, idx):
+    return sorted(
+        (name, rating)
+        for name, rating in ratings.items()
+        if (recursive or "/" not in name) and KEEPS[idx](rating)
+    )
 
 
 @pytest.mark.parametrize("recursive", [False, True])
 @pytest.mark.parametrize("idx", range(5))
-def test_the_app_lists_the_rows_the_qt_widget_listed(fake_dir, recursive, idx):
+def test_the_app_lists_the_rated_photon_files_the_filter_keeps(fake_dir, recursive, idx):
     from chisurf.plugins.tttr.trace_browser.gui.model import FILTER_LABELS
 
     app = make_app()
@@ -665,7 +669,7 @@ def test_the_app_lists_the_rows_the_qt_widget_listed(fake_dir, recursive, idx):
         commit(app, "rating_filter", FILTER_LABELS[idx])
         app.model.request("open_folder", fake_dir)
         settle(app)
-        assert names(app.model.rows) == sorted(QT_ROWS[(recursive, idx)])
+        assert names(app.model.rows) == expected_rows(FAKE_RATINGS, recursive, idx)
     finally:
         app.close()
 
@@ -677,7 +681,7 @@ def test_the_scan_is_the_models_not_api_list_files(fake_dir):
 
 
 def test_a_rescan_does_not_keep_stale_hidden_rows(fake_dir):
-    """The Qt widget hid rows by row index across scans; the model has no such state."""
+    """Rows are filtered afresh on every scan: no hidden-row state survives a rescan."""
     from chisurf.plugins.tttr.trace_browser.gui.model import FILTER_LABELS, TraceBrowserModel
 
     model = TraceBrowserModel()
