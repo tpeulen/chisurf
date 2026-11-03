@@ -1554,7 +1554,7 @@ class CodeEditorGui:
         height = float(h or vp.size[1] or 720.0)
 
         # Cohesive dark chrome (same palette family as the burst shell): the
-        # default gray read as unfinished next to the Qt editor. Only on the dark
+        # default gray reads as unfinished. Only on the dark
         # theme: the light theme (emtk.theme) is the editor's look as it is.
         pushed = 0
         if not _theme.is_light():
@@ -2078,7 +2078,7 @@ class CodeEditorGui:
         return pathlib.Path(record["path"])
 
     def project_selected(self, record) -> None:
-        """A click on a file row opens it (as the Qt tree did); a folder row only selects."""
+        """A click on a file row opens it; a folder row only selects."""
         path = self._row_path(record)
         if path is not None and path.is_file():
             self.model.open_file(path)
@@ -2188,7 +2188,7 @@ class CodeEditorGui:
         notebook.draw_terminal(box[2], key="kernel_terminal")
 
     # -- view toggles ------------------------------------------------------------------------------- #
-    #: The docks View lists, as the Qt editor's View menu: ``(dock key, label)``.
+    #: The docks the View menu lists: ``(dock key, label)``.
     VIEW_DOCKS = (
         ("files", "Project"),
         ("symbols", "Symbols"),
@@ -2223,7 +2223,7 @@ class CodeEditorGui:
         self.notebook_window.hide()
 
     def _draw_notebook_window(self, width: float, height: float) -> None:
-        """The shipped example notebooks, grouped as the Qt *Open Notebook* submenu grouped them."""
+        """The shipped example notebooks, grouped by the prefix of their name (``notebook_groups``)."""
         if not self.notebook_window.open:
             return
         from chisurf.plugins.core.code_editor.shipped_notebooks import notebook_groups
@@ -2440,7 +2440,7 @@ class CodeEditorGui:
             im.end_main_menu_bar()
 
         # Slim action row: small buttons, one line tall, an emoticon beside
-        # each label the way the Qt toolbar had icons beside text. Default
+        # each label. Default
         # frame style -- the rounding that made them read as tiles is gone.
         if im.button(tr("➕ New")):
             self.model.new_document()
@@ -2496,7 +2496,7 @@ class CodeEditorGui:
         )
         if changed:
             self.model.run_endpoint = "console" if endpoint == 1 else "process"
-        # Navigation and language help, as on the Qt toolbar: Back / Fwd walk the jump history,
+        # Navigation and language help: Back / Fwd walk the jump history,
         # Def and Hint ask the Python language server (Settings ▸ Enable Python LSP).
         im.begin_disabled(not self.model.can_nav_back)
         self._same_line_or_wrap(box, im.calc_text_size("◀ Back")[0] + 14.0)
@@ -2911,7 +2911,7 @@ class CodeEditorGui:
             ("rpc_cmd_port", "RPC command port", "Command port used by editor RPC clients"),
             ("rpc_pub_port", "RPC event port", "Event port used by editor RPC clients"),
         ):
-            # Typed, in the Qt preferences' range of unprivileged ports.
+            # Typed, in the range of unprivileged ports.
             port, _ = typed_number_field(
                 name,
                 getattr(self.model, name),
@@ -3041,7 +3041,7 @@ class CodeEditorApp(ImApp):
         self.model.request_frame = self.request_frame
         self.editor_gui.save_preferences = self.save_preferences
         # Until the editor's own preferences say otherwise (restore_settings), the global
-        # gui.editor.enable_lsp decides, as it did for the Qt editor.
+        # gui.editor.enable_lsp decides.
         if _global_editor_setting("enable_lsp") is True:
             self.model.start_lsp()
 

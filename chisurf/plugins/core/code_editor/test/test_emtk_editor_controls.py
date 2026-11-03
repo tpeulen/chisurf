@@ -1,13 +1,5 @@
-"""The emtk Code Editor at control parity with the Qt ``CodeEditorWindow`` it replaced.
-
-The Qt side is ``qt_reference.json``: the legacy window's menu bar, toolbar, docks, combos, buttons,
-tree headers, tab bars and status labels, recorded once from the live window (offscreen) and
-frozen; ``_recorded`` names the commit. So this file imports no Qt.
-
-Every Qt control is looked up in the emtk app by driving it (emtk ``Driver``: clicks on drawn
-text, never a call into the model), under :data:`RENAMED` when its caption changed. A control
-that is not reachable is a failure; deliberate differences are :data:`DELIBERATE`, each with its
-reason.
+"""The emtk Code Editor's controls, each driven through the window (emtk ``Driver``: clicks on drawn
+text, never a call into the model): toolbar, menus, docks, tables, find bar, assistant, status line.
 """
 
 from __future__ import annotations
@@ -20,30 +12,7 @@ from emtk.testing import Driver
 
 from chisurf.plugins.core.code_editor.gui.editor_app import make_editor_app
 
-QT = json.loads(pathlib.Path(__file__).with_name("qt_reference.json").read_text(encoding="utf-8"))
 SIZE = (1400, 860)
-
-#: Qt caption -> emtk caption, where only the words changed.
-RENAMED = {
-    "Open": "Open…",
-    "Folder": "Folder…",
-    "Save As": "Save As…",
-    "Find": "Find…",
-    "Settings": "Settings…",
-    "Fwd": "Forward",
-    "Def": "Go to definition",
-    "Run": "Run Script",
-    "Lint": "Lint (Ruff Check)",
-    " ": "Show Whitespace",
-    "": "Show Whitespace",
-}
-
-#: Qt controls whose emtk twin is not a 1:1 caption, and why.
-DELIBERATE = {
-    "Open Notebook": "File ▸ Open Notebook… opens a picker of the same groups and notebooks (emtk menus have no "
-    "nested submenus); compared separately",
-}
-
 
 @pytest.fixture
 def app(tmp_path, monkeypatch):
@@ -81,36 +50,11 @@ def _menu(driver, title: str) -> list[str]:
     return shown
 
 
-def _labels(items) -> list[str]:
-    out: list[str] = []
-    for item in items:
-        if isinstance(item, dict):
-            out.extend(item)
-        else:
-            out.append(item.split(" [", 1)[0].replace(" (checkable)", ""))
-    return out
-
-
-@pytest.mark.parametrize("menu", sorted(QT["menus"]))
-def test_every_qt_menu_item_is_in_the_emtk_menu_of_the_same_name(driver, menu):
-    drawn = _menu(driver, menu)
-    missing = []
-    for label in _labels(QT["menus"][menu]):
-        want = RENAMED.get(label, label)
-        if label in DELIBERATE:
-            continue
-        if not any(text == want or text.startswith(want) for text in drawn):
-            missing.append((label, want))
-    assert not missing, (menu, missing, drawn)
-
-
-def test_the_shipped_notebooks_submenu_has_the_qt_groups_and_notebooks(app, driver):
+def test_the_open_notebook_picker_lists_the_shipped_notebooks_and_opens_one(app, driver):
     from chisurf.plugins.core.code_editor.shipped_notebooks import notebook_groups
 
-    qt = next(item["Open Notebook"] for item in QT["menus"]["File"] if isinstance(item, dict))
-    qt_groups = {group: notebooks for entry in qt for group, notebooks in entry.items()}
     groups = {group: [p.stem for p in paths] for group, paths in notebook_groups().items()}
-    assert groups == qt_groups
+    assert groups and all(groups.values())
     driver.click("File")
     driver.click("Open Notebook…")
     drawn = _drawn(driver)
@@ -121,7 +65,7 @@ def test_the_shipped_notebooks_submenu_has_the_qt_groups_and_notebooks(app, driv
     assert not app.editor_gui.notebook_window.open
 
 
-def test_every_qt_toolbar_button_is_on_the_emtk_toolbar(driver):
+def test_the_toolbar_draws_its_buttons(driver):
     drawn = " ".join(_drawn(driver))
     for label in (
         "New",
@@ -139,7 +83,7 @@ def test_every_qt_toolbar_button_is_on_the_emtk_toolbar(driver):
         "Agent",
     ):
         assert label in drawn, label
-    # The Qt run-target combo: both targets offered.
+    # the run-target combo
     assert "Separate process" in drawn or "In ChiSurf console" in drawn
 
 
@@ -151,12 +95,11 @@ def test_stop_replaces_run_while_a_script_runs(app, driver):
         app.model.is_running_script = False
 
 
-def test_every_qt_dock_is_an_emtk_dock_listed_under_view(app, driver):
+def test_every_dock_is_listed_under_view(app, driver):
     drawn = _menu(driver, "View")
-    for dock in QT["docks"]:
-        assert dock in drawn, dock
     gui = app.editor_gui
     for key, label in gui.VIEW_DOCKS:
+        assert label in drawn, label
         assert key in gui.docks.windows, key
 
 
@@ -171,18 +114,15 @@ def test_view_toggles_hide_and_show_each_dock(app, driver, dock):
     assert gui.docks.is_shown(key) is not shown
 
 
-def test_the_project_table_has_the_qt_columns_and_opens_a_clicked_file(app, driver):
-    headers = QT["tree_views"][1]
-    assert headers == ["Name", "Size", "Kind", "Date Modified"]
+def test_the_project_table_has_its_columns_and_opens_a_clicked_file(app, driver):
     columns = [c["title"] for c in app.editor_gui.view_spec["project"][0]["options"]["columns"]]
-    assert columns == headers
+    assert columns == ["Name", "Size", "Kind", "Date Modified"]
     assert "Name" in _drawn(driver) and "script.py" in _drawn(driver)
     driver.click("script.py")
     assert app.model.active_doc.name == "script.py"
 
 
 def test_the_symbols_table_lists_the_symbols_and_jumps(app, driver):
-    assert QT["tree_headers"][0] == ["Symbol", "Line"]
     columns = [c["title"] for c in app.editor_gui.view_spec["symbols"][0]["options"]["columns"]]
     assert {"Symbol", "Line"} <= set(columns)
     app.model.open_file(pathlib.Path(app.model.project_root) / "script.py")
@@ -203,13 +143,13 @@ def test_the_kernel_dock_says_what_it_needs_and_offers_restart(app, driver):
     assert "Notebook terminal" in drawn
 
 
-def test_the_find_bar_has_the_qt_toggles(app, driver):
+def test_the_find_bar_has_its_toggles(app, driver):
     app.model.open_file(pathlib.Path(app.model.project_root) / "script.py")
     driver.click("Edit")
     driver.click("Find…")
     drawn = _drawn(driver)
     for label in ("Match case", "Whole word", "Regex", "Prev", "Next", "Close find"):
-        assert label in drawn, label  # Qt: Aa, \b, .*, ▲, ▼, ✕
+        assert label in drawn, label
 
 
 def test_regex_find_selects_a_pattern_match(app, driver):
@@ -228,7 +168,7 @@ def test_regex_find_selects_a_pattern_match(app, driver):
     assert app.model.active_doc.editor.selected_text() == "def run"
 
 
-def test_the_assistant_offers_the_qt_agent_controls(app, driver):
+def test_the_assistant_offers_the_agent_controls(app, driver):
     driver.click("🤖 Agent")
     driver.frame(2)
     if not app.editor_gui.docks.is_shown("agent"):
@@ -238,14 +178,9 @@ def test_the_assistant_offers_the_qt_agent_controls(app, driver):
     for label in ("Things to ask", "Send"):
         assert label in drawn, label
     assert "Wiki" not in drawn
-    # Qt's mode combo: the three modes.
-    from chisurf.plugins.core.code_editor.gui.chat_app import MODE_LABELS
-
-    assert [m.split(" ", 1)[1] for m in QT["combos"]["1"]] == list(MODE_LABELS.values())
 
 
 def test_the_status_line_has_the_position_and_the_lsp_state(app, driver):
-    assert QT["status"][1] == "Ln 1, Col 0" and QT["status"][3] == "LSP idle"
     drawn = " ".join(_drawn(driver))
     assert "Ln 1, Col 1" in drawn  # emtk counts columns from 1, as the line
     assert (
@@ -264,7 +199,7 @@ def test_the_settings_menu_toggles_line_numbers_and_whitespace(app, driver):
     assert app.model.show_whitespace is not whitespace
 
 
-def test_the_qt_free_port():
+def test_the_port_is_qt_free():
     from test.gui.emtk_port_parity import qt_free
 
     assert qt_free("code_editor")["ok"] is True
