@@ -9,6 +9,32 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
+**4. More samples: further measurements through the tuned pipeline (2026-11-04).** Owner: "last
+step in the pipeline should be to load more samples, that are processed the same way." Done: step 4
+of the hub (`burst_analysis/more_samples.py`, window `gui/more_samples_app.py` + `more_samples.view.json`,
+opens once `step_done("mle")`). One `Recipe` captured from what the steps export
+(`BurstWorkflowContext.to_payload` minus the measurements, Burst Selection `export_settings`, Burst MLE
+`settings_payload` + the IRF arrays, `irf_source`, `shift_calibration`, and `bva_settings` /
+`two_cde.settings` / `h2mm.settings_dict` / fusion `settings.to_dict` of the optional steps that
+ran); `process_sample` replays it through the steps' own models: `BurstSelectionModel` (`set_setup`,
+`import_settings`, `prepare_run(force)`, `run`), `background_tasks.bva_task`/`two_cde_task`,
+`fuse_folder`, `MleViewModel.take_bursts` (the hub's hand-off: the sample's own strict background or
+the buffer) then the recipe's per-detector `MleSettings` (window, shifts, model) and frozen IRF,
+`run_batch`, `export_results`; `H2mmViewModel.compute`. The calibration report and the recipe
+(`burst_recipe`, `parameter_table`/`analysis_run`, ids in its parameters) go into each sample's
+container; runs registered under the photon dataset (`burst_selection.gui.native.register_runs`, the
+former `_register_runs`). `SampleQueue` = the thread + `progress`/`stop` the busy overlay reads; workers
+= `burst_selection.api.selection._search_workers` (1 for small files). Headless:
+`BurstWorkflow.offline().process_more(paths, recipe)` (spawn: scripts need the main guard). Drops while
+step 4 is selected go to it (`receive_photons`). Measured on the demo (`demo.make_more_samples`): by
+hand (sample 2 as step 1's measurement, steps 2-3 re-run, MLE window set as tuned) = replay, 580
+bursts, mean tau 2.984289746440577 ns, IRF arrays identical (`test_more_samples.py`, 5 tests ~55 s).
+Open: (a) the replay re-derives the IRF candidates in `take_bursts` (~1 s/sample) and then overwrites
+them with the recipe's -- skip `prepare_patterns`' IRF part when a recipe IRF is given; (b) step 4 has
+no per-sample plot (decay / E histogram) -- the run is in the workspace, ndX opens it; (c) samples run
+in threads sharing the MLE fit pool; >1 only for files >= 32 MB (the search's rule), not measured on
+real data; (d) the recipe is captured at Run: a step changed while samples run applies to the next Run.
+
 **Burst MLE fit quality: G, the fit window, the IRF threshold, the background, the reference fit
 (2026-11-04).** Owner: "the wres look horrible! for the ref sample it must be perfect why does the
 bg have a decay shape?" + "inverted burst selection is not buffer, must be stricter". Measured on

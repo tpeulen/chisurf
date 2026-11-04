@@ -66,6 +66,7 @@
 - 2026-11-04: Burst Analysis step '4. More samples' (gui/more_samples_app.py + more_samples.view.json, opens once Burst MLE has fitted): workspace Input table and window drops (receive_photons routes to it while it is open) queue samples; Run/Next processes them off the UI thread behind the busy card with Stop; one short row each (bursts, mean tau, mean E, status), details in the tooltip; Advanced adds the recipe table and Re-run. Hub tour step, help, own tour and help, DE/FR. Tests: burst_analysis/tests/test_more_samples.py (replay = the pipeline by hand on the same sample: 580 bursts, identical mean tau; failure isolated; recipe round-trips through the hub settings).
 - 2026-11-04: docs: guide 116 'More samples, processed the same way' (the recipe, the window, where results go, BurstWorkflow.process_more), registered in docs/guides/index.md; figures from docs/guides/screenshots/guide_116_more_samples.py (demo session, two samples done and one broken file failed).
 - 2026-11-04: docs/references/figures.yaml: provenance of guide 116's two renders (guide_116_more_samples.py).
+- 2026-11-04: okf/plugins/burst.md: resume point for step 4 (More samples): how the recipe is captured and replayed, the by-hand equality measured on the demo, and what is open (IRF re-derived then overwritten per sample, no per-sample plot, threads only for large files, recipe captured at Run).
 
 ## 2026-11-03
 
