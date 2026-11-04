@@ -37,9 +37,12 @@ from chisurf.core.fluorescence.burst.cusum import cusum_filter
 # IRF + background from non-burst photons
 from chisurf.core.fluorescence.burst.irf_bg import (
     DetectorIrfBackground,
+    StrictBackground,
     extract_irf_background,
     extract_mle_irf_background,
+    flat_scatter_background,
     non_burst_mask,
+    strict_background_mask,
 )
 
 # Kalman module — forwards to the tttrlib C++ engine; the Python fallback

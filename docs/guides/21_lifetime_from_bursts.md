@@ -31,11 +31,11 @@ Burst MLE's IRF sources for that colour's detectors (`irf_files`); **IRF from** 
 them (Auto: the reference dye first). A colour without its own files reads the other IRF files
 on its channels, and a detector they show nothing keeps the estimate below. In the pipeline
 there is no file list in Burst MLE: the files are Data Selection's. Files in the
-**Buffer** row are the buffer (`bg_files`): they correct a scatter IRF for its background and give
-an independent background rate, `B_<detector>`, named in the IRF source line ("G|G: IRF from the
-IRF measurement water_irf.ptu (buffer-corrected); background from the photons outside the
-bursts (buffer buffer.ptu: B_G|G = 1.40 kHz)"). The background of the fit is still the photons
-outside the bursts. Without files in these rows the IRF and background are estimated as below
+**Buffer** row are the buffer (`bg_files`): they correct a scatter IRF for its background and are
+the fit's background -- its histogram the shape, its rate `B_<detector>` the rate -- named in the IRF
+source line ("G|G: IRF from the IRF measurement water_irf.ptu (buffer-corrected); background: the
+buffer (buffer buffer.ptu: B_G|G = 1.40 kHz)"). Without a buffer the background is selected from the
+measurement itself (see *The background* below). Without files in these rows the IRF and background are estimated as below
 and the line says so. See {ref}`concept-reference-dye-calibration`.
 
 ## Extracting patterns from non-burst photons
@@ -187,10 +187,33 @@ check, not what is fitted.
 :name: fig-21-burst-mle-residuals
 :width: 100%
 
-Burst MLE on DNA13bp_3 (RVZMT150, G|G, IRF from Rh110): a single lifetime
-(Fit23) to a FRET sample. The weighted residuals under the decay rise across the
-VV window and dip in VH (χ²ᵣ = 29): one lifetime with this anisotropy does not
-describe a donor-only + FRET mix.
+Burst MLE on DNA13bp_3 (RVZMT150, G|G, IRF from Rh110, G 1.436 from Data
+Selection): a single lifetime (Fit23) on the summed decay of a FRET sample. The
+background (grey, flat) is the flat + scatter model: no stretch of this
+measurement is at the background level. χ²ᵣ = 14.8: one lifetime does not
+describe a donor-only + FRET mix (below).
+```
+
+#### One lifetime and the summed decay
+
+The decay shown is the sum of every burst of the file. Fitting it with one
+lifetime checks the IRF, the shifts, G and the background only where the sample
+has one lifetime -- a reference dye. A FRET sample is a mix: on DNA13bp_3 the
+summed G|G decay needs two lifetimes (1.24 ns, 49 %, and 3.74 ns, a diagnostic
+fit with shared VV/VH amplitudes and ρ 0.6 ns: χ²ᵣ 2.9, against 14.8 for Fit23),
+and it needs no IRF shift (0 bins best; ±0.5 bin raise χ²ᵣ to 4). Burst-wise
+the model is still one lifetime per burst; the summed decay's single-lifetime
+χ²ᵣ is not the check of the instrument, the reference fit is.
+
+```{figure} figures/21_burst_fit_steps.png
+:name: fig-21-burst-fit-steps
+:width: 100%
+
+DNA13bp_3, G|G: Fit23 on the summed decay as shipped (χ²ᵣ 27.7: G 1.000, the IRF
+cut at 2 % of its peak, the decay-shaped background, the window as zeroed bins),
+with G 1.436 (14.6), the window honoured (5.9), the IRF kept whole (6.2), and the
+flat + scatter background (14.9) -- the decay-shaped background had been a second
+lifetime (gamma 0.21). Last: the two-lifetime diagnostic (2.9).
 ```
 
 The **IRF** tab is there in Simple mode too, because the fit is only as good as
@@ -355,16 +378,58 @@ free one 133. With the IRF from Rh110, 2I* was 87.
 
 #### Measured IRF, buffer, Opt, Save fit
 
-The background of the fit is always taken from the photons outside the bursts
-(the reverse burst selection) of the measurement itself, whatever the IRF came
-from. Where molecules too dim to make a burst pass the focus, those photons are
-mostly fluorescence, so the background has the shape of a decay. The plot draws
-it at the level the bursts hold: the non-burst histogram times the time inside
-the bursts over the time outside them. The fit text gives that share of the
-photons in the fit window, to compare with the fitted gamma, and the **IRF** tab
-gives the background rate in kHz. The tab **IRF/BG files** replaces the IRF estimate from the non-burst
-photons by measurements; background (buffer) files only correct a scatter IRF
-for its background. An IRF file may be a scatter or a reference dye: a dye
+#### The background
+
+The photons outside the bursts are not a buffer. Molecules too dim to make a
+burst pass the focus, and every burst has flanks (the molecule entering and
+leaving) the search left out: their histogram is a fluorescence decay, and as
+the fit's background it gave a single-lifetime fit a second lifetime through
+gamma. The background of the fit is therefore, in this order:
+
+1. the **buffer** of Data Selection: its histogram is the shape, its rate the rate;
+2. the **strict background selection** of the measurement
+   (`strict_background_mask`, shared with Burst IRF & Background): every burst
+   widened by 2 ms plus half its duration on both sides, then the local count
+   rate over 10 photons (as in the burst search) and every stretch faster than a
+   Poisson background reaches with 1 % probability (≈ 2.5 × its rate) dropped;
+   the rate starts as the exponential tail of the inter-photon times and is
+   re-estimated from the stretches kept until it holds still; when the kept
+   photons' histogram still holds fluorescence (more than 10 % of it, by a fit of
+   flat + scatter + exponentials) the threshold is lowered until it does not or
+   too little is left. Kept when it is a background's histogram: its photons over
+   its time (corrected for the background's own fluctuations the cut drops);
+3. else a **flat + scatter model** (`flat_scatter_background`): the flat level
+   before the prompt (and in the gate's last tenth, the lower), a scatter of the
+   IRF's shape from that same fit -- never the decay.
+
+Its rate times the time in the bursts is the count the plot draws. The fit text
+names which it is ("Background: 1.9% of the photons in the window (flat +
+scatter model)"); the detector line gives its rate, the rate of all photons
+outside the bursts and the share of the time the strict selection kept, or ⚠
+when no stretch is at the background level; the status line says why
+(`MleSession.background_info`, `strict_background`). On a simulation (1 kHz flat + scatter, dim molecules
+and bursts) the strict selection keeps 80 % of the time at 1.04 kHz with the
+buffer's shape, where the photons outside the bursts give 1.81 kHz and a decay.
+On DNA13bp_3 no stretch is at the background level: the sub-threshold molecules
+are in the focus nearly all the time (their own long gaps give a 3.5 kHz
+"background"); at a local rate below 2.6 kHz, 3 % of the time, the flat floor
+falls to a fifth of the non-burst one -- that floor is the molecules'
+afterpulsing, not dark counts -- but the prompt still decays, so the model is
+used.
+
+```{figure} figures/21_background_selection.png
+:name: fig-21-background-selection
+:width: 100%
+
+Left, simulated: the photons outside the bursts (blue) against the strict
+selection (orange) and the buffer that made them (dashed). Right, DNA13bp_3 G|G
+VV (no buffer measured): outside the bursts, the strict selection at its own
+rate, a stricter one (3 % of the time) and the flat + scatter model the fit uses.
+```
+
+The tab **IRF/BG files** replaces the IRF estimate from the non-burst
+photons by measurements; background (buffer) files correct a scatter IRF
+for its background and are the fit's background. An IRF file may be a scatter or a reference dye: a dye
 is recognised by its name and its IRF is recovered as above. **Add IRF files** and **Add background files** take any
 TTTR measurement; each detector reads its own channels, the histograms of
 several files are summed, the IRF is normalised to one per polarisation and the

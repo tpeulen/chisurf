@@ -9,6 +9,46 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
+**Burst MLE fit quality: G, the fit window, the IRF threshold, the background, the reference fit
+(2026-11-04).** Owner: "the wres look horrible! for the ref sample it must be perfect why does the
+bg have a decay shape?" + "inverted burst selection is not buffer, must be stricter". Measured on
+DNA13bp_3 + Rh110_thick_1 (RVZMT150, 80 ps bins; scratch harness `mlefix/dump_state.py` = the hub
+with the PTU dropped, Rh110 as `reference:G`, optionally G 1.436 applied). **Rule now: background
+photons = a strict selection (margins around every burst + local rate at the background level),
+never the inverse of the burst selection; the fit background is the buffer, else that strict
+selection when its histogram is a background's, else a flat + scatter model of it -- never a
+decay** (`MleSession.background_of`; `core/fluorescence/burst/irf_bg.py`:
+`strict_background_mask`, `flat_scatter_background`, shared with Burst IRF & Background).
+Root causes found, each with Fit23 on Rh110 (tau 4.0 fixed) / on the summed bursts: (1) the setup's
+G was 1.000, Data Selection computes 1.436 from Rh110 (`reference_g_factors`) -- not applied in the
+harness (it sets `context.samples` directly; in the owner's session it is applied when Data
+Selection computes it): Rh110 269 -> 6.1, bursts 27.7 -> 14.6; (2) **Fit2x scored the bins outside
+the fit window as observed zeros** (the model is normalised over every bin it gets): Rh110 6.1 ->
+3.6, bursts 14.6 -> 5.9; fixed by `Fit2xSettings.fit_window` (histograms cut at the stop, data
+before the start not scored, the window's background), `engine.fit_window`, `ALGORITHM_VERSION` 2;
+(3) the IRF thresholds 0.02 cut the deconvolved IRF's tail at 2 % of its peak: Rh110 3.6 -> 1.49,
+default now 0; (4) the decay-shaped background (gamma 0.21) had been the second lifetime: with the
+flat + scatter background the bursts go 6.2 -> 14.9 -- **Fit23 on the summed FRET decay is the wrong
+model**: two lifetimes (1.24 ns 49 % + 3.74 ns, rho 0.6, NNLS diagnostic) give 2.9 and want no IRF
+shift. The data points were missing from realistic screenshots only (emtk HostPainter recorded
+`markers` and never drew them; emtk f72f77d) and the marker size was the wrong spec field. The
+**reference fit** (`extraction.reference_fit`: one amplitude, flats and shifts free, tau fixed,
+rho from the dye, the setup's G/l1/l2; shifts from the G-free fit) is shown in the IRF tab status
+(chi2_r, ⚠ when the dye asks for another G), the IRF tool's *Reference fit* view and the
+calibration report: Rh110 1.45 (G 1.436), 309 (G 1.000; G free 1.428 -> 1.40). Strict selection
+on DNA13bp_3: at its own rate (the long gaps give 3.5 kHz) 89 % kept and 75 % fluorescence; at
+< 2.6 kHz local rate 3 % of the time, the floor drops to a fifth (0.15 vs 0.75 counts/s/bin: the
+non-burst floor is the molecules' afterpulsing) but the prompt still decays -- no stretch is at the
+background level, so the model is used (⚠ in the detector line). Simulated (1 kHz flat + scatter,
+dim molecules, bursts): strict 80 % of the time, 1.04 kHz, the buffer's shape; outside the bursts
+1.81 kHz and a decay. Open: (a) the residual 1.45 on Rh110: the dye's own tail says 4.02 ns, the
+database 4.0 (tau free: 1.10) -- a single-molecule Rh110 measurement would also remove the 61 kHz
+bulk rate question; (b) the VV rise spike that stays in the two-lifetime diagnostic is the
+rotational model (one rho, no hindered rotation): a burst-wise model choice, not an IRF fault;
+(c) the strict selection costs ~5-10 s on 20 M photons (memoised per file and IRF); the accept
+check bins every detector per tightening step; (d) offer Fit24 (two lifetimes) for the summed
+decay preview? Owner decision -- Fit23 stays the burst-wise default.
+
 **Responsiveness after a burst search (2026-11-04).** Owner: "after burst selection the UI is very
 unresponsive". Measured on DNA13bp_3.ptu (20 M photons) in the whole shell (`EmtkShellApp` +
 `RealisticDriver`, real wgpu painter, cProfile per frame; script pattern: copy the settings dir, drop
@@ -54,7 +94,7 @@ source, fit with standard errors and χ²r, G, buffer, IRF, estimated): `context
 and, once the bursts exist, object `burst_calibration` in each measurement's container
 (`write_report` / `read_report`). Burst MLE gets `context.references()` per detector (IRF before dye, a colour
 without IRF reads all IRF files; buffer for every detector); its source line names the IRF
-measurement and the buffer's `B_<det>`; the fit background is still the non-burst photons.
+measurement and the buffer's `B_<det>`; the fit background is the buffer, else the strict background selection (2026-11-04, above).
 `context.estimated()` records what was estimated (also in the container provenance). Measured on
 the simulated session (`burst_analysis/demo.py`, known answer): G 1.150 (1.15), red 0.930 (0.92),
 B 1.402 kHz (1.40), green w0 +5 %, z0 -6 %, V_eff +4 % with the true D; tests `test_samples.py`,
@@ -90,10 +130,10 @@ per-file `choices` selector (emtk 0.1.42) is unused here now but kept in emtk.
    past the gate was clamped to it and the green line snapped back. The binning is the setup's
    `tttr_reading.micro_time_binning` (`MleSession.set_definition`); the MLE's Binning field and auto
    pick (`select_binning`) are gone, and a binning change resets a window set in bins. The fit's
-   background is always the non-burst photons (reverse burst selection), whatever the IRF came from;
-   background files are only the buffer that corrects a scatter IRF (`MleSession.buffer_np`). The VV/VH
+   background was the non-burst photons until 2026-11-04 (superseded: buffer, else the strict
+   selection, else a flat + scatter model, see the top item). The VV/VH
    IRF thresholds are background levels: taken off every bin, then clipped at zero (`process_irf`;
-   owner's choice over auto-setting the clip from the floor). Opt searches them in 0-0.05 only (a
+   default 0 since 2026-11-04). Opt searches them in 0-0.05 only (a
    larger level shaves the IRF into whatever the decay wants). On the synthetic demo, 2I* stays
    below 1 across ~1-4 bins of VH shift, so the Opt test checks the shift's direction, not the bin;
    BH m000 at binning 32: tau 2.0390 -> 2.0408 ns. The demo setup declares binning 2 (what the old

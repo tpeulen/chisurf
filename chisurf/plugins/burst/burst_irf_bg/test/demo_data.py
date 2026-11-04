@@ -72,20 +72,24 @@ def build(root: pathlib.Path, seed: int = 4) -> pathlib.Path:
 
 #: Non-burst photons written per detector: the IRF scatter and the flat background, over the run.
 NON_BURST_PER_DETECTOR = (1500.0 + 1000.0) * DURATION_S
+#: Their rate [kHz]: what the background estimate should give.
+BACKGROUND_KHZ = (1500.0 + 1000.0) / 1e3
 
 
 def assert_rows_recover_the_demo(rows) -> None:
     """The tool's result rows recover what the measurement was built with.
 
-    Per detector the prompt sits on the IRF peak and the non-burst count is the scatter plus the
-    flat background written outside bursts (a few percent go to burst windows and to photons
-    sharing a macro tick); burst photons were routed 60:40 to the first and second detector, and
-    both detectors see the same non-burst stream, so their background rates agree.
+    Per detector the prompt sits on the IRF peak. The background photons are the strict
+    selection (the bursts widened by their margins, the stretches at the background's local
+    rate), a share of the scatter plus the flat background written; their rate is that
+    background's, 2.5 kHz per detector. Burst photons were routed 60:40 to the first and second
+    detector, and both detectors see the same non-burst stream, so their background rates agree.
     """
     assert len(rows) == 2
     for row in rows:
         assert abs(row["prompt_ns"] - IRF_PEAK_NS) < 0.15
-        assert abs(row["n_bg"] - NON_BURST_PER_DETECTOR) < 0.1 * NON_BURST_PER_DETECTOR
+        assert 0.5 * NON_BURST_PER_DETECTOR < row["n_bg"] < NON_BURST_PER_DETECTOR
+        assert abs(row["background_khz"] - BACKGROUND_KHZ) < 0.1 * BACKGROUND_KHZ
         assert row["n_burst"] > 0
     assert rows[0]["n_burst"] > rows[1]["n_burst"]
     rates = [r["background_khz"] for r in rows]

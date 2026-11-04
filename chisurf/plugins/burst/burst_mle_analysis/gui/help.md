@@ -49,8 +49,15 @@ anisotropy $r_0$ and the rotational correlation time $\rho$ to the parallel and 
 quantity minimised is the likelihood statistic $2I^*$; it is about one per degree of freedom for a good fit. The model
 curve is the exponential decay convolved with the IRF, plus the scaled background and the scattered light.
 
-* The **IRF** and **background** belong to the setup, not to a burst: they are taken from measured files or estimated
-  from the photons between bursts (Auto IRF/background).
+* The **IRF** and **background** belong to the setup, not to a burst. The background is the **buffer** of Data
+  Selection when there is one (its shape and rate); else the **strict background selection** of the measurement --
+  not the photons outside the bursts, which hold molecules below the threshold and the bursts' flanks (a decay), but
+  only the stretches away from every burst (margins) whose local count rate stays at the background's level -- when
+  its histogram is a background's; else a **flat + scatter model** (the flat level before the prompt, a scatter of
+  the IRF's shape), never a decay. Its rate times the time in the bursts is what the plot draws; the fit text and
+  the detector line say which it is, how much time the strict selection kept and its rate.
+* The **fit window** is fitted as a window: the model is normalised over the window's bins, not over the period
+  with the bins outside it scored as zeros (which bent every fit).
 * The **fit window** is given in micro-time bins after binning. Leave out the empty bins before the prompt and the
   noisy tail.
 * A fit whose $\gamma$ ran to its bound is marked as diverged; the displayed model is then clipped and the status line

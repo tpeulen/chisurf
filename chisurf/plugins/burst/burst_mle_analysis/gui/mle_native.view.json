@@ -88,7 +88,7 @@
         {
           "type": "info",
           "source": "calibration_text",
-          "description": "The detector's G factor and leakages l1, l2 (set in the Detector setup tab) and the rate of its background: the photons outside the bursts over the time outside them, in kHz."
+          "description": "The detector's G factor and leakages l1, l2 (set in the Detector setup tab) and the rate of its background in kHz: the buffer's, else the strict background selection's (the measurement's stretches at the background level, away from every burst), else the flat + scatter part of the photons outside the bursts; beside it the rate of all photons outside the bursts (mostly molecules below the burst threshold) and how much time the strict selection kept. The status line names what the background is and why."
         },
         {
           "type": "value",

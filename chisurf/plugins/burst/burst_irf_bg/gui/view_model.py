@@ -45,6 +45,8 @@ class IrfBackgroundViewModel:
         self.files: list[str] = []
         #: Callable returning the DetectorWizardPage detectors map (set by the GUI).
         self.channels_provider: Callable[[], dict] | None = None
+        #: Per file, what the strict background selection kept (``compute``).
+        self.selection: dict[str, dict] = {}
 
         # Parameters (bound to AutoForm ``value`` sections).
         self.min_photons: int = 60
@@ -121,13 +123,18 @@ class IrfBackgroundViewModel:
             extract_irf_background,
             extract_mle_irf_background,
             non_burst_mask,
+            strict_background_mask,
         )
+        from chisurf.core.fluorescence.channels import channel_mask
+        from tttrlib import micro_time_mask
         channels = self._channels()
         time_window_s = float(self.time_window_ms) / 1000.0
         q = float(np.clip(self.baseline_quantile, 0.0, 1.0))
 
         display: dict[str, dict] = {}
         mle: dict[str, dict[str, np.ndarray]] = {}
+        #: per file, what the strict background selection kept (seconds, fraction, rate, warning)
+        self.selection = {}
         for path in self.files:
             if callable(cancel_check):
                 cancel_check()
@@ -144,7 +151,29 @@ class IrfBackgroundViewModel:
                 photon_window=int(self.photon_window),
                 time_window=time_window_s,
             )
+            # the background photons: not the inverse of the burst selection (sub-threshold
+            # molecules, the bursts' flanks) but the strict selection of the burst background
+            # estimator; the inverse only when it kept too little time
+            chs = sorted({int(c) for d in channels.values() for c in d.get("chs", [])})
+            strict = strict_background_mask(tttr, ~keep, channels=chs or None)
+            self.selection[str(path)] = {
+                "seconds": strict.seconds, "fraction": strict.fraction,
+                "rate_khz": strict.rate_khz, "warning": strict.warning,
+            }
+            if not strict.warning:
+                keep = strict.mask
             per = extract_irf_background(tttr, channels, mask=keep, baseline_quantile=q)
+            if not strict.warning:
+                # the rate: the kept photons in each gate over the kept time (rate-corrected),
+                # not an inter-photon tail across the dropped stretches
+                rout, micro = np.asarray(tttr.routing_channel), np.asarray(tttr.micro_times)
+                for name, det in per.items():
+                    info = channels[name]
+                    n_kept = int(np.sum(
+                        keep & channel_mask(rout, np.asarray(info.get("chs", []), dtype=int))
+                        & micro_time_mask(micro, info.get("micro_time_ranges"))
+                    ))
+                    det.background_khz = n_kept / max(strict.seconds, 1e-12) * strict.rate_scale / 1e3
             perm = extract_mle_irf_background(
                 tttr,
                 channels,

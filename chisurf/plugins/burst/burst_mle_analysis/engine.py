@@ -347,6 +347,15 @@ def process_background(arr: np.ndarray | None, shift: int, like: np.ndarray) -> 
     return np.hstack([vv, vh])
 
 
+def flat_scatter_background(*args, **kwargs):
+    """The flat + scatter background of a histogram of background photons: the burst
+    background estimator's (:func:`chisurf.core.fluorescence.burst.irf_bg.flat_scatter_background`),
+    imported when used."""
+    from chisurf.core.fluorescence.burst.irf_bg import flat_scatter_background as estimate
+
+    return estimate(*args, **kwargs)
+
+
 def select_fit_range(decay: np.ndarray | None, lo_frac: float = 0.02) -> tuple[int, int] | None:
     """The filled region of a decay as a ``(start, stop)`` window in binned channels (``None`` when it is empty)."""
     if decay is None:
@@ -681,6 +690,12 @@ def read_burst_analysis(
 ALGORITHM_VERSION = 2
 
 TAIL_MODEL = "tail"
+
+#: The largest share of a strict background selection's photons that may be fluorescence (the
+#: flat + scatter + exponentials fit of :func:`flat_scatter_background`) for its histogram to be
+#: the fit's background as it is; above it the selection still holds molecules and the flat +
+#: scatter model of it is taken.
+MAX_FLUORESCENCE_SHARE = 0.1
 
 #: Parameters of the tail fit: the first channel of the tail and two lifetimes (set both equal for a mono-exponential tail).
 TAIL_SCHEMA: dict = {
@@ -1078,12 +1093,23 @@ class MleSession:
     current_detector: str = ""
     current_index: int = 0
     irf_np: dict[str, np.ndarray] = field(default_factory=dict)
-    #: The background the fit takes: always the photons outside the bursts of the measurement (the
-    #: reverse burst selection), whatever the IRF came from (:meth:`extract_irf_background`).
+    #: The photons outside the bursts of the measurement (the reverse burst selection), VV | VH
+    #: counts: what the fit background is estimated from when there is no buffer
+    #: (:meth:`background_of`: their flat and scatter part, never their decay).
     bg_np: dict[str, np.ndarray] = field(default_factory=dict)
     #: Measured buffer histograms (the background files, counts per second): they correct a scatter
-    #: IRF for its background (:meth:`irf_pattern`); the fit's background is :attr:`bg_np`.
+    #: IRF for its background (:meth:`irf_pattern`) and are the fit's background when there is one
+    #: (:meth:`background_of`).
     buffer_np: dict[str, np.ndarray] = field(default_factory=dict)
+    #: What each detector's fit background was made of (:meth:`background_of`): ``source``
+    #: (``buffer`` / ``strict`` / ``model``), the flat levels and scatter amounts, the rate [kHz].
+    background_info: dict[str, dict] = field(default_factory=dict)
+    #: The strict background selection's histograms (VV | VH counts, :meth:`select_background`):
+    #: the photons of the measurement at the background's level, not merely outside a burst.
+    bg_strict_np: dict[str, np.ndarray] = field(default_factory=dict)
+    #: What the strict selection kept: ``seconds``, ``total_seconds``, ``fraction``,
+    #: ``rate_khz``, ``threshold_khz``, ``iterations``, ``photons``, ``warning``.
+    strict_background: dict = field(default_factory=dict)
     decay: np.ndarray | None = None
     outcome: FitOutcome | None = None
     status: str = ""
@@ -1442,9 +1468,101 @@ class MleSession:
         )
 
     def background(self) -> np.ndarray:
+        """The current detector's background as the fit takes it (:meth:`background_of`): the
+        counts it adds to the burst decay, VV | VH, the VH half rolled with the decay's."""
         return process_background(
-            self.bg_np.get(self.current_detector), self.settings.shift, self.irf()
+            self.background_of(self.current_detector), self.settings.shift, self.irf()
         )
+
+    def background_of(self, det: str) -> np.ndarray | None:
+        """The background of *det*'s burst decay, in counts expected inside the bursts (``None``:
+        none yet); what it was made of is kept on :attr:`background_info`.
+
+        The photons outside the bursts are not a buffer: molecules below the burst threshold and
+        the flanks of every burst are among them, so their histogram is a fluorescence decay and
+        their rate several times the background's. In this order:
+
+        1. a **buffer** measurement of Data Selection: its histogram is the shape, its rate the
+           rate;
+        2. the **strict background selection** of the measurement (:attr:`bg_strict_np`,
+           :func:`~chisurf.core.fluorescence.burst.irf_bg.strict_background_mask`: the bursts
+           widened by margins, then only the stretches whose local count rate stays at the
+           background level), when it kept enough time and its histogram is background-shaped
+           (flat + scatter, under :data:`MAX_FLUORESCENCE_SHARE` fluorescence): its histogram and
+           its photons over its time;
+        3. else a **flat + scatter model** (:func:`flat_scatter_background`: the flat level
+           before the prompt, the scatter in the IRF's shape) of the strict selection's
+           histogram, or of all photons outside the bursts when the strict one kept too little,
+           over that selection's time -- never their decay.
+
+        The rate times the time inside the bursts is the count the fit's background adds."""
+        outside = self.bg_np.get(det)
+        strict = self.bg_strict_np.get(det)
+        selection = self.strict_background or {}
+        buffer = self.buffer_np.get(det) if self.bg_files.get(det) else None
+        times = self.time_in_bursts()
+        irf = self.irf_np.get(det)
+        key = (det, id(outside), id(strict), id(buffer), id(irf), times,
+               int(self.settings_of(det).micro_time_binning))
+        cache = self.__dict__.setdefault("_background_cache", {})
+        if cache.get(det, (None,))[0] == key:
+            return cache[det][1]
+        inside = times[0] if times is not None and times[1] > times[0] else None
+        info: dict = {}
+        if buffer is not None and np.asarray(buffer).size:
+            rate = np.asarray(buffer, dtype=float)  # counts per second and bin
+            names = ", ".join(Path(p).name for p in self.bg_files.get(det, []))
+            info = {"source": "buffer", "files": names}
+        elif outside is not None and np.asarray(outside).size:
+            tttr = self.current_tttr()
+            dt, _period = (
+                self.timing_ns(tttr, self.settings_of(det).micro_time_binning)
+                if tttr is not None else (None, None)
+            )
+            enough = strict is not None and np.sum(strict) > 0 and not selection.get("warning")
+            # the kept photons over the kept time, corrected for the background's own fast
+            # fluctuations the local-rate cut dropped (StrictBackground.rate_scale)
+            counts, seconds = (
+                (np.asarray(strict, dtype=float),
+                 float(selection["seconds"]) / float(selection.get("rate_scale") or 1.0))
+                if enough
+                else (np.asarray(outside, dtype=float),
+                      (times[1] - times[0]) if inside is not None else 1.0)
+            )
+            irf_raw = np.asarray(irf, dtype=float) if irf is not None else np.zeros_like(counts)
+            pattern, parts = flat_scatter_background(
+                counts, irf_raw, float(dt or 1.0), self._gate_window(det, counts.size // 2)
+            )
+            share = float(sum(parts["fluorescence"])) / max(float(counts.sum()), 1e-12)
+            info = {"flat": parts["flat"], "scatter": parts["scatter"], "fluorescence_share": share,
+                    "outside_khz": float(np.sum(outside)) / max(
+                        (times[1] - times[0]) if inside is not None else 1.0, 1e-12) / 1e3,
+                    "selection": dict(selection)}
+            if enough and share <= MAX_FLUORESCENCE_SHARE:
+                rate = counts / max(seconds, 1e-12)
+                info["source"] = "strict"
+            else:
+                rate = pattern / max(seconds, 1e-12)
+                info["source"] = "model"
+                info["reason"] = (
+                    f"the strict selection holds fluorescence ({share:.0%} of its photons)"
+                    if enough else (selection.get("warning") or "no strict selection")
+                )
+                info["model_of"] = "strict" if enough else "outside"
+                if inside is not None:
+                    # in counts of the burst decay: what the background adds per bin / as scatter
+                    scale = inside / max(seconds, 1e-12)
+                    info["flat_bursts"] = tuple(v * scale for v in info["flat"])
+                    info["scatter_bursts"] = tuple(v * scale for v in info["scatter"])
+        else:
+            cache[det] = (key, None)
+            return None
+        info["rate_khz"] = float(rate.sum()) / 1e3
+        info["seconds_inside"] = inside
+        counts = rate * inside if inside is not None else rate
+        self.background_info[det] = info
+        cache[det] = (key, counts)
+        return counts
 
     def time_in_bursts(self) -> tuple[float, float] | None:
         """``(seconds inside the bursts, seconds of the measurement)`` of the current file."""
@@ -1462,14 +1580,9 @@ class MleSession:
         return float(np.sum(macro[ends] - macro[starts])), float(macro[-1] - macro[0])
 
     def background_in_bursts(self) -> np.ndarray:
-        """The background as the burst decay holds it: the non-burst histogram times the time
-        inside the bursts over the time outside them (the counts it adds to the decay shown)."""
-        bg = self.background()
-        times = self.time_in_bursts()
-        if times is None or times[1] <= times[0]:
-            return bg
-        inside, total = times
-        return bg * (inside / (total - inside))
+        """The background as the burst decay holds it (the counts it adds to the decay shown):
+        :meth:`background`, whose rate is already scaled to the time inside the bursts."""
+        return self.background()
 
     def window_ranges(self) -> tuple[int, int, int, int]:
         return window_bins(
@@ -1510,6 +1623,82 @@ class MleSession:
         return pair[1] if pair is not None and pair[0] is decay else None
 
     # -- IRF / background -------------------------------------------------------------------------------------- #
+    def select_background(self, detectors: collections.abc.Iterable[str] | None = None) -> dict:
+        """The strict background selection of the current measurement (the burst background
+        estimator, :func:`~chisurf.core.fluorescence.burst.irf_bg.strict_background_mask`, judged
+        on every detector's photons): its histogram per detector goes to :attr:`bg_strict_np`,
+        what it kept to :attr:`strict_background` (returned). Once per measurement."""
+        from chisurf.core.fluorescence.burst import extract_mle_irf_background
+        from chisurf.core.fluorescence.burst.irf_bg import strict_background_mask
+
+        tttr = self.current_tttr()
+        if tttr is None or not self.burst_index_array().size:
+            return {}
+
+        def select():
+            in_burst = np.zeros(len(tttr), dtype=bool)
+            in_burst[self.burst_index_array()] = True
+            chs = sorted({int(c) for d in self.detectors.values() for c in d.get("chs", [])})
+            return strict_background_mask(
+                tttr, in_burst, channels=chs or None, accept=self._background_shaped(tttr)
+            )
+
+        # once per measurement and IRF (an IRF judges whether the selection is a background's)
+        irfs = tuple(id(self.irf_np.get(d)) for d in self.detectors)
+        strict = self._memo(f"strict_background{irfs}", select)
+        self.strict_background = {
+            "seconds": strict.seconds, "total_seconds": strict.total_seconds,
+            "fraction": strict.fraction, "rate_khz": strict.rate_khz,
+            "threshold_khz": strict.threshold_khz, "iterations": strict.iterations,
+            "photons": strict.photons, "warning": strict.warning, "rate_scale": strict.rate_scale,
+        }
+        dets = list(detectors) if detectors is not None else list(self.detectors)
+        if strict.photons:
+            patterns = extract_mle_irf_background(
+                tttr, {d: self.detectors[d] for d in dets},
+                micro_time_binning=self.settings.micro_time_binning, mask=strict.mask,
+                irf_model="experimental",
+            )
+            for det, pat in patterns.items():
+                self.bg_strict_np[det] = np.asarray(pat["bg"], dtype=float)
+        else:
+            for det in dets:
+                self.bg_strict_np.pop(det, None)
+        return self.strict_background
+
+    def _background_shaped(self, tttr: Any):
+        """``accept(mask)`` for the strict selection: whether the kept photons of every detector
+        with an IRF have a background's histogram -- flat + scatter, at most
+        :data:`MAX_FLUORESCENCE_SHARE` of them fluorescence (:func:`flat_scatter_background`);
+        ``None`` without an IRF to judge by."""
+        binning = max(1, int(self.settings.micro_time_binning))
+        routing = np.asarray(tttr.routing_channels)
+        micro = np.asarray(tttr.micro_times) // binning
+        dt, _period = self.timing_ns(tttr, binning)
+        judged = {d: np.asarray(self.irf_np[d], dtype=float) for d in self.detectors
+                  if np.asarray(self.irf_np.get(d, [])).size and np.any(self.irf_np[d])}
+        if not judged:
+            return None
+
+        def accept(mask: np.ndarray) -> bool:
+            for det, irf in judged.items():
+                chs = self.detectors[det].get("chs", [])
+                half = irf.size // 2
+                parts = [chs[::2], chs[1::2]] if len(chs) > 1 else [chs, chs]
+                hist = np.hstack([
+                    np.bincount(np.clip(micro[mask & channel_mask(routing, p)], 0, half - 1),
+                                minlength=half)[:half].astype(float)
+                    for p in parts
+                ])
+                if hist.sum() <= 0:
+                    continue
+                _, found = flat_scatter_background(hist, irf, float(dt or 1.0), self._gate_window(det, half))
+                if sum(found["fluorescence"]) > MAX_FLUORESCENCE_SHARE * hist.sum():
+                    return False
+            return True
+
+        return accept
+
     def extract_irf_background(self) -> int:
         """IRF and background from the photons outside the bursts, at the current binning; returns the detectors done.
 
@@ -1557,10 +1746,12 @@ class MleSession:
                 else:
                     candidates.pop("outside", None)
                 candidates.pop("estimate", None)  # estimated when it is chosen (or the last resort)
-                # the background is the photons outside the bursts, whatever the IRF came from
+                # the photons outside the bursts; the fit's background is the strict selection
+                # of them, or a flat + scatter model (background_of)
                 self.bg_np[det] = bg
                 self.apply_irf_choice(det)
                 n += 1
+        self.select_background()
         return n
 
     def irf_options(self, det: str) -> list[tuple[str, str, bool, str]]:
@@ -1755,9 +1946,10 @@ class MleSession:
         return self.apply_irf_choice(det)
 
     def ensure_background(self) -> list[str]:
-        """The background of every detector that has none yet, from the photons outside the bursts
-        (the reverse burst selection): the fit's background whatever the IRF came from. Returns
-        the detectors given one."""
+        """The photons outside the bursts of every detector that has none yet, and the strict
+        background selection of them (:meth:`select_background`), what the fit's background is
+        made of (:meth:`background_of`) whatever the IRF came from. Returns the detectors given
+        one."""
         from chisurf.core.fluorescence.burst import extract_mle_irf_background
 
         missing = [d for d in self.detectors if np.asarray(self.bg_np.get(d, [])).size == 0]
@@ -1779,6 +1971,8 @@ class MleSession:
             if det in missing:
                 self.bg_np[det] = np.asarray(pat["bg"], dtype=float)
                 done.append(det)
+        if done:
+            self.select_background(done)
         return done
 
     def _background_prompt_photons(self, tttr: Any, det: str, outside: np.ndarray) -> int:
@@ -2272,7 +2466,8 @@ class MleSession:
             if np.asarray(self.irf_np.get(det, [])).size
             else np.asarray(self.irf_np.get(det, np.array([])), dtype=float)
         )
-        raw_bg = np.asarray(self.bg_np.get(det, np.array([])), dtype=float)
+        raw_bg = self.background_of(det)
+        raw_bg = np.asarray(raw_bg if raw_bg is not None else np.array([]), dtype=float)
         bg = process_background(raw_bg, st.shift, irf) if raw_bg.size else raw_bg
         names, x0, fixed = st.parameter_state()
         # The setup's detector gates (step 0's PIE windows) bound the fit as they bound the preview decay.
@@ -2599,7 +2794,11 @@ class MleSession:
         for det in self.detectors:
             detectors[det] = {
                 key: np.asarray(source.get(det, []), dtype=float).ravel().tolist()
-                for key, source in (("irf", self.irf_np), ("background", self.bg_np))
+                for key, source in (
+                    ("irf", self.irf_np),
+                    ("background", {d: self.background_of(d) for d in self.detectors
+                                    if self.background_of(d) is not None}),
+                )
             }
         return {"format": "chisurf-burst-experiment", "version": 1, "detectors": detectors}
 

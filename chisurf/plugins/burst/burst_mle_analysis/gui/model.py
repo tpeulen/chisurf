@@ -949,16 +949,43 @@ class MleViewModel(RunPickerMixin):
         share = self.background_share()
         if share is not None:
             text += " " + str(
-                tr("Background: {share:.1%} of the photons in the window (from the non-burst rate).")
-            ).format(share=share)
+                tr("Background: {share:.1%} of the photons in the window ({what}).")
+            ).format(share=share, what=self.background_text(detail=False))
         for name in engine.fit_result_names(self.fit_model):
             text += str(tr(" {name}: {value:.0f} (0-based).")).format(
                 name=name, value=outcome.result.result(name)
             )
         return text
 
+    def background_text(self, det: str | None = None, detail: bool = True) -> str:
+        """What the fit background of *det* (the current detector) is, in words; *detail*
+        ``False``: in two or three (the fit line under the model, which must stay short)."""
+        det = det or self.session.current_detector
+        self.session.background_of(det)  # kept: what it was made of
+        info = self.session.background_info.get(det) or {}
+        sel = info.get("selection") or {}
+        if not detail:
+            short = {"buffer": "the buffer", "strict": "strict background selection",
+                     "model": "flat + scatter model"}
+            return str(tr(short.get(info.get("source"), "no background yet")))
+        if info.get("source") == "buffer":
+            return str(tr("the buffer {files}: its shape and rate")).format(files=info.get("files", ""))
+        if info.get("source") == "strict":
+            return str(tr(
+                "the strict background selection: {seconds:.0f} s ({fraction:.0%} of the "
+                "measurement) at the background's level"
+            )).format(seconds=sel.get("seconds", 0.0), fraction=sel.get("fraction", 0.0))
+        if info.get("source") == "model":
+            flat = info.get("flat_bursts", info["flat"])
+            scatter = info.get("scatter_bursts", info["scatter"])
+            return str(tr(
+                "a flat + scatter model, as {reason}: flat VV {fv:.3g} | VH {fh:.3g} counts per "
+                "bin, scatter {sv:.3g} | {sh:.3g} counts in the IRF's shape"
+            )).format(reason=info.get("reason", ""), fv=flat[0], fh=flat[1], sv=scatter[0], sh=scatter[1])
+        return str(tr("no background yet"))
+
     def background_share(self) -> float | None:
-        """The share of the photons in the fit window that the non-burst rate puts there."""
+        """The share of the photons in the fit window that the background's rate puts there."""
         curves = self.fit_curves
         if curves is None or curves.background is None:
             return None
@@ -969,17 +996,27 @@ class MleViewModel(RunPickerMixin):
         """The current detector's polarisation corrections and the rate of its background.
 
         The G factor and the leakages l1, l2 are the detector definition's (edit them in the Detector setup tab);
-        the background rate is the non-burst photons' counts over the time outside the bursts, in kHz.
+        the background rate is the buffer's, else the flat + scatter part of the photons outside the bursts over the
+        time outside them, in kHz (beside it, the rate of all photons outside the bursts, mostly fluorescence).
         """
         g, l1, l2 = self.session.polarisation()
         text = str(tr("G {g:.4f}, l1 {l1:.4f}, l2 {l2:.4f}.")).format(g=g, l1=l1, l2=l2)
-        background = self.session.bg_np.get(self.session.current_detector)
-        times = self.session.time_in_bursts()
-        if background is not None and np.asarray(background).size and times and times[1] > times[0]:
-            # counts outside the bursts over the time outside them
-            text += str(tr(" Background rate: {rate:.4g} kHz.")).format(
-                rate=float(np.sum(background)) / (times[1] - times[0]) / 1e3
-            )
+        det = self.session.current_detector
+        self.session.background_of(det)
+        info = self.session.background_info.get(det) or {}
+        if info.get("rate_khz") is not None:
+            text += str(tr(" Background rate: {rate:.4g} kHz")).format(rate=info["rate_khz"])
+            if info.get("outside_khz") is not None:
+                text += str(tr(" (all photons outside the bursts: {rate:.4g} kHz)")).format(rate=info["outside_khz"])
+            text += "."
+        sel = self.session.strict_background
+        if sel and info.get("source") != "buffer":
+            if sel.get("warning"):
+                text += " ⚠ " + str(tr("No stretch at the background level: flat + scatter model."))
+            else:
+                text += str(tr(" Strict background selection: {fraction:.0%} of the time.")).format(
+                    fraction=sel["fraction"]
+                )
         return text
 
     def anisotropy_text(self) -> str:
@@ -1226,8 +1263,11 @@ class MleViewModel(RunPickerMixin):
         session = self.session
         parts = [
             f"{det}: IRF from {session.irf_source.get(det, 'nowhere yet')}"
-            + "; background from the photons outside the bursts"
-            + self._buffer_rate_text(det)
+            + (
+                "; background: the buffer" + self._buffer_rate_text(det)
+                if self.buffer_rate(det) is not None
+                else "; background: " + self.background_text(det)
+            )
             for det in session.detectors
         ]
         return ". ".join(parts) + "." if parts else ""
