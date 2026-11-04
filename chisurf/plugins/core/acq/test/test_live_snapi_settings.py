@@ -289,7 +289,6 @@ def test_the_laser_tags_are_symphotime_s(monkeypatch):
 
 
 def test_an_indexed_tag_is_written_with_its_index(tmp_path):
-    from chisurf.plugins.core.acq.live.sources import SourceInfo
 
     cfg = phacq.FakeConfig()
     cfg.number_of_channels = 2

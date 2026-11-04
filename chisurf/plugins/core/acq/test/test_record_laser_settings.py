@@ -43,6 +43,7 @@ def _pie_program(m):
 
 def _run(m, seconds=2.0):
     m.duration_s = seconds
+    m.stop_after = True  # a bounded run: without Stop after, a run measures until Stop
     assert m.start(), m.status_detail
     end = time.monotonic() + 120
     while m.running:
@@ -250,6 +251,15 @@ def test_a_measurement_without_settings_lists_what_it_did_not_record(model, tmp_
     fresh.close()
 
 
+def test_the_laser_program_shows_in_simple_mode(model):
+    """The Program panel is the only control set of a laser without its own form (the simulated
+    one): it draws in Simple mode too -- Advanced hides quality detail and plot range setters,
+    not the laser program."""
+    assert not model.advanced
+    model.connect_laser()
+    assert model.laser_program_shown
+
+
 def test_the_laser_section_renders(tmp_path):
     model = RecordModel(output_dir=tmp_path / "rec", realtime=False)
     model.laser_kind = "simulated"
@@ -388,13 +398,14 @@ def test_advanced_is_one_switch_for_all_the_hardware(tmp_path):
         ui = Driver(app, (1500, 1100))
         app.focus_dock("acquisition")
         ui.draw(3)
-        ui.click_text("Advanced")                   # the switch sits under the settings choice
+        model.ui_mode = "advanced"      # the User-mode choice below the settings line: Advanced
+        model.ui_mode_changed()         # selects every driver's expert settings at once
         ui.draw(2)
         assert model.advanced
         assert "reported_excitation" in model.shutter_form.params()
         assert not model.device_form_hidden or model.source_kind != "device"
-        model.advanced = False
-        model.advanced_changed()
+        model.ui_mode = "simple"
+        model.ui_mode_changed()
         assert "diode_mark" not in model.shutter_form.params()
     finally:
         app.close()
