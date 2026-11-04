@@ -306,6 +306,7 @@ def test_icons_are_the_canonical_glyphs():
 
     expected = {
         "help": Glyphs.HELP,
+        "agent": Glyphs.ROBOT,
         "guide": Glyphs.BOOK,
         "sound": Glyphs.SOUND,
         "restart": Glyphs.RESTART,

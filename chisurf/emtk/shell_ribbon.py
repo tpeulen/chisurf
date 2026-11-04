@@ -320,7 +320,7 @@ class ShellRibbon:
         return pressed
 
     def _draw_corner(self, right: float, top: float, height: float) -> float:
-        """The help button and the language switch, right-aligned at *right*."""
+        """The AI agent, help and language buttons, right-aligned at *right*."""
         from emtk import i18n as toolkit_i18n
         from emtk import im
 
@@ -335,7 +335,19 @@ class ShellRibbon:
             im.calc_text_size(icon_label(ACTIONS["help"].icon, tr(ACTIONS["help"].label)))[0]
             + padding
         )
+        width_agent = (
+            im.calc_text_size(icon_label(ACTIONS["agent"].icon, tr(ACTIONS["agent"].label)))[0]
+            + padding
+            if "agent" in self.shell.by_id
+            else 0.0
+        )
         x = right - width_language - width_help - 4.0
+        if width_agent:
+            # The agent first and in the primary colour: the one button that does the work for you.
+            im.set_cursor_screen_pos((x - width_agent - 4.0, top))
+            if action_button("agent", id="ribbon agent", size=(width_agent, height)):
+                self.shell.open_plugin("agent")
+            self.shell.item_rects["ribbon.agent"] = im.get_item_rect()
         im.set_cursor_screen_pos((x, top))
         # The shared Help action (one icon, label and tooltip in every window); it opens the documentation.
         if (
@@ -361,4 +373,4 @@ class ShellRibbon:
                 if im.menu_item(f"{label} ({code})", selected=code == current):
                     choose_language(code)
             im.end_popup()
-        return width_language + width_help + 8.0
+        return width_language + width_help + 8.0 + (width_agent + 4.0 if width_agent else 0.0)

@@ -121,6 +121,13 @@ class Action:
 #: out so this module stays import-light, and ``test/test_ui_vocabulary.py`` pins them equal.
 ACTIONS: dict[str, Action] = {
     "help": Action("❓", "Help", "Open the help for this window.", fixed_tooltip=True),
+    "agent": Action(
+        "🤖",
+        "Agent",
+        "Ask the AI agent: it runs the analysis tools of this session in plain words.",
+        fixed_tooltip=True,
+        role="primary",
+    ),
     "guide": Action(
         "📖",
         "Guide",

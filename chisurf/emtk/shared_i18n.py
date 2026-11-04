@@ -15,6 +15,22 @@ _ROWS = (
         "Справка",
     ),
     (
+        "Agent",
+        "Agent",
+        "Agent",
+        "Agente",
+        "Agente",
+        "Агент",
+    ),
+    (
+        "Ask the AI agent: it runs the analysis tools of this session in plain words.",
+        "Den KI-Agenten fragen: Er bedient die Analysewerkzeuge dieser Sitzung in einfachen Worten.",
+        "Demander à l’agent IA : il pilote les outils d’analyse de cette session en langage courant.",
+        "Preguntar al agente de IA: usa las herramientas de análisis de esta sesión en lenguaje sencillo.",
+        "Perguntar ao agente de IA: ele usa as ferramentas de análise desta sessão em linguagem simples.",
+        "Спросить ИИ-агента: он запускает инструменты анализа этой сессии по простым словам.",
+    ),
+    (
         "Open the help for this window.",
         "Die Hilfe zu diesem Fenster öffnen.",
         "Ouvrir l’aide de cette fenêtre.",
