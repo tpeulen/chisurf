@@ -7,6 +7,7 @@
 - 2026-11-04: a file dropped on a tool enters the Datasets workspace and, once linked, the rows of a kind the tool accepts are fed to it (EmtkShellApp._feed_after_import/_feed_dropped via feed_from_workspace): a PTU dropped on Burst Analysis' Data Selection lands in Datasets and in the step's file list. Imaging drop test now expects the automatic feed; DE/FR for the new hint and the Burst MLE background strings.
 - 2026-11-04: several files dropped at once become one Datasets group named after their folder (fit_docks._group_dropped after the import adds them); a drop on a tool still feeds the members. Local-mode ChiSurfAPI.group_datasets ignores the API's own state (reads cs.imported_datasets) - noted, the shell uses server mode.
 - 2026-11-04: fixed: local-mode ChiSurfAPI.group_datasets/ungroup_datasets now act on the API's own session (server dataset services) instead of the process lists; guard test/core/test_grouping.py.
+- 2026-11-04: busy overlay (blur + progress card of every slow tool, e.g. Burst Analysis): the status message wraps to the card's width (up to 6 lines, the last ending in …) instead of being cut to its first line at 60 characters; the card grows and the bar/Stop move under the text.
 
 ## 2026-11-03
 

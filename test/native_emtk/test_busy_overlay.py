@@ -47,3 +47,33 @@ def test_the_overlay_shows_after_the_delay_swallows_presses_and_stops():
     assert overlay.press(x + w / 2, y + h / 2) and stopped == [1]
     app.running = False
     assert not overlay.update(app, now=11.0) and not overlay.press(5, 5)
+
+
+def test_a_long_message_wraps_inside_the_card_and_the_bar_moves_down(tmp_path):
+    """A slow step's long status (Burst Analysis says which file, detector and stage) is
+    folded to the card's width, at most MAX_LINES lines ending in "…", never cut at 60
+    characters and never drawn past the card."""
+    from emtk.testing import PixelPainter, png_encode
+
+    from chisurf.emtk.busy_overlay import MAX_LINES, message_lines
+
+    message = (
+        "Burst MLE: fitting 15693 bursts of m000.spc … m010.spc, detector G|G and R|R, "
+        "IRF from the scatter measurement, background from the photons outside the bursts; "
+        "the decays are binned by the setup's micro-time binning."
+    )
+    tool = SimpleNamespace(running=True, progress_fraction=0.4, job=SimpleNamespace(progress=message),
+                           stop=lambda: None)
+    overlay = BusyOverlay(delay_s=0.0)
+    assert overlay.update(tool, now=1.0)
+    painter = PixelPainter(800, 500)
+    overlay.draw(painter, (0, 0, 800, 500), now=2.0)
+    lines = message_lines(painter, message, 380 - 28)
+    assert 2 < len(lines) <= MAX_LINES
+    assert all(painter.text_width(line) <= 380 - 28 + 0.5 for line in lines)
+    assert " ".join(lines).replace("  ", " ").startswith("Burst MLE: fitting 15693 bursts")
+    sx, sy, sw, sh = overlay.stop_rect
+    assert sy > 250 - 62 + 18 * (len(lines) - 1)  # under the text, inside the card
+    (tmp_path / "busy_long.png").write_bytes(png_encode(painter.width, painter.height, painter.px))
+    short = message_lines(painter, "x " * 400, 352)
+    assert len(short) == MAX_LINES and short[-1].endswith("…")

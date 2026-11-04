@@ -23,6 +23,9 @@ from typing import Any, Callable
 DELAY_S = 0.5
 
 CARD_W, CARD_H = 380.0, 124.0
+#: The message wraps to the card's width, at most this many lines (the last one ends in "…").
+MAX_LINES = 6
+LINE_H = 18.0
 _CARD_BG = (36, 38, 46, 245)
 _CARD_BORDER = (90, 96, 110, 255)
 _BAR_BG = (58, 62, 74, 255)
@@ -108,6 +111,22 @@ def busy_state(app: Any, _depth: int = 0) -> BusyState | None:
     return BusyState(_message(app), fraction, _stopper(app))
 
 
+def message_lines(painter: Any, message: str, width: float) -> list[str]:
+    """*message* folded to *width* (the painter measures), at most :data:`MAX_LINES` lines; a
+    longer one ends in "…" on the last line it gets."""
+    from emtk.widgets.text import wrap_lines
+
+    text = (message or "Please wait until this step has finished.").strip()
+    lines = [part for para in text.splitlines() for part in wrap_lines(painter, para, width)]
+    lines = [line.rstrip() for line in lines if line.strip()] or [""]
+    if len(lines) > MAX_LINES:
+        last = lines[MAX_LINES - 1]
+        while last and painter.text_width(last + "…") > width:
+            last = last[:-1]
+        lines = lines[: MAX_LINES - 1] + [last.rstrip() + "…"]
+    return lines
+
+
 class BusyOverlay:
     """The overlay of one hosted tool: when it started being busy, and where its Stop button is."""
 
@@ -142,17 +161,19 @@ class BusyOverlay:
         x, y, w, h = box
         draw_modal_backdrop(painter, x, y, w, h)
         can_stop = self.state.stop is not None and not self.stopping
-        cw, ch = min(CARD_W, max(160.0, w - 24.0)), CARD_H if can_stop else CARD_H - 30.0
+        cw = min(CARD_W, max(160.0, w - 24.0))
+        lines = message_lines(painter, self.state.message, cw - 28)
+        extra = LINE_H * (len(lines) - 1)
+        ch = (CARD_H if can_stop else CARD_H - 30.0) + extra
         cx, cy = x + (w - cw) / 2.0, y + max(8.0, (h - ch) / 2.0)
         painter.fill_rect(cx - 1, cy - 1, cw + 2, ch + 2, _CARD_BORDER)
         painter.fill_rect(cx, cy, cw, ch, _CARD_BG)
         elapsed = max(0.0, now - (self.since or now))
         title = "Stopping…" if self.stopping else "Working…"
         painter.text(cx + 14, cy + 10, cw - 28, 20, 0, f"{title}  {elapsed:.0f} s", _TEXT, True)
-        line = (self.state.message or "Please wait until this step has finished.").splitlines()[0]
-        if len(line) > 60:
-            line = line[:59] + "…"
-        painter.text(cx + 14, cy + 34, cw - 28, 18, 0, line, _MUTED)
+        for row, line in enumerate(lines):
+            painter.text(cx + 14, cy + 34 + row * LINE_H, cw - 28, LINE_H, 0, line, _MUTED)
+        cy, ch = cy + extra, ch - extra  # the bar and Stop sit under the text, as for one line
         bx, by, bw, bh = cx + 14, cy + 60, cw - 28, 12
         painter.fill_rect(bx, by, bw, bh, _BAR_BG)
         if self.state.fraction is not None:
