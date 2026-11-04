@@ -30,6 +30,72 @@ class BurstWorkflowContext:
     #: VV/VH-stacked {detector: {"irf", "bg"}} patterns from the IRF/background
     #: tool, applied to the MLE panel when it loads.
     irf_background_patterns: dict[str, Any] = field(default_factory=dict)
+    #: Which row of Data Selection each file is assigned to, ``{path: row key}``: ``measurement``,
+    #: ``buffer``, ``irf:<colour>``, ``reference:<colour>`` (:func:`.samples.row_keys`); only the
+    #: measurements are in :attr:`raw_files`.
+    samples: dict[str, str] = field(default_factory=dict)
+    #: What the buffer and reference-dye files gave (:func:`.samples.calibrate`): ``buffer``
+    #: (``B_<detector>`` in kHz) and ``colours`` (per colour ``g_factor`` per detector and
+    #: ``volume``: ``w0_um``, ``z0_um``, ``veff_fl``, ...), for every later step to read.
+    calibration: dict[str, Any] = field(default_factory=dict)
+
+    def rows(self) -> dict[str, str]:
+        """``{path: row}`` as the current setup shows them (:func:`.samples.resolve_row`)."""
+        from .samples import resolve_row
+
+        return {p: resolve_row(k, self.channel_settings, p) for p, k in self.samples.items()}
+
+    def sample_files(self, row: str) -> list[Path]:
+        """The files of Data Selection in *row* (``"buffer"``, ``"irf:G"``, ``"reference:R"``)."""
+        return [Path(p) for p, k in self.rows().items() if k == row]
+
+    def references(self) -> dict[str, Any]:
+        """The calibration files as Burst MLE takes them: ``{"buffer": [...], "irf": {detector:
+        [...]}, "reference": {detector: [...]}}`` -- a colour's IRF and reference dye for each of
+        its detectors."""
+        from .samples import colour_groups
+
+        out: dict[str, Any] = {"buffer": [str(p) for p in self.sample_files("buffer")], "irf": {}, "reference": {}}
+        for group in colour_groups(self.channel_settings):
+            for kind in ("irf", "reference"):
+                files = [str(p) for p in self.sample_files(f"{kind}:{group['colour']}")]
+                if files:
+                    for det in group["detectors"]:
+                        out[kind][det] = files
+        return out
+
+    def estimated(self) -> dict[str, str]:
+        """What is estimated from the measurement rather than measured, because Data Selection
+        has no file for it: ``{"background": ..., "irf": ..., "g_factor:<colour>": ...,
+        "volume:<colour>": ...}`` in words (empty: everything was measured). Written with the
+        workflow's provenance."""
+        from .samples import colour_groups
+
+        rows = set(self.rows().values())
+        out: dict[str, str] = {}
+        if "buffer" not in rows:
+            out["background"] = "estimated from the photons outside the bursts (no buffer measurement)"
+        for group in colour_groups(self.channel_settings):
+            colour = group["colour"]
+            if f"irf:{colour}" not in rows:
+                out[f"irf:{colour}"] = (
+                    "IRF from the non-burst photons, else a blind estimate from the burst decay "
+                    "(no IRF measurement of this colour)"
+                )
+            if f"reference:{colour}" not in rows:
+                gs = ", ".join(
+                    f"{det} {float((self.channel_settings.get('detectors') or {}).get(det, {}).get('g_factor', 1.0)):.3f}"
+                    for det in group["detectors"]
+                )
+                out[f"g_factor:{colour}"] = f"G from the setup ({gs}); no reference dye"
+                out[f"volume:{colour}"] = "no confocal volume (no reference dye)"
+        return out
+
+    def confocal_volume(self, colour: str = "G") -> dict[str, Any]:
+        """The confocal volume of *colour* the reference dye gave (``w0_um``, ``z0_um``,
+        ``veff_fl``, ...; empty: none)."""
+        entry = ((self.calibration or {}).get("colours") or {}).get(colour) or {}
+        return dict(entry.get("volume") or {})
 
     def to_payload(self) -> dict[str, Any]:
         """Return a JSON-compatible workflow context payload."""
@@ -41,6 +107,10 @@ class BurstWorkflowContext:
             "bur_files": [str(path) for path in self.bur_files],
             "mmfdb_artifacts": self.mmfdb_artifacts,
             "raw_mmfdb_artifacts": self.raw_mmfdb_artifacts,
+            "samples": dict(self.samples),
+            # the numbers, not the correlation curves they were fitted to
+            "calibration": _without_curves(self.calibration),
+            "estimated": self.estimated(),
         }
 
     def set_burst_folder(self, folder: Path) -> None:
@@ -55,6 +125,17 @@ class BurstWorkflowContext:
             self.bur_files = [folder]
         else:
             self.bur_files = sorted(folder.glob("**/*.bur")) if folder.is_dir() else []
+
+
+def _without_curves(calibration: Mapping | None) -> dict[str, Any]:
+    """*calibration* without the volume fits' curves (``tau_ms``, ``g``, ``sem``, ``model``)."""
+    import copy
+
+    out = copy.deepcopy(dict(calibration or {}))
+    for entry in (out.get("colours") or {}).values():
+        for key in ("tau_ms", "g", "sem", "model"):
+            (entry.get("volume") or {}).pop(key, None)
+    return out
 
 
 def folder_from_result(result: object) -> Path | None:

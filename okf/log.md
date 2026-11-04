@@ -45,6 +45,7 @@
 - 2026-11-04: Datasets carry tags (`ChiSurfAPI.tag_dataset`, RPC `dataset.tag`, `meta_data['tags']`, listed as `tags` in dataset summaries); Burst Analysis' Data Selection tags each photon stream with its role (`sample`).
 - 2026-11-04: Dye database aliases R110, R6G, A647, Alexa647, A633, ATTO655, ATTO488 (mmfdb 878bc29, packaged copy recopied with its digest) so a reference-dye file name resolves to its entry.
 - 2026-11-04: Burst MLE takes Data Selection's IRF / buffer / reference-dye files per detector (`prepare_patterns(..., references)`), names the IRF measurement and the buffer's B_<det> in its source line; several buffer files are averaged, not summed.
+- 2026-11-04: Burst Analysis `samples.py`: session roles from the setup's colours, dye inference via the dye database, buffer B_<det>, per-colour G factor and confocal volume from reference dyes; `demo.py` simulates a session with a known answer; the workflow context carries samples, calibration, references() and estimated().
 
 ## 2026-11-03
 
