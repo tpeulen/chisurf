@@ -17,7 +17,7 @@ def rt_curves(t, vv, vh, g: float = 1.0, l1: float = 0.0, l2: float = 0.0):
     vv, vh : array_like
         Parallel and perpendicular decays, background already subtracted.
     g : float
-        ChiSurf's g (the reciprocal of the literature G), multiplying VH.
+        Detection sensitivity factor multiplying the perpendicular VH decay.
     l1, l2 : float
         Objective-aperture mixing corrections.
 
@@ -29,32 +29,9 @@ def rt_curves(t, vv, vh, g: float = 1.0, l1: float = 0.0, l2: float = 0.0):
     t = np.asarray(t, dtype=float)
     vv = np.asarray(vv, dtype=float)
     vh = np.asarray(vh, dtype=float)
-    # Schaffer, Volkmer, Eggeling, Subramaniam, Striker & Seidel,
-    # J. Phys. Chem. A 103 (1999) 331 -- the anisotropy with the detection
-    # corrections, also Eq. (2.4-22) of the Seidel-group treatment, and the
-    # same expression `anisotropy_from_integrals` uses:
-    #
-    #     r = (G Sp - Ss) / ((1 - 3 l2) G Sp + (2 - 3 l1) Ss)
-    #
-    # Two things this pins down, both of which were wrong here before.
-    #
-    # *Which channel G corrects.* The published equation reads
-    # `(Fp - G Fs) / ((1 - 3 l2) Fp + (2 - 3 l1) G Fs)`, with G on the
-    # perpendicular channel. chisurf's `g` is its **reciprocal** -- that is
-    # what `compute_g_factor_perrin` returns, and solving the form below for
-    # g reproduces it exactly -- so here g multiplies the *parallel* channel.
-    # The two are the same estimator, verified to nine decimals for
-    # g = 1/G; the trap is that a G quoted from the literature is not this
-    # number, it is one over it. It must appear in numerator and
-    # denominator alike: this read `(Sp - Ss) / (G Sp + 2 Ss)`, correcting
-    # only the denominator, which agrees with the truth at G = 1 (the
-    # default, hence unnoticed) and otherwise invents anisotropy -- an
-    # isotropic sample came out at +0.167 for G = 2 instead of zero.
-    #
-    # *Where the leakage correction sits.* l1/l2 are applied **after** the
-    # sensitivity correction, as factors on the already-G-corrected signals,
-    # not by unmixing the raw pair beforehand. Same order as the integrals
-    # module, so the two agree term for term.
+    # G multiplies VH in both numerator and denominator; see Ströhl et al.,
+    # DOI 10.1088/2050-6120/aa872e, Eq. 1. Aperture factors l1/l2 are
+    # applied to those corrected signals and require separate calibration.
     gs = g * vh
     den_unc = vv + 2.0 * gs
     with np.errstate(divide="ignore", invalid="ignore"):
