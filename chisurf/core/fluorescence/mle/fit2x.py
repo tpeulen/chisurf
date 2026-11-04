@@ -187,6 +187,16 @@ class Fit2xSettings:
         Optimise ``P + 2S`` instead of ``P`` and ``S`` individually.
     soft_bifl_scatter : bool, optional
         Reduce ``Istar`` by the background contribution ("soft" BIFL scatter).
+    fit_window : tuple of int, optional
+        ``(start, stop)`` bins of each polarisation that are fitted. The ``fit2x``
+        estimators normalise their model over every bin they are given and score
+        every bin, so a decay whose bins outside the window are merely zeroed reads
+        as *observed zeros* there: the model's tail past the window (1.5 % of a
+        4 ns decay cut at 18 ns) is pushed into the window and the fit bends (a
+        reference dye fitted at chi2_r 4.0 instead of 1.35). With a window the
+        histograms are cut at *stop* (the periodic convolution still adds the
+        previous pulses), the data before *start* are not scored and the
+        background pattern is the window's. ``None``: every bin.
     """
 
     dt: float
@@ -199,6 +209,7 @@ class Fit2xSettings:
     convolution_stop: int | None = None
     p2s_twoIstar: bool = False
     soft_bifl_scatter: bool = False
+    fit_window: tuple[int, int] | None = None
 
     def __post_init__(self) -> None:
         """Coerce arrays to contiguous ``float64`` and validate their shapes."""
@@ -231,11 +242,44 @@ class Fit2xSettings:
             bg_sum = float(self.background.sum())
             if bg_sum > 0.0:
                 self.background = self.background / bg_sum
+        if self.fit_window is not None:
+            n = self.irf.size // 2
+            start, stop = max(0, int(self.fit_window[0])), min(n, int(self.fit_window[1]))
+            self.fit_window = (start, stop) if stop > start else None
 
     @property
     def n_channels(self) -> int:
         """Number of micro-time channels per detection channel (``n``)."""
         return self.irf.size // 2
+
+    @property
+    def fitted_channels(self) -> int:
+        """Channels per polarisation the estimator sees: the window's stop, or all."""
+        return self.fit_window[1] if self.fit_window is not None else self.n_channels
+
+    def to_fitted(self, values: np.ndarray, *, score_only: bool = False) -> np.ndarray:
+        """A full ``VV | VH`` array as the estimator sees it: each half cut at the window's
+        stop; with *score_only* also zero before its start (the data and the background,
+        which only the window's bins are compared with)."""
+        values = np.asarray(values, dtype=np.float64)
+        if self.fit_window is None:
+            return values
+        n, (start, stop) = self.n_channels, self.fit_window
+        lead = values.shape[:-1]
+        halves = values.reshape(*lead, 2, n)[..., :stop].copy()
+        if score_only:
+            halves[..., :start] = 0.0
+        return halves.reshape(*lead, 2 * stop)
+
+    def to_full(self, values: np.ndarray) -> np.ndarray:
+        """The inverse of :meth:`to_fitted` for one ``VV | VH`` array: zeros past the stop."""
+        values = np.asarray(values, dtype=np.float64)
+        if self.fit_window is None:
+            return values
+        n, stop = self.n_channels, self.fit_window[1]
+        out = np.zeros((2, n))
+        out[:, :stop] = values.reshape(2, stop)
+        return out.ravel()
 
 
 @dataclasses.dataclass
@@ -475,8 +519,11 @@ class Fit2x:
         if settings.convolution_stop is not None:
             setup_kwargs["convolution_stop"] = int(settings.convolution_stop)
 
-        irf = np.ascontiguousarray(settings.irf, dtype=np.float64)
-        background = np.ascontiguousarray(settings.background, dtype=np.float64)
+        irf = np.ascontiguousarray(settings.to_fitted(settings.irf), dtype=np.float64)
+        background = settings.to_fitted(settings.background, score_only=True)
+        if settings.fit_window is not None and background.sum() > 0.0:
+            background = background / background.sum()  # the window's share is the pattern
+        background = np.ascontiguousarray(background, dtype=np.float64)
 
         # The model is immutable and caches what it derives from the IRF, so it
         # is built once here and shared by every fit; only the problem carries
@@ -484,7 +531,7 @@ class Fit2x:
         self._fit = tttrlib.DecayFit2(
             name, tttrlib.setup_vector(name, **setup_kwargs), irf.tolist()
         )
-        self._problem = tttrlib.DecayFitProblem(2, settings.n_channels, settings.dt)
+        self._problem = tttrlib.DecayFitProblem(2, settings.fitted_channels, settings.dt)
         self._problem.irf = tttrlib.VectorDouble(irf.tolist())
         self._problem.background = tttrlib.VectorDouble(background.tolist())
         self._n_parameters = self._fit.n_parameters(self._problem)
@@ -535,7 +582,9 @@ class Fit2x:
             if fixed is None
             else np.ascontiguousarray(fixed, dtype=np.int16)
         )
-        data_arr = np.ascontiguousarray(data, dtype=np.float64)
+        data_arr = np.ascontiguousarray(
+            self.settings.to_fitted(np.ravel(data), score_only=True), dtype=np.float64
+        )
         self._problem.data = tttrlib.VectorDouble(data_arr.ravel().tolist())
 
         out = self._fit.fit(self._parameters(x0), self._constraints(fixed_arr), self._problem)
@@ -548,7 +597,9 @@ class Fit2x:
             twoIstar=float(out.objective),
             fixed=fixed_arr,
             model_curve=(
-                np.asarray(self._problem.model, dtype=np.float64) if include_model else None
+                self.settings.to_full(np.asarray(self._problem.model, dtype=np.float64))
+                if include_model
+                else None
             ),
         )
 
@@ -623,6 +674,7 @@ class Fit2x:
         data_arr = np.ascontiguousarray(data, dtype=np.float64)
         if data_arr.ndim != 2:
             raise ValueError("data must be a 2-D (n_rows, 2*n_channels) matrix")
+        data_arr = np.ascontiguousarray(self.settings.to_fitted(data_arr, score_only=True))
         n_rows = int(data_arr.shape[0])
         x0_free = np.ascontiguousarray(initial_values, dtype=np.float64)
         n_free = x0_free.shape[-1] if x0_free.ndim else x0_free.size

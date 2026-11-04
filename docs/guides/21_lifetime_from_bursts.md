@@ -164,7 +164,12 @@ what is fitted, also past the gate. The model is drawn only there. **IRF range**
 convolves with is not zero, inside the IRF clip (**IRF start** / **IRF stop**).
 Every edge is a line you can drag, in either half. Letting go of a line writes
 its field and fits again. Changing a field moves its line, so the plot always
-shows what is fitted.
+shows what is fitted. The window is a window for the fit too: the model is
+normalised over its bins (`Fit2xSettings.fit_window`). The `fit2x` estimators
+normalise over every bin they are given, and with the bins outside the window
+merely zeroed they read them as observed zeros, pushed the model's tail (1.5 %
+of a 4 ns decay cut at 18 ns) into the window and bent the fit: a reference dye
+fitted at χ²ᵣ 3.6 instead of 1.5, the DNA13bp_3 bursts at 14.6 instead of 5.9.
 **Min photons** (default 5) is the fewest photons a burst needs in the fit
 window to be fitted.
 

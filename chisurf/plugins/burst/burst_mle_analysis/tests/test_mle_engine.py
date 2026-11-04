@@ -80,7 +80,9 @@ def test_auto_extract_gives_a_consistent_decay_irf_and_fit(session):
     for half in _halves(session.decay):
         assert half[:start].sum() == 0 and half[stop:].sum() == 0 and half[start:stop].sum() > 0
     assert outcome.names[0] == "tau" and 0.5 < outcome.x[0] < 5.0
-    assert 0.0 < outcome.two_istar < 5.0
+    # 2I* (P+2S) is relative to the data's own likelihood: a fit at the noise may land a hair
+    # below zero
+    assert -0.05 < outcome.two_istar < 5.0
     curves = outcome.curves
     assert curves.data.shape == curves.model.shape == curves.residuals.shape
     assert curves.model.sum() == pytest.approx(curves.data.sum(), rel=0.05)  # the model holds the photons

@@ -281,7 +281,8 @@ def test_opt_recovers_a_planted_shift(inputs):
     assert before > 2.5, "the planted displacement must hurt the fit"
     result = hpo.optimize_hyperparameters(session, 60, seed=1)
     assert not result["stopped"] and result["start_loss"] == pytest.approx(before)
-    assert result["loss"] < 1.0 < before
+    # 2I* per channel of the fitted window (the window is the fitted range: fewer channels than a period)
+    assert result["loss"] < 0.5 * before, (result["loss"], before)
     assert session.outcome.x[0] == pytest.approx(reference, rel=0.02)
     # The VH IRF goes back the way it was displaced. 2I* does not pin the bin: with the IRF's
     # background level taken off every bin (the IRF's own floor), it stays below 1 from about one
@@ -470,7 +471,7 @@ def test_pressing_opt_improves_a_displaced_irf(app, inputs):
     before = app.model.two_istar
     drv.click_name("optimize")
     wait(drv)
-    assert app.model.two_istar < 1.0 < before
+    assert app.model.two_istar < 0.5 * before  # 2I* per channel of the fitted window
     assert "Opt:" in app.model.status_text
 
 

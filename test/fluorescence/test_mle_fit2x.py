@@ -263,3 +263,49 @@ def test_batch_accepts_one_start_vector_per_row():
 
     with pytest.raises(ValueError, match="per-row initial_values"):
         fitter.fit_many(matrix, initial_values=np.asarray(starts[:2]), fixed=fixed)
+
+
+def _periodic_polarised_decay(n, dt, tau, rho, photons, seed):
+    """Fit23's own model of a periodic polarised decay (period ``n * dt``, a Gaussian IRF, no
+    background) with Poisson noise: the test is about the window, not the discretisation."""
+    pulse = np.exp(-0.5 * ((np.arange(n) - 30) / 2.5) ** 2)
+    irf = assemble_vv_vh(pulse / pulse.sum(), pulse / pulse.sum())
+    import tttrlib
+
+    model = np.zeros(2 * n)
+    tttrlib.DecayFit23.modelf(
+        np.array([tau, 0.0, 0.38, rho]), irf, np.zeros(2 * n), dt,
+        np.array([n * dt, 1.0, 0.0, 0.0, n - 1.0]), model,
+    )
+    model *= photons / model.sum()
+    return np.random.default_rng(seed).poisson(model).astype(float), irf
+
+
+@pytest.mark.skipif(not HAVE_TTTRLIB, reason="tttrlib not available")
+def test_the_fit_window_is_a_window_not_zeros():
+    """fit2x normalises its model over every bin it is given: data merely zeroed past the window
+    read as observed zeros, the model's tail is pushed into the window and the fit bends. With
+    ``fit_window`` the model and the data share the window (a 4 ns decay cut at 18 ns of a 40 ns
+    period: tau and a flat residual, chi2_r ~ 1)."""
+    n, dt, lo, hi = 500, 0.08, 25, 225
+    data, irf = _periodic_polarised_decay(n, dt, 4.0, 0.2, 2.0e6, seed=3)
+    cut = np.zeros_like(data)
+    for half in (0, n):
+        cut[half + lo : half + hi] = data[half + lo : half + hi]
+    x0, fixed = [3.0, 0.0, 0.38, 0.2], [0, 1, 1, 1]
+
+    def fitted(window):
+        settings = Fit2xSettings(dt=dt, period=n * dt, irf=irf, fit_window=window)
+        res = Fit2x(settings, model=Fit2xModel.FIT23).fit(cut, x0, fixed, include_model=True)
+        assert res.model_curve.shape == (2 * n,)
+        inside = np.zeros(2 * n, dtype=bool)
+        inside[lo:hi] = inside[n + lo : n + hi] = True
+        m = res.model_curve[inside]
+        return res.tau, float(np.sum((cut[inside] - m) ** 2 / m) / (inside.sum() - 1))
+
+    tau_zeros, chi2_zeros = fitted(None)
+    tau_window, chi2_window = fitted((lo, hi))
+    assert tau_window == pytest.approx(4.0, abs=0.03)
+    assert chi2_window < 1.3
+    assert chi2_zeros > 2.0 * chi2_window  # what the zeros did
+    assert abs(tau_zeros - 4.0) > abs(tau_window - 4.0)

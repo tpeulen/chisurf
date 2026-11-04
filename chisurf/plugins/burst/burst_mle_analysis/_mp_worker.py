@@ -107,6 +107,7 @@ def _build_fitter(cfg):
             l2=float(cfg["l2"]),
             p2s_twoIstar=bool(cfg["p2s_twoIstar"]),
             soft_bifl_scatter=bool(cfg["BIFL_scatter"]),
+            fit_window=cfg.get("fit_window"),
         ),
         model=Fit2xModel(cfg.get("model", "fit23")),
     )

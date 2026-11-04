@@ -190,6 +190,18 @@ def window_bins(
 ALL_BINS = 1 << 30
 
 
+def fit_window(ranges: tuple[int, int, int, int], n: int) -> tuple[int, int] | None:
+    """The ``(start, stop)`` the estimator fits (``Fit2xSettings.fit_window``) from the
+    per-polarisation windows :func:`window_bins` gives: the bins both halves cover, ``None``
+    when that is every bin. Fit2x normalises its model over the bins it is given, so zeroing the
+    data outside the window is not a window -- it scores those zeros."""
+    start = max(0, min(int(ranges[0]), int(ranges[2])))
+    stop = min(int(n), max(int(ranges[1]), int(ranges[3])))
+    if stop <= start or (start == 0 and stop >= n):
+        return None
+    return start, stop
+
+
 def vv_vh_histogram(
     tttr: Any,
     detector_chs: list[int],
@@ -666,7 +678,7 @@ def read_burst_analysis(
 #: Name of the multi-exponential tail fit: a different estimator family (``tttrlib.DecayFitNExp``), not a fit2x model.
 #: Bump in the same change that alters what a batch fit computes: it is part of the reuse fingerprint, so a
 #: corrected estimator makes every held result stale instead of "unchanged".
-ALGORITHM_VERSION = 1
+ALGORITHM_VERSION = 2
 
 TAIL_MODEL = "tail"
 
@@ -2085,6 +2097,7 @@ class MleSession:
             l2=l2,
             p2s_twoIstar=self.settings.p2s_twoIstar,
             soft_bifl_scatter=self.settings.BIFL_scatter,
+            fit_window=fit_window(self.window_ranges(), irf.size // 2),
         )
         return Fit2x(settings, model=Fit2xModel(self.settings.model))
 
@@ -2124,7 +2137,9 @@ class MleSession:
             if res.model_curve is not None
             else np.zeros_like(d)
         )
-        diverged = float(res.twoIstar) < 0 or not np.isfinite(float(res.twoIstar))
+        # 2I* of the P+2S objective is relative to the data's own (its W0): a fit at the noise
+        # lands a hair below zero (-0.002 on the BH sample with the window honoured), not diverged
+        diverged = float(res.twoIstar) < -0.05 or not np.isfinite(float(res.twoIstar))
         curves = decay_curves(
             d,
             model,
@@ -2243,6 +2258,7 @@ class MleSession:
             info.get("micro_time_ranges"), (sb, eb), st.micro_time_binning, len(info.get("chs", []))
         )
         return {
+            "fit_window": fit_window((vv_sb, vv_eb, vh_sb, vh_eb), irf.size // 2),
             "sb": int(vv_sb),
             "eb": int(vv_eb),
             "vh_sb": int(vh_sb),
