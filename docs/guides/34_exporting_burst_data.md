@@ -142,14 +142,14 @@ from chisurf.core.fluorescence.burst.photons import load_bur_dataframe
 bursts = load_bur_dataframe(["burstwise_All 0.1000#15/bi4_bur/m000.bur"])
 write_csv_table("bursts.csv", bursts, delimiter=",")
 
-# per-burst H2MM export: a per-photon HDF5 + a per-burst CSV with the ndX
+# per-burst H2MM export: a per-photon + a per-burst CSV with the ndX
 # FRET-line columns ("Mean Microtime (G|G)", "Proximity ratio", ...), from the
 # engine's photon data, its Viterbi path and the state efficiencies
 # (`data, meta, path, fret` as in burst_h2mm/examples/H2MM_01_Simulated_smFRET.ipynb)
 from chisurf.plugins.burst.burst_h2mm.core import export
 tables = export.build_tables(data, meta, path, fret, base_time_s=1e-6,
                              stream_groups=[("G|G", (0, 8)), ("R|G", (1, 9))])
-export.write_hdf5(tables.photons, "h2mm/h2mm_photons.h5")
+export.write_csv(tables.photons, "h2mm/h2mm_photons.csv")
 export.write_csv(tables.bursts, "h2mm/h2mm_bursts.csv")
 
 # per-photon data of the selected bursts ([first, last] index pairs, guide 33)
@@ -170,7 +170,7 @@ them up without any mapping — in particular the time axis is named
 
 | table | one row per | columns |
 |---|---|---|
-| per-photon (`h2mm_photons.h5`) | photon | `Mean Macro Time (s)`, `Macro Time`, `Micro Time`, `Channel`, `Stream`, `State`, `Burst` |
+| per-photon (`h2mm_photons.csv`) | photon | `Mean Macro Time (s)`, `Macro Time`, `Micro Time`, `Channel`, `Stream`, `State`, `Burst` |
 | per-burst (`h2mm_bursts.csv`) | burst | `Burst`, `Number of Photons`, `Mean Macro Time (s)`, `Mean Microtime (<stream>)`, `FRET efficiency`, `Proximity ratio`, `Dominant State`, `Number of Transitions`, `Mean FRET E` |
 
 `Mean Microtime (…)` is emitted once per photon stream and is in nanoseconds when

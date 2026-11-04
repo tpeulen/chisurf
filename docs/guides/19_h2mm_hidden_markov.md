@@ -52,7 +52,8 @@ On the BH SPC-132 sample folder
 reads 2980 bursts / 228 338 photons and selects 3 states by BIC
 (BIC 273 709 → 220 224 → 214 494 for 1 → 3 states), E = 0.029, 0.422, 0.866,
 Viterbi populations 0.391 / 0.572 / 0.038 against posterior occupancy
-0.391 / 0.566 / 0.042; it writes `h2mm/h2mm_result.json` in the folder.
+0.391 / 0.566 / 0.042; it records the run in the measurement's `.pto` container
+(per-burst states, dwells, per-photon states, per-state decays) and writes no loose files.
 
 From the guided workflow: `bursts.h2mm(states=(1, 2, 3))`. Optional ALEX/PIE
 stoichiometry, nanotime divisors (lifetime-resolved states) and bootstrap
@@ -72,7 +73,7 @@ detector is the **Donor detector**, the **Acceptor detector** and the optional
 *Model selection* (**Min/Max states**, **Criterion** bic/icl, **Scan
 patience**), *Optimisation* (**Engine**, **Restarts**, **Seed**, **Max
 iterations**, **Min photons / burst**, **Macro-time scale**, **Nanotime
-divisors**) and *Output* (**Photon table HDF5/CSV**, **Decoder** and **Decoder
+divisors**) and *Output* (**Decoder** and **Decoder
 seed**, **Write state photons**, **State photons as PTU**, **State photons
 sidecar**). The settings file stores the analysis options, not the detector
 setup. **Detector setup** is the shared detector

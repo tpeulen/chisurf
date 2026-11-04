@@ -96,25 +96,24 @@ network must *replace* EM, not initialise it).
 `tttrlib.TTTR` photon data. Each photon is mapped to a *stream* from its routing
 channel (and optional micro-time window).
 
-**Outputs** (written to `<folder>/h2mm/`):
+**Outputs** — recorded in each measurement's `.pto` container, as tables of the H2MM run
+(nothing is written beside the data; there is no HDF5):
 
-* `h2mm_result.json` — the model, per-state FRET, populations, transition rates,
-  dwell means, and the BIC/ICL scan;
-* `h2mm_photons.h5` — a **per-photon table** with the Viterbi `State`, macro/micro
-  time, channel and stream;
-* `h2mm_photons.csv` — the same per-photon table as CSV (either format can be
-  switched off under *Photon table*);
-* `h2mm_bursts.csv` — a **per-burst summary** (photon count, dominant state,
-  transition count, mean FRET);
-* `h2mm_dwells.csv` — one row per Viterbi dwell (state, photons, duration, E/S,
-  `Is Edge`);
-* `h2mm_state_decays.csv` — the per-state micro-time histograms per channel;
-* a burst companion per measurement (`bh4/<stem>.bh4`) beside the output folder,
-  merged column-wise with the burst table by the readers that consume it.
+* `h2mm` — a **per-burst** table, one row per burst of that measurement's burst table
+  (dominant state, transition count, mean FRET, photons, `H2MM Fitted`);
+* `h2mm dwells` — one row per Viterbi dwell (state, photons, duration, E/S, `Is Edge`),
+  `Burst` the row in the burst table;
+* `h2mm states` — the Viterbi `State` of every analysed photon, keyed by `Photon` (its position
+  in the measurement): what **Burst MLE split by state** (step 8) reads;
+* `h2mm state decays` — the per-state micro-time histograms per channel.
+
+**Export** (the H2MM tool's *Export H2MM tables*, or the CLI's `--output`) writes the same as
+CSV files on request: `h2mm_result.json`, `h2mm_photons.csv`, `h2mm_bursts.csv`,
+`h2mm_dwells.csv`, `h2mm_state_decays.csv`.
 
 The photon and burst tables are plain numeric tables (time column
 `Mean Macro Time (s)`) that open directly in **ndxplorer (ndX)** through its
-CSV / MFD-HDF5 readers — colour the per-photon scatter by `State` to visualise the
+CSV reader — colour the per-photon scatter by `State` to visualise the
 recovered state trajectory.
 
 ```{figure} figures/h2mm_dashboard.png

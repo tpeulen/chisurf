@@ -18,7 +18,7 @@ pytest.importorskip("tttrlib")
 # ndX is a local source tree on PYTHONPATH, not an installed dependency.
 pytest.importorskip("ndxplorer", reason="ndxplorer not on the path")
 
-from ndxplorer.io.reader import read_csv, read_mfd_hdf5  # noqa: E402
+from ndxplorer.io.reader import read_csv  # noqa: E402
 
 from .test_export import _dataset_via_tttrlib  # noqa: E402
 
@@ -51,21 +51,15 @@ def written(tmp_path_factory):
     bundle.micro_time_ns = 0.032
 
     out = tmp_path_factory.mktemp("h2mm")
-    write_result_tables(result, bundle, out)
+    write_result_tables(result, bundle, out, files=True)  # the explicit export
     return out, result
 
 
 def _photon_table(out):
-    """The photon table, whichever form it took.
-
-    ``write_result_tables`` writes HDF5 **or** CSV, not both: the CSV is the
-    fallback for an environment without pytables. Any consumer therefore has to
-    look for both — which is exactly what ``burst_states.read_photon_table`` does.
-    """
-    h5, csv = out / "h2mm_photons.h5", out / "h2mm_photons.csv"
-    if h5.is_file():
-        return h5, read_mfd_hdf5
-    assert csv.is_file(), "neither photon table was written"
+    """The exported photon table (CSV: the container is the binary record, no HDF5)."""
+    csv = out / "h2mm_photons.csv"
+    assert csv.is_file(), "the photon table was not exported"
+    assert not (out / "h2mm_photons.h5").exists()
     return csv, lambda paths: read_csv(paths)
 
 
@@ -144,7 +138,7 @@ def test_every_written_path_is_reported(written):
 
 
 def _write_with(tmp_path, **flags):
-    """Write the tables with the given format flags, return the output dir."""
+    """Export the tables of a small run as files (the explicit export), return the result."""
     from chisurf.plugins.burst.burst_h2mm.api.models import H2mmSettings
     from chisurf.plugins.burst.burst_h2mm.backend.services import (
         H2mmAnalysisBundle,
@@ -160,35 +154,15 @@ def _write_with(tmp_path, **flags):
     bundle = H2mmAnalysisBundle(ana, data, settings)
     bundle.meta = meta
     bundle.micro_time_ns = 0.032
-    write_result_tables(result, bundle, tmp_path)
+    write_result_tables(result, bundle, tmp_path, files=True)
     return result
 
 
-def test_both_photon_formats_can_be_written(tmp_path):
-    """HDF5 and CSV are independent choices, not a fallback chain.
-
-    The formats used to be try/except: HDF5, and CSV *only* if that raised. So a
-    folder could never carry both, and which one you got depended on whether
-    pytables happened to be importable.
-    """
-    result = _write_with(tmp_path, photon_hdf5=True, photon_csv=True)
-    assert (tmp_path / "h2mm_photons.csv").is_file()
-    assert "photons_csv" in result.output_paths
-    if (tmp_path / "h2mm_photons.h5").is_file():
-        assert "photons_hdf5" in result.output_paths
-
-
-def test_csv_only_writes_no_hdf5(tmp_path):
-    result = _write_with(tmp_path, photon_hdf5=False, photon_csv=True)
-    assert (tmp_path / "h2mm_photons.csv").is_file()
-    assert not (tmp_path / "h2mm_photons.h5").exists()
-    assert "photons_hdf5" not in result.output_paths
-
-
-def test_asking_for_neither_still_writes_one(tmp_path):
-    """The state assignment must never end up nowhere: it is what step 7 reads."""
-    _write_with(tmp_path, photon_hdf5=False, photon_csv=False)
-    assert (tmp_path / "h2mm_photons.h5").is_file() or (tmp_path / "h2mm_photons.csv").is_file()
+def test_the_export_is_csv_and_never_hdf5(tmp_path):
+    """The container is the record; an explicit export is CSV every tool opens -- no HDF5."""
+    result = _write_with(tmp_path)
+    assert (tmp_path / "h2mm_photons.csv").is_file() and "photons_csv" in result.output_paths
+    assert not list(tmp_path.glob("*.h5"))
 
 
 def test_the_burst_states_line_up_with_the_burst_rows(tmp_path):

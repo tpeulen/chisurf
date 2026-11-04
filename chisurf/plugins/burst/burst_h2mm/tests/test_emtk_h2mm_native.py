@@ -282,11 +282,11 @@ def test_help_and_buttons_have_tooltips(app):
 
 def test_a_toggle_is_flipped_by_a_click(app):
     drv = Driver(app)
-    assert app.model.photon_csv is True
-    drv.click_name("photon_csv")
-    assert app.model.photon_csv is False
-    drv.click_name("photon_csv")
-    assert app.model.photon_csv is True
+    before = bool(app.model.write_state_tttr)
+    drv.click_name("write_state_tttr")
+    assert app.model.write_state_tttr is (not before)
+    drv.click_name("write_state_tttr")
+    assert app.model.write_state_tttr is before
 
 
 # ------------------------------------------------------------------------------------------------------------------
@@ -507,8 +507,8 @@ def test_export_tables_writes_the_fits_files_beside_the_chosen_summary(fitted, t
 
 
 def test_a_run_of_the_project_writes_no_loose_files(monkeypatch, fitted, tmp_path):
-    """A burst run of the project's analysis container: the fit's results go into that container
-    (``files=False``); nothing is written into the session's working folder."""
+    """Every run (of the project or not): the results go into the measurement's container and no
+    loose file is written -- files are an explicit export only."""
     from chisurf.plugins.burst.burst_h2mm.backend import services
 
     window, _drv = fitted
@@ -520,7 +520,7 @@ def test_a_run_of_the_project_writes_no_loose_files(monkeypatch, fitted, tmp_pat
     monkeypatch.setattr(services, "run_analysis", lambda *a, **k: (model.result, model.bundle))
     monkeypatch.setattr(services, "write_result_tables", lambda *a, **k: calls.append(k))
     model.compute(force=True)
-    assert calls == [{"files": False}]
+    assert calls == [{}]  # write_result_tables' default: the container, no files
     assert not (tmp_path / "h2mm").exists()
 
 

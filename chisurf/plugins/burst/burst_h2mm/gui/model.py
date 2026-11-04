@@ -51,8 +51,6 @@ SETTING_FIELDS = (
     "engine",
     "restarts",
     "seed",
-    "photon_hdf5",
-    "photon_csv",
     "max_iter",
     "min_photons",
     "time_scale",
@@ -128,8 +126,6 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
         self.engine: str = "em-float32"
         self.restarts: int = 2
         self.seed: int = 0
-        self.photon_hdf5: bool = True
-        self.photon_csv: bool = True
         self.max_iter: int = 500
         self.min_photons: int = 5
         self.time_scale: int = 1
@@ -248,15 +244,17 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
 
     def build_settings(self) -> H2mmSettings:
         """The backend settings these fields describe (what ``H2mmTool._gather_settings`` builds from its widgets)."""
+        from tttrlib import setup_micro_time_resolution
+
+        width = setup_micro_time_resolution(self.setup)
         return H2mmSettings(
             streams=self.streams(),
+            micro_time_resolution_ps=width * 1e12 if width else None,
             min_states=int(self.min_states),
             max_states=max(int(self.max_states), int(self.min_states)),
             criterion=self.criterion,
             n_restarts=int(self.restarts),
             seed=int(self.seed),
-            photon_hdf5=bool(self.photon_hdf5),
-            photon_csv=bool(self.photon_csv),
             max_iter=int(self.max_iter),
             min_photons=int(self.min_photons),
             time_scale=int(self.time_scale),
@@ -414,22 +412,10 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
             result.warnings = [message]
         if getattr(settings, "write_photons", True):
             try:
-                from chisurf.core.project.analysis import is_derived
-
-                container = self.container_path()
-                if container and is_derived(container):
-                    # A run of the project: its results are tables of the run in that container;
-                    # the loose files are an explicit export (export_tables), never written into
-                    # the session's working folder, which the project does not keep.
-                    write_result_tables(result, bundle, pathlib.Path(container).parent, files=False)
-                else:
-                    # Beside the container when the input is one, inside the folder otherwise.
-                    where = (
-                        pathlib.Path(container).parent
-                        if container
-                        else pathlib.Path(self.data_folder)
-                    )
-                    write_result_tables(result, bundle, where / "h2mm")
+                # The run is recorded in the measurement's container -- the per-burst states,
+                # dwells, photon states and state decays -- and nowhere else; loose tables are an
+                # explicit export (export_tables).
+                write_result_tables(result, bundle, pathlib.Path(self.data_folder or "."))
             except Exception as exc:  # disk / permission path: the fit itself succeeded
                 self.status_text = f"Fitted, but the tables could not be written: {exc}"
         self.result, self.bundle, self.uncertainty, self.scans = result, bundle, None, []
@@ -543,7 +529,7 @@ class H2mmViewModel(WindowsPreflightMixin, RunPickerMixin):
             raise ValueError("No fit to export: run a fit first.")
         before = dict(self.result.output_paths)
         folder = pathlib.Path(path).parent
-        write_result_tables(self.result, self.bundle, folder, containers=False)
+        write_result_tables(self.result, self.bundle, folder, files=True, containers=False)
         return [str(v) for k, v in self.result.output_paths.items() if before.get(k) != v]
 
     def export_dwells(self, path: str | pathlib.Path) -> int:

@@ -29,8 +29,6 @@ from chisurf.core.fluorescence.detector_names import ACCEPTOR, DONOR
 from .h2mm import BurstPhotons
 from .photons import PhotonMeta
 
-NDX_HDF5_KEY = "results"
-
 
 @dataclass
 class H2mmTables:
@@ -220,89 +218,73 @@ def build_dwell_table(
             stream_groups.append((ACCEPTOR, (1,)))
     groups = [(str(name), np.atleast_1d(np.asarray(idx, dtype=int))) for name, idx in stream_groups]
 
-    offsets = np.asarray(data.burst_offsets)
-    macro = np.asarray(meta.macro_time, dtype=np.float64)
-    micro = np.asarray(meta.micro_time, dtype=np.float64)
+    offsets = np.asarray(data.burst_offsets, dtype=np.int64)
     streams_all = np.asarray(data.streams)
+    n = int(streams_all.size)
 
-    cols: dict[str, list] = {
-        "Dwell": [],
-        "Burst": [],
-        "State": [],
-        "Number of Photons": [],
-        "Dwell Time (ms)": [],
-        "Mean Macro Time (s)": [],
-    }
-    for name, _ in groups:
-        cols[f"Mean Microtime ({name})"] = []
-    cols["FRET efficiency"] = []
-    cols["Proximity ratio"] = []
-    cols["Stoichiometry"] = []
-    cols["Is Edge"] = []
+    # Every dwell at once: a dwell is the photon range [start, stop) of one burst, so its sums are
+    # differences of prefix sums (integer times: exact). The per-dwell loop this replaced took
+    # ~27 s for the 500k dwells of a 2.5M-photon run.
+    def field(name, dtype):
+        return np.fromiter((getattr(d, name) for d in dwells), dtype=dtype, count=len(dwells))
 
-    for k, d in enumerate(dwells):
-        s0, s1 = int(d.start), int(d.stop)
-        burst_start = int(offsets[d.burst])
-        burst_end = int(offsets[d.burst + 1])
-        cols["Dwell"].append(k)
-        cols["Burst"].append(int(d.burst))
-        cols["State"].append(int(d.state))
-        cols["Number of Photons"].append(int(d.n_photons))
-        cols["Dwell Time (ms)"].append(float(d.dur) * base_time_s * 1e3)
-        cols["Mean Macro Time (s)"].append(
-            float(macro[s0:s1].mean()) * base_time_s if s1 > s0 else np.nan
+    starts, stops = field("start", np.int64), field("stop", np.int64)
+    bursts, states = field("burst", np.int64), field("state", np.int64)
+    n_ph, durs = field("n_photons", np.int64), field("dur", np.float64)
+    e_meas, s_meas = field("e", np.float64), field("s", np.float64)
+    edges = np.fromiter(
+        (
+            bool(getattr(d, "is_edge"))
+            if getattr(d, "is_edge", None) is not None
+            else (int(d.start) == int(offsets[d.burst]) or int(d.stop) == int(offsets[d.burst + 1]))
+            for d in dwells
+        ),
+        dtype=bool,
+        count=len(dwells),
+    )
+    width = stops - starts
+
+    def prefix(values):
+        out = np.zeros(n + 1, dtype=values.dtype)
+        np.cumsum(values, out=out[1:])
+        return out
+
+    macro_sum = prefix(np.asarray(meta.macro_time, dtype=np.int64)[:n])
+    with np.errstate(divide="ignore", invalid="ignore"):
+        mean_macro = np.where(
+            width > 0,
+            (macro_sum[stops] - macro_sum[starts]) / np.where(width > 0, width, 1) * base_time_s,
+            np.nan,
         )
-        for name, idx in groups:
-            mask = np.isin(streams_all[s0:s1], idx)
-            if micro_time_ns is not None and mask.any():
-                cols[f"Mean Microtime ({name})"].append(
-                    float(micro[s0:s1][mask].mean()) * float(micro_time_ns)
-                )
-            else:
-                cols[f"Mean Microtime ({name})"].append(np.nan)
-        cols["FRET efficiency"].append(float(d.e))
-        cols["Proximity ratio"].append(float(d.e))
-        cols["Stoichiometry"].append(float(d.s))
-        # The dwell record already carries this (it is what the dwell-time
-        # histogram filters on); recomputing it here is how the two could come
-        # to disagree about which dwells are censored.
-        edge = getattr(d, "is_edge", None)
-        if edge is None:
-            edge = s0 == burst_start or s1 == burst_end
-        cols["Is Edge"].append(int(bool(edge)))
 
+    cols: dict[str, np.ndarray] = {
+        "Dwell": np.arange(len(dwells), dtype=np.int64),
+        "Burst": bursts,
+        "State": states,
+        "Number of Photons": n_ph,
+        "Dwell Time (ms)": durs * base_time_s * 1e3,
+        "Mean Macro Time (s)": mean_macro,
+    }
+    micro_int = np.asarray(meta.micro_time, dtype=np.int64)[:n]
+    for name, idx in groups:
+        from chisurf.core.fluorescence.channels import channel_mask
+
+        mask = channel_mask(streams_all, idx)
+        count = prefix(mask.astype(np.int64))
+        total = prefix(np.where(mask, micro_int, 0))
+        k = count[stops] - count[starts]
+        values = np.full(len(dwells), np.nan)
+        if micro_time_ns is not None:
+            some = k > 0
+            values[some] = (total[stops][some] - total[starts][some]) / k[some] * float(micro_time_ns)
+        cols[f"Mean Microtime ({name})"] = values
+    cols["FRET efficiency"] = e_meas
+    cols["Proximity ratio"] = e_meas.copy()
+    cols["Stoichiometry"] = s_meas
+    # The dwell record already carries this (it is what the dwell-time histogram filters on);
+    # recomputing it here is how the two could come to disagree about which dwells are censored.
+    cols["Is Edge"] = edges.astype(np.int64)
     return store_from_arrays(cols)
-
-
-def write_hdf5(df, path: str | pathlib.Path, key: str = NDX_HDF5_KEY) -> str:
-    """Write a table to an ndX-openable HDF5 file, one dataset per column.
-
-    The columns go at the file root, which is the first thing ndX's reader looks
-    at -- it takes such a file straight into a store, with no DataFrame in
-    between and no second copy of the table at the moment it is largest. It also
-    needs no optional HDF5 package, where the frame writer this replaces did.
-
-    Parameters
-    ----------
-    df : tttrlib.DataStore or mapping of str to array
-        The table to write.
-    path : str or pathlib.Path
-        Target file.
-    key : str
-        Kept for callers that pass it. The columns are written at the root, so
-        a non-default key is a group beside them rather than the table.
-
-    Returns
-    -------
-    str
-        The path written.
-    """
-    from chisurf.core.datastore import write_table
-
-    path = pathlib.Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    write_table(path, df, group="/" if key == NDX_HDF5_KEY else f"/{key}")
-    return str(path)
 
 
 def write_csv(df, path: str | pathlib.Path) -> str:
@@ -330,11 +312,17 @@ H2MM_COMPANION_COLUMNS = [
 ]
 
 
+#: Name of the per-photon state path table inside an H2MM run of a container.
+STATES_TABLE = "h2mm states"
+
+
 def write_h2mm_container(
     source,
     burst_df,
     dwell_df=None,
     *,
+    photon_df=None,
+    decay_df=None,
     parameters: dict | None = None,
 ) -> str:
     """Write the H2MM result into the measurement's container, at both grains.
@@ -401,6 +389,32 @@ def write_h2mm_container(
                 "Number of Photons": "photons",
             },
         )
+    if photon_df is not None and len(photon_df):
+        # The Viterbi state of every analysed photon, keyed by its position in the measurement
+        # (``Photon``): what a state-split burst MLE reads back (:mod:`..burst_states`).
+        write_burst_artifact(
+            source,
+            photon_df,
+            name=artifact_name(run, STATES_TABLE),
+            artifact_kind="state_trajectory",
+            operation_type="photon_hmm",
+            row_grain="photon",
+            parameters=parameters,
+            derived_from=artifact_name(run, "h2mm"),
+            source_row_column="Burst",
+            units={key: "dimensionless" for key in column_names(photon_df)},
+        )
+    if decay_df is not None and len(decay_df):
+        write_burst_artifact(
+            source,
+            decay_df,
+            name=artifact_name(run, "h2mm state decays"),
+            artifact_kind="decay",
+            operation_type="photon_hmm",
+            row_grain="histogram_bin",
+            parameters=parameters,
+            derived_from=artifact_name(run, "h2mm"),
+        )
     return written
 
 
@@ -414,8 +428,17 @@ def write_burst_states(
     *,
     container=None,
     parameters: dict | None = None,
+    photon_meta=None,
+    dwell_df=None,
+    decays_of=None,
 ) -> list[str]:
     """Write per-measurement H2MM results, one row per burst, into each container.
+
+    With *photon_meta* (``photon_index`` per photon) the per-photon state path goes in too, with
+    *dwell_df* (from :func:`build_dwell_table`) the dwells, and with *decays_of(photon_mask)*
+    (returning a decay table) the per-state decays -- each restricted to the measurement's own
+    bursts, ``Burst`` being the row in that measurement's burst table. A container is the only
+    place an H2MM run is recorded; loose files are an explicit export.
 
     The H2MM burst table is indexed by a *compacted* burst number --
     ``extract_burst_photons`` skips bursts below ``min_photons`` -- so it cannot
@@ -524,11 +547,43 @@ def write_burst_states(
         frame = store_from_arrays(
             {column: table[:, j] for j, column in enumerate(H2MM_COMPANION_COLUMNS)}
         )
+        # The analysed bursts of this measurement, and their row in its burst table.
+        local_of = np.full(n_analysed, -1, dtype=np.int64)
+        for local, global_row in enumerate(mine):
+            k = where.get(int(global_row))
+            if k is not None:
+                local_of[k] = local
+        photon_df = decay_df = dwells = None
+        if n_analysed and (local_of >= 0).any():
+            counts = np.diff(offsets[: n_analysed + 1])
+            burst_of_photon = np.repeat(np.arange(n_analysed), counts)
+            in_mine = local_of[burst_of_photon] >= 0
+            index = getattr(photon_meta, "photon_index", None) if photon_meta is not None else None
+            if index is not None:
+                photon_df = store_from_arrays(
+                    {
+                        "Photon": np.asarray(index, dtype=np.int64)[: in_mine.size][in_mine],
+                        "Burst": local_of[burst_of_photon[in_mine]],
+                        "State": np.asarray(path, dtype=np.int8)[: in_mine.size][in_mine],
+                    }
+                )
+            if decays_of is not None:
+                decay_df = decays_of(in_mine)
+            if dwell_df is not None and len(dwell_df):
+                d_burst = np.asarray(dwell_df["Burst"], dtype=np.int64)
+                keep = (d_burst >= 0) & (d_burst < n_analysed)
+                keep[keep] &= local_of[d_burst[keep]] >= 0
+                if keep.any():
+                    columns = {c: np.asarray(dwell_df[c])[keep] for c in column_names(dwell_df)}
+                    columns["Burst"] = local_of[d_burst[keep]]
+                    dwells = store_from_arrays(columns)
         written.append(
             write_h2mm_container(
                 run or (container if container is not None else resolve_source(name, search_from)),
                 frame,
-                None,
+                dwells,
+                photon_df=photon_df,
+                decay_df=decay_df,
                 parameters=parameters,
             )
         )

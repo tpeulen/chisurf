@@ -163,6 +163,7 @@
         {
           "type": "value",
           "attr": "time_scale",
+          "suffix": " \u00d7",
           "label": "Macro-time scale",
           "kind": "int",
           "description": "Integer down-scaling of macro times (coarser base unit); raise it when the fit is slow.",
@@ -181,23 +182,11 @@
       ]
     },
     {
-      "description": "Optional exports: photon table, decoded state paths and state photons.",
+      "description": "How the states are decoded. A run is recorded in the measurement's .pto (burst states, dwells, photon states, state decays); Export tables also writes the files below.",
       "type": "panel",
       "title": "Output",
       "collapsed": true,
       "sections": [
-        {
-          "type": "toggle",
-          "attr": "photon_hdf5",
-          "label": "Photon table HDF5",
-          "description": "Write h2mm_photons.h5: compact and fast to reload."
-        },
-        {
-          "type": "toggle",
-          "attr": "photon_csv",
-          "label": "Photon table CSV",
-          "description": "Write h2mm_photons.csv: what every other tool can open."
-        },
         {
           "type": "choice",
           "attr": "decoder",
@@ -227,7 +216,7 @@
           "type": "toggle",
           "attr": "write_state_tttr",
           "label": "Write state photons",
-          "description": "Write the decoded assignment back beside each source measurement."
+          "description": "On Export tables: also write the photons with their decoded state, beside each source measurement."
         },
         {
           "type": "toggle",

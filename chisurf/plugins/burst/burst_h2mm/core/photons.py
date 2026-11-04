@@ -89,6 +89,7 @@ def bursts_from_dataframe(
     min_photons: int = 3,
     return_meta: bool = False,
     divisors: int = 1,
+    micro_time_resolution_ps: float | None = None,
 ):
     """Return engine-ready :class:`~.h2mm.BurstPhotons` from a burst DataFrame.
 
@@ -116,6 +117,8 @@ def bursts_from_dataframe(
         Also return the aligned per-photon metadata.
     divisors : int
         Nanotime bins per base stream.
+    micro_time_resolution_ps : float or None
+        Channel width of the stream gates in picoseconds; None uses raw channels.
 
     Returns
     -------
@@ -138,10 +141,12 @@ def bursts_from_dataframe(
             min_photons=min_photons,
             with_meta=True,
             with_rows=True,
+            micro_time_resolution_ps=micro_time_resolution_ps,
         )
     else:
         times, stream_idx = extract_burst_photons(
-            df, tttrs, streams, time_scale=time_scale, min_photons=min_photons
+            df, tttrs, streams, time_scale=time_scale, min_photons=min_photons,
+            micro_time_resolution_ps=micro_time_resolution_ps
         )
     if not times:
         raise ValueError("no bursts with enough stream-assigned photons")

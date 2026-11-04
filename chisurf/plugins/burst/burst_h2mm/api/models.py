@@ -36,6 +36,8 @@ class H2mmSettings:
     streams : list of StreamSettings
         Photon-stream definitions. The first two are treated as donor and
         acceptor for apparent-FRET reporting.
+    micro_time_resolution_ps : float or None
+        Channel width of stream gates in picoseconds; None uses raw channels.
     min_states : int
         Smallest state count to scan.
     max_states : int
@@ -97,15 +99,8 @@ class H2mmSettings:
         PTU is self-describing but rewrites channel ids, the sidecar leaves the
         source untouched and has no id budget.
     write_photons : bool
-        Also write the per-photon Viterbi-state table (ndX-openable) alongside
-        the JSON summary. The master switch for the two format flags below.
-    photon_hdf5, photon_csv : bool
-        Which formats the per-photon table is written in. Both are independent
-        choices rather than a fallback chain: HDF5 is compact and fast to reload,
-        CSV is what every other tool can open, and there is no reason a folder
-        cannot carry both. If HDF5 is asked for and fails (no pytables), CSV is
-        written whether or not it was ticked — a run must not end with the state
-        assignment nowhere on disk.
+        Record the run in each measurement's container: per-burst states, dwells,
+        the per-photon Viterbi states and the per-state decays.
     """
 
     streams: list[StreamSettings] = field(
@@ -114,6 +109,7 @@ class H2mmSettings:
             StreamSettings(ACCEPTOR, [1, 9], []),
         ]
     )
+    micro_time_resolution_ps: float | None = None
     min_states: int = 1
     max_states: int = 3
     criterion: str = "bic"
@@ -135,8 +131,6 @@ class H2mmSettings:
     state_tttr_ptu: bool = True
     state_tttr_sidecar: bool = True
     write_photons: bool = True
-    photon_hdf5: bool = True
-    photon_csv: bool = True
 
     @property
     def state_counts(self) -> list[int]:

@@ -121,21 +121,11 @@ def test_build_tables_schema_and_lengths():
     assert set(np.unique(np.asarray(ph["State"]))) <= {0, 1}
 
 
-def test_ndx_hdf5_and_csv_roundtrip(tmp_path):
+def test_ndx_csv_roundtrip(tmp_path):
     data, meta = _dataset_via_tttrlib()
     fit = engines.fit_states(data, 2, n_restarts=1, max_iter=200, seed=0)
     path, _ = engines.viterbi(fit, data)
     tables = X.build_tables(data, meta, path, np.array([0.15, 0.80]), base_time_s=1e-6)
-
-    h5 = X.write_hdf5(tables.photons, tmp_path / "h2mm_photons.h5")
-    # ndX opens MFD-HDF5 by taking the file root straight into a store — the
-    # columns must be there, and readable without the optional HDF5 package the
-    # importorskip here used to require.
-    from chisurf.core.datastore import read_results_table, row_count
-
-    back = read_results_table(h5)
-    assert column_names(back) == column_names(tables.photons)
-    assert row_count(back) == data.n_photons
 
     csv = X.write_csv(tables.bursts, tmp_path / "h2mm_bursts.csv")
     back_csv = pd.read_csv(csv)
@@ -197,7 +187,7 @@ def test_write_result_tables_emits_ndx_fret_line_columns(tmp_path):
     bundle.meta = meta
     bundle.micro_time_ns = 0.032  # ns/channel
 
-    write_result_tables(result, bundle, tmp_path)
+    write_result_tables(result, bundle, tmp_path, files=True)
     csv = result.output_paths.get("bursts_csv")
     assert csv is not None
     df = pd.read_csv(csv)

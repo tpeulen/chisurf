@@ -295,3 +295,19 @@ def test_load_tttrs_resolves_legacy_burst_folder_parent(tmp_path, monkeypatch):
 
     assert tttrs["m000.spc"].path == tttr_path
     assert loaded == [(str(tttr_path), "SPC-130")]
+
+
+def test_extract_converts_stream_gates_for_each_file_binning():
+    from chisurf.core.fluorescence.burst.photons import extract_burst_photons
+
+    fine = _fake_tttr([0, 1], [0, 0], [10, 30])
+    coarse = _fake_tttr([0, 1], [0, 0], [5, 15])
+    fine.header.micro_time_resolution = 8e-12
+    coarse.header.micro_time_resolution = 16e-12
+    df = pd.DataFrame([('fine', 0, 1), ('coarse', 0, 1)],
+                      columns=['First File', 'First Photon', 'Last Photon'])
+    times, indices = extract_burst_photons(
+        df, {'fine': fine, 'coarse': coarse}, [StreamDef('G|G', [0], [(8, 19)])],
+        min_photons=1, micro_time_resolution_ps=8.0)
+    assert [len(t) for t in times] == [1, 1]
+    assert [x.tolist() for x in indices] == [[0], [0]]

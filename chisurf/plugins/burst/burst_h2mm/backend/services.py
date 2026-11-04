@@ -142,6 +142,7 @@ def run_analysis(
         min_photons=int(settings.min_photons),
         return_meta=True,
         divisors=int(getattr(settings, "divisors", 1)),
+        micro_time_resolution_ps=settings.micro_time_resolution_ps,
     )
 
     # The per-EM-map cache cost scales with the number of *unique* inter-photon
@@ -188,10 +189,11 @@ def run_analysis(
 
     result = _result_from_analysis(ana, settings)
     if window_check:
-        from chisurf.core.fluorescence.burst.streams import stream_detectors, window_warnings
+        from chisurf.core.fluorescence.burst.streams import gates_record, stream_detectors, window_warnings
 
-        result.warnings = window_warnings(tttrs, stream_detectors(
-            {s.name: (s.channels, s.micro_time_ranges) for s in stream_defs}))
+        detectors = stream_detectors(
+            {s.name: (s.channels, s.micro_time_ranges) for s in stream_defs})
+        result.warnings = window_warnings(tttrs, gates_record(detectors, settings.micro_time_resolution_ps), detectors)
     bundle = H2mmAnalysisBundle(analysis=ana, data=data, settings=settings)
     bundle.meta = meta
     bundle.burst_df = df
@@ -304,16 +306,16 @@ def write_result_tables(
     bundle: H2mmAnalysisBundle,
     out_dir: pathlib.Path,
     *,
-    files: bool = True,
+    files: bool = False,
     containers: bool = True,
 ) -> None:
-    """Write the JSON summary plus the ndX-openable per-photon/per-burst tables.
+    """Record an H2MM run: in each measurement's ``.pto`` container, and loose files only on request.
 
-    ``files`` writes the loose files into *out_dir* (the summary, the per-photon, burst, dwell and
-    state-decay tables, the optional state TTTR); ``containers`` writes the per-burst states and
-    dwells into each measurement's container as tables of its run. A run of the project's analysis
-    container takes only the latter -- loose files beside it would not be part of the project --
-    and the files are an explicit export.
+    ``containers`` (the default, and the record) writes, per measurement, the per-burst states,
+    the dwells, the per-photon state path and the per-state decays as tables of the run.
+    ``files`` -- an explicit export only -- writes CSV tables (summary JSON, photons, bursts,
+    dwells, state decays) and the optional state TTTR into *out_dir*. No HDF5: the container is
+    the binary record.
 
     Records every written path in ``result.output_paths``.
     """
@@ -322,7 +324,6 @@ def write_result_tables(
         build_tables,
         write_burst_states,
         write_csv,
-        write_hdf5,
     )
 
     out_dir = pathlib.Path(out_dir)
@@ -375,26 +376,9 @@ def write_result_tables(
             micro_time_ns=(micro_ns if micro_ns else None),
             burst_sources=burst_sources,
         )
-        # Formats are two independent choices, not a fallback chain: HDF5 is compact
-        # and fast to reload, CSV is what every other tool opens, and a folder can
-        # carry both. The fallback survives *inside* that: if HDF5 was asked for and
-        # cannot be written, the CSV is written whether or not it was ticked, so a
-        # run never ends with the state assignment nowhere on disk.
-        want_hdf5 = bool(getattr(bundle.settings, "photon_hdf5", True))
-        want_csv = bool(getattr(bundle.settings, "photon_csv", True))
-        if not (want_hdf5 or want_csv):
-            want_hdf5 = True
-        if want_hdf5:
-            try:
-                result.output_paths["photons_hdf5"] = write_hdf5(
-                    tables.photons, out_dir / "h2mm_photons.h5"
-                )
-            except Exception:  # pragma: no cover - pytables optional
-                want_csv = True
-        if want_csv:
-            result.output_paths["photons_csv"] = write_csv(
-                tables.photons, out_dir / "h2mm_photons.csv"
-            )
+        result.output_paths["photons_csv"] = write_csv(
+            tables.photons, out_dir / "h2mm_photons.csv"
+        )
         result.output_paths["bursts_csv"] = write_csv(tables.bursts, out_dir / "h2mm_bursts.csv")
 
         # Per-dwell table (one row per Viterbi dwell) — the unit ndxplorer filters on
@@ -429,7 +413,30 @@ def write_result_tables(
         return
     # Per-measurement results in each measurement's own container, one row per
     # burst, so the H2MM state is a column of the burst table's run and bursts
-    # can be gated on it. A legacy ``bh4`` is `export_legacy`'s business.
+    # can be gated on it; beside it the dwells, the photons' states and the
+    # per-state decays. A legacy ``bh4`` is `export_legacy`'s business.
+    dwell_table = build_dwell_table(
+        bundle.data,
+        meta,
+        ana.dwells,
+        ana.base_time_s,
+        stream_groups=stream_groups,
+        micro_time_ns=(micro_ns if micro_ns else None),
+    )
+
+    def decays_of(mask):
+        return decay_table(
+            state_decays(
+                np.asarray(meta.micro_time)[mask],
+                np.asarray(meta.channel)[mask],
+                np.asarray(bundle.data.streams)[mask],
+                np.asarray(ana.path)[mask],
+                n_states=int(ana.fret.shape[0]),
+                groups=stream_groups,
+                micro_time_ns=(micro_ns if micro_ns else None),
+            )
+        )
+
     containers = write_burst_states(
         getattr(bundle, "burst_df", None),
         getattr(meta, "burst_rows", None),
@@ -439,6 +446,9 @@ def write_result_tables(
         getattr(bundle, "data_dir", None),
         container=getattr(bundle, "container", None),
         parameters=dict(getattr(result, "settings_applied", None) or {}),
+        photon_meta=meta,
+        dwell_df=dwell_table,
+        decays_of=decays_of,
     )
     for target in containers:
         result.output_paths[f"container_{pathlib.Path(target).stem}"] = str(target)
@@ -521,8 +531,8 @@ def compute_handler(
             pattern=pattern,
         )
 
-        if write_output and resolved_folder is not None:
-            write_result_tables(result, bundle, pathlib.Path(resolved_folder) / "h2mm")
+        if write_output:
+            write_result_tables(result, bundle, pathlib.Path(resolved_folder or "."))
 
         payload = to_jsonable(result)
         payload["analysis_folder"] = str(resolved_folder) if resolved_folder else None
@@ -695,7 +705,13 @@ def _settings_from_workflow(
 ) -> H2mmSettings:
     """Build H2MM settings, deriving streams from a workflow context."""
     if settings:
-        return settings_from_dict(H2mmSettings, settings)
+        result = settings_from_dict(H2mmSettings, settings)
+        if result.micro_time_resolution_ps is None and workflow_context:
+            from tttrlib import setup_micro_time_resolution
+
+            width = setup_micro_time_resolution(workflow_context.get("channel_settings") or {})
+            result.micro_time_resolution_ps = width * 1e12 if width else None
+        return result
 
     streams: list[StreamSettings] = []
     file_type = "SPC-130"
@@ -711,11 +727,16 @@ def _settings_from_workflow(
                     micro_time_ranges=ranges_to_inclusive(det.get("micro_time_ranges")),
                 )
             )
+        from tttrlib import setup_micro_time_resolution
+
+        width = setup_micro_time_resolution(channel_settings)
         tttr_reading = channel_settings.get("tttr_reading") or {}
         if tttr_reading.get("file_type"):
             file_type = str(tttr_reading["file_type"])
 
     kwargs: dict[str, Any] = {"file_type": file_type}
+    if workflow_context and width:
+        kwargs["micro_time_resolution_ps"] = width * 1e12
     if streams:
         kwargs["streams"] = streams
     return H2mmSettings(**kwargs)

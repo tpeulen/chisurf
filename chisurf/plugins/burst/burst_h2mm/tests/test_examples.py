@@ -43,9 +43,9 @@ def test_generate_and_analyze_example_dataset(tmp_path):
 
     # The defined output set is written and openable.
     out_dir = tmp_path / "h2mm"
-    write_result_tables(result, bundle, out_dir)
+    write_result_tables(result, bundle, out_dir, files=True)
     assert (out_dir / "h2mm_result.json").exists()
-    assert (out_dir / "h2mm_photons.h5").exists() or (out_dir / "h2mm_photons.csv").exists()
+    assert (out_dir / "h2mm_photons.csv").exists() and not (out_dir / "h2mm_photons.h5").exists()
     assert (out_dir / "h2mm_bursts.csv").exists()
     assert pathlib.Path(result.output_paths["result_json"]).exists()
 

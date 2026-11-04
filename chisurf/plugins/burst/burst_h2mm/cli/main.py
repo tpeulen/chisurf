@@ -161,7 +161,8 @@ def compute(
             f"(near-)zero probability."
         )
 
-    out_dir = pathlib.Path(output) if output else pathlib.Path(analysis_folder) / "h2mm"
-    write_result_tables(result, bundle, out_dir)
+    # The run goes into the measurements' containers; --output also exports the tables as files.
+    out_dir = pathlib.Path(output) if output else pathlib.Path(analysis_folder)
+    write_result_tables(result, bundle, out_dir, files=bool(output))
     for label, path in result.output_paths.items():
         click.echo(f"  wrote {label}: {path}")
