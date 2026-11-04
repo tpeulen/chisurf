@@ -365,3 +365,205 @@ class TestClarificationAndBadges:
         assert set(PROVIDERS) == keys
         assert PROVIDERS[0] == "acp"
         assert "zai" in PROVIDERS and "Z.ai" in PROVIDER_LABELS["zai"]
+
+
+class _GatedLLM:
+    """A scripted model whose first call blocks until the test opens the gate."""
+
+    def __init__(self, turns):
+        import threading
+
+        from test.agent.test_grilling import ScriptedLLM
+
+        self.inner = ScriptedLLM(turns)
+        self.settings = self.inner.settings
+        self.gate = threading.Event()
+        self.entered = threading.Event()
+        self.prompts = self.inner.prompts
+
+    def complete(self, messages, tools=None):
+        if not self.entered.is_set():
+            self.entered.set()
+            assert self.gate.wait(30), "the test never opened the gate"
+        return self.inner.complete(messages, tools)
+
+
+def _running_chat(chat, turns):
+    """*chat* with a gated scripted session; returns the model (its first call is held)."""
+    from chisurf.core.agent import AgentConfig, AgentSession
+
+    model = _GatedLLM(turns)
+    chat.provider = "local"
+    mode = AgentMode(chat.mode)
+    chat._agent_session = AgentSession(
+        model, context=chat.build_agent_context(mode), config=AgentConfig(max_safety=mode.safety)
+    )
+    chat._agent_key = (chat.provider, mode.value, chat.model_name, chat.temperature)
+    return model
+
+
+def _wait(chat, condition, timeout=30.0):
+    import time
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        chat.process_events()
+        if condition():
+            return True
+        time.sleep(0.01)
+    raise AssertionError("condition not reached")
+
+
+class TestInputWhileTheAgentWorks:
+    """busy_input_mode: what Enter does while a run is in progress (interrupt, queue, steer)."""
+
+    LIST = {"calls": [{"id": "t1", "name": "list_files", "arguments": {"directory": "."}}]}
+
+    def test_the_default_is_interrupt_and_it_is_persisted(self, chat):
+        from chisurf.plugins.core.code_editor.gui.chat_app import BUSY_MODES
+
+        assert chat.busy_mode == "interrupt" and BUSY_MODES == ["interrupt", "queue", "steer"]
+        chat.send_prompt("/busy steer")
+        assert chat.busy_mode == "steer"
+        chat.send_prompt("/busy sideways")
+        assert chat.busy_mode == "steer" and "Unknown busy mode" in chat.transcript_text()
+        chat.prompt_nav.record("fit the decays")
+        chat.grill, chat.use_memory = False, False
+        saved = chat.export_settings()
+        other = ChatModel()
+        try:
+            other.restore_settings(saved)
+            assert other.busy_mode == "steer"
+            assert (other.grill, other.use_memory) == (False, False)
+            assert other.prompt_history == ["fit the decays"]
+            assert other.prompt_nav.entries is other.prompt_history
+        finally:
+            other.close()
+
+    def test_the_prompt_history_is_capped_without_consecutive_duplicates(self, chat):
+        chat.restore_settings({"prompt_history": ["a", "a", "b"] + [str(i) for i in range(300)]})
+        assert len(chat.prompt_history) == 200
+        chat.restore_settings({"prompt_history": ["a", "a", "b"]})
+        assert chat.prompt_history == ["a", "b"]
+
+    def test_queue_holds_the_message_for_the_next_turn(self, chat):
+        model = _running_chat(chat, [self.LIST, {"text": "Listed."}, {"text": "Exported."}])
+        chat.busy_mode = "queue"
+        chat.send_prompt("list the files")
+        assert model.entered.wait(10)
+        chat.send_prompt("now export them")
+        assert chat.queued and chat.queued[0][1].metadata["note"] == "· queued"
+        assert chat.is_generating
+        model.gate.set()
+        _wait(chat, lambda: "Exported." in chat.transcript_text() and not chat.is_generating)
+        users = [m.content for m in chat.history.messages if m.role == "user"]
+        assert users == ["list the files", "now export them"]
+        assert not chat.queued
+
+    def test_steer_reaches_the_running_agent_after_the_tool_call(self, chat):
+        model = _running_chat(chat, [self.LIST, {"text": "Listed and noted."}])
+        chat.busy_mode = "steer"
+        chat.send_prompt("list the files")
+        assert model.entered.wait(10)
+        chat.send_prompt("only the .ptu files")
+        steered = [m for m in chat.history.messages if m.metadata.get("note")]
+        assert steered and steered[0].metadata["note"] == "· steering the run"
+        model.gate.set()
+        _wait(chat, lambda: not chat.is_generating and "Listed and noted." in chat.transcript_text())
+        assert any("only the .ptu files" in str(m.get("content")) for m in model.prompts[-1])
+        assert steered[0].metadata["note"] == "· steered"
+        assert not chat.queued, "a steered message is not sent again"
+
+    def test_interrupt_stops_the_run_then_sends_the_new_message(self, chat):
+        model = _running_chat(chat, [self.LIST, {"text": "Fitted instead."}])
+        assert chat.busy_mode == "interrupt"
+        chat.send_prompt("list the files")
+        assert model.entered.wait(10)
+        chat.send_prompt("no — fit the decays instead")
+        assert chat._agent_session._cancelled, "the run was told to stop"
+        assert chat.queued, "the message waits for the run to stop (the UI never blocks)"
+        model.gate.set()
+        _wait(chat, lambda: "Fitted instead." in chat.transcript_text() and not chat.is_generating)
+        listed = [m for m in model.prompts[-1] if m.get("name") == "list_files"]
+        assert listed and "not run" in listed[0]["content"], "the interrupted call never ran"
+        assert model.prompts[-1][-1]["content"] == "no — fit the decays instead"
+
+    def test_stop_interrupts_and_drops_the_queue(self, chat):
+        model = _running_chat(chat, [self.LIST, {"text": "never"}])
+        chat.busy_mode = "queue"
+        chat.send_prompt("list the files")
+        assert model.entered.wait(10)
+        chat.send_prompt("and then this")
+        message = chat.queued[0][1]
+        chat.cancel()
+        model.gate.set()
+        _wait(chat, lambda: not chat.is_generating)
+        assert not chat.queued and message.metadata["note"] == "· not sent"
+
+    def test_steer_falls_back_to_queue_for_an_acp_agent(self, chat):
+        chat.provider = "acp"
+        chat.busy_mode = "steer"
+        chat.is_generating = True
+        chat.send_prompt("a correction")
+        assert chat.queued and chat.queued[0][1].metadata["note"] == "· queued"
+        assert chat.busy_send_label() == "Queue"
+
+
+class TestGrillAndMemorySwitches:
+    def test_grill_is_on_by_default_and_the_switch_reaches_the_session(self, chat):
+        from chisurf.core.agent import AgentSession
+        from test.agent.test_grilling import ScriptedLLM
+
+        assert chat.grill is True and chat.use_memory is True
+        session = AgentSession(ScriptedLLM([]), context=chat.build_agent_context(AgentMode.CHISURF_TOOLS))
+        assert session.config.grill and session.config.clarification_rounds == 3
+        chat.grill, chat.use_memory = False, False
+        chat._apply_session_options(session)
+        assert session.config.clarification_rounds == 1, "off restores one round"
+        assert session.memory is None and session.context.extras["memory"] is None
+        chat.use_memory = True
+        chat._apply_session_options(session)
+        assert session.memory is not None
+
+    def test_the_panel_shows_the_switches(self):
+        app = ChatApp()
+        try:
+            driver = Driver(app, (640, 700))
+            drawn = [t[5] for t in driver.frame(2).texts]
+            for caption in ("While working:", "Interrupt", "Grill first", "Use memory (Mnemosyne)"):
+                assert caption in drawn, caption
+            driver.click("Grill first")
+            assert app.chat_gui.model.grill is False
+        finally:
+            app.close()
+
+
+class TestTheInputBox:
+    LONG = (
+        "write a script that processes multiple folders with burst analysis and exports "
+        "the FRET efficiency histograms of every measurement in them"
+    )
+
+    def test_a_long_prompt_wraps_and_up_recalls_earlier_prompts(self):
+        from emtk.keys import KEY_DOWN, KEY_UP
+
+        from chisurf.plugins.core.agent.gui.panel import make_app
+
+        app = make_app()  # the Agent window: it records the controls' rectangles
+        try:
+            model = app.chat_gui.model
+            model.restore_settings({"prompt_history": ["what is loaded?"]})
+            driver = Driver(app, (440, 700))
+            driver.frame(2)
+            driver.click("input")
+            driver.type(self.LONG)
+            drawn = [t[5] for t in driver.painter.texts]
+            assert any(line.startswith("write a script") for line in drawn), "start in sight"
+            assert sum(1 for line in drawn if line and line in self.LONG) >= 2, "wrapped"
+            for _ in range(8):
+                driver.press(KEY_UP)
+            assert model.input_text == "what is loaded?"
+            driver.press(KEY_DOWN)
+            assert model.input_text == self.LONG, "the draft comes back"
+        finally:
+            app.close()

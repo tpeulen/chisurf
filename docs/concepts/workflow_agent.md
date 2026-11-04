@@ -51,11 +51,16 @@ defaults to `--safety dangerous` and asks on the terminal unless `-y` is given.
 
 `list_tools` / `python -m chisurf.core.agent --list-tools` prints the catalogue.
 
-## The clarification round
+## Grilling: the interview before an analysis
 
-Some requests cannot be run without choices only the user can make — which file
-"the data in xy" is, the Förster radius, the donor-only lifetime, how many
-components. The model then calls `ask_user` (`chisurf/core/agent/tools/clarify.py`)
+Most analyses cannot be run well without choices only the user can make — which
+file "the data in xy" is, the gate, the Förster radius, the donor-only lifetime,
+how many components, the background model, what output is wanted. With
+`AgentConfig.grill` on (the default, the panel's **Grill first**) the runtime
+loads the `grill-the-user` skill for every request that starts an analysis
+(`wants_grilling` in `chisurf/core/agent/runtime.py`: analysis words, and not a
+question such as "what is loaded?" or "explain X", which is answered directly),
+and the model interviews the user before it acts. It calls `ask_user` (`chisurf/core/agent/tools/clarify.py`)
 with at most five structured questions, each with optional `options` and a
 `default`. The run stops with `stop_reason = "needs_input"` and the questions in
 `AgentResult.clarifications`; nothing else has run. The rendered questions are
@@ -64,11 +69,25 @@ message, the command line prints them. The user's next message answers them and
 the plan resumes in the same conversation (the panel keeps its `AgentSession`
 between messages).
 
-One request gets **one** round: a second `ask_user` before the request is answered
-is refused, and the refusal tells the model to proceed with the best-supported
-choice and state it. An agent that keeps asking is as useless as one that guesses.
-The rule is in the runtime, so the panel, the command line and the ACP server
-behave alike.
+The interview may take **three** rounds per request — a later round asks only
+what an answer opened up — and an `ask_user` past that is refused: the refusal
+tells the model to proceed with the best-supported choice and state it. With
+grilling off the old behaviour returns: one round, and only when the model judges
+the request ambiguous (`AgentConfig.clarification_rounds`). An agent that keeps
+asking is as useless as one that guesses. The rule is in the runtime, so the
+panel, the command line and the ACP server behave alike.
+
+## Messages sent while the agent works
+
+The panel keeps its input open during a run, and the **While working** setting
+(Hermes' `busy_input_mode`; `/busy <mode>` in the input) decides what a message
+sent then does: `interrupt` (default) cancels the run and sends the message once
+the worker thread has stopped — the UI thread never waits; `queue` holds it, shown
+as *queued*, until the run ends; `steer` calls `AgentSession.steer`, a thread-safe
+list drained into the conversation as a user turn before the next model call, so
+the model reads it after the tool call in flight. A steering message the run never
+reached (`take_steering`) is sent as the next request. With an ACP agent steering
+falls back to the queue; interrupt and queue work through ACP's own cancel.
 
 ## The burst-to-distance chain
 
@@ -150,6 +169,20 @@ conclusion: chosen parameters, a data quirk, a recipe) and `save_skill` (a
 procedure or preference, saved as the user's skill so later sessions load it). The
 bundle lives beside the user's files, not in the application, and any client that
 reads OKF can use it.
+
+**Long-term memory** is the user's shared Mnemosyne store
+(`chisurf/core/agent/memory.py`) — the same SQLite database the Mnemosyne MCP
+server serves to the user's other agents (`$MNEMOSYNE_DATA_DIR`, else
+`~/.hermes/mnemosyne/data`); ChiSurf creates no store of its own. Before each
+request the runtime recalls the few memories closest to it into the system
+prompt; `memory_recall` looks something up, `memory_remember` keeps one fact with
+why it matters (refused when it looks like a secret or a stack trace, or is longer
+than a fact). After a request that recovered from a failing tool (the same tool
+then succeeding with other arguments) one short lesson is stored automatically.
+`AgentConfig.use_memory` (the panel's **Use memory (Mnemosyne)**) turns it off;
+without the package, or when recall fails, the agent runs as before. A memory is
+one fact, recalled by similarity; a skill is a procedure, loaded by its trigger
+words.
 
 ## Limits
 

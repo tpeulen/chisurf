@@ -1335,30 +1335,52 @@ for line in sys.stdin.buffer:
 
 
 def test_native_chat_cancel_blocks_overlap_and_discards_late_response(monkeypatch):
+    """A prompt sent while a cancelled run winds down waits for it, then runs on its own.
+
+    The cancelled run's late answer is discarded; the new prompt (busy mode
+    ``interrupt``) is held, not started beside the old worker, and sent once the
+    old run reported that it stopped.
+    """
     import threading
 
     model = ChatModel()
     model.provider = "openai"
     started = threading.Event()
     release = threading.Event()
+    calls = []
 
     def prompt(text):
-        started.set()
-        release.wait(timeout=3)
-        model._on_runtime_event("message.completed", {"content": "late response"})
-        model._on_acp_prompt_finished("", "cancelled")
+        calls.append(text)
+        if len(calls) == 1:
+            started.set()
+            release.wait(timeout=3)
+            model._on_runtime_event("message.completed", {"content": "late response"})
+            model._on_acp_prompt_finished("", "cancelled")
+        else:
+            model._on_runtime_event("message.completed", {"content": "second answer"})
+            model._on_acp_prompt_finished("", "answer")
 
     monkeypatch.setattr(model, "_run_in_process_prompt", prompt)
     model.send_prompt("first")
     assert started.wait(timeout=1)
+    first_worker = model._in_process_thread
     model.cancel()
     model.send_prompt("overlapping second prompt")
-    assert [message.content for message in model.history.messages] == ["first"]
+    assert [message.content for message in model.history.messages] == [
+        "first",
+        "overlapping second prompt",
+    ]
+    assert model.queued and model._in_process_thread is first_worker, "held, not overlapping"
     release.set()
+    first_worker.join(timeout=2)
+    model.process_events()  # the old run ends; the held prompt starts
     model._in_process_thread.join(timeout=2)
     model.process_events()
+    assert calls == ["first", "overlapping second prompt"]
     assert not model.is_generating
-    assert all(message.content != "late response" for message in model.history.messages)
+    contents = [message.content for message in model.history.messages]
+    assert "late response" not in contents
+    assert contents[-2:] == ["overlapping second prompt", "second answer"]
     model.close()
 
 

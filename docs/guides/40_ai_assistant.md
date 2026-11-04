@@ -149,6 +149,34 @@ The transcript shows every tool call, the skill it is following, and the
 reduced chi-square as fits complete, so you can see what it did rather than
 having to trust it.
 
+**The input box.** Enter sends, Shift+Enter starts a new line; a long request
+wraps and the box grows to six lines before it scrolls. ↑ on the first line
+brings back the request sent before (again for older ones), ↓ on the last line
+goes forward and, past the newest, returns what you were typing. The last 200
+requests are kept with the panel's settings.
+
+**While it works** the input stays open. The **While working** selector (or
+typing `/busy interrupt`, `/busy queue`, `/busy steer`) decides what Enter does
+then: **Interrupt** (default) stops the run and sends the new message once it
+has stopped; **Queue** shows the message as *queued* and sends it when the run
+ends; **Steer** hands it to the running agent, which reads it after its next
+tool call without stopping. **Stop** always interrupts and drops the queue. An
+ACP agent cannot be steered; there the message is queued.
+
+**Grill first** (on by default) makes the agent interview you before an
+analysis — see the walkthrough below. **Use memory (Mnemosyne)** (on by default)
+gives it the long-term memory your other agents share; see
+[What it remembers about you](#what-it-remembers-about-you).
+
+```{figure} figures/40_agent_busy.png
+:width: 60%
+
+A run in progress with **While working: Steer**: the message sent during the
+run is marked *steering the run*, the next one is being typed, and the buttons
+are **Stop** and **Steer**. Rendered headless from the real panel with a
+scripted model.
+```
+
 ```{figure} figures/ai_assistant.png
 :name: fig-ai-assistant
 :width: 95%
@@ -172,9 +200,11 @@ mode, on a measurement with one FRET population.
 
 **1. Ask.** Type the request as you would say it — here the verbatim example
 prompt. The assistant loads the matching skills (`burst-search`,
-`fit-decay`, `fret-from-decays`) and, because the request leaves choices
-open that change the result, calls `ask_user` instead of guessing. Nothing
-has run yet.
+`fit-decay`, `fret-from-decays`) and the interview procedure
+(`grill-the-user`), and, because the request leaves choices open that change
+the result, calls `ask_user` instead of guessing. Nothing has run yet. With
+**Grill first** on it may ask up to three rounds — a later one only about what
+an answer opened up; a plain question ("what is loaded?") is never grilled.
 
 ```{figure} figures/40_agent_clarify.png
 :width: 80%
@@ -329,6 +359,15 @@ under `concepts/`. It writes there with `record_finding` (a conclusion worth
 keeping — chosen parameters, a quirk of your setup) and turns a procedure you
 want repeated into your own skill with `save_skill`, so later sessions load it
 when a request matches. Both are plain markdown you can read, edit or delete.
+
+With **Use memory (Mnemosyne)** on, it also shares the long-term memory of your
+other agents (the Mnemosyne store, `~/.hermes/mnemosyne/data` unless
+`MNEMOSYNE_DATA_DIR` says otherwise). Before each request it recalls the few
+memories that bear on it; it keeps a new one — one fact with why it matters,
+such as a preference, a fix that worked or a setting a dataset needed — with
+`memory_remember`, and after a request in which it recovered from a failing
+tool it notes that one lesson by itself. Secrets, stack traces and session
+noise are refused. Without Mnemosyne installed nothing changes.
 
 ### Writing your own
 

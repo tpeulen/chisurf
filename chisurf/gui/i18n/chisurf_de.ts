@@ -69876,7 +69876,7 @@ fortgesetzt werden.
         </message>
         <message>
             <source>Interrupt</source>
-            <translation type="unfinished"/>
+            <translation>Unterbrechen</translation>
         </message>
         <message>
             <source>Kept the mixed decay loaded here; the FCS correlator's files were not read over it.</source>
@@ -76555,6 +76555,114 @@ Background (kHz): {bg}</source>
         <message>
             <source>JSON with named detectors (chs and micro_time_ranges), named PIE windows and micro_time_resolution_ps, the channel width (ps) the windows and gates are in (null: applied as raw channels of the data).</source>
             <translation>JSON mit benannten Detektoren (chs und micro_time_ranges), benannten PIE-Fenstern und micro_time_resolution_ps, der Kanalbreite (ps) der Fenster und Gates (null: als Rohkanäle der Daten angewendet).</translation>
+        </message>
+        <message>
+            <source>· queued</source>
+            <translation>· in der Warteschlange</translation>
+        </message>
+        <message>
+            <source>· steered</source>
+            <translation>· an den laufenden Agenten gegeben</translation>
+        </message>
+        <message>
+            <source>· not sent</source>
+            <translation>· nicht gesendet</translation>
+        </message>
+        <message>
+            <source>· steering the run</source>
+            <translation>· lenkt den laufenden Auftrag</translation>
+        </message>
+        <message>
+            <source>· interrupting — sent when the run stops</source>
+            <translation>· unterbricht — wird gesendet, sobald der Lauf anhält</translation>
+        </message>
+        <message>
+            <source>Queue</source>
+            <translation>Einreihen</translation>
+        </message>
+        <message>
+            <source>Steer</source>
+            <translation>Lenken</translation>
+        </message>
+        <message>
+            <source>While the agent works, Enter will: {mode}. Change it with /busy interrupt, /busy queue or /busy steer.</source>
+            <translation>Während der Agent arbeitet, bewirkt Eingabe: {mode}. Ändern mit /busy interrupt, /busy queue oder /busy steer.</translation>
+        </message>
+        <message>
+            <source>While the agent works, Enter now does: {mode}.</source>
+            <translation>Während der Agent arbeitet, bewirkt Eingabe jetzt: {mode}.</translation>
+        </message>
+        <message>
+            <source>Unknown busy mode {mode!r}: use interrupt, queue or steer.</source>
+            <translation>Unbekannter Modus {mode!r}: interrupt, queue oder steer verwenden.</translation>
+        </message>
+        <message>
+            <source>Stop the running request and send this message instead.</source>
+            <translation>Den laufenden Auftrag anhalten und stattdessen diese Nachricht senden.</translation>
+        </message>
+        <message>
+            <source>Send this message when the running request has finished.</source>
+            <translation>Diese Nachricht senden, sobald der laufende Auftrag fertig ist.</translation>
+        </message>
+        <message>
+            <source>Hand this message to the running agent; it reads it after its next tool call.</source>
+            <translation>Diese Nachricht an den laufenden Agenten geben; er liest sie nach seinem nächsten Werkzeugaufruf.</translation>
+        </message>
+        <message>
+            <source>Ask the agent… (Enter sends, Shift+Enter: new line, ↑/↓: earlier prompts)</source>
+            <translation>Den Agenten fragen … (Eingabe sendet, Umschalt+Eingabe: neue Zeile, ↑/↓: frühere Anfragen)</translation>
+        </message>
+        <message>
+            <source>While working:</source>
+            <translation>Während der Arbeit:</translation>
+        </message>
+        <message>
+            <source>What Enter does while the agent works: Interrupt stops the run and sends the new message; Queue sends it when the run ends; Steer hands it to the running agent after its next tool call. Stop always interrupts. Also: /busy &lt;mode&gt;.</source>
+            <translation>Was Eingabe bewirkt, während der Agent arbeitet: Unterbrechen hält den Lauf an und sendet die neue Nachricht; Einreihen sendet sie, wenn der Lauf endet; Lenken gibt sie dem laufenden Agenten nach seinem nächsten Werkzeugaufruf. Stopp unterbricht immer. Auch: /busy &lt;Modus&gt;.</translation>
+        </message>
+        <message>
+            <source>Grill first</source>
+            <translation>Erst nachfragen</translation>
+        </message>
+        <message>
+            <source>Before an analysis the agent asks about the choices that change the result (files, gates, models, correction factors, output), up to three rounds. Off: it asks once, and only when a request is ambiguous.</source>
+            <translation>Vor einer Analyse fragt der Agent nach den Entscheidungen, die das Ergebnis ändern (Dateien, Gates, Modelle, Korrekturfaktoren, Ausgabe), bis zu drei Runden. Aus: Er fragt einmal und nur bei einer mehrdeutigen Anfrage.</translation>
+        </message>
+        <message>
+            <source>Use memory (Mnemosyne)</source>
+            <translation>Gedächtnis nutzen (Mnemosyne)</translation>
+        </message>
+        <message>
+            <source>Recall what earlier sessions learned (preferences, fixes, dataset settings) and keep new lessons, in the memory your other agents share.</source>
+            <translation>Abrufen, was frühere Sitzungen gelernt haben (Vorlieben, Lösungen, Einstellungen für Datensätze), und neue Erkenntnisse behalten – im Gedächtnis, das Ihre anderen Agenten teilen.</translation>
+        </message>
+        <message>
+            <source>Mnemosyne is not installed: the agent works without memory.</source>
+            <translation>Mnemosyne ist nicht installiert: Der Agent arbeitet ohne Gedächtnis.</translation>
+        </message>
+        <message>
+            <source>With &lt;b&gt;Grill first&lt;/b&gt; on, the agent interviews you before an analysis: files, gates, models and components, correction factors, background, the output you want — with options and its recommended default, up to three rounds. Off, it asks once and only when a request is ambiguous.</source>
+            <translation>Mit &lt;b&gt;Erst nachfragen&lt;/b&gt; befragt Sie der Agent vor einer Analyse: Dateien, Gates, Modelle und Komponenten, Korrekturfaktoren, Hintergrund, die gewünschte Ausgabe — mit Optionen und seiner empfohlenen Voreinstellung, bis zu drei Runden. Aus: Er fragt einmal und nur bei einer mehrdeutigen Anfrage.</translation>
+        </message>
+        <message>
+            <source>Memory</source>
+            <translation>Gedächtnis</translation>
+        </message>
+        <message>
+            <source>&lt;b&gt;Use memory (Mnemosyne)&lt;/b&gt; recalls what earlier sessions learned — your preferences, a fix that worked, a setting a dataset needed — and keeps new lessons, in the memory your other agents share.</source>
+            <translation>&lt;b&gt;Gedächtnis nutzen (Mnemosyne)&lt;/b&gt; ruft ab, was frühere Sitzungen gelernt haben — Ihre Vorlieben, eine Lösung, die funktioniert hat, eine Einstellung, die ein Datensatz brauchte — und behält neue Erkenntnisse, im Gedächtnis, das Ihre anderen Agenten teilen.</translation>
+        </message>
+        <message>
+            <source>Typing while it works</source>
+            <translation>Schreiben, während er arbeitet</translation>
+        </message>
+        <message>
+            <source>The input stays open while the agent works. &lt;b&gt;While working&lt;/b&gt; decides what Enter does then: &lt;b&gt;Interrupt&lt;/b&gt; stops the run and sends the new message, &lt;b&gt;Queue&lt;/b&gt; sends it when the run ends, &lt;b&gt;Steer&lt;/b&gt; hands it to the running agent after its next tool call. &lt;b&gt;Stop&lt;/b&gt; always interrupts.</source>
+            <translation>Die Eingabe bleibt offen, während der Agent arbeitet. &lt;b&gt;Während der Arbeit&lt;/b&gt; legt fest, was Eingabe dann bewirkt: &lt;b&gt;Unterbrechen&lt;/b&gt; hält den Lauf an und sendet die neue Nachricht, &lt;b&gt;Einreihen&lt;/b&gt; sendet sie, wenn der Lauf endet, &lt;b&gt;Lenken&lt;/b&gt; gibt sie dem laufenden Agenten nach seinem nächsten Werkzeugaufruf. &lt;b&gt;Stopp&lt;/b&gt; unterbricht immer.</translation>
+        </message>
+        <message>
+            <source>Edit the request if you like, then press &lt;b&gt;Enter&lt;/b&gt; or &lt;b&gt;Send&lt;/b&gt; (Shift+Enter starts a new line; ↑ and ↓ bring back earlier requests). Before an analysis the agent asks about the open choices first; answer in the same box.</source>
+            <translation>Bearbeiten Sie die Anfrage nach Belieben und drücken Sie dann &lt;b&gt;Eingabe&lt;/b&gt; oder &lt;b&gt;Senden&lt;/b&gt; (Umschalt+Eingabe beginnt eine neue Zeile; ↑ und ↓ holen frühere Anfragen zurück). Vor einer Analyse fragt der Agent zuerst nach den offenen Entscheidungen; antworten Sie im selben Feld.</translation>
         </message>
     </context>
     <context>

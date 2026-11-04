@@ -22,9 +22,11 @@ from emtk.i18n import tr
 from emtk.widgets.chat import (
     ChatHistory,
     ChatMessage,
+    chat_input_bar_height,
     draw_chat_input_bar,
     draw_chat_transcript,
 )
+from emtk.widgets.wrap_field import PromptHistory
 
 from chisurf.core.settings import ai_settings
 from chisurf.plugins.core.code_editor.acp_client import AcpClient
@@ -74,6 +76,26 @@ MODE_LABELS = {
 }
 
 
+#: What Enter does while the agent works (Hermes' ``busy_input_mode``): ``interrupt``
+#: stops the run and sends the new message, ``queue`` holds it for the next turn,
+#: ``steer`` hands it to the running agent after its next tool call.
+BUSY_MODES = ["interrupt", "queue", "steer"]
+BUSY_MODE_LABELS = {"interrupt": "Interrupt", "queue": "Queue", "steer": "Steer"}
+
+#: Prompts kept for Up/Down recall, newest last.
+PROMPT_HISTORY_LIMIT = 200
+
+
+def _memory_installed() -> bool:
+    """Whether the Mnemosyne package can be imported (the memory switch's tooltip)."""
+    import importlib.util
+
+    try:
+        return importlib.util.find_spec("mnemosyne") is not None
+    except (ImportError, ValueError):
+        return False
+
+
 def _default_registry():
     """The agent's full tool registry (imported when a tool mode first needs it)."""
     from chisurf.core.agent import build_default_registry
@@ -115,6 +137,19 @@ class ChatModel:
         self.model_name = "default"
         self.temperature = 0.2
         self.input_text = ""
+        #: What Enter does while the agent works (see :data:`BUSY_MODES`).
+        self.busy_mode = "interrupt"
+        #: Interview the user before an analysis (``AgentConfig.grill``).
+        self.grill = True
+        #: Recall and keep memories in the user's shared Mnemosyne store.
+        self.use_memory = True
+        #: Prompts sent before, oldest first; Up/Down in the input step through them.
+        self.prompt_history: list[str] = []
+        self.prompt_nav = PromptHistory(self.prompt_history, limit=PROMPT_HISTORY_LIMIT)
+        #: Messages waiting for the run to end, with their transcript entries.
+        self.queued: list[tuple[str, ChatMessage]] = []
+        #: Messages handed to the running agent (steer), with their transcript entries.
+        self._steered: list[tuple[str, ChatMessage]] = []
         self.is_generating = False
         self._closed = False
         self._in_process_thread: threading.Thread | None = None
@@ -227,6 +262,7 @@ class ChatModel:
 
         key = (self.provider, mode.value, self.model_name, self.temperature)
         if self._agent_session is not None and key == self._agent_key:
+            self._apply_session_options(self._agent_session)
             return self._agent_session
         overrides: dict[str, Any] = {"temperature": self.temperature}
         if self.model_name != "default":
@@ -255,11 +291,32 @@ class ChatModel:
             LLMClient(settings),
             context=context,
             registry=registry,
-            config=AgentConfig(max_safety=mode.safety),
+            config=AgentConfig(
+                max_safety=mode.safety, grill=self.grill, use_memory=self.use_memory
+            ),
             extra_instructions=instructions,
         )
         self._agent_key = key
         return self._agent_session
+
+    def _apply_session_options(self, session) -> None:
+        """Carry the panel's switches (grill, memory) into a kept conversation.
+
+        They change how the next request runs, not what was said, so the
+        conversation is kept rather than rebuilt.
+        """
+        config = getattr(session, "config", None)
+        if config is None:
+            return  # not an AgentSession (a host's own session object): nothing to carry
+        config.grill = self.grill
+        config.use_memory = self.use_memory
+        if self.use_memory and session.memory is None:
+            from chisurf.core.agent.memory import default_memory
+
+            session.memory = default_memory()
+        elif not self.use_memory:
+            session.memory = None
+        session.context.extras["memory"] = session.memory
 
     def _init_acp(self) -> None:
         """Initialize and wire up ACP client signals."""
@@ -334,6 +391,40 @@ class ChatModel:
         last = self.history.messages[-1] if self.history.messages else None
         if not cancelled and last is not None and last.role == "assistant":
             self.apply_file_writes(last.content)
+        self._settle_steering()
+        self._send_next_queued()
+
+    def _settle_steering(self) -> None:
+        """Steering messages the run read are marked so; the ones it never got are queued."""
+        take = getattr(self._agent_session, "take_steering", None)
+        late = take() if callable(take) else []
+        for text, message in self._steered:
+            if text in late:
+                late.remove(text)
+                message.metadata["note"] = tr("· queued")
+                self.queued.insert(0, (text, message))
+            else:
+                message.metadata["note"] = tr("· steered")
+        self._steered = []
+
+    def _send_next_queued(self) -> None:
+        """Start the oldest waiting message, now that the run has ended."""
+        if self._closed or self.is_generating or not self.queued:
+            return
+        text, message = self.queued.pop(0)
+        # It moves to the end of the transcript: the turn it starts follows it.
+        if message in self.history.messages:
+            self.history.messages.remove(message)
+        self._start_prompt(text)
+
+    def _queue(self, text: str, note: str, front: bool = False) -> None:
+        """Hold *text* for when the run ends, shown in the transcript as waiting."""
+        message = self.history.add_message("user", text, metadata={"note": note})
+        entry = (text, message)
+        if front:
+            self.queued.insert(0, entry)
+        else:
+            self.queued.append(entry)
 
     def _finish_open_messages(self, status: str) -> None:
         """End every assistant message still streaming, not only the last one.
@@ -528,6 +619,10 @@ class ChatModel:
             "mode": self.mode,
             "model_name": self.model_name,
             "temperature": self.temperature,
+            "busy_mode": self.busy_mode,
+            "grill": self.grill,
+            "use_memory": self.use_memory,
+            "prompt_history": list(self.prompt_history[-PROMPT_HISTORY_LIMIT:]),
         }
 
     def restore_settings(self, settings: dict) -> None:
@@ -542,12 +637,105 @@ class ChatModel:
             and 0 <= settings["temperature"] <= 2
         ):
             self.temperature = float(settings["temperature"])
+        if settings.get("busy_mode") in BUSY_MODES:
+            self.busy_mode = settings["busy_mode"]
+        for switch in ("grill", "use_memory"):
+            if isinstance(settings.get(switch), bool):
+                setattr(self, switch, settings[switch])
+        history = settings.get("prompt_history")
+        if isinstance(history, list):
+            kept: list[str] = []
+            for entry in history:
+                if isinstance(entry, str) and entry.strip() and (not kept or kept[-1] != entry):
+                    kept.append(entry)
+            # The same list object: the input's history records into it.
+            self.prompt_history[:] = kept[-PROMPT_HISTORY_LIMIT:]
+            self.prompt_nav.position = None
+
+    def set_busy_mode(self, mode: str) -> bool:
+        """Choose what Enter does while the agent works; ``False`` for an unknown mode."""
+        if mode not in BUSY_MODES:
+            return False
+        self.busy_mode = mode
+        return True
+
+    def busy_send_label(self) -> str:
+        """The Send button's caption while the agent works, for the busy mode in force."""
+        mode = self.busy_mode
+        if mode == "steer" and self.provider == "acp":
+            mode = "queue"  # an ACP agent cannot be steered: the message waits
+        return tr(BUSY_MODE_LABELS[mode])
+
+    def _busy_command(self, text: str) -> None:
+        """``/busy [interrupt|queue|steer]``: show or set what Enter does while busy."""
+        parts = text.split()
+        if len(parts) == 1:
+            self.history.add_message(
+                "system",
+                tr("While the agent works, Enter will: {mode}. Change it with /busy "
+                   "interrupt, /busy queue or /busy steer.").format(mode=self.busy_mode),
+            )
+            return
+        if self.set_busy_mode(parts[1].lower()):
+            self.history.add_message(
+                "system", tr("While the agent works, Enter now does: {mode}.").format(
+                    mode=self.busy_mode)
+            )
+        else:
+            self.history.add_message(
+                "error", tr("Unknown busy mode {mode!r}: use interrupt, queue or steer.").format(
+                    mode=parts[1])
+            )
 
     def send_prompt(self, text: str) -> None:
-        clean_text = text.strip()
-        if not clean_text or self.is_generating or self._closed:
-            return
+        """Send *text*; while the agent works, the busy mode decides what happens.
 
+        ``interrupt`` stops the run and sends *text* once it has stopped (the UI
+        thread never waits for it), ``queue`` holds it for when the run ends,
+        ``steer`` hands it to the running agent, which reads it after its next
+        tool call. Steering needs the in-process agent; with an ACP agent, or
+        when the run is already ending, it falls back to the queue. ``/busy``
+        shows or sets the mode.
+        """
+        clean_text = text.strip()
+        if not clean_text or self._closed:
+            return
+        if clean_text == "/busy" or clean_text.startswith("/busy "):
+            self._busy_command(clean_text)
+            return
+        if self.is_generating:
+            self._send_while_busy(clean_text)
+            return
+        self._start_prompt(clean_text)
+
+    def _send_while_busy(self, text: str) -> None:
+        """A message typed while a run is in progress, handled by :attr:`busy_mode`."""
+        mode = self.busy_mode
+        if mode == "steer":
+            session = self._agent_session
+            if (
+                self.provider != "acp"
+                and callable(getattr(session, "steer", None))
+                and getattr(session, "running", False)
+                and not self._ignore_response
+                and session.steer(text)
+            ):
+                message = self.history.add_message(
+                    "user", text, metadata={"note": tr("· steering the run")}
+                )
+                self._steered.append((text, message))
+                return
+            mode = "queue"
+        if mode == "interrupt":
+            self._queue(text, tr("· interrupting — sent when the run stops"), front=True)
+            self._stop_run()
+            if not self.is_generating:
+                self._send_next_queued()
+            return
+        self._queue(text, tr("· queued"))
+
+    def _start_prompt(self, clean_text: str) -> None:
+        """Start a turn with *clean_text* (nothing is running)."""
         self.history.add_message("user", clean_text)
         self.is_generating = True
         self._ignore_response = False
@@ -682,6 +870,14 @@ class ChatModel:
                 self.event_queue.put(self._handle_finished)
 
     def cancel(self) -> None:
+        """Stop: the run is interrupted and the messages waiting for it are not sent."""
+        for _text, message in self.queued:
+            message.metadata["note"] = tr("· not sent")
+        self.queued = []
+        self._stop_run()
+
+    def _stop_run(self) -> None:
+        """Interrupt the current run (the queue is kept: interrupt mode sends from it)."""
         was_generating = self.is_generating
         self._ignore_response = True
         if self._agent_session is not None:
@@ -714,6 +910,7 @@ class ChatModel:
 
     def clear(self) -> None:
         self.cancel()
+        self._steered = []
         if self.acp_client is not None and self.acp_client.is_running:
             self.acp_client.stop()
         self.is_generating = bool(
@@ -785,10 +982,12 @@ class ChatGui:
         if self.model.pending_permission:
             self._draw_permission_banner()
 
-        # 3. Dynamic sizing: Input bar takes fixed space at bottom, transcript fills the rest
+        # 3. The input bar sits at the bottom and grows with the wrapped prompt (up to six
+        #    lines); the transcript fills the rest.
         input_box_h = 52.0
-        buttons_h = 30.0
-        input_total_h = input_box_h + buttons_h + 14.0
+        input_total_h = (
+            chat_input_bar_height(self.model.input_text, width, input_height=input_box_h) + 8.0
+        )
 
         rem_h = im.get_content_region_avail()[1]
         transcript_h = max(70.0, rem_h - input_total_h)
@@ -812,6 +1011,12 @@ class ChatGui:
 
         # 4. Input bar: multiline field and Send / Cancel / Clear
         bar_x, bar_y = im.get_cursor_screen_pos()
+        busy_tips = {
+            "interrupt": tr("Stop the running request and send this message instead."),
+            "queue": tr("Send this message when the running request has finished."),
+            "steer": tr("Hand this message to the running agent; it reads it after its next "
+                        "tool call."),
+        }
         new_prompt, send_requested = draw_chat_input_bar(
             self.model.input_text,
             is_generating=self.model.is_generating,
@@ -819,6 +1024,14 @@ class ChatGui:
             on_cancel=self.model.cancel,
             on_clear=self.model.clear,
             input_height=input_box_h,
+            history=self.model.prompt_nav,
+            max_lines=6,
+            send_while_generating=True,
+            send_label=self.model.busy_send_label() if self.model.is_generating else None,
+            send_tooltip=(
+                busy_tips.get(self.model.busy_mode) if self.model.is_generating else None
+            ),
+            hint=tr("Ask the agent… (Enter sends, Shift+Enter: new line, ↑/↓: earlier prompts)"),
         )
         self.model.input_text = new_prompt
         self.remember("input", (bar_x, bar_y, width, im.get_cursor_screen_pos()[1] - bar_y))
@@ -875,6 +1088,7 @@ class ChatGui:
         )
         self.remember("provider_settings")
         im.end_disabled()
+        self._draw_switches()
         if im.small_button(tr("💡 Things to ask") + "##chat_examples"):
             im.open_popup("chat_examples")
         im.set_item_tooltip(
@@ -896,6 +1110,48 @@ class ChatGui:
                 im.set_item_tooltip(" ".join(example.explanation.split()))
             im.end_popup()
         im.separator()
+
+    def _draw_switches(self) -> None:
+        """While-busy mode, grilling and memory: how the agent takes the next message."""
+        model = self.model
+        im.align_text_to_frame_padding()
+        im.text_disabled(tr("While working:"))
+        im.same_line()
+        im.set_next_item_width(96.0)
+        index = BUSY_MODES.index(model.busy_mode) if model.busy_mode in BUSY_MODES else 0
+        changed, index = im.combo(
+            "##busy_mode", index, [tr(BUSY_MODE_LABELS[m]) for m in BUSY_MODES]
+        )
+        im.set_item_tooltip(
+            tr("What Enter does while the agent works: Interrupt stops the run and sends the "
+               "new message; Queue sends it when the run ends; Steer hands it to the running "
+               "agent after its next tool call. Stop always interrupts. Also: /busy <mode>.")
+        )
+        self.remember("busy_mode")
+        if changed:
+            model.set_busy_mode(BUSY_MODES[index])
+        im.same_line()
+        changed, value = im.checkbox(tr("Grill first"), model.grill)
+        im.set_item_tooltip(
+            tr("Before an analysis the agent asks about the choices that change the result "
+               "(files, gates, models, correction factors, output), up to three rounds. Off: "
+               "it asks once, and only when a request is ambiguous.")
+        )
+        self.remember("grill")
+        if changed:
+            model.grill = value
+        im.same_line()
+        installed = _memory_installed()
+        changed, value = im.checkbox(tr("Use memory (Mnemosyne)"), model.use_memory)
+        im.set_item_tooltip(
+            tr("Recall what earlier sessions learned (preferences, fixes, dataset settings) "
+               "and keep new lessons, in the memory your other agents share.")
+            if installed
+            else tr("Mnemosyne is not installed: the agent works without memory.")
+        )
+        self.remember("memory")
+        if changed:
+            model.use_memory = value
 
     def _draw_permission_banner(self) -> None:
         req = self.model.pending_permission

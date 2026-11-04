@@ -4,10 +4,28 @@ title: LLM agent
 description: The plain-language assistant that operates ChiSurf through a described, safety-tiered tool catalogue.
 resource: chisurf/core/agent/
 tags: [agent, llm, tools, automation, assistant]
-timestamp: '2026-07-25T00:00:00Z'
+timestamp: '2026-11-04T00:00:00Z'
 ---
 
 # Where to pick this up
+
+00. Measure: **grilling, steering and memory (2026-11-04) are proven by scripted
+    models only.** `test/agent/test_grilling.py`, `test_steering.py`,
+    `test_memory.py` and the panel's `TestInputWhileTheAgentWorks` drive the real
+    loop and panel; none ran on LFM3. Next: run the live suite with grilling on
+    and count rounds per analysis prompt — the trap is that the live tests send an
+    analysis prompt and expect tools to run, so with `grill=True` a model that
+    obeys the rule stops at `needs_input`; either answer the questions in the test
+    or run those with `AgentConfig(grill=False)`, and say which. The
+    `grill-the-user` skill adds ~450 tokens to every analysis prompt (the local
+    model's prompt budget — see item 0). Open: `interrupt` waits for the model
+    call in flight to return (`AgentSession.cancel` is checked between calls, the
+    HTTP request is not aborted), so on the local model an interrupt can take as
+    long as one generation; aborting the request in `llm.py` is the fix. The
+    automatic recovery lesson (`recovery_lesson`) is deliberately narrow — the
+    same tool failing then succeeding with changed arguments — and its value is
+    unmeasured: read what it stores (`mnemosyne recall "agent tool"` against the
+    real store) after a week of use before widening it.
 
 0. Measure: **the on-device model is the default, so the live suite runs on it.**
    Start the server with ChiSurf's own command
@@ -126,6 +144,29 @@ poison every later question in the session rather than just its own.
 A **failing tool does not end the run** — its error goes back to the model,
 which corrects itself. Only *repeated identical* failures stop the loop; that
 is the difference between an assistant that recovers and one that gives up.
+
+# Grilling, steering and memory
+
+* **Grilling is the default** (`AgentConfig.grill`, the panel's *Grill first*):
+  for a request that starts an analysis (`wants_grilling`: analysis words, not a
+  question like "what is loaded?"), the runtime loads the `grill-the-user` skill
+  and the prompt's rule tells the model to interview the user with `ask_user`
+  about files, gates, model and components, correction factors, background and
+  output, with options and a recommended default. Up to three rounds per request
+  thread (`clarification_rounds`); off restores one round, only when ambiguous.
+* **Steering** (`AgentSession.steer` / `take_steering`): a lock-guarded list
+  drained into the conversation as user turns before each model call. The panel
+  uses it for the *steer* busy mode; *interrupt* (default) cancels and re-sends
+  from the event loop once the worker reports finished, *queue* waits for the
+  run. ACP falls back to queue for steering.
+* **Memory** (`chisurf/core/agent/memory.py`): the user's shared Mnemosyne store,
+  the database its MCP server uses — never a ChiSurf-private one. Recall before
+  each request into the system prompt; `memory_recall` / `memory_remember`
+  tools (in the focus core); one automatic lesson after a recovery. Optional
+  throughout: no package or a failing store means no memory, nothing else
+  changes. Tests run against a hermetic store: the root `conftest.py` points
+  `MNEMOSYNE_DATA_DIR` into the throw-away settings folder and turns embeddings
+  off (no model download).
 
 # Misformatted actions are recovered, not punished
 
