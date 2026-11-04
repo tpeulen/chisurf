@@ -38,6 +38,10 @@ class BurstWorkflowContext:
     #: (``B_<detector>`` in kHz) and ``colours`` (per colour ``g_factor`` per detector and
     #: ``volume``: ``w0_um``, ``z0_um``, ``veff_fl``, ...), for every later step to read.
     calibration: dict[str, Any] = field(default_factory=dict)
+    #: The complete record of the calibration (:func:`.calibration_report.build_report`): files
+    #: with hashes, dye and D source, fit parameters with uncertainties, G, buffer, IRF, what was
+    #: estimated. Written into each measurement's container with the bursts.
+    calibration_report: dict[str, Any] = field(default_factory=dict)
 
     def rows(self) -> dict[str, str]:
         """``{path: row}`` as the current setup shows them (:func:`.samples.resolve_row`)."""
@@ -111,6 +115,7 @@ class BurstWorkflowContext:
             # the numbers, not the correlation curves they were fitted to
             "calibration": _without_curves(self.calibration),
             "estimated": self.estimated(),
+            "calibration_report": self.calibration_report,
         }
 
     def set_burst_folder(self, folder: Path) -> None:

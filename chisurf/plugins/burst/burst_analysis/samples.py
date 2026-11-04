@@ -64,6 +64,19 @@ SAMPLE_LABELS = {
     "irf": "IRF",
     "reference": "Reference dye",
 }
+#: The role's name in a table row (its colour follows): short, the full name is in the tooltip.
+_SHORT_LABELS = {"reference": "Reference"}
+
+def dye_label(name: str) -> str:
+    """A dye's short name for a table cell: its longest alias of up to eight characters
+    (``Rh110``, ``Alexa647``), else its database name."""
+    from chisurf.core.fluorescence.dyes import get_dye
+
+    entry = get_dye(name) or {}
+    short = [a for a in entry.get("aliases") or [] if len(a) <= 8 and " " not in a]
+    return max(short, key=len) if short else str(name)
+
+
 #: Singular and plural nouns of the summary line ("3 measurements · 1 buffer").
 _NOUNS = {
     "measurement": ("measurement", "measurements"),
@@ -275,12 +288,21 @@ def dye_diffusion(choice: Mapping | None, colour: str | None = None) -> tuple[fl
         return float("nan"), f"{c['dye']} is not in the dye database"
     d25 = float(entry["d25_um2_s"])
     d = diffusion_at_temperature(d25, c["temperature_c"])
-    sources = entry.get("sources") or [{}]
-    citation = str(sources[0].get("citation", "")) if sources else ""
+    citation = dye_citation(entry)
     return d, (
-        f"{entry['name']}: {d25:.0f} µm²/s at 25 °C in water ({citation}), "
-        f"{d:.0f} µm²/s at {c['temperature_c']:.1f} °C"
+        f"{entry['name']}: {d25:.0f} µm²/s at 25 °C in water"
+        + (f" ({citation})" if citation else "")
+        + f", {d:.0f} µm²/s at {c['temperature_c']:.1f} °C"
     )
+
+
+def dye_citation(entry: Mapping | None) -> str:
+    """The literature source of a dye database entry's D (its first source), "" without one."""
+    sources = (entry or {}).get("sources") or []
+    if not sources:
+        return ""
+    first = sources[0]
+    return " ".join(x for x in (str(first.get("citation", "")), str(first.get("url", ""))) if x)
 
 
 def colour_groups(setup: Mapping | None) -> list[dict[str, Any]]:
@@ -325,7 +347,7 @@ def row_label(key: str, setup: Mapping | None = None, *, short: bool = False) ->
     group = next((g for g in colour_groups(setup) if g["colour"] == colour), None)
     word = tr(group["word"]) if group else colour
     if short:
-        return f"{base} · {word}"
+        return f"{tr(_SHORT_LABELS.get(kind, base))} · {word}"
     detectors = f" ({', '.join(group['detectors'])})" if group else ""
     return f"{base} — {word}{detectors}"
 
@@ -697,30 +719,111 @@ def confocal_volume(
         residual, start, bounds=([1e-4, 1e-5, 1.0, 0.5], [1e5, 1e3, 30.0, 2.0])
     )
     n, tau_d, s, offset = (float(v) for v in fit.x)
+    dof = max(1, t.size - 4)
+    chi2r = float(np.sum(fit.fun ** 2) / dof)
+    # standard errors from the curvature at the minimum, scaled by the reduced chi-square
+    try:
+        cov = np.linalg.inv(fit.jac.T @ fit.jac) * max(chi2r, 1.0)
+        errors = np.sqrt(np.clip(np.diag(cov), 0.0, None))
+    except np.linalg.LinAlgError:
+        errors = np.full(4, np.nan)
+    e_n, e_tau, e_s, e_offset = (float(v) for v in errors)
+    rate_khz = (
+        sum(int(np.count_nonzero(_in_gate_mask(tt, info, 1, _n_raw(tt)))) for tt in tttrs) / seconds / 1e3
+        if seconds > 0
+        else float("nan")
+    )
     tau_d_s = tau_d * 1e-3
     w0 = lateral_waist(tau_d_s, float(diffusion_um2_s))
     veff_m3 = effective_volume(tau_d_s, float(diffusion_um2_s) * 1e-12, s)
     veff_fl = veff_m3 * 1e18
     concentration = abs(n) / (veff_fl * 1e-15 * AVOGADRO) * 1e9 if veff_fl > 0 else float("nan")
-    dof = max(1, t.size - 4)
+    rel_tau = e_tau / tau_d if tau_d > 0 else float("nan")
+    rel_s = e_s / s if s > 0 else float("nan")
     return {
         "detector": detector,
         "D_um2_s": float(diffusion_um2_s),
         "N": abs(n),
+        "N_err": e_n,
         "tau_d_ms": tau_d,
+        "tau_d_ms_err": e_tau,
         "s": s,
+        "s_err": e_s,
         "offset": offset,
+        "offset_err": e_offset,
         "w0_um": w0,
+        "w0_um_err": w0 * rel_tau / 2.0,
         "z0_um": s * w0,
+        "z0_um_err": s * w0 * math.hypot(rel_tau / 2.0, rel_s),
         "veff_fl": veff_fl,
+        "veff_fl_err": veff_fl * math.hypot(1.5 * rel_tau, rel_s),
         "concentration_nM": concentration,
-        "chi2r": float(np.sum(fit.fun ** 2) / dof),
+        # the count rate of the detector and the brightness of one molecule: setup quality
+        "count_rate_khz": rate_khz,
+        "brightness_khz": rate_khz / abs(n) if n else float("nan"),
+        "chi2r": chi2r,
         "fit_range_ms": [float(t[0]), float(t[-1])],
         "tau_ms": tau.tolist(),
         "g": g.tolist(),
         "sem": sem.tolist(),
         "model": diffusion_3d(tau, n, tau_d, s, offset).tolist(),
     }
+
+
+# -- IRF ---------------------------------------------------------------------------------------- #
+def irf_fwhm(paths: Iterable[str | Path], setup: Mapping, *, detectors: Iterable[str] | None = None) -> dict[str, Any]:
+    """The width of a scatter IRF: the full width at half maximum [ps] of the VV + VH decay of the
+    detector (of *detectors*) with the most photons in its gate, at the full micro-time resolution,
+    above the median floor of the gate."""
+    from chisurf.plugins.burst.burst_mle_analysis.engine import vv_vh_histogram
+
+    paths = list(paths)
+    all_detectors = dict(setup.get("detectors") or {})
+    wanted = list(all_detectors) if detectors is None else [d for d in detectors if d in all_detectors]
+    best: tuple[float, str, np.ndarray, float] | None = None
+    for det in wanted:
+        info = all_detectors[det]
+        total = None
+        dt_ps = 0.0
+        for path in paths:
+            tttr = _open(path, setup)
+            row = np.asarray(
+                vv_vh_histogram(tttr, list(info.get("chs", [])), (0, 0), 1,
+                                normalize_counts=0, apply_vh_shift=False, cut=False),
+                dtype=float,
+            )
+            half = row.size // 2
+            decay = row[:half] + row[half:] if len(info.get("chs", [])) >= 2 else row[:half]
+            total = decay if total is None else total + decay
+            dt_ps = float(tttr.header.micro_time_resolution) * 1e12
+        if total is None:
+            continue
+        lo, hi = _gate(info, 1, total.size)
+        gated = float(total[lo:hi].sum())
+        if best is None or gated > best[0]:
+            best = (gated, det, total[lo:hi], dt_ps)
+    if best is None or best[0] <= 0:
+        return {}
+    _n, det, decay, dt_ps = best
+    y = decay - float(np.median(decay))
+    peak = int(np.argmax(y))
+    half = y[peak] / 2.0
+    if half <= 0:
+        return {}
+    left = peak
+    while left > 0 and y[left - 1] > half:
+        left -= 1
+    right = peak
+    while right < y.size - 1 and y[right + 1] > half:
+        right += 1
+    # linear interpolation of the two half-maximum crossings
+    x_left = left - (y[left] - half) / (y[left] - y[left - 1]) if left > 0 and y[left] != y[left - 1] else float(left)
+    x_right = (
+        right + (y[right] - half) / (y[right] - y[right + 1])
+        if right < y.size - 1 and y[right] != y[right + 1]
+        else float(right)
+    )
+    return {"detector": det, "fwhm_ps": float((x_right - x_left) * dt_ps), "counts": float(decay.sum())}
 
 
 # -- everything a set of samples gives ---------------------------------------------------------- #
@@ -759,6 +862,16 @@ def calibrate(
             out["buffer"] = {"files": [str(p) for p in buffers], "rates": buffer_rates(buffers, setup)}
         except Exception as exc:  # noqa: BLE001 - reported beside the other results
             out["errors"].append(f"Buffer: {exc}")
+    out["irf"] = {}
+    for colour, group in groups.items():
+        irf_files = [p for p, key in shown.items() if key == f"irf:{colour}"]
+        if irf_files:
+            say("Width of the IRF …")
+            try:
+                out["irf"][colour] = {"files": [str(p) for p in irf_files],
+                                      **irf_fwhm(irf_files, setup, detectors=group["detectors"])}
+            except Exception as exc:  # noqa: BLE001
+                out["errors"].append(f"IRF ({group['word']}): {exc}")
     for colour, group in groups.items():
         files = [p for p, key in shown.items() if key == f"reference:{colour}"]
         if not files:
