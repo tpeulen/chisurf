@@ -26,6 +26,7 @@
 - 2026-11-04: acq: Record tool integration (experiment docks, compact rates + alignment readout, stop timer with backend limit, plot ranges, decay toggle, dock accents, Simple/Advanced/Guided); help, reference and UX backlog updated.
 - 2026-11-04: .gitignore: the TTTR image browser's .tttr_image_cache/ mosaic cache (written beside the data, e.g. test/data/clsm) and test/native_emtk/screenshots/ are ignored as generated output. Two cache .npz files committed earlier under test/data/clsm/.tttr_image_cache remain tracked.
 - 2026-11-04: the AI agent moved from Tools > System to Help > AI Agent and got a prominent 🤖 Agent button (primary role, shared ACTIONS['agent']) in the ribbon corner left of Help.
+- 2026-11-04: Burst summary vectorised: `generate_burst_dataframe` computes every static, per-detector and per-window column for all bursts at once (prefix sums over sorted photon positions) instead of a per-burst Python walk (~40 us a burst and instance); text columns are known from the declaration. Equality with the per-burst definition: `test/core/test_burst_summary_vectorised.py`. `read_bur_file` falls back to ndXplorer's text-table reader for a .bur the tab reader refuses.
 
 ## 2026-11-03
 

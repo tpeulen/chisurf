@@ -44,6 +44,7 @@ from chisurf.core.datastore import (
     store_from_arrays,
     write_csv_table,
 )
+from chisurf.core.fluorescence.channels import channel_mask
 
 #: Sentinel written for a per-detector column a burst has no photons in. Matches
 #: the ``-1.0`` the duration and rate columns already use, so a reader that
@@ -286,6 +287,108 @@ def _span_features(sources, idxs, start, macro, res, micro_sl, micro_ns) -> dict
     return out
 
 
+
+def has_bursts_of(start_stop) -> bool:
+    """Whether *start_stop* holds any burst (a sequence, an array, or anything truthy)."""
+    try:
+        return len(start_stop) > 0
+    except TypeError:
+        return bool(start_stop)
+
+
+def _static_columns(sources, starts, stops, burst_index, macro, res, confidence, file_name) -> dict:
+    """Whole-burst quantities of every burst, by declared ``source`` name (``static`` scope)."""
+    t0, t1 = macro[starts], macro[stops]
+    dur = (t1 - t0) * res * 1e3
+    n = stops - starts + 1
+    out = {}
+    for s in sources:
+        if s == "first_photon":
+            out[s] = starts.tolist()
+        elif s == "last_photon":
+            out[s] = stops.tolist()
+        elif s == "duration_ms":
+            out[s] = dur.tolist()
+        elif s == "mean_macro_time_ms":
+            out[s] = (((t1 + t0) / 2) * res * 1e3).tolist()
+        elif s == "n_photons":
+            out[s] = n.tolist()
+        elif s == "count_rate_khz":
+            # ``dur`` is milliseconds, so photons-per-``dur`` is already kHz.
+            with np.errstate(divide="ignore", invalid="ignore"):
+                out[s] = np.where(dur > 0, n / np.where(dur > 0, dur, 1.0), np.nan).tolist()
+        elif s == "confidence_sigma":
+            # Indexed by position in start_stop (skipped bursts included), never by output row.
+            # Unavailable (old engine) stays 0: the layout must not depend on the tttrlib version.
+            if confidence is None:
+                out[s] = [0] * starts.size
+            else:
+                inside = burst_index < confidence.size
+                out[s] = [
+                    float(confidence[i]) if ok else 0 for i, ok in zip(burst_index.tolist(), inside)
+                ]
+        elif s == "file_name":
+            out[s] = [file_name] * starts.size
+        else:
+            raise ValueError(f"burst_features.yaml: unknown static source {s!r}")
+    return out
+
+
+def _span_columns(sources, mask, starts, stops, macro, res, micro, micro_ns) -> dict:
+    """Photon-span quantities of the photons *mask* selects, for every burst, by ``source`` name.
+
+    The ``detector`` / ``window_detector`` vocabulary of ``burst_features.yaml``: the selected
+    photons of each burst are the positions of *mask* in ``[start, stop]``; an empty span takes
+    the values of ``_SPAN_EMPTY`` (the mean micro time :data:`DETECTOR_SENTINEL`).
+    """
+    picked = np.flatnonzero(mask)
+    lo = np.searchsorted(picked, starts, side="left")
+    hi = np.searchsorted(picked, stops, side="right")
+    n = hi - lo
+    some = n > 0
+    first = np.full(starts.size, -1, dtype=np.int64)
+    last = np.full(starts.size, -1, dtype=np.int64)
+    if picked.size:
+        first[some] = picked[lo[some]]
+        last[some] = picked[hi[some] - 1]
+    out = {}
+    d_ms = None
+    if {"duration_ms", "count_rate_khz"} & set(sources):
+        d_ms = np.full(starts.size, -1.0)
+        d_ms[some] = (macro[last[some]] - macro[first[some]]) * res * 1e3
+    for s in sources:
+        if s == "first_photon":
+            out[s] = first.tolist()
+        elif s == "last_photon":
+            out[s] = last.tolist()
+        elif s == "duration_ms":
+            out[s] = d_ms.tolist()
+        elif s == "mean_macro_time_ms":
+            m = np.full(starts.size, -1.0)
+            m[some] = ((macro[last[some]] + macro[first[some]]) / 2) * res * 1e3
+            out[s] = m.tolist()
+        elif s == "n_photons":
+            out[s] = n.tolist()
+        elif s == "count_rate_khz":
+            rate = np.full(starts.size, -1.0)
+            positive = some & (d_ms > 0)
+            rate[some] = np.nan
+            rate[positive] = n[positive] / d_ms[positive]
+            out[s] = rate.tolist()
+        elif s == "mean_micro_time_ns":
+            if micro_ns <= 0.0 or not picked.size:
+                out[s] = [DETECTOR_SENTINEL] * starts.size
+            else:
+                # integer micro times: these float64 prefix sums are exact, so the mean is the
+                # per-burst np.mean bit for bit
+                csum = np.concatenate(([0.0], np.cumsum(micro[picked], dtype=np.float64)))
+                mean = np.full(starts.size, float(DETECTOR_SENTINEL))
+                mean[some] = (csum[hi[some]] - csum[lo[some]]) / n[some] * micro_ns
+                out[s] = [m if ok else DETECTOR_SENTINEL for m, ok in zip(mean.tolist(), some)]
+        else:
+            raise ValueError(f"burst_features.yaml: unknown span source {s!r}")
+    return out
+
 def generate_burst_dataframe(
     start_stop,
     filename,
@@ -416,83 +519,62 @@ def generate_burst_dataframe(
     # concern and never rescales these ranges.
     det_global = {}
     for d, info in detectors.items():
-        chm = np.isin(rout, info["chs"])
+        chm = channel_mask(rout, info["chs"])
         # an ungated detector may come without the key (a setup carried into the data's channels
         # writes it only for detectors that have gates): no gates, all its photons
         det_global[d] = chm & micro_time_mask(micro, info.get("micro_time_ranges") or [])
 
     win_global = {w: (micro >= r0) & (micro < r1) for w, (r0, r1) in windows.items()}
 
-    # helper zero-row: 0 for every declared column, "" for the blank one
-    zero_row = ["" if scope == "blank" else 0 for scope, _, _ in fills]
+    # Every quantity for every burst at once (prefix sums and sorted photon positions); the
+    # per-burst Python walk cost ~40 us a burst and instance, the biggest part of a search's
+    # summary on a long measurement.
+    pairs = [(int(p[0]), int(p[1])) for p in start_stop] if has_bursts_of(start_stop) else []
+    ss = np.asarray(pairs, dtype=np.int64).reshape(-1, 2)
+    burst_index = np.arange(ss.shape[0])
+    valid = (ss[:, 1] > ss[:, 0]) & (ss[:, 1] < n_ph) & (ss[:, 0] >= 0)
+    starts, stops, burst_index = ss[valid, 0], ss[valid, 1], burst_index[valid]
+    macro = np.asarray(macro)
+    micro_arr = np.asarray(micro)
 
-    out = []
-    # only add the leading zero‐row when there's at least one burst and interleaved zeros are requested
-    try:
-        has_bursts = len(start_stop) > 0
-    except TypeError:
-        # fallback if start_stop isn’t sized like a sequence
-        has_bursts = bool(start_stop)
-    if has_bursts and include_interleaved_zeros:
-        out.append(zero_row.copy())
-
-    for burst_index, (start, stop) in enumerate(start_stop):
-        if stop <= start or stop >= n_ph or start < 0:
-            continue
-
-        # ``stop`` is the burst's last photon (inclusive), so the photon at
-        # ``stop`` counts and every slice runs to ``stop + 1``.
-        sl = slice(start, stop + 1)
-        micro_sl = micro[sl]
-
-        static_q = _static_burst_features(
-            wanted["static"], start, stop, macro, res, confidence, burst_index, file_name_only
-        )
-
-        # Per-instance quantities, computed lazily -- once per detector /
-        # window pair per burst, however many declared columns read them.
-        det_q: dict = {}
-        win_q: dict = {}
-        row = []
-        for scope, source, key in fills:
-            if scope == "static":
-                row.append(static_q[source])
-            elif scope == "detector":
-                q = det_q.get(key)
-                if q is None:
-                    idxs = np.nonzero(det_global[key][sl])[0]
-                    q = det_q[key] = _span_features(
-                        wanted["detector"], idxs, start, macro, res, micro_sl, micro_ns
-                    )
-                row.append(q[source])
-            elif scope == "window_detector":
-                q = win_q.get(key)
-                if q is None:
-                    w, d = key
-                    idxs = np.nonzero(det_global[d][sl] & win_global[w][sl])[0]
-                    q = win_q[key] = _span_features(
-                        wanted["window_detector"], idxs, start, macro, res, micro_sl, micro_ns
-                    )
-                row.append(q[source])
-            else:  # the trailing blank
-                row.append("")
-
-        out.append(row)
-        # Only add trailing zero row if interleaved zeros are requested
-        if include_interleaved_zeros:
-            out.append(zero_row.copy())
-
-    # Rows in, columns out: the store is column-oriented, and transposing here
-    # is what keeps every column its own dtype instead of one object array.
-    values = list(zip(*out)) if out else [()] * len(cols)
-    return store_from_arrays(
-        {
-            name: np.array(column, dtype=object)
-            if any(isinstance(v, str) for v in column)
-            else np.asarray(column)
-            for name, column in zip(cols, values)
-        }
+    static_q = _static_columns(
+        wanted["static"], starts, stops, burst_index, macro, res, confidence, file_name_only
     )
+    det_q = {
+        d: _span_columns(wanted["detector"], det_global[d], starts, stops, macro, res, micro_arr, micro_ns)
+        for d in detectors
+    } if wanted["detector"] else {}
+    win_q = {
+        (w, d): _span_columns(
+            wanted["window_detector"], det_global[d] & win_global[w], starts, stops, macro, res,
+            micro_arr, micro_ns,
+        )
+        for w in windows
+        for d in detectors
+    } if wanted["window_detector"] else {}
+
+    n_rows = starts.size
+    columns = []
+    for scope, source, key in fills:
+        if scope == "static":
+            values = static_q[source]
+        elif scope == "detector":
+            values = det_q[key][source]
+        elif scope == "window_detector":
+            values = win_q[key][source]
+        else:  # the trailing blank
+            values = [""] * n_rows
+        filler = "" if scope == "blank" else 0
+        if include_interleaved_zeros and has_bursts_of(start_stop):
+            column = [filler] * (2 * n_rows + 1)
+            column[1::2] = values
+        else:
+            column = list(values)
+        # text columns are known from the declaration (the file name, the trailing blank): no
+        # scan of every value to find out
+        text = scope == "blank" or (scope == "static" and source == "file_name")
+        columns.append(np.array(column, dtype=object) if text else np.asarray(column))
+    return store_from_arrays(dict(zip(cols, columns)))
 
 
 def write_dataframe_to_bur(df, bur_filename):
@@ -774,6 +856,13 @@ def read_bur_file(bur_path):
     from chisurf.core.datastore import column_names, take_columns
 
     store = read_csv_table(bur_path, delimiter="\t")
+    if store is None:
+        try:
+            from ndxplorer.io.reader import _read_text_table_auto
+
+            store = _read_text_table_auto(bur_path)
+        except Exception:
+            store = None
     if store is None:
         raise OSError(f"{bur_path} is not a tab-delimited burst table")
     # A Seidel ``.bur`` ends every line with a tab, which a CSV reader turns into
