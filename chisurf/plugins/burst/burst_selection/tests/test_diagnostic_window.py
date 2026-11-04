@@ -103,3 +103,42 @@ def test_the_selection_stays_full_length(monkeypatch):
     assert selected[last:].sum() == 0
     assert selected.sum() == last - first
     del tttr
+
+
+class _CountingTttr:
+    """Counts how often the macro times are read: tttrlib copies all of them on every read."""
+
+    def __init__(self, **kwargs):
+        plain = _Tttr(**kwargs)
+        self._times, self.header, self.reads = plain.macro_times, plain.header, 0
+
+    @property
+    def macro_times(self):
+        self.reads += 1
+        return self._times
+
+
+def test_the_plots_read_the_window_once_not_every_frame():
+    """Every frame keys the trace and dt curves on the window and asks the slider's range; that
+    copied all 20 M macro times of a real file and searched them each time (~50 ms a frame)."""
+    from types import SimpleNamespace
+
+    from chisurf.plugins.burst.burst_selection.gui.model import BurstSelectionModel
+
+    tttr = _CountingTttr(n=300_000, duration_s=300.0)
+    model = SimpleNamespace(
+        diagnostic={"tttr": tttr, "selected": np.zeros(300_000, dtype=bool)},
+        window_length_s=10.0,
+        window_start_s=50.0,
+        client=BurstSelectionClient,
+    )
+    window = BurstSelectionModel._window_indices(model)
+    span = BurstSelectionModel.timeline_span(model)
+    for _ in range(100):  # a hundred frames
+        assert BurstSelectionModel._window_indices(model) == window
+        assert BurstSelectionModel.timeline_span(model) == span
+    assert tttr.reads == 2, "one read for the window, one for the span"
+    model.window_start_s = 60.0  # the slider moved: read again, once
+    moved = BurstSelectionModel._window_indices(model)
+    assert moved != window and tttr.reads == 3
+    assert span == pytest.approx(300.0, rel=1e-3)

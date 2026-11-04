@@ -1346,22 +1346,35 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
 
     def timeline_span(self) -> float:
         """Length of the active file in seconds (0 before its diagnostics are loaded)."""
-        tttr = (self.diagnostic or {}).get("tttr")
+        diag = self.diagnostic or {}
+        tttr = diag.get("tttr")
         if tttr is None:
             return 0.0
-        mt = np.asarray(tttr.macro_times)
-        return float(mt[-1] - mt[0]) * float(tttr.header.macro_time_resolution) if mt.size else 0.0
+        if "_span_s" not in diag:  # every frame asks (the window slider's range): read it once
+            mt = np.asarray(tttr.macro_times)
+            res = float(tttr.header.macro_time_resolution)
+            diag["_span_s"] = float(mt[-1] - mt[0]) * res if mt.size else 0.0
+        return diag["_span_s"]
 
     def _window_indices(self) -> tuple[int, int]:
+        """Photon indices of the visible window, memoised per diagnostic and window.
+
+        The plots key their curves on it every frame; computing it copied every macro time of
+        the file out of tttrlib and searched them (~50 ms a frame on a 20 M-photon file), which
+        made the whole window sluggish after a search.
+        """
         diag = self.diagnostic or {}
         tttr = diag.get("tttr")
         n = int(len(diag.get("selected", [])))
         if tttr is None or n == 0:
             return 0, 0
-        window = self.client._window_indices(
-            tttr, float(self.window_length_s) or None, float(self.window_start_s)
-        )
-        return window if window is not None else (0, n)
+        key = (float(self.window_length_s), float(self.window_start_s))
+        cache = diag.setdefault("_window_indices", {})
+        if key not in cache:
+            window = self.client._window_indices(tttr, key[0] or None, key[1])
+            cache.clear()  # one window at a time: a dragged slider leaves no trail
+            cache[key] = window if window is not None else (0, n)
+        return cache[key]
 
     def _curves_cached(self, name: str, key: tuple, build):
         """Memoise a diagnostic plot's curves on the diagnostic they were made from.

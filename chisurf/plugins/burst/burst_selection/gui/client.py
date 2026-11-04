@@ -344,8 +344,11 @@ class BurstSelectionClient:
         origin = float(macro_times[0])
         low = origin + max(0.0, float(start_s)) / resolution_s
         high = origin + (max(0.0, float(start_s)) + float(window_s)) / resolution_s
-        first = int(_np.searchsorted(macro_times, low, side="left"))
-        last = int(_np.searchsorted(macro_times, high, side="right"))
+        # integer bounds of the array's own type: a float key made numpy convert every macro
+        # time to float before searching (a copy of the whole file per call)
+        kind = macro_times.dtype.type
+        first = int(_np.searchsorted(macro_times, kind(_np.ceil(low)), side="left"))
+        last = int(_np.searchsorted(macro_times, kind(_np.floor(high)), side="right"))
         first = max(0, min(first, macro_times.size - 1))
         last = max(first + 1, min(last, macro_times.size))
         return first, last

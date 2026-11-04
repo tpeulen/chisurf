@@ -327,7 +327,9 @@ Item 6 is done (2026-10-13): opening a fit window imports no Qt
     only while the fits are tabbed (`test_emtk_shell_fit_windows.py`). Follow-up 2026-10-17: live CPU/memory
     usage tracking and sparklines are fully hooked up (`chisurf/core/system_info.py`, `chisurf/emtk/main_app.py`);
     `psutil.Process` instance caching prevents 0% CPU readouts, draw lists receive 0..255 integer RGBA tuples so
-    track and polylines are visible, and `next_frame_in` requests frames on a 1.0s cadence for live monitoring.
+    track and polylines are visible, and `next_frame_in` requests frames on a 1.0s cadence for live monitoring
+    -- only while the watermark is drawn (`_watermark_drawn`, 2026-11-04): with a tool over the workspace
+    the sample went stale and the shell woke every 50 ms for good (`test_emtk_shell_idle_wake.py`).
     Open, cosmetic: the global parameter
     table drops columns at the default width (known issues). Traps: (a) the IBH `decay_fit` files carry no channel width -- set the reader's `dt` to
     0.0141 ns in *both* shells or the TCSPC fit lands on nonsense in both; (b) headless on private RPC ports the

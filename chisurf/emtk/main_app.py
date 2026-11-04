@@ -708,6 +708,10 @@ class EmtkShellApp(ImApp):
             console_factory=_console_pane_factory,
             initial_console=self.console,
         )
+        # the console wakes the shell when output arrives, as a plugin does (_collect_builds);
+        # without a callback it took itself for a manual embedding and asked for a frame every
+        # 0.1 s for good, redrawing the whole shell ten times a second while nothing happened
+        self.console_terminal.set_frame_request_callback(self.request_frame)
         for key in (ANALYSIS_KEY, PLOT_KEY):
             self.docks.dock(key, "left_lower")
         self.docks.focus(ANALYSIS_KEY)
@@ -1184,6 +1188,8 @@ class EmtkShellApp(ImApp):
 
     def render(self) -> None:
         _refresh_stale_datasets(self.data)
+        # set again by _draw_workspace_background when the watermark is drawn this frame
+        self._watermark_drawn = False
         width, height = im.get_main_viewport().size
         hosted = self._tool_only_hosted()
         if hosted is not None or self._tool_only:
@@ -2112,6 +2118,13 @@ class EmtkShellApp(ImApp):
                     im.indent(10.0)
                 for entry in entries:
                     shown += 1
+                    # a row scrolled out of the list is a gap of its height: drawing all ~90 tools
+                    # every frame cost ~18 ms of each shell frame
+                    row_h = getattr(self, "_tool_row_h", 0.0)
+                    if row_h > 0 and not im.is_rect_visible((1.0, row_h)):
+                        im.dummy(1.0, row_h)
+                        self.item_rects["tools." + entry.plugin_id] = im.get_item_rect()
+                        continue
                     label = entry_label(entry)
                     if im.selectable(
                         f"{label}##{entry.plugin_id}",
@@ -2120,6 +2133,7 @@ class EmtkShellApp(ImApp):
                     ):
                         self.open_plugin(entry.plugin_id, new=True)
                     self.item_rects["tools." + entry.plugin_id] = im.get_item_rect()
+                    self._tool_row_h = float(im.get_item_rect()[3])
                     accents.mark_item(accent(self.task_categories.get(entry.plugin_id)))
                     im.set_item_tooltip(entry_tooltip(entry))
                 if caption:
@@ -2186,6 +2200,7 @@ class EmtkShellApp(ImApp):
         from chisurf.core import info as _info_mod
         from chisurf.core.system_info import machine_info, process_usage, system_info_lines
 
+        self._watermark_drawn = True
         if getattr(self, "_system_lines", None) is None:
             self._system_lines = system_info_lines()
             self._usage_at = 0.0
@@ -2797,9 +2812,12 @@ class EmtkShellApp(ImApp):
     def next_frame_in(self):
         delays = [super().next_frame_in(), self.project.next_frame_in()]
         delays += [app.next_frame_in() for _key, app, _box in self._drawn.values()]
-        now = time.monotonic()
-        usage_age = now - getattr(self, "_usage_at", 0.0)
-        delays.append(max(0.05, 1.0 - usage_age))
+        if getattr(self, "_watermark_drawn", False):
+            # the watermark's sparklines refresh once a second -- only while it is on screen: a
+            # tool over the workspace left the sample stale, and the shell woke every 50 ms for
+            # good, redrawing the whole window (the main thread busy while the user did nothing)
+            usage_age = time.monotonic() - getattr(self, "_usage_at", 0.0)
+            delays.append(max(0.05, 1.0 - usage_age))
         return min((delay for delay in delays if delay is not None), default=None)
 
     # ── persistence ───────────────────────────────────────────────────────
