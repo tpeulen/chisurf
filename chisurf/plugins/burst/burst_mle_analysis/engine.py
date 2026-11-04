@@ -13,6 +13,7 @@ from __future__ import annotations
 import collections.abc
 import copy
 import dataclasses
+import functools
 import json
 import re
 from dataclasses import dataclass, field
@@ -3040,8 +3041,11 @@ class MleSession:
                 letter_of(det),
                 state_result_columns(color, st.model, names, self.n_states),
             )
-        in_container = [r for r in rows if _is_container(files_by_stem[r["First Stem"]])]
-        legacy = [r for r in rows if not _is_container(files_by_stem[r["First Stem"]])]
+        # once per measurement, not per burst: parsing a path per row took 2.6 s of a 5.5 k-burst
+        # export, on the thread every other sample of a batch waits for
+        boxed = {stem: _is_container(path) for stem, path in files_by_stem.items()}
+        in_container = [r for r in rows if boxed[r["First Stem"]]]
+        legacy = [r for r in rows if not boxed[r["First Stem"]]]
         paths: list[Path] = []
         if legacy:
             written = write_b4_tables(legacy, files_by_stem, det_meta, settings, tick=tick)
@@ -3058,6 +3062,7 @@ class MleSession:
                 if box is not None and run:
                     run_of.setdefault(str(Path(box).resolve()), str(path))
 
+            @functools.lru_cache(maxsize=None)
             def address(first: str) -> str:
                 box = split_container_path(first)[0]
                 key = str(Path(box if box is not None else first).resolve())
