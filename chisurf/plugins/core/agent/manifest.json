@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "display_name": "Help:AI Agent",
   "single_instance": true,
+  "dock_side": "right",
   "description": "Drive ChiSurf in plain words: the agent runs the analysis tools of the loaded session, asks when a request is ambiguous, and scripts pipelines over the plugin and core APIs.",
   "authors": [
     "Thomas-Otavio Peulen"

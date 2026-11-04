@@ -454,3 +454,20 @@ def test_the_console_help_button_opens_its_help():
         _shot(driver, "console_help")
     finally:
         shell.close()
+
+
+def test_the_agent_opens_in_a_panel_right_of_the_centre():
+    """``"dock_side": "right"`` (the AI agent's manifest): the tool opens beside the open tool,
+    in a region split off the right of the centre, not tabbed over it."""
+    shell = EmtkShellApp(console_history=False, console_session_file=False)
+    driver = _driver(shell)
+    try:
+        tool = shell.open_plugin("burst_analysis")
+        _wait(driver, lambda: tool.build is None and tool.box is not None, "Burst Analysis")
+        agent = shell.open_plugin("agent")
+        _wait(driver, lambda: agent.build is None and agent.box is not None, "the agent")
+        assert shell.docks.region_of(agent.key) == shell.RIGHT_REGION
+        assert agent.box[0] >= tool.box[0] + tool.box[2] - 1.0  # to the right, side by side
+        assert shell.docks.is_shown(tool.key)
+    finally:
+        shell.close()

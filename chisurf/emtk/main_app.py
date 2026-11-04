@@ -782,7 +782,7 @@ class EmtkShellApp(ImApp):
             # switched while the tool is open retitles it (a stored translation would not).
             mark(entry.label) if instance == 1 else hosted.title(),
             lambda box, pid=plugin_id: self._draw_plugin(pid, box),
-            dock=self._tool_region(),
+            dock=self._tool_region(entry.plugin_id),
             scrollable=False,
             padding=0.0,
             min_size=(240.0, 160.0),
@@ -959,9 +959,19 @@ class EmtkShellApp(ImApp):
         """Deprecated: tools always land docked in their region without auto-floating."""
         hosted.extra["placed"] = True
 
-    def _tool_region(self) -> str:
-        """The region a tool opens in: the central dock region beside Workspace."""
-        return "center"
+    #: The region a tool asking for ``"dock_side": "right"`` opens in, and its share of the width.
+    RIGHT_REGION, RIGHT_SHARE = "center_right", 0.38
+
+    def _tool_region(self, plugin_id: str = "") -> str:
+        """The region a tool opens in: the central dock region beside Workspace, or -- a tool
+        whose manifest says ``"dock_side": "right"`` (the AI agent) -- a region split off the
+        right of it, made the first time one opens there (the user may move it anywhere after)."""
+        manifest = self.catalog.get(plugin_id) or {}
+        if manifest.get("dock_side") != "right":
+            return "center"
+        if self.RIGHT_REGION not in self.docks.regions:
+            self.docks.split_region("center", "right", self.RIGHT_REGION, self.RIGHT_SHARE)
+        return self.RIGHT_REGION
 
     def run_plugin_action(self, plugin_id: str) -> dict:
         """Run the command plugin *plugin_id* with this window as its main window; a failure is said."""

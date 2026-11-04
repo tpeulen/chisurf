@@ -384,6 +384,13 @@ way wherever it is opened from:
 Hosts that need the presentation without a panel use
 `maturity_markers()` / `maturity_warnings()` from the same module.
 
+### 3.1.1a Where a tool docks first (`dock_side`)
+
+A tool opens as a dock tabbed beside Workspace in the centre. `"dock_side": "right"`
+opens it instead in a panel split off the right of the centre (made the first time
+such a tool opens; later ones tab into it) — the AI agent does this, so it sits
+beside the tool it is asked about. Once the user moves a dock, the saved layout wins.
+
 ### 3.1.2 Demo plugins
 
 `"demo": true` marks a plugin as a demonstration rather than something the

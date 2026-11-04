@@ -1076,6 +1076,8 @@ def _validate_field_shapes(data: dict[str, Any]) -> list[str]:
         value = data.get(key)
         if value is not None and not isinstance(value, bool):
             errors.append(f"field {key!r} must be a boolean")
+    if data.get("dock_side") not in (None, "center", "right"):
+        errors.append("field 'dock_side' must be 'center' or 'right'")
     errors.extend(_validate_entrypoints(data))
     errors.extend(_validate_rpc_methods(data))
     errors.extend(_validate_accepts(data))
