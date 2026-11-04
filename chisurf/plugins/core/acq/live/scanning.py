@@ -124,6 +124,10 @@ class ScannedSource(PhotonSource):
         self._abort = threading.Event()
         self._thread: threading.Thread | None = None
 
+    @property
+    def drain_after_stop(self):
+        return bool(getattr(self.tcspc, "drain_after_stop", False))
+
     def __getattr__(self, name: str):
         # the device's recorder writes its raw records: offered only when the device has one
         if name == "make_recorder":

@@ -152,6 +152,7 @@ class LiveTrace:
         self.n_bins = int(min(MAX_BINS, max(1, round(window_s / bin_s))))
         self.window_s = self.n_bins * self.bin_s
         self.counts = np.zeros((len(self.streams), self.n_bins), np.int64)
+        self._run_counts = np.zeros(len(self.streams), np.int64)
         self.head = -1  # absolute index of the newest bin (-1: nothing yet)
         self._first: int | None = None
         self.revision = 0
@@ -181,24 +182,23 @@ class LiveTrace:
         t = (macro - self._first) * self.clock
         b = np.floor(t / self.bin_s).astype(np.int64)
         self._advance(int(b[-1]))
-        keep = b > self.head - self.n_bins
-        if not np.any(keep):
-            return
-        b, t = b[keep], t[keep]
-        micro = np.asarray(micro, np.int64)[keep]
-        channel = np.asarray(channel, np.int64)[keep]
-        slots = b % self.n_bins
+        micro = np.asarray(micro, np.int64)
+        channel = np.asarray(channel, np.int64)
         phase = None
         if self.alex_period_s:
             phase = ((t % self.alex_period_s) >= self.alex_period_s / 2).astype(np.int64)
+        keep = b > self.head - self.n_bins
+        slots = b[keep] % self.n_bins
         for k, s in enumerate(self.streams):
             sel = np.isin(channel, s.channels)
             if s.window is not None:
                 sel &= micro_time_mask(micro, [s.window])
             if s.phase is not None and phase is not None:
                 sel &= phase == s.phase
-            if np.any(sel):
-                np.add.at(self.counts[k], slots[sel], 1)
+            self._run_counts[k] += np.count_nonzero(sel)
+            selected = sel[keep]
+            if np.any(selected):
+                np.add.at(self.counts[k], slots[selected], 1)
         self.revision += 1
 
     def snapshot(self) -> dict[str, Any]:
@@ -220,6 +220,7 @@ class LiveTrace:
                     "sign": s.sign,
                     "colour": s.colour,
                     "counts": s.sign * self.counts[k, order],
+                    "run_mean_per_bin": float(self._run_counts[k]) / max(1, self.head + 1),
                 }
                 for k, s in enumerate(self.streams)
             ],

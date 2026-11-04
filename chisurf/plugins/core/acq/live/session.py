@@ -58,6 +58,7 @@ class RunResult:
     dataset_uid: str = ""
     run_address: str = ""
     qc: dict | None = None
+    analysis_complete: bool = True
 
 
 _TY_BOOL = 0x00000008
@@ -89,6 +90,12 @@ def _header(source_info, name: str, settings: dict | None = None, tags: dict | N
     h = probe.header
     h.set_tag("MeasDesc_GlobalResolution", float(source_info.macro_clock_s), _TY_F8)
     h.set_tag("MeasDesc_Resolution", float(source_info.micro_res_s), _TY_F8)
+    # The micro-time channels of one laser period and the laser (sync) rate: without them readers
+    # take one channel per period (period == dt) and every lifetime fit of the recording fails.
+    n_micro = int(getattr(source_info, "n_micro", 0) or 0)
+    if n_micro > 0:
+        h.set_tag("MeasDesc_NumberMicrotimes", n_micro, _TY_I8)
+        h.set_tag("TTResult_SyncRate", int(round(1.0 / (n_micro * float(source_info.micro_res_s)))), _TY_I8)
     h.set_tag("TTResultFormat_TTTRRecType", _REC_MULTIHARP_T3, _TY_I8)
     h.set_tag("MeasDesc_RecordingMode", 3, _TY_I8)
     h.set_tag("File_Comment", f"ChiSurf live recording: {name}", _TY_ANSI)
@@ -150,6 +157,10 @@ class RecordSession:
         info = source.info
         #: typed tags the recording's header carries besides the settings (a scan's ImgHdr_*)
         self.header_tags = dict(header_tags or {})
+        self.header_tags["ChiSurf_InterruptMarkers"] = (
+            'v2: special marker 13=analysis pause,14=end pause; analysis remains incomplete; raw photons recorded; TCSPC clock and '
+            'illumination unchanged; external markers must be disabled; timestamps are '
+            'last observed source ticks at the acknowledged batch boundary; timer includes pauses')
         self.experiment = experiment or Experiment(
             default_setup("pie", info.n_micro), "pie", name="default PIE"
         )
@@ -171,13 +182,32 @@ class RecordSession:
         self._alex_parts: list[tuple[np.ndarray, np.ndarray]] = []
         self._alex_count = 0
         self._lock = threading.Lock()
+        self._trace_config_lock = threading.Lock()
+        self._pending_trace = None
+        self._analysis = None
+        self._last_snapshot = self.analyzer.snapshot()
         self._stop = threading.Event()
+        self._source_stop_lock = threading.Lock()
+        self._source_stopped = False
+        self._pause_requested = threading.Event()
+        self.paused = False
+        self.paused_photons = 0
+        # One immutable snapshot: (count, first tick, last tick).
+        self._received = (0, None, None)
+        self._analysis_gap = False
+        self.pause_error = ""
+        self._last_seen_macro = 0
+        self._reserved_marker_seen = False
+        self._interrupt_used = False
         self._thread: threading.Thread | None = None
         self._writer = None
         self._recorder = None
         #: a device whose acquisition timer ends the run: the session does not cut its batches
-        self._self_timed = bool(getattr(source, "stops_itself", False)) and duration_s is not None
-        if self._self_timed:
+        #: (a simulated source that accepts a duration ends its generation there, like a timer)
+        self._self_timed = duration_s is not None and (
+            bool(getattr(source, "stops_itself", False)) or hasattr(source, "duration_s")
+        )
+        if self._self_timed and hasattr(source, "duration_s"):
             source.duration_s = duration_s
         self.batches = 0
         self.dropped = 0
@@ -211,8 +241,10 @@ class RecordSession:
     def set_trace(self, window_s: float, bin_s: float) -> None:
         """Change the running trace's span and bin width (it starts over)."""
         if self.trace is not None:
-            with self._lock:
-                self.trace.configure(window_s, bin_s)
+            # Never wait on a stalled analyzer from the UI. The worker applies the
+            # most recent request immediately before its next batch.
+            with self._trace_config_lock:
+                self._pending_trace = (window_s, bin_s)
 
     def _push(self, batch) -> None:
         """Feed one batch to the live analysis (called under the lock): photons only."""
@@ -225,6 +257,25 @@ class RecordSession:
             self._alex_parts.append((np.array(photons.macro, copy=True),
                                      np.array(photons.channel, copy=True)))
             self._alex_count += len(photons.macro)
+
+    def _capture_batch(self, batch) -> None:
+        """Capture-path safety hook, independent of optional analysis."""
+
+    def _flush_analysis(self) -> None:
+        with self._lock:
+            self.analyzer.flush()
+
+    def _analyze_batch(self, batch) -> None:
+        with self._trace_config_lock:
+            pending, self._pending_trace = self._pending_trace, None
+        with self._lock:
+            if pending is not None and self.trace is not None:
+                self.trace.configure(*pending)
+            self._push(batch)
+            self.batches += 1
+        if time.monotonic() - self._qc_at >= QC_INTERVAL_S:
+            self._qc_at = time.monotonic()
+            self._update_qc()
 
     def alex_photons(self) -> tuple[np.ndarray, np.ndarray]:
         """µs-ALEX runs: ``(macro times, routing channels)`` of the first photons (up to
@@ -265,6 +316,9 @@ class RecordSession:
             writer.set_auto_checkpoint(200_000)
             self._writer = writer
         self.source.start()
+        from .bounded_analysis import BoundedAnalysis
+        self._analysis = BoundedAnalysis(self._analyze_batch, self._flush_analysis,
+                                         capacity=16, max_batch_events=500_000)
         self.started_at = time.monotonic()
         self._thread = threading.Thread(target=self._run, name="record-session", daemon=True)
         self._thread.start()
@@ -274,7 +328,78 @@ class RecordSession:
         if not self.stop_reason:
             self.stop_reason = "stopped"
         self._stop.set()
-        self.source.stop()
+
+    def _stop_source(self):
+        """Stop the underlying source once, including natural and requested stops."""
+        with self._source_stop_lock:
+            if self._source_stopped:
+                return
+            self._source_stopped = True
+            self.source.stop()
+
+    def pause(self) -> bool:
+        """Pause live analysis at a batch boundary; raw recording and the TCSPC clock continue.
+
+        The source keeps draining. Illumination and the hardware timer are unchanged.
+        External markers must be disabled so software markers cannot be misidentified.
+        """
+        self.pause_error = ""
+        if not self.running or self._stop.is_set():
+            self.pause_error = "No active recording."
+            return False
+        device = getattr(self.source, "device", None)
+        if device is not None:
+            try:
+                if int(device.get_parameter("marker_enable", -1)) != 0:
+                    raise ValueError("Disable external markers before pausing live analysis.")
+            except Exception as exc:
+                self.pause_error = f"Cannot reserve interruption markers: {exc}"
+                return False
+        if self._reserved_marker_seen:
+            self.pause_error = "The input uses reserved marker 13 or 14; analysis pause is unavailable."
+            return False
+        self._pause_requested.set()
+        return True
+
+    def resume(self) -> bool:
+        """End the marked pause; analysis stays incomplete while raw recording continues."""
+        if not self.running or self._stop.is_set():
+            return False
+        self._pause_requested.clear()
+        return True
+
+    def _write_batch(self, batch) -> None:
+        """Submit every saved event and surface a writer refusal as data loss."""
+        if self._recorder is not None:
+            if not self._recorder.write(batch):
+                raise OSError("The device PTU writer refused an event batch.")
+        if self._writer is not None and len(batch):
+            events = batch.event if batch.event is not None else np.zeros(len(batch), np.int8)
+            if not self._writer.submit_events(batch.macro, batch.micro, batch.channel, events):
+                self.dropped += 1
+                raise OSError("The PTU writer refused an event batch.")
+        # Count accepted source photons independently of optional live analysis.
+        photons = batch.photons()
+        if len(photons):
+            count, first, _last = self._received
+            first = int(photons.macro[0]) if first is None else first
+            self._received = (count + len(photons), first, int(photons.macro[-1]))
+
+    def _interrupt_marker(self, channel: int) -> None:
+        """Write a real PTU special event; never feed software markers to burst analysis."""
+        from .sources import PhotonBatch
+
+        raw = None
+        if self._recorder is not None:
+            import phacq
+
+            raw = np.zeros(1, dtype=phacq.EVENT_DTYPE)
+            raw["macro_time"] = self._last_seen_macro
+            raw["channel"] = channel
+            raw["flags"] = phacq.kEventFlagMarker
+        self._write_batch(PhotonBatch(
+            np.array([self._last_seen_macro], np.uint64), np.zeros(1, np.uint16),
+            np.array([channel], np.int8), raw=raw, event=np.ones(1, np.int8)))
 
     def wait(self, timeout: float | None = None) -> RunResult | None:
         if self._thread is not None:
@@ -285,8 +410,44 @@ class RecordSession:
     def _run(self) -> None:
         clock = self.source.info.macro_clock_s
         t0 = None
+        drain_deadline = None
+        collision_error = None
+        capture_error = None
+
+        def capture_safety(batch):
+            nonlocal capture_error
+            if capture_error is not None:
+                return
+            try:
+                self._capture_batch(batch)
+            except Exception as exc:
+                capture_error = f"Capture safety failed: {type(exc).__name__}: {exc}"
+                self._analysis_gap = True
+                if self._analysis is not None:
+                    self._analysis.disable(capture_error)
+                self._stop.set()
+
         try:
-            while not self._stop.is_set():
+            while True:
+                if self._stop.is_set():
+                    if drain_deadline is None:
+                        self._stop_source()
+                        if not getattr(self.source, "drain_after_stop", False):
+                            break
+                        drain_deadline = time.monotonic() + 5.0
+                    if self.source.finished:
+                        break
+                    if time.monotonic() >= drain_deadline:
+                        raise TimeoutError("Source did not drain after stop; buffered events may be lost.")
+                requested = self._pause_requested.is_set()
+                if requested != self.paused:
+                    self._interrupt_marker(13 if requested else 14)
+                    self._interrupt_used = True
+                    if requested:
+                        self._analysis_gap = True
+                        if self._analysis is not None:
+                            self._analysis.disable("Live analysis paused and cannot resume in this run; raw recording continues.")
+                    self.paused = requested
                 batch = self.source.read(timeout=0.2)
                 if batch is None:
                     if self.source.finished:
@@ -298,41 +459,113 @@ class RecordSession:
                     t0 = int(batch.macro[0])
                 if self.duration_s is not None and t0 is not None and not self._self_timed:
                     limit = t0 + int(self.duration_s / clock)
-                    cut = int(np.searchsorted(batch.macro, np.uint64(limit)))
-                    if cut < len(batch):
-                        batch.cut(cut)
+                    if len(batch) and batch.macro[-1] >= limit:
                         self.stop_reason = "duration reached"
                         self._stop.set()
-                with self._lock:
-                    self._push(batch)
-                    self.batches += 1
-                if self._recorder is not None:
-                    self._recorder.write(batch)
-                if self._writer is not None and len(batch):
-                    events = (
-                        batch.event if batch.event is not None else np.zeros(len(batch), np.int8)
-                    )
-                    ok = self._writer.submit_events(batch.macro, batch.micro, batch.channel, events)
-                    if not ok:
-                        self.dropped += 1
-                if time.monotonic() - self._qc_at >= QC_INTERVAL_S:
-                    self._qc_at = time.monotonic()
-                    self._update_qc()
+                if len(batch):
+                    self._last_seen_macro = int(batch.macro[-1])
+                if batch.event is not None:
+                    reserved = (batch.event != 0) & np.isin(batch.channel, [13, 14])
+                    if np.any(reserved):
+                        self._reserved_marker_seen = True
+                        if (self._interrupt_used or self._pause_requested.is_set()) and collision_error is None:
+                            # Preserve this and all buffered batches before reporting the collision.
+                            collision_error = "Hardware marker collides with interruption markers 13/14."
+                            self._analysis_gap = True
+                            if self._analysis is not None:
+                                self._analysis.disable(collision_error)
+                            self._stop.set()
+                if collision_error:
+                    self._write_batch(batch)
+                    capture_safety(batch)
+                    continue
+                if self.paused:
+                    # A pause is an analysis gap, never a raw recording gap.
+                    self._write_batch(batch)
+                    capture_safety(batch)
+                    self.paused_photons += len(batch.photons())
+                    continue
+                # Preserve this batch before running any live analysis.  This does not by itself
+                # make the synchronous analyzer overload-safe; a bounded analysis worker is still
+                # needed to keep slow analysis from delaying subsequent reads.
+                self._write_batch(batch)
+                capture_safety(batch)
+                if capture_error is not None:
+                    continue
+                if self._analysis is not None and not self._analysis.submit(batch):
+                    self._analysis_gap = True
+            if collision_error or capture_error:
+                raise ValueError("; ".join(e for e in (collision_error, capture_error) if e))
         except Exception as exc:  # noqa: BLE001 - shown in the tool; the file is still closed
             _log.exception("recording failed")
             self.error = f"{type(exc).__name__}: {exc}"
             self.stop_reason = "error"
         finally:
-            self.source.stop()
-            with self._lock:
-                self.analyzer.flush()
-                table = self.table()
-            if self._writer is not None:
-                self._writer.close()
-            if self._recorder is not None:
-                self._recorder.close()
-            self._update_qc(table)
-            snap = self.analyzer.snapshot()
+            def finalization_error(stage, exc):
+                _log.exception("%s failed", stage)
+                detail = f"{stage}: {type(exc).__name__}: {exc}"
+                self.error = f"{self.error}; {detail}" if self.error else detail
+                self.stop_reason = "error"
+
+            # Close the recording before running fallible analysis finalization.  A broken
+            # analyzer must not strand submitted raw records in an open writer.
+            try:
+                self._stop_source()
+            except Exception as exc:
+                finalization_error("source stop", exc)
+            for label, writer in (("PTU writer close", self._writer),
+                                  ("device recorder close", self._recorder)):
+                if writer is not None:
+                    try:
+                        closed = writer.close()
+                        if closed is False:
+                            error = getattr(writer, "error", None)
+                            detail = error() if callable(error) else error
+                            raise OSError(f"writer refused to close: {detail or 'unknown error'}")
+                    except Exception as exc:
+                        finalization_error(label, exc)
+            try:
+                source_status = self.source.status()
+                source_error = source_status.get("error", "")
+                source_dropped = int(source_status.get("dropped", 0))
+                if source_error or source_dropped:
+                    detail = f"Source error: {source_error}" if source_error else ""
+                    if source_dropped:
+                        detail += ("; " if detail else "") + f"Source reported {source_dropped} overflow/loss event(s)."
+                    self.error = f"{self.error}; {detail}" if self.error else detail
+                    self.stop_reason = "error"
+                    self._analysis_gap = True
+            except Exception as exc:
+                finalization_error("source status", exc)
+                self._analysis_gap = True
+            analysis_finished = self._analysis is None or self._analysis.finish()
+            if not analysis_finished:
+                self._analysis_gap = True
+            analysis_complete = not bool(self.error) and not self._analysis_gap
+            table = {}
+            snap = {"photons": 0, "bursts": 0, "elapsed_s": 0.0}
+            try:
+                if self._analysis is not None and self._analysis._thread.is_alive():
+                    snap = dict(self._last_snapshot)
+                else:
+                    with self._lock:
+                        self.analyzer.flush()
+                        table = self.table()
+                        snap = self.analyzer.snapshot()
+            except Exception as exc:
+                finalization_error("analysis finalization", exc)
+                analysis_complete = False
+                table = {}
+            if analysis_complete:
+                try:
+                    self._update_qc(table)
+                except Exception as exc:
+                    finalization_error("quality finalization", exc)
+                    analysis_complete = False
+            if not analysis_complete:
+                self.qc = {"ready": False, "level": "grey", "checks": [], "metrics": {},
+                           "why": (self.error or (self._analysis.reason if self._analysis else "") or
+                                   "Live analysis has a paused interval; raw recording continues throughout.")}
             self.result = RunResult(
                 ptu=self.ptu_path,
                 table=table,
@@ -341,6 +574,7 @@ class RecordSession:
                 elapsed_s=float(snap["elapsed_s"]),
                 stop_reason=self.stop_reason or "finished",
                 qc=self.qc,
+                analysis_complete=analysis_complete,
             )
             self._dataset = self._photon_dataset()
 
@@ -424,20 +658,43 @@ class RecordSession:
     # -- the view's side ------------------------------------------------------------------------
     def snapshot(self) -> dict[str, Any]:
         """The accumulators and health, copied under the lock (no photons)."""
-        with self._lock:
-            snap = self.analyzer.snapshot()
-            if self.trace is not None:
-                snap["live_trace"] = self.trace.snapshot()
+        if self._lock.acquire(blocking=False):
+            try:
+                snap = self.analyzer.snapshot()
+                if self.trace is not None:
+                    snap["live_trace"] = self.trace.snapshot()
+                self._last_snapshot = snap
+            finally:
+                self._lock.release()
+        else:
+            snap = dict(self._last_snapshot)
         status = self.source.status()
+        source_error = status.get("error", "")
+        source_dropped = int(status.get("dropped", 0))
+        health_error = self.error or (f"Source error: {source_error}" if source_error else "")
+        if source_dropped and "overflow/loss" not in health_error:
+            health_error += ("; " if health_error else "") + f"Source reported {source_dropped} overflow/loss event(s)."
+        warning = self._analysis.reason if self._analysis else ""
+        received, first, last = self._received
+        raw_elapsed = ((last - first) * self.source.info.macro_clock_s
+                       if first is not None else 0.0)
         snap.update(
             running=self.running,
+            received_photons=received,
+            received_elapsed_s=raw_elapsed,
+            paused=self.paused,
+            paused_photons=self.paused_photons,
+            analysis_gap=self._analysis_gap or bool(self._analysis and self._analysis.reason),
+            analysis_warning=warning,
             batches=self.batches,
             dropped=self.dropped + int(status.get("dropped", 0)),
             queued=int(status.get("queued", 0)),
-            source_error=status.get("error", "") or self.error,
+            source_error=health_error,
             stop_reason=self.stop_reason,
             wall_s=(time.monotonic() - self.started_at) if self.started_at else 0.0,
-            qc=self.qc,
+            qc=({"ready": False, "level": "grey", "checks": [], "metrics": {},
+                 "why": health_error or warning or "Live analysis has a paused interval; raw recording continues throughout."}
+                if self._analysis_gap or warning or self.error or status.get("error") or status.get("dropped") else self.qc),
         )
         return snap
 
@@ -465,7 +722,7 @@ class RecordSession:
         uid = str(getattr(photons, "unique_identifier", "") or "")
         result.dataset_uid = uid
         datasets = [photons]
-        if result.bursts:
+        if result.bursts and result.analysis_complete:
             columns = list(result.table)
             rows = [
                 {c: result.table[c][i].item() for c in columns}

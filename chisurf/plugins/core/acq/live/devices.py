@@ -272,6 +272,7 @@ class DeviceSource(PhotonSource):
     """
 
     stops_itself = True
+    drain_after_stop = True
 
     def __init__(self, device, *, duration_s: float | None = None,
                  chunk_events: int = _CHUNK_EVENTS):
@@ -282,6 +283,8 @@ class DeviceSource(PhotonSource):
         self.chunk_events = int(chunk_events)
         info = device.information()
         self.sync_rate_hz = self._sync_rate()
+        self.count_rates_hz = [self.sync_rate_hz]
+        self._rates_at = 0.0
         micro = float(info.base_resolution_ps) * 1e-12
         if info.macro_resolution_ps > 0:  # a macro clock of its own (B&H FIFO, T2)
             macro = float(info.macro_resolution_ps) * 1e-12
@@ -307,6 +310,7 @@ class DeviceSource(PhotonSource):
             macro_clock_s=macro, micro_res_s=micro, n_micro=n_micro,
         )
         self._stop = threading.Event()
+        self._stop_lock = threading.Lock()
         self._done = threading.Event()
         self._started = 0.0
         self._gaps = 0
@@ -341,23 +345,33 @@ class DeviceSource(PhotonSource):
 
     def stop(self) -> None:
         """Stop measuring; what the device acquired is still read out (``finished`` follows)."""
-        self._stop.set()
-        try:
-            self.device.stop()
-        except Exception as e:  # noqa: BLE001 - shown in the status line
-            self._error = str(e)
+        with self._stop_lock:
+            if self._stop.is_set():
+                return
+            self._stop.set()
+            try:
+                self.device.stop()
+            except Exception as e:  # noqa: BLE001 - shown in the status line
+                self._error = str(e)
 
     @property
     def finished(self) -> bool:
         return self._done.is_set()
 
     def status(self) -> dict[str, Any]:
-        return {"queued": 0, "dropped": int(self._gaps), "stalls": 0, "error": self._error}
+        return {"queued": 0, "dropped": int(self._gaps), "stalls": 0, "error": self._error,
+                "count_rates_hz": list(self.count_rates_hz)}
 
     def read(self, timeout: float = 0.2) -> PhotonBatch | None:
         """The next events, decoded (called by the session's worker thread only)."""
         if self._done.is_set():
             return None
+        if time.monotonic() - self._rates_at >= 1.0:
+            self._rates_at = time.monotonic()
+            try:
+                self.count_rates_hz = [float(r) for r in self.device.count_rates()]
+            except Exception:
+                pass  # a counter failure must not stop photon recording
         try:
             raw = self.device.read_events_raw(self.chunk_events)
         except Exception as e:  # noqa: BLE001 - a device error ends the run, shown

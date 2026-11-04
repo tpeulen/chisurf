@@ -219,6 +219,7 @@ class PointRecordSession(RecordSession):
         self._pt_counts: dict[int, np.ndarray] = {}
         self._pt_micro = np.zeros(0, np.float64)
         self._pt_t0: int | None = None
+        self._last_point_trace = None
 
     def _push(self, batch) -> None:
         super()._push(batch)
@@ -241,25 +242,34 @@ class PointRecordSession(RecordSession):
             for c in np.unique(channel):
                 arr = self._pt_counts.setdefault(int(c), np.zeros(self._pt_micro.size, np.int64))
                 arr[:n] += np.bincount(b[channel == c], minlength=n)[:n]
+    def _capture_batch(self, batch) -> None:
+        # Bleach detection is a capture control, not optional analysis: it must
+        # run for every recorded batch even if the analysis queue is saturated.
         if self.bleach is not None and not self._stop.is_set():
             if self.bleach.push(batch.photons().macro, self.source.info.macro_clock_s):
                 self.stop_reason = "bleached"
                 self._stop.set()
-                self.source.stop()
 
     def point_trace(self) -> dict[str, Any]:
         """The live trace of this point: photons per detector per bin, the mean micro time per
         bin, and the bleach rule's level, threshold and call."""
-        with self._lock:
+        if not self._lock.acquire(blocking=False):
+            return self._last_point_trace or {"index": self.index, "point": self.point,
+                    "bin_s": self.TRACE_BIN_S, "counts": {},
+                    "mean_arrival_ns": np.zeros(0), "level_kcps": None,
+                    "threshold_kcps": None, "bleached_at_s": None}
+        try:
             counts = {c: a.copy() for c, a in sorted(self._pt_counts.items())}
             micro = self._pt_micro.copy()
+        finally:
+            self._lock.release()
         total = sum(counts.values()) if counts else np.zeros(micro.size, np.int64)
         info = self.source.info
         with np.errstate(invalid="ignore", divide="ignore"):
             mean_ns = np.where(total > 0, micro / np.maximum(total, 1) * info.micro_res_s * 1e9,
                                np.nan)
         b = self.bleach
-        return {
+        result = {
             "index": self.index,
             "point": self.point,
             "bin_s": self.TRACE_BIN_S,
@@ -269,6 +279,8 @@ class PointRecordSession(RecordSession):
             "threshold_kcps": b.threshold_kcps if b is not None else None,
             "bleached_at_s": b.bleached_at_s if b is not None else None,
         }
+        self._last_point_trace = result
+        return result
 
     def snapshot(self) -> dict[str, Any]:
         snap = super().snapshot()
@@ -321,7 +333,7 @@ class PointSequence:
                  bleach: Callable[[], BleachDetector] | None = None,
                  session_kwargs: dict | None = None,
                  on_point: Callable[[PointResult], None] | None = None,
-                 point_tags: list[dict] | None = None):
+                 point_tags: list[dict] | None = None, reserved_paths: list[Path] | None = None):
         if not scan.is_points:
             raise ValueError("a point sequence needs points")
         self.scanner = scanner
@@ -334,6 +346,9 @@ class PointSequence:
         self.session_kwargs = dict(session_kwargs or {})
         self.on_point = on_point
         self.point_tags = list(point_tags or [])
+        self.reserved_paths = list(reserved_paths or [])
+        if self.reserved_paths and len(self.reserved_paths) != len(scan.points):
+            raise ValueError("reserved paths must match the point count")
         self.results: list[PointResult] = []
         self.current: PointRecordSession | None = None
         self.error = ""
@@ -385,7 +400,13 @@ class PointSequence:
                 if self._abort.is_set():
                     break
                 position = self.scanner.move_to(float(x), float(y))
-                ptu = self.out_dir / f"{self.name}_p{i:03d}.ptu" if self.out_dir else None
+                target = self.reserved_paths[i] if self.reserved_paths else None
+                if target is not None:
+                    import tempfile
+                    stage = Path(tempfile.mkdtemp(prefix=".point-recording-", dir=target.parent))
+                    ptu = stage / target.name
+                else:
+                    ptu = self.out_dir / f"{self.name}_p{i:03d}.ptu" if self.out_dir else None
                 detector = self.bleach() if self.until_bleached else None
                 kwargs = dict(self.session_kwargs)
                 tags = {**dict(kwargs.pop("header_tags", None) or {}),
@@ -397,14 +418,36 @@ class PointSequence:
                     duration_s=self.scan.point_ms * 1e-3, ptu_path=ptu,
                     name=f"{self.name}_p{i:03d}", header_tags=tags, **kwargs)
                 self.current = session
-                session.start()
+                try:
+                    session.start()
+                except Exception as exc:
+                    if target is not None:
+                        raise OSError(f"Point start failed; any partial recording is retained at {ptu}: {exc}") from exc
+                    raise
                 run = session.wait()
+                if target is not None and run is not None:
+                    from .image_storage import publish_point
+                    try:
+                        final = publish_point(ptu, target)
+                    except OSError as exc:
+                        raise OSError(f"Cannot publish point recording; retained at {ptu}: {exc}") from exc
+                    run.ptu = final
+                    session.ptu_path = final
+                    session._dataset = session._photon_dataset()
                 self.current = None
                 result = PointResult(i, (float(x), float(y)), tuple(position), run,
                                      detector.bleached_at_s if detector else None, session)
                 self.results.append(result)
+                # Keep the current recording available, but never proceed to another point
+                # after a capture or writer failure. Optional analysis gaps are distinct.
+                point_error = session.error or ("Point recording failed" if run is None or
+                                                 run.stop_reason == "error" else "")
+                if point_error:
+                    self.error = f"Point {i + 1} recording error: {point_error}"
                 if self.on_point is not None:
                     self.on_point(result)
+                if point_error:
+                    break
         except Exception as exc:  # noqa: BLE001 - shown in the tool; the points so far are kept
             _log.exception("point sequence failed")
             self.error = f"{type(exc).__name__}: {exc}"

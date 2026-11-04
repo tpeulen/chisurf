@@ -59,6 +59,8 @@ def infer_preset(setup: dict) -> str:
     win = set((s.get("windows") or {}).keys())
     if any(d.endswith("_par") for d in det) and any(d.endswith("_perp") for d in det):
         return "mfd"
+    # tttrlib's three-colour PIE names detectors by emission colour and windows by excitation
+    # colour (streams "blue green"), not E|X: these colour words stay.
     if {"blue", "green", "red"} <= set(det) and {"blue", "green", "red"} <= win:
         return "three_color_pie"
     if {"prompt", "delayed"} <= win and len(det) >= 2:

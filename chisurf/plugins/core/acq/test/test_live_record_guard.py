@@ -26,7 +26,9 @@ def recorded(tmp_path_factory):
 def test_the_recording_holds_every_photon_and_stops_at_the_duration(recorded):
     session, result, _out = recorded
     assert result.stop_reason == "duration reached"
-    assert result.elapsed_s == pytest.approx(6.0, abs=0.01)
+    # The session never cuts a delivered batch (photons are held), so the run ends with the
+    # first batch that crosses the duration: within one source batch (batch_s = 0.1 s) of it.
+    assert result.elapsed_s == pytest.approx(6.0, abs=0.15)
     assert len(tttrlib.TTTR(str(result.ptu))) == result.photons
     assert session.dropped == 0
 

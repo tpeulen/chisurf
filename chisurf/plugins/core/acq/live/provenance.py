@@ -65,6 +65,7 @@ def point_tags(point: dict) -> dict[str, Any]:
         "ChiSurf_Point_Origin": str(point.get("origin", "")),
         "ChiSurf_Point_SourceImage": str(point.get("image", "")),
         "ChiSurf_Point_SourceImageUID": str(point.get("image_uid", "")),
+        "ChiSurf_Point_ImageRelPath": str(point.get("image_relative_path", "")),
     }
     for key, tag in (("pixel_x", "ChiSurf_Point_PixelX"), ("pixel_y", "ChiSurf_Point_PixelY"),
                      ("image_x0_um", "ChiSurf_Point_ImageX0_um"),
@@ -151,6 +152,7 @@ def _source(point: dict) -> dict:
     return {
         "image": str(point.get("image", "")),
         "image_uid": str(point.get("image_uid", "")),
+        "image_relative_path": str(point.get("image_relative_path", "")),
         "image_raster_um": [point.get("image_x0_um"), point.get("image_y0_um"),
                             point.get("image_pixel_um")],
         "origin": str(point.get("origin", "")),
@@ -333,6 +335,7 @@ def backtrace(point, uid: str = "") -> dict[str, Any]:
         "point_uid": uid,
         "image": tags.get("ChiSurf_Point_SourceImage", ""),
         "image_uid": tags.get("ChiSurf_Point_SourceImageUID", ""),
+        "image_relative_path": tags.get("ChiSurf_Point_ImageRelPath", ""),
         "pixel": (tags.get("ChiSurf_Point_PixelX"), tags.get("ChiSurf_Point_PixelY")),
         "raster_um": (tags.get("ChiSurf_Point_ImageX0_um"), tags.get("ChiSurf_Point_ImageY0_um"),
                       tags.get("ChiSurf_Point_ImagePixel_um")),
@@ -359,6 +362,14 @@ def backtrace(point, uid: str = "") -> dict[str, Any]:
     if out["image_uid"]:
         address, _ = _address_of(out["image_uid"])
         out["image_path"] = address if address != out["image_uid"] else ""
+    if not out.get("image_path") and out["image_relative_path"]:
+        base = Path(path).parent
+        # A failed publication retains the trace in a private directory under traces/.
+        if base.name.startswith(".point-recording-"):
+            base = base.parent
+        image = (base / out["image_relative_path"]).resolve()
+        if image.is_file():
+            out["image_path"] = str(image)
     return out
 
 

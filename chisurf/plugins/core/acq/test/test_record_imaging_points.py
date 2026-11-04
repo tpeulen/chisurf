@@ -52,6 +52,9 @@ def _scan_example(model: RecordModel) -> None:
     model.mode = "image"
     model.mode_changed()
     model.load_example()
+    if model.laser is not None:
+        model.laser.set_head(200, intensity_pct=100)
+        model.laser.set_emission(True)
     assert model.start(), model.status_detail
     while model.running:
         model.poll()
@@ -59,7 +62,7 @@ def _scan_example(model: RecordModel) -> None:
     model.poll(force=True)
 
 
-def test_scan_autopick_and_point_measurements_in_the_simulator(tmp_path):
+def test_scan_autopick_and_point_measurements_in_the_simulator(tmp_path, monkeypatch):
     model = RecordModel(output_dir=tmp_path, realtime=False)
     _scan_example(model)
     assert model.image_snapshot["lines_done"] == 64 * 4
@@ -86,9 +89,132 @@ def test_scan_autopick_and_point_measurements_in_the_simulator(tmp_path):
     # each point is a recording of its own, its point in the header (SymPhoTime's tags)
     ptus = sorted(Path(tmp_path).rglob("*_p00*.ptu"))
     assert len(ptus) == 4
+    assert model.image_ptu.parent.name == model.image_ptu.stem
+    assert all(path.parent == model.image_ptu.parent / "traces" for path in ptus)
     tags = settings_file.read_ptu_tags(ptus[2])
     assert tags["ImgHdr_Dimensions"] == 1 and tags["ImgHdr_Ident"] == 6
     assert tags["ImgHdr_X0"] == pytest.approx(model.points[2]["x_um"])
+    assert tags["ChiSurf_Point_SourceImage"] == model.image_ptu.name
+    from chisurf.plugins.core.acq.live import provenance
+    for result in model.sequence.results:
+        assert Path(str(result.session._dataset.address)) == result.run.ptu
+        address, _ = provenance._address_of(result.run.dataset_uid)
+        assert Path(address) == result.run.ptu
+    monkeypatch.setattr(provenance, "_address_of", lambda value: (str(value), ""))
+    monkeypatch.setattr(provenance, "_container_record", lambda *args: None)
+    assert Path(provenance.backtrace(ptus[2])["image_path"]) == model.image_ptu.resolve()
+    import tttrlib
+    assert len(tttrlib.TTTR(str(model.image_ptu))) > 0
+    assert all(len(tttrlib.TTTR(str(path))) > 0 for path in ptus)
+
+
+def test_image_and_trace_publication_never_replace_existing_files(tmp_path, monkeypatch):
+    from chisurf.plugins.core.acq.live.image_storage import allocate_image, publish_point
+    import os
+
+    _, image = allocate_image(tmp_path, "scan")
+    image.write_bytes(b"original image")
+    _, second_image = allocate_image(tmp_path, "scan")
+    assert second_image.parent != image.parent
+    traces = image.parent / "traces"
+    traces.mkdir()
+    target = traces / "points_p000.ptu"
+    target.write_bytes(b"original trace")
+    stage = traces / ".private"
+    stage.mkdir()
+    staged = stage / target.name
+    staged.write_bytes(b"new trace")
+    published = publish_point(staged, target)
+    assert target.read_bytes() == b"original trace"
+    assert published.read_bytes() == b"new trace"
+    assert image.read_bytes() == b"original image"
+    stage.mkdir()
+    staged.write_bytes(b"partial photons")
+    monkeypatch.setattr(os, "link", lambda *args: (_ for _ in ()).throw(OSError("unavailable")))
+    with pytest.raises(OSError):
+        publish_point(staged, target)
+    assert staged.read_bytes() == b"partial photons"
+
+
+def test_successful_publication_survives_cleanup_failure(tmp_path, monkeypatch):
+    from chisurf.plugins.core.acq.live.image_storage import publish_point
+
+    stage = tmp_path / ".point-recording-private"
+    stage.mkdir()
+    staged = stage / "trace.ptu"
+    staged.write_bytes(b"photons")
+    original = Path.unlink
+    def reject_stage(path, *args, **kwargs):
+        if path == staged:
+            raise OSError("cleanup failed")
+        return original(path, *args, **kwargs)
+    monkeypatch.setattr(Path, "unlink", reject_stage)
+    published = publish_point(staged, tmp_path / "trace.ptu")
+    assert published.read_bytes() == b"photons" and staged.read_bytes() == b"photons"
+
+
+def test_failed_trace_publication_reports_and_retains_recording(tmp_path, monkeypatch):
+    import os
+    import tttrlib
+
+    model = RecordModel(output_dir=tmp_path, realtime=False)
+    _scan_example(model)
+    model.add_point(2, 2)
+    model.point_time_s = 0.03
+    monkeypatch.setattr(os, "link", lambda *args: (_ for _ in ()).throw(OSError("link failed")))
+    assert model.measure_points()
+    model.wait_points(30)
+    staged = list((model.image_ptu.parent / "traces").glob(".point-recording-*/*.ptu"))
+    assert len(staged) == 1 and str(staged[0]) in model.sequence.error
+    assert len(tttrlib.TTTR(str(staged[0]))) > 0
+    from chisurf.plugins.core.acq.live import provenance
+    monkeypatch.setattr(provenance, "_address_of", lambda value: (str(value), ""))
+    monkeypatch.setattr(provenance, "_container_record", lambda *args: None)
+    assert Path(provenance.backtrace(staged[0])["image_path"]) == model.image_ptu.resolve()
+    model.close()
+
+
+@pytest.mark.parametrize("name", ["../outside", "/tmp/outside", "dir/scan", "dir\\scan", "..", "C:scan"])
+def test_recording_names_cannot_escape_output_directory(tmp_path, name):
+    from chisurf.plugins.core.acq.live.image_storage import allocate_image, point_paths
+    with pytest.raises(ValueError):
+        allocate_image(tmp_path, name)
+    with pytest.raises(ValueError):
+        point_paths([tmp_path], name)
+    model = RecordModel(output_dir=tmp_path)
+    model.run_name = name
+    assert not model.start()
+    model.add_point(1, 1)
+    assert not model.measure_points()
+    model.close()
+
+
+def test_mixed_image_points_are_written_to_their_own_image(tmp_path, monkeypatch):
+    from chisurf.plugins.core.acq.live import provenance
+
+    model = RecordModel(output_dir=tmp_path)
+    first, second = tmp_path / "one.ptu", tmp_path / "two.ptu"
+    model.image_ptu, model.image_uid = first, "one"
+    a = model.add_point(1, 1)
+    model.image_ptu, model.image_uid = second, "two"
+    b = model.add_point(2, 2)
+    for p in (a, b):
+        p["dataset_uid"] = f"point-{p['index']}"
+        model.molecules[p["index"]] = object()
+    writes = []
+    monkeypatch.setattr(provenance, "write_point_record", lambda *args: None)
+    monkeypatch.setattr(provenance, "write_image_points",
+                        lambda path, uid, points: writes.append((path, uid, list(points))))
+    model._record_points()
+    assert writes == [(str(first), "one", [a]), (str(second), "two", [b])]
+    outputs = []
+    monkeypatch.setattr(model, "molecule_table", lambda points: ({"n": [len(points)]}, {}))
+    monkeypatch.setattr(provenance, "_put", lambda path, uid, *args, **kw:
+                        outputs.append((path, uid, args[1])) or path)
+    model._store_molecules()
+    assert [(path, uid, table["n"]) for path, uid, table in outputs] == [
+        (str(first), "one", [1]), (str(second), "two", [1])]
+    model.close()
 
 
 class _SetBleaching(PointSimSource):
@@ -241,6 +367,9 @@ def test_picking_on_the_image_and_the_screens(tmp_path):
         ui.draw(2)
         assert app.docks.windows["points"].visible
         ui.click("load_example")
+        if model.laser is not None:
+            model.laser.set_head(200, intensity_pct=100)
+            model.laser.set_emission(True)
         ui.click("start")
         while model.running:
             ui.draw(1)
@@ -250,6 +379,8 @@ def test_picking_on_the_image_and_the_screens(tmp_path):
         ui.hover(x + w * 0.3, y + h * 0.5)  # the pointer arrives, then presses: not a pan
         ui.click_at(x + w * 0.3, y + h * 0.5)
         assert len(model.points) == 1 and model.points[0]["origin"] == "click"
+        app.focus_dock("points")
+        ui.draw(1)
         ui.click("autopick")
         ui.draw(2)
         assert len(model.points) > 5
@@ -277,6 +408,7 @@ def test_picking_on_the_image_and_the_screens(tmp_path):
             time.sleep(0.05)
         ui.draw(3)
         model.selected_point = model.points[0]["index"]
+        app.focus_dock("plot_trace")
         ui.draw(3)
         assert "Molecule 1" in " ".join(ui.strings())
         save_png(app, str(SHOTS / "record_points_done.png"), size=SIZE)
@@ -295,8 +427,8 @@ def test_the_line_markers_come_from_the_settings_file():
     from pathlib import Path
 
     from chisurf.plugins.core.acq.live import settings_file
-    from chisurf.plugins.core.acq.live.scanning import line_markers, scanner_scan
     from chisurf.plugins.core.acq.live.scanner import ScanSettings
+    from chisurf.plugins.core.acq.live.scanning import line_markers, scanner_scan
 
     profiles = Path(settings_file.__file__).resolve().parents[1] / "profiles"
     for path in sorted(profiles.glob("mt200_*.json")):
