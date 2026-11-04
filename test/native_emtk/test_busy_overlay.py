@@ -41,7 +41,7 @@ def test_the_overlay_shows_after_the_delay_swallows_presses_and_stops():
     assert overlay.update(app, now=10.6)
     painter = RecordingPainter()
     overlay.draw(painter, (0, 0, 800, 600), now=10.6)
-    assert "Stop" in painter.strings and overlay.stop_rect is not None
+    assert any("Stop" in t for t in painter.strings) and overlay.stop_rect is not None
     assert overlay.press(1, 1) and not stopped  # beside Stop: swallowed, nothing stopped
     x, y, w, h = overlay.stop_rect
     assert overlay.press(x + w / 2, y + h / 2) and stopped == [1]
@@ -77,3 +77,27 @@ def test_a_long_message_wraps_inside_the_card_and_the_bar_moves_down(tmp_path):
     (tmp_path / "busy_long.png").write_bytes(png_encode(painter.width, painter.height, painter.px))
     short = message_lines(painter, "x " * 400, 352)
     assert len(short) == MAX_LINES and short[-1].endswith("…")
+
+
+def test_a_counted_progress_line_fills_the_bar_and_stop_is_a_centred_danger_button():
+    """"Fitting bursts ... 16011/16604" is a fraction (the bar fills instead of sliding), and
+    Stop is drawn in the danger colours with its label centred (it was left-aligned grey)."""
+    from emtk.painter import ALIGN_CENTER
+    from emtk.testing import RecordingPainter
+
+    from chisurf.emtk.busy_overlay import _STOP, _STOP_HOVER
+
+    tool = SimpleNamespace(running=True, job=SimpleNamespace(progress="Fitting bursts ... 16011/16604"),
+                           stop=lambda: None)
+    assert busy_state(tool).fraction == 16011 / 16604
+    overlay = BusyOverlay(delay_s=0.0)
+    overlay.update(tool, now=1.0)
+    for pointer, colour in ((None, _STOP), ("inside", _STOP_HOVER)):
+        painter = RecordingPainter()
+        if pointer == "inside":
+            sx, sy, sw, sh = overlay.stop_rect
+            pointer = (sx + sw / 2, sy + sh / 2)
+        overlay.draw(painter, (0, 0, 640, 300), now=2.0, pointer=pointer)
+        assert any(tuple(f[-1]) == colour for f in painter.fills), colour
+        stop = [t for t in painter.texts if "Stop" in t[5]]
+        assert stop and stop[0][4] == ALIGN_CENTER

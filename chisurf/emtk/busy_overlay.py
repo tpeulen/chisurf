@@ -15,6 +15,7 @@ watches (Record's acquisition) sets ``busy_overlay = False``.
 
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass
 from typing import Any, Callable
@@ -32,7 +33,13 @@ _BAR_BG = (58, 62, 74, 255)
 _BAR_FG = (96, 150, 230, 255)
 _TEXT = (230, 232, 238, 255)
 _MUTED = (170, 175, 186, 255)
-_BUTTON = (70, 76, 92, 255)
+#: Stop is the card's one action and a destructive one: the danger role's colours, as every
+#: Stop/Cancel button of ChiSurf (:data:`emtk.style.BUTTON_ROLES`).
+_STOP = (156, 52, 52, 255)
+_STOP_HOVER = (196, 72, 72, 255)
+_STOP_BORDER = (236, 150, 150, 255)
+#: "16011/16604" or "3 of 12" in a progress line: the fraction when the tool reports none.
+_COUNT = re.compile(r"(\d+)\s*(?:/|of)\s*(\d+)")
 
 
 @dataclass
@@ -108,7 +115,19 @@ def busy_state(app: Any, _depth: int = 0) -> BusyState | None:
          if f is not None),
         None,
     )
-    return BusyState(_message(app), fraction, _stopper(app))
+    message = _message(app)
+    if fraction is None:
+        fraction = _counted(message)
+    return BusyState(message, fraction, _stopper(app))
+
+
+def _counted(message: str) -> float | None:
+    """The fraction a progress line states as a count ("Fitting bursts … 16011/16604")."""
+    found = _COUNT.findall(message or "")
+    if not found:
+        return None
+    done, total = (int(v) for v in found[-1])
+    return max(0.0, min(1.0, done / total)) if total > 0 and done <= total else None
 
 
 def message_lines(painter: Any, message: str, width: float) -> list[str]:
@@ -150,8 +169,16 @@ class BusyOverlay:
         self.visible = now - self.since >= self.delay_s
         return self.visible
 
-    def draw(self, painter: Any, box: tuple[float, float, float, float], now: float | None = None) -> None:
-        """Blur *box* (canvas coordinates) and draw the card over it."""
+    def draw(
+        self,
+        painter: Any,
+        box: tuple[float, float, float, float],
+        now: float | None = None,
+        pointer: tuple[float, float] | None = None,
+    ) -> None:
+        """Blur *box* (canvas coordinates) and draw the card over it; *pointer* (canvas
+        coordinates) lights the Stop button up while it is over it."""
+        from emtk.painter import ALIGN_CENTER, ALIGN_LEFT, ALIGN_RIGHT, ALIGN_VCENTER
         if not self.visible or self.state is None:
             self.stop_rect = None
             return
@@ -170,15 +197,24 @@ class BusyOverlay:
         painter.fill_rect(cx, cy, cw, ch, _CARD_BG)
         elapsed = max(0.0, now - (self.since or now))
         title = "Stopping…" if self.stopping else "Working…"
-        painter.text(cx + 14, cy + 10, cw - 28, 20, 0, f"{title}  {elapsed:.0f} s", _TEXT, True)
+        painter.text(
+            cx + 14, cy + 10, cw - 28, 20, ALIGN_LEFT | ALIGN_VCENTER, f"{title}  {elapsed:.0f} s",
+            _TEXT, True,
+        )
         for row, line in enumerate(lines):
-            painter.text(cx + 14, cy + 34 + row * LINE_H, cw - 28, LINE_H, 0, line, _MUTED)
+            painter.text(
+                cx + 14, cy + 34 + row * LINE_H, cw - 28, LINE_H, ALIGN_LEFT | ALIGN_VCENTER, line,
+                _MUTED,
+            )
         cy, ch = cy + extra, ch - extra  # the bar and Stop sit under the text, as for one line
         bx, by, bw, bh = cx + 14, cy + 60, cw - 28, 12
         painter.fill_rect(bx, by, bw, bh, _BAR_BG)
         if self.state.fraction is not None:
             painter.fill_rect(bx, by, bw * self.state.fraction, bh, _BAR_FG)
-            painter.text(bx, by + bh + 2, bw, 16, 2, f"{100 * self.state.fraction:.0f} %", _MUTED)
+            painter.text(
+                bx, by + bh + 2, bw, 16, ALIGN_RIGHT | ALIGN_VCENTER,
+                f"{100 * self.state.fraction:.0f} %", _MUTED,
+            )
         else:  # unknown size: a segment sliding across
             seg = 0.25
             t = (elapsed * 0.6) % (1.0 + seg) - seg
@@ -187,10 +223,14 @@ class BusyOverlay:
                 painter.fill_rect(bx + bw * start, by, bw * (end - start), bh, _BAR_FG)
         self.stop_rect = None
         if can_stop:
-            sw, sh = 72.0, 22.0
+            label = "■  Stop"
+            sw, sh = max(84.0, painter.text_width(label) + 28.0), 24.0
             sx, sy = cx + cw - 14 - sw, cy + ch - 10 - sh
-            painter.fill_rect(sx, sy, sw, sh, _BUTTON)
-            painter.text(sx, sy + 2, sw, sh - 4, 1, "Stop", _TEXT)
+            px, py = pointer if pointer is not None else (-1.0, -1.0)
+            hovered = sx <= px <= sx + sw and sy <= py <= sy + sh
+            painter.fill_rect(sx - 1, sy - 1, sw + 2, sh + 2, _STOP_BORDER if hovered else _CARD_BORDER)
+            painter.fill_rect(sx, sy, sw, sh, _STOP_HOVER if hovered else _STOP)
+            painter.text(sx, sy, sw, sh, ALIGN_CENTER, label, _TEXT, True)
             self.stop_rect = (sx, sy, sw, sh)
 
     def press(self, x: float, y: float) -> bool:

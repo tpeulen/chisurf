@@ -2373,7 +2373,7 @@ class EmtkShellApp(ImApp):
 
                 overlay = hosted.extra["busy"] = BusyOverlay()
             if overlay.update(hosted.app) or overlay.since is not None:
-                overlay.draw(im.get_current_context().p, hosted.box)
+                overlay.draw(im.get_current_context().p, hosted.box, pointer=tuple(self.io.mouse_pos))
                 self.request_frame()  # the bar moves while the tool works
         elif hosted.error:
             im.text_wrapped(tr("The tool could not be opened."))
