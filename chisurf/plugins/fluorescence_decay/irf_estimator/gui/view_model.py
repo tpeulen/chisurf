@@ -67,6 +67,10 @@ class IRFViewModel:
         self.reference_tau_ns = 0.0
         self.listed_tau_ns = 4.0
         self.reference_rho_ns = 0.0
+        #: Its initial anisotropy (0: the ideal 0.38, or from the data when it fits badly at G).
+        self.reference_r0 = 0.0
+        #: How the given lifetime was decided (the source line says it as the sender did).
+        self.reference_tau_how = "given"
         self.dye = ""
         #: The measurement(s) the received source is of (its source line names them).
         self.source_name = ""
@@ -257,7 +261,8 @@ class IRFViewModel:
             "kind": self.source, "vv": parts[0], "vh": parts[-1], "dt_ns": self.dt,
             "window": self.gate, "name": self.source_name, "dye": self.dye,
             "listed_tau_ns": self.listed_tau_ns, "tau_ns": self.reference_tau_ns,
-            "rho_ns": self.reference_rho_ns, "model": self.irf_model, "buffer": self.buffer,
+            "rho_ns": self.reference_rho_ns, "r0": self.reference_r0, "model": self.irf_model,
+            "buffer": self.buffer,
         }
         shifts = (float(self.shift_vv), float(self.shift_vh))
         if self.received_shifts is not None and shifts != self.received_shifts:
@@ -297,6 +302,8 @@ class IRFViewModel:
                 listed_tau_ns=float(self.listed_tau_ns) or None,
                 rho_ns=float(self.reference_rho_ns) or None,
                 window=self.gate, name=name, dye=self.dye,
+                r0=float(self.reference_r0) or X.R0, tau_how=self.reference_tau_how,
+                g_factor=None if self.reference_r0 else self.g_factor,
             )
         elif self.source == "scatter":
             found = X.irf_from_scatter(parts, buffer=self.buffer, window=self.gate, name=name)
@@ -324,11 +331,13 @@ class IRFViewModel:
         if self.source == "reference" and any(np.any(h > 0) for h in found.halves):
             # the dye fitted with what it gave: the IRF, the listed lifetime fixed, the rotation
             # read from it, the detector's G / l1 / l2 -- what a burst fit takes for granted
-            tau = float(self.listed_tau_ns) or float(found.info.get("tau_ns") or 0.0)
+            # the lifetime, rotation and r0 the IRF was deconvolved with: one description of the dye
+            tau = float(found.info.get("tau_ns") or 0.0) or float(self.listed_tau_ns)
             two = len(parts) > 1
             result.reference_fit = X.reference_fit(
                 parts, found.halves[: len(parts)], self.dt, tau_ns=tau,
                 rho_ns=found.info.get("rho_ns") if two else None,
+                r0=float(found.info.get("r0") or X.R0),
                 g_factor=self.g_factor, l1=float(self.l1), l2=float(self.l2), window=self.gate,
                 shifts=(float(self.shift_vv), float(self.shift_vh)),
             )
@@ -376,6 +385,8 @@ class IRFViewModel:
         self.listed_tau_ns = float(payload.get("listed_tau_ns") or self.listed_tau_ns)
         self.reference_tau_ns = float(payload.get("tau_ns") or 0.0)
         self.reference_rho_ns = float(payload.get("rho_ns") or 0.0)
+        self.reference_r0 = float(payload.get("r0") or 0.0)
+        self.reference_tau_how = str(payload.get("tau_how") or "given")
         g = payload.get("g_factor")
         self.g_factor = float(g) if g is not None else None
         self.l1, self.l2 = float(payload.get("l1") or 0.0), float(payload.get("l2") or 0.0)

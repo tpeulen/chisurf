@@ -202,6 +202,34 @@ and $G$ within 2 %; with $G$ 1.0 the fit is ten times worse and still finds
 setup's $G$ 1.000, 1.45 with Data Selection's 1.436 (free: 1.428, 1.40); with the
 lifetime free 1.10 at 4.02 ns.
 
+**One description of the dye.** The IRF deconvolved from a dye, the shift
+calibration and the reference fit must all use the same lifetime, rotation and
+initial anisotropy, or the fit measures their disagreement rather than the IRF:
+Alexa647_thick_1, deconvolved at its tail's 1.15 ns and fitted at the database's
+1.0 ns, gave $\chi^2_r$ 31. So:
+
+- *Lifetime* (`reference_lifetime`): the dye database's while the tail of
+  $VV + 2VH$ agrees within 5 % (Rh110: 4.02 against 4.0 ns), else the tail's,
+  and the database's is reported as not describing this measurement (status ⚠,
+  tooltip, report: `tau_listed_ns`, `tau_tail_ns`, `tau_consistent`). Alexa 647's
+  1.0 ns comes from the Molecular Probes handbook's table of the Alexa Fluor
+  dyes in water (the database entry carries no URL); a cyanine's lifetime moves
+  with temperature, viscosity and buffer (its cis--trans isomerisation), and the
+  owner's measurement says 1.15--1.16 ns in both polarisations.
+- *Rotation and $r_0$* (`irf_from_reference(g_factor=)`): the rotation is read
+  from the two polarisations (`reference_rotation`); given the detector pair's G
+  from Data Selection, the dye is fitted at it, and when that fit is poor
+  ($\chi^2_r > 2$) the initial anisotropy is taken from the data as well: the
+  $r_0$ of 0.30 ... 0.10, each with its own rotation and IRF, that fits best.
+  Alexa 647 starts far below the ideal 0.38: $r_0$ 0.15, $\rho$ 1.0 ns,
+  $\chi^2_r$ 1.3 at the tail-ratio G 1.54 (0.38 gave 16). A second rotation or
+  a residual anisotropy was not needed.
+- *Swapped channels* (`reference_anisotropy`): a free dye's anisotropy right
+  after the pulse is positive. Below −0.05 the detector's VV and VH channels are
+  swapped in the setup, and Data Selection (*VV/VH swapped?*) and Burst MLE (⚠)
+  say so: RVZMT150's red pair reads −0.10 as defined, +0.12 swapped. G and the
+  rotation are wrong until the order is put right in step 0.
+
 ## What extraction is not
 
 The clip and the background levels a fit applies to its IRF belong to the fit,

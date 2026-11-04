@@ -1187,6 +1187,11 @@ class MleViewModel(RunPickerMixin):
                 detector=entry.get("calibrated_on") or det,
                 chi2r=f"{entry['fit_chi2r']:.2f}" if entry.get("fit_chi2r") is not None else "—",
             ))
+            if entry.get("tau_ns") is not None:
+                lines.append(str(tr("The dye as fitted: lifetime {tau:.2f} ns, rotation {rho:.2f} ns, r0 {r0:.2f}.")).format(
+                    tau=float(entry["tau_ns"]), rho=float(entry.get("rho_ns") or 0.0), r0=float(entry.get("r0") or 0.38)))
+            if entry.get("warning"):
+                lines.append("⚠ " + str(entry["warning"]))
             if entry.get("offset_bins"):
                 lines.append(str(tr(
                     "{detector} shares the detectors of {source}: their IRF and timing, placed at "

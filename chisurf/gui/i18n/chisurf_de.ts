@@ -77870,6 +77870,18 @@ Neben {measurement} am Namen erkannt und in diese Zeile gelegt; in eine andere Z
             <source>The selected model's free input parameters, start values, fixed flags and fitted values, and the detector's three time shifts: IRF shift VV and VH (the IRF against the VV and VH data, bins) and Shift VV/VH (the VH decay against the VV decay, whole bins). A shift starts at its calibration on the reference dye (hover its row for where it came from) and is fixed by default; unfixed, the fit refines it within half a bin (one bin for Shift VV/VH). Fit25 lifetimes remain classification candidates; its primary fitted lifetime identifies the winning candidate. Double-click a start value to type. A change refits the current decay.</source>
             <translation>Die freien Eingangsparameter des gewählten Modells mit Startwerten, Fixier-Häkchen und gefitteten Werten, dazu die drei Zeitverschiebungen des Detektors: IRF shift VV und VH (die IRF gegen die VV- und VH-Daten, Bins) und Shift VV/VH (der VH-Zerfall gegen den VV-Zerfall, ganze Bins). Eine Verschiebung startet bei ihrer Kalibrierung am Referenzfarbstoff (die Zeile überfahren: woher) und ist standardmäßig fixiert; frei verfeinert der Fit sie innerhalb eines halben Bins (eines Bins für Shift VV/VH). Fit25-Lebensdauern bleiben Klassifikationskandidaten; die gefittete primäre Lebensdauer benennt den gewinnenden Kandidaten. Doppelklick auf einen Startwert zum Tippen. Eine Änderung fittet den aktuellen Zerfall neu.</translation>
         </message>
+        <message>
+            <source>VV/VH swapped?</source>
+            <translation>VV/VH vertauscht?</translation>
+        </message>
+        <message>
+            <source>The dye's anisotropy right after the pulse is {r:+.2f} on {detectors}; a free dye's is positive: the VV and VH channels look swapped in the setup (step 0). G and the rotation are wrong until they are swapped back.</source>
+            <translation>Die Anisotropie des Farbstoffs direkt nach dem Puls ist {r:+.2f} auf {detectors}; die eines freien Farbstoffs ist positiv: die VV- und VH-Kanäle scheinen im Setup vertauscht (Schritt 0). G und die Rotation sind falsch, bis sie zurückgetauscht sind.</translation>
+        </message>
+        <message>
+            <source>The dye as fitted: lifetime {tau:.2f} ns, rotation {rho:.2f} ns, r0 {r0:.2f}.</source>
+            <translation>Der Farbstoff wie gefittet: Lebensdauer {tau:.2f} ns, Rotation {rho:.2f} ns, r0 {r0:.2f}.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

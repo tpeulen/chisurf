@@ -1953,6 +1953,7 @@ class MleSession:
         if vv.size * 2 != irf.size:
             return None
         from chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction import (
+            R0,
             calibrate_shifts,
             reference_rotation,
             reference_tail_lifetime,
@@ -1979,17 +1980,22 @@ class MleSession:
         # the polarisation factors of the detection side: the calibrating detector's
         g, l1, l2 = (float(self.detectors[source].get(k, d)) for k, d in (("g_factor", 1.0), ("l1", 0.0), ("l2", 0.0)))
         rho = None
+        r0 = float(group[0].get("r0") or R0)
         if two:
-            guess = tau or reference_tail_lifetime(vv + 2.0 * vh, dt, window=window) or 4.0
-            rho = reference_rotation(vv, vh, dt, guess, window=window)
+            # the rotation (and initial anisotropy) the IRF was deconvolved with: one description
+            # of the dye for the IRF, the shifts and the reference fit
+            rho = group[0].get("rho_ns")
+            if rho is None:
+                guess = tau or reference_tail_lifetime(vv + 2.0 * vh, dt, window=window) or 4.0
+                rho = reference_rotation(vv, vh, dt, guess, window=window, r0=r0)
         import hashlib
 
-        key = (dye, names, hashlib.sha1(clean.tobytes()).hexdigest(), tuple(window or ()), g, l1, l2, tau)
+        key = (dye, names, hashlib.sha1(clean.tobytes()).hexdigest(), tuple(window or ()), g, l1, l2, tau, rho, r0)
         found = self._shift_cache.get(key)
         if found is None:
             found = calibrate_shifts(
                 [vv, vh] if two else [vv], [clean[:half], clean[half:]] if two else [clean[:half]],
-                dt, tau_ns=tau, rho_ns=rho, window=window, name=names, g_factor=g, l1=l1, l2=l2,
+                dt, tau_ns=tau, rho_ns=rho, window=window, name=names, g_factor=g, l1=l1, l2=l2, r0=r0,
             )
             if len(self._shift_cache) > 32:
                 self._shift_cache.clear()
@@ -1998,23 +2004,46 @@ class MleSession:
         self._shift_inputs = getattr(self, "_shift_inputs", {})
         self._shift_inputs[det] = {
             "parts": [vv, vh] if two else [vv], "irfs": [clean[:half], clean[half:]] if two else [clean[:half]],
-            "dt": dt, "tau": found.tau_ns, "rho": rho, "window": window, "g": g, "l1": l1, "l2": l2,
+            "dt": dt, "tau": found.tau_ns, "rho": rho, "r0": r0, "window": window, "g": g, "l1": l1, "l2": l2,
         }
         rates = [r.get("rate_khz") for r in group if r.get("rate_khz") is not None]
         reference_rate = float(np.mean(rates)) if rates else None
         burst_rate = self.burst_count_rate_khz(det)
-        warning = ""
+        warnings = []
         if not sm and reference_rate and burst_rate and reference_rate > 3.0 * burst_rate:
-            warning = (
+            warnings.append(
                 f"only a bulk reference at {reference_rate:.0f} kHz, {reference_rate / burst_rate:.0f}x "
                 f"the bursts' {burst_rate:.0f} kHz: SPAD timing moves with the count rate, so the "
                 "shift may be off; measure the dye at single-molecule conditions"
             )
+        tau_info = dict(group[0].get("tau_info") or {})
+        if tau_info and not tau_info.get("consistent", True):
+            warnings.append(
+                f"{dye}'s tail gives {tau_info['tail']:.2f} ns, the dye database {tau_info['listed']:.2f} ns: "
+                f"the database's lifetime does not describe this measurement, {tau_info['tail']:.2f} ns is used"
+            )
+        anisotropy = None
+        if two:
+            from chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction import (
+                reference_anisotropy,
+            )
+
+            anisotropy = reference_anisotropy(vv, vh, g, window=window)
+            if anisotropy < -0.05:
+                warnings.append(
+                    f"VV and VH look swapped on {source}: the reference's anisotropy at its peak is "
+                    f"{anisotropy:+.2f} (a free dye's is positive); swap the order of its channels in "
+                    "the detector setup (step 0) -- G and the rotation are wrong until then"
+                )
+        warning = "; ".join(warnings)
         entry = {
             "reference_rate_khz": reference_rate, "burst_rate_khz": burst_rate, "warning": warning,
             "shift_vv": found.shift_vv, "shift_vh": found.shift_vh, "dye": dye, "files": names,
             "single_molecule": bool(sm), "tau_ns": found.tau_ns, "tau_known": found.tau_known,
             "tau_source": group[0]["tau_source"], "rho_ns": rho, "text": found.text,
+            "tau_listed_ns": tau_info.get("listed"), "tau_tail_ns": tau_info.get("tail"),
+            "tau_consistent": tau_info.get("consistent", True), "anisotropy_peak": anisotropy,
+            "r0": r0,
             "source": "single-molecule reference dye" if sm else "reference dye",
             # the detector whose window saw the dye, and how far det's window is from it
             "calibrated_on": source, "offset_bins": offset,
@@ -2043,13 +2072,13 @@ class MleSession:
         inputs = getattr(self, "_shift_inputs", {}).get(det)
         if not inputs or "fit_chi2r" not in entry:
             return
-        from chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction import reference_fit
+        from chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction import R0, reference_fit
 
         try:
             fit = reference_fit(
                 inputs["parts"], inputs["irfs"], inputs["dt"], tau_ns=inputs["tau"],
                 rho_ns=inputs["rho"] if len(inputs["parts"]) > 1 else None, g_factor=inputs["g"],
-                l1=inputs["l1"], l2=inputs["l2"], window=inputs["window"],
+                l1=inputs["l1"], l2=inputs["l2"], window=inputs["window"], r0=inputs.get("r0", R0),
                 shifts=(entry["shift_vv"], entry["shift_vh"]), hold_shifts=True,
             )
         except Exception:  # noqa: BLE001 - the calibrated fit stays the record
@@ -2356,6 +2385,7 @@ class MleSession:
             best_irf,
             irf_from_reference,
             irf_from_scatter,
+            reference_lifetime,
         )
 
         scatter = [p for p in paths if reference_dye(p) is None]
@@ -2402,21 +2432,32 @@ class MleSession:
             lo, hi = window or (0, np.size(vv))
             if float(np.sum(vv[lo:hi]) + np.sum(vh[lo:hi])) <= 0:
                 continue  # a dye these detectors do not see (Alexa 647 on the green ones)
+            names = ", ".join(p.name for p in group)
+            listed = reference_dye(group[0])["tau_ns"]
+            one = len(self.detectors[det].get("chs", [])) < 2  # one channel: no rotation to see
+            # one lifetime for the IRF's deconvolution and the shift calibration: the database's
+            # unless the dye's tail clearly says otherwise (then the tail's, and that is said)
+            tau, tau_info = reference_lifetime(vv, None if one else vh, dt, listed, window=window)
             for p, (a, b, _t, _dt) in zip(group, counts):
                 dye_entry = reference_dye(p)
                 records.append({
                     "path": str(p), "dye": name, "vv": a, "vh": b, "dt_ns": dt, "window": window,
                     "single_molecule": self._single_molecule.get(str(p), False),
                     "rate_khz": self._count_rate_khz.get((str(p), det)),
-                    "tau_ns": dye_entry.get("tau_ns"), "tau_source": dye_entry.get("tau_source") or {},
+                    "tau_ns": tau, "tau_info": tau_info,
+                    "tau_source": dye_entry.get("tau_source") or {},
                     "detector": source, "offset_bins": offset,
                 })
-            names = ", ".join(p.name for p in group)
-            listed = reference_dye(group[0])["tau_ns"]
-            one = len(self.detectors[det].get("chs", [])) < 2  # one channel: no rotation to see
+            # the detector pair's G, once computed (Data Selection's tail ratio; 1 is "not yet"):
+            # with it the dye's initial anisotropy is taken from the data when the ideal one fails
+            g_pair = float(self.detectors[source].get("g_factor", 1.0) or 1.0)
             got = irf_from_reference(
-                vv, None if one else vh, dt, listed_tau_ns=listed, window=window, name=names, dye=name
+                vv, None if one else vh, dt, tau_ns=tau, listed_tau_ns=listed, window=window,
+                name=names, dye=name, g_factor=None if g_pair == 1.0 else g_pair,
+                tau_how=tau_info.get("how") or "given",
             )
+            for record in records[-len(group):]:  # the rotation the IRF was deconvolved with
+                record["rho_ns"], record["r0"] = got.info.get("rho_ns"), got.info.get("r0")
             if offset:
                 got = dataclasses.replace(
                     got,
@@ -2429,6 +2470,8 @@ class MleSession:
                 "kind": "reference", "vv": vv, "vh": vh, "dt_ns": dt, "window": window,
                 "name": names, "dye": name, "listed_tau_ns": listed,
                 "calibrated_on": source, "offset_bins": offset,
+                # the dye as the IRF was deconvolved with it: the IRF tool extracts the same
+                "tau_ns": tau, "tau_how": tau_info.get("how"), "r0": got.info.get("r0"),
             }
         self.reference_records[det] = records
         candidates = self.irf_candidates.setdefault(det, {})

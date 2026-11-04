@@ -23,6 +23,15 @@ def main():
     hub = make_app(); drv = Driver(hub, (1500, 950)); drv.draw(4)
     hub.set_advanced(False); drv.draw(2)
     hub.select("setup"); drv.draw(3); hub.children["setup"].select_setup("RVZMT150"); drv.draw(4)
+    if os.environ.get("SWAP_RED"):
+        # RVZMT150's red pair has VV and VH swapped (Alexa 647's anisotropy starts at -0.10):
+        # SWAP_RED=1 shows the session with the order put right, as the warning asks
+        for det in ("R|G", "R|R"):
+            info = hub.setup_model.data["detectors"][det]
+            info["chs"] = list(reversed(info["chs"]))
+        hub.setup_model.changed()
+        hub.context.channel_settings = hub.setup_model.get_settings()
+        drv.draw(3)
 
     def shot(name):
         drv.draw(3)
@@ -58,7 +67,7 @@ def main():
         drv.draw(1); time.sleep(0.1)
     s = mle.model.session
     print("MLE G:", {d: s.detectors[d].get("g_factor") for d in s.detectors}, flush=True)
-    keys = ("shift_vv", "shift_vh", "shift", "fit_chi2r", "fit_g", "fit_g_fitted", "fit_chi2r_g_free", "calibrated_on", "offset_bins", "dye", "files", "single_molecule", "reference_rate_khz", "burst_rate_khz", "warning")
+    keys = ("tau_ns", "tau_listed_ns", "rho_ns", "r0", "anisotropy_peak", "shift_vv", "shift_vh", "shift", "fit_chi2r", "fit_g", "fit_g_fitted", "fit_chi2r_g_free", "calibrated_on", "offset_bins", "dye", "files", "single_molecule", "reference_rate_khz", "burst_rate_khz", "warning")
     for d, v in s.shift_calibration.items():
         print("shift", d, {k: v.get(k) for k in keys}, flush=True)
     print("irf source:", s.irf_source, flush=True)
@@ -92,7 +101,7 @@ def main():
         ax = axes[0, i]; ax.semilogy(x, data_[:n], ".", ms=2, color="0.3", label="VV"); ax.semilogy(x, data_[n:], ".", ms=2, color="tab:blue", label="VH")
         ax.semilogy(x, model[:n], "-", color="tab:red", lw=1); ax.semilogy(x, model[n:], "-", color="tab:orange", lw=1)
         ax.set_xlim(lo - 5, hi + 5); ax.set_ylim(max(1, data_[lo:hi].min() * 0.5), data_.max() * 2)
-        ax.set_title(f"{d}: {e['dye']} on {e.get('calibrated_on', d)}\nG {e['fit_g']:.3f}, VV {e['shift_vv']:+.2f}, VH {e['shift_vh']:+.2f} bins, χ²ᵣ {e['fit_chi2r']:.2f}", fontsize=9)
+        ax.set_title(f"{d}: {e['dye']} on {e.get('calibrated_on', d)}, τ {e['tau_ns']:.2f} ns, ρ {e['rho_ns'] or 0:.2f} ns, r0 {e.get('r0') or 0.38:.2f}\nG {e['fit_g']:.3f}, VV {e['shift_vv']:+.2f}, VH {e['shift_vh']:+.2f} bins, χ²ᵣ {e['fit_chi2r']:.2f}", fontsize=9)
         ax.legend(fontsize=7)
         axes[1, i].plot(x, res[:n], lw=0.6, color="0.3"); axes[1, i].plot(x, res[n:], lw=0.6, color="tab:blue")
         axes[1, i].set_xlim(lo - 5, hi + 5); axes[1, i].axhline(0, color="k", lw=0.5); axes[1, i].set_xlabel("micro-time bin")

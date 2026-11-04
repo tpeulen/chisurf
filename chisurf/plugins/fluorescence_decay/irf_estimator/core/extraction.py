@@ -33,6 +33,7 @@ import numpy as np
 
 __all__ = [
     "IrfResult",
+    "LIFETIME_TOLERANCE",
     "R0",
     "AUTO_ORDER",
     "ShiftCalibration",
@@ -46,7 +47,9 @@ __all__ = [
     "polarised_kernels",
     "ReferenceFit",
     "reference_fit",
+    "reference_anisotropy",
     "reference_irf",
+    "reference_lifetime",
     "reference_rotation",
     "reference_tail_lifetime",
     "richardson_lucy",
@@ -213,6 +216,75 @@ def reference_tail_lifetime(
     y = d[start:stop]
     slope = np.polyfit(x, np.log(y), 1, w=np.sqrt(y))[0]
     return float(-1.0 / slope) if slope < 0 else None
+
+
+#: How far the lifetime a reference's tail gives may be from the dye database's before the
+#: database's is taken as not this measurement's (5 %: Rh110's 4.02 ns against 4.0 is the same).
+LIFETIME_TOLERANCE = 0.05
+
+
+def reference_lifetime(
+    vv: np.ndarray,
+    vh: np.ndarray | None,
+    dt_ns: float,
+    listed_tau_ns: float | None,
+    *,
+    window: tuple[int, int] | None = None,
+    tolerance: float = LIFETIME_TOLERANCE,
+) -> tuple[float | None, dict[str, Any]]:
+    """The one lifetime a reference dye's IRF is deconvolved with *and* its shifts calibrated at.
+
+    The dye database's (*listed_tau_ns*) while the tail of ``VV + 2 VH``
+    (:func:`reference_tail_lifetime`) agrees with it within *tolerance*; else the tail's, and the
+    database's is said not to hold for this measurement (a buffer, a temperature or a
+    conjugation the database's solvent value does not describe: Alexa 647 at 1.15 ns against
+    1.0 ns). Deconvolving with one and fitting with the other is no calibration at all: on
+    Alexa647_thick_1 that gave a reference fit of chi2_r 31 where either alone gives ~1.2-1.9.
+
+    Returns
+    -------
+    tau : float or None
+        ``None`` when neither is known.
+    info : dict
+        ``listed``, ``tail``, ``used``, ``how`` (``"listed"``, ``"from its tail"``) and
+        ``consistent`` (``False``: the database's lifetime does not describe this dye here).
+    """
+    vv = np.asarray(vv, dtype=float)
+    two = vh is not None and not np.array_equal(np.asarray(vh), vv)
+    magic = vv + 2.0 * np.asarray(vh, dtype=float) if two else vv
+    tail = reference_tail_lifetime(magic, dt_ns, window=window)
+    listed = float(listed_tau_ns) if listed_tau_ns else None
+    consistent = True
+    if listed is None:
+        used, how = tail, "from its tail"
+    elif tail is None or abs(tail - listed) <= tolerance * listed or not 0.5 * listed < tail < 2.0 * listed:
+        used, how = listed, "listed"
+    else:
+        used, how, consistent = tail, "from its tail", False
+    return used, {"listed": listed, "tail": tail, "used": used, "how": how, "consistent": consistent}
+
+
+def reference_anisotropy(
+    vv: np.ndarray,
+    vh: np.ndarray,
+    g_factor: float,
+    *,
+    window: tuple[int, int] | None = None,
+) -> float:
+    """The anisotropy of a reference decay over its first 0.5 ns-ish (the peak and four bins
+    after), ``r = (VV - G VH) / (VV + 2 G VH)`` above each polarisation's floor.
+
+    A free dye excited by polarised light starts with ``r > 0``; a clearly negative one
+    (below -0.05) says the VV and VH channels are swapped in the detector setup (RVZMT150's
+    red pair read -0.12, swapped +0.14 decaying with 0.6 ns)."""
+    vv, vh = np.asarray(vv, dtype=float), np.asarray(vh, dtype=float)
+    lo, hi = _window(vv.size, window)
+    a = vv[lo:hi] - float(np.quantile(vv[lo:hi], 0.1))
+    b = vh[lo:hi] - float(np.quantile(vh[lo:hi], 0.1))
+    peak = int(np.argmax(a + b))
+    part = slice(peak, min(peak + 5, a.size))
+    p, q = float(a[part].sum()), float(b[part].sum()) * float(g_factor)
+    return (p - q) / (p + 2.0 * q) if p + 2.0 * q > 0 else 0.0
 
 
 def polarised_kernels(
@@ -406,6 +478,11 @@ def _golden(f, a: float, b: float, tol: float) -> float:
     return 0.5 * (a + b)
 
 
+#: The initial anisotropies tried, below the ideal :data:`R0`, when a reference dye does not fit
+#: with it (:func:`irf_from_reference`).
+R0_STEPS = (0.3, 0.25, 0.2, 0.15, 0.1)
+
+
 def irf_from_reference(
     vv: np.ndarray,
     vh: np.ndarray | None,
@@ -417,6 +494,9 @@ def irf_from_reference(
     window: tuple[int, int] | None = None,
     name: str = "reference dye",
     dye: str = "",
+    r0: float = R0,
+    g_factor: float | None = None,
+    tau_how: str = "given",
 ) -> IrfResult:
     """The IRF from the decay of a reference dye with one known lifetime.
 
@@ -433,6 +513,20 @@ def irf_from_reference(
         than a factor two from it.
     rho_ns : float, optional
         Rotational correlation time. ``None``: from the data (:func:`reference_rotation`).
+    r0 : float
+        The initial anisotropy the kernels start from.
+    tau_how : str
+        How a given *tau_ns* was decided, for the source line (:func:`reference_lifetime`'s
+        ``"listed"`` / ``"from its tail"``).
+    g_factor : float, optional
+        The detector pair's G (an estimate independent of this fit: Data Selection's tail
+        ratio). Given, with the rotation taken from the data, the dye is fitted with the burst
+        model (:func:`reference_fit`) at that G; when that fit is poor (chi2_r > 2) the initial
+        anisotropy is taken from the data too: the *r0* of :data:`R0_STEPS` (each with its own
+        rotation and IRF) whose fit is best. A dye such as Alexa 647 starts below the ideal
+        0.38 -- on Alexa647_thick_1 r0 0.15, rho 0.99 ns give chi2_r 1.2 at the tail-ratio G,
+        0.38 gave 16 -- and the deconvolution would otherwise put the missing anisotropy into
+        the IRF.
     window : tuple of int, optional
         The detector's gate ``[start, stop)`` in bins.
     name, dye : str
@@ -441,7 +535,7 @@ def irf_from_reference(
     vv = np.asarray(vv, dtype=float)
     two = vh is not None and not np.array_equal(np.asarray(vh), vv)
     vh = np.asarray(vh, dtype=float) if vh is not None else vv
-    how = "given"
+    how = str(tau_how or "given")
     if tau_ns is None:
         magic = vv + 2.0 * vh if two else vv
         tau_ns = reference_tail_lifetime(magic, dt_ns, window=window)
@@ -452,14 +546,35 @@ def irf_from_reference(
         else:
             how = "from its tail"
     rotation = ""
+    fit_chi2r = None
     if two:
-        if rho_ns is None:
-            rho_ns = reference_rotation(vv, vh, dt_ns, tau_ns, window=window)
-            rotation = f", rotation {rho_ns:.2f} ns from the data"
+        from_data = rho_ns is None
+
+        def deconvolved(r0_: float, rho_: float | None):
+            rho_ = reference_rotation(vv, vh, dt_ns, tau_ns, window=window, r0=r0_) if rho_ is None else rho_
+            kv_, kh_ = polarised_kernels(vv.size, dt_ns, tau_ns, rho_, r0_)
+            return rho_, [reference_irf(vv, kv_, window=window), reference_irf(vh, kh_, window=window)]
+
+        def quality(r0_: float, rho_: float, parts_) -> float:
+            if not all(np.any(p) for p in parts_):
+                return np.inf
+            return reference_fit([vv, vh], [_normalised(p) for p in parts_], dt_ns, tau_ns=tau_ns,
+                                 rho_ns=rho_, r0=r0_, g_factor=g_factor, window=window).chi2r
+
+        rho_ns, parts = deconvolved(r0, rho_ns)
+        if from_data and g_factor is not None:
+            fit_chi2r = quality(r0, rho_ns, parts)
+            if fit_chi2r > 2.0:
+                trials = [(fit_chi2r, r0, rho_ns, parts)]
+                for step in R0_STEPS:
+                    if step < r0:
+                        rho_s, parts_s = deconvolved(step, None)
+                        trials.append((quality(step, rho_s, parts_s), step, rho_s, parts_s))
+                fit_chi2r, r0, rho_ns, parts = min(trials, key=lambda t: t[0])
+        if from_data:
+            rotation = f", rotation {rho_ns:.2f} ns" + ("" if r0 == R0 else f", r0 {r0:.2f}") + " from the data"
         else:
             rotation = f", rotation {rho_ns:.2f} ns"
-        kv, kh = polarised_kernels(vv.size, dt_ns, tau_ns, rho_ns)
-        parts = [reference_irf(vv, kv, window=window), reference_irf(vh, kh, window=window)]
     else:
         kv, _ = polarised_kernels(vv.size, dt_ns, tau_ns, None)
         parts = [reference_irf(vv, kv, window=window)]
@@ -473,7 +588,8 @@ def irf_from_reference(
     text = f"{name} ({label}{tau_ns:.2f} ns {how}{rotation}, deconvolved)"
     return _result(
         parts, "reference", text,
-        {"tau_ns": float(tau_ns), "tau_how": how, "rho_ns": rho_ns, "dye": dye},
+        {"tau_ns": float(tau_ns), "tau_how": how, "rho_ns": rho_ns, "r0": float(r0), "dye": dye,
+         "fit_chi2r": fit_chi2r},
     )
 
 
@@ -763,6 +879,7 @@ def calibrate_shifts(
     l1: float = 0.0,
     l2: float = 0.0,
     fit_model: bool = True,
+    r0: float = R0,
 ) -> ShiftCalibration:
     """The time shift of the IRF against a reference dye's decay, VV and VH on their own.
 
@@ -790,6 +907,8 @@ def calibrate_shifts(
         The detector's polarisation factors (``g_factor`` ``None``: fitted). With *fit_model* the
         shifts each polarisation gives on its own are refined by fitting both together with the
         burst model (:func:`reference_fit`), which is kept on :attr:`ShiftCalibration.fit`.
+    r0 : float
+        The dye's initial anisotropy (the one its IRF was deconvolved with).
     """
     parts = [np.asarray(p, dtype=float) for p in parts]
     irf_parts = [np.asarray(p, dtype=float) for p in irf_parts]
@@ -801,7 +920,7 @@ def calibrate_shifts(
     known = tau_ns is not None and tau_ns > 0
 
     def fit(tau: float) -> tuple[list[float], float]:
-        kv, kh = polarised_kernels(n, dt_ns, tau, rho_ns if two else None)
+        kv, kh = polarised_kernels(n, dt_ns, tau, rho_ns if two else None, r0)
         out, total = [], 0.0
         for data, irf, kernel in zip(parts, irf_parts, (kv, kh)):
             s, d = _best_shift(data, irf, kernel, mask, max_shift)
@@ -823,7 +942,7 @@ def calibrate_shifts(
     if fit_model:
         joint = reference_fit(
             parts if two else parts[:1], irf_parts if two else irf_parts[:1], dt_ns,
-            tau_ns=tau, rho_ns=rho_ns if two else None, g_factor=g_factor, l1=l1, l2=l2,
+            tau_ns=tau, rho_ns=rho_ns if two else None, r0=r0, g_factor=g_factor, l1=l1, l2=l2,
             window=window, shifts=shifts,
         )
         shifts = [joint.shift_vv, joint.shift_vh]

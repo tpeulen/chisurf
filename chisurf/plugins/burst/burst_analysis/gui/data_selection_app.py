@@ -140,6 +140,11 @@ def import_raw_file(client: Any, path: Path) -> dict[str, Any]:
         return {"error": str(exc)}
 
 
+#: A reference dye's anisotropy right after the pulse below this says its VV and VH channels are
+#: swapped in the setup (``samples._g_of``'s ``r_peak``).
+SWAPPED_BELOW = -0.05
+
+
 class BurstDataSelectionModel:
     """The raw TTTR files of a burst workflow, what each is, and their MMFDB registration (no Qt, no emtk).
 
@@ -974,6 +979,15 @@ class BurstDataSelectionApp(TourTarget, ImApp):
             volume = entry.get("volume") or {}
             if g:
                 cells["g"] = float(next(iter(g.values()))["g"])
+                swapped = [d for d, v in g.items() if float(v.get("r_peak", 0.0)) < SWAPPED_BELOW]
+                if swapped:
+                    r = float(g[swapped[0]]["r_peak"])
+                    cells["info"] = tr("VV/VH swapped?")
+                    cells["tip"] += " " + str(tr(
+                        "The dye's anisotropy right after the pulse is {r:+.2f} on {detectors}; a free "
+                        "dye's is positive: the VV and VH channels look swapped in the setup (step 0). "
+                        "G and the rotation are wrong until they are swapped back."
+                    )).format(r=r, detectors=", ".join(swapped))
                 hand = [d for d in g if d in self.hand_edited_g()]
                 if hand:
                     cells["info"] = tr("hand-edited")

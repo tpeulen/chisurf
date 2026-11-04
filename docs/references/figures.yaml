@@ -4623,5 +4623,16 @@ guides/figures/21_reference_fits_per_detector.png:
   pages:
   - docs/guides/21_lifetime_from_bursts.md
   recipe: >-
-    The same run as 21_burst_mle_shift_rows.png; reference_fits.png is drawn from
-    MleSession.shift_calibration (fit_data, fit_model, fit_residuals, fit_window) per detector.
+    The same script with SWAP_RED=1 (RVZMT150's red VV/VH put in order); reference_fits.png is
+    drawn from MleSession.shift_calibration (fit_data, fit_model, fit_residuals, fit_window) per
+    detector.
+
+guides/figures/21_data_selection_vv_vh_swapped.png:
+  caption: Data Selection with RVZMT150 as defined, the red reference marked VV/VH swapped?.
+  kind: screenshot
+  origin: docs/guides/screenshots/guide_21_mle_shifts.py::main
+  pages:
+  - docs/guides/21_lifetime_from_bursts.md
+  recipe: >-
+    The run of 21_burst_mle_shift_rows.png (without SWAP_RED): data_selection_rows_simple.png,
+    Data Selection in Simple mode after the calibration of the found references.

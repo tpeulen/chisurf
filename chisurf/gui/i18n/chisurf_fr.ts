@@ -78008,6 +78008,18 @@ Trouvé à côté de {measurement} par son nom et placé dans cette ligne ; dép
             <source>The selected model's free input parameters, start values, fixed flags and fitted values, and the detector's three time shifts: IRF shift VV and VH (the IRF against the VV and VH data, bins) and Shift VV/VH (the VH decay against the VV decay, whole bins). A shift starts at its calibration on the reference dye (hover its row for where it came from) and is fixed by default; unfixed, the fit refines it within half a bin (one bin for Shift VV/VH). Fit25 lifetimes remain classification candidates; its primary fitted lifetime identifies the winning candidate. Double-click a start value to type. A change refits the current decay.</source>
             <translation>Les paramètres d'entrée libres du modèle choisi, valeurs de départ, cases « fixé » et valeurs ajustées, puis les trois décalages temporels du détecteur : IRF shift VV et VH (l'IRF par rapport aux données VV et VH, en canaux) et Shift VV/VH (le déclin VH par rapport au déclin VV, en canaux entiers). Un décalage part de sa calibration sur le colorant de référence (survolez la ligne : d'où il vient) et est fixé par défaut ; libre, l'ajustement l'affine à un demi-canal près (un canal pour Shift VV/VH). Les durées de vie Fit25 restent des candidats de classification ; la durée de vie principale ajustée désigne le candidat gagnant. Double-cliquez une valeur de départ pour la saisir. Un changement réajuste le déclin courant.</translation>
         </message>
+        <message>
+            <source>VV/VH swapped?</source>
+            <translation>VV/VH inversés ?</translation>
+        </message>
+        <message>
+            <source>The dye's anisotropy right after the pulse is {r:+.2f} on {detectors}; a free dye's is positive: the VV and VH channels look swapped in the setup (step 0). G and the rotation are wrong until they are swapped back.</source>
+            <translation>L'anisotropie du colorant juste après l'impulsion vaut {r:+.2f} sur {detectors} ; celle d'un colorant libre est positive : les canaux VV et VH semblent inversés dans le montage (étape 0). G et la rotation sont faux tant qu'ils ne sont pas remis dans l'ordre.</translation>
+        </message>
+        <message>
+            <source>The dye as fitted: lifetime {tau:.2f} ns, rotation {rho:.2f} ns, r0 {r0:.2f}.</source>
+            <translation>Le colorant tel qu'ajusté : durée de vie {tau:.2f} ns, rotation {rho:.2f} ns, r0 {r0:.2f}.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

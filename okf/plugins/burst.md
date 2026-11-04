@@ -35,14 +35,27 @@ OUT` (RVZMT150, 80 ps, gates G 0-250 / R|R 250-500). Done:
    `MleNativeApp.export_settings`; a tail fit has none.
 5. *One container*: `take_photons` recorded the dataset uid after adding the file, so the first
    container went to `container_dir("")` (`_`); the calibration report is now `<run>/burst_calibration`.
-Numbers now: G|G G 1.436, VV +0.02 / VH +0.02 bins, chi2_r 1.45; red pair G 0.629, +0.55 / +0.47,
-chi2_r **31.4** (G free 0.525: 16.8). **Next: the red reference fit.** `reference_rotation` reads
-Alexa647's rotation as 0.02 ns although VV and VH part for ~1 ns
-(`docs/guides/figures/21_reference_fits_per_detector.png`), and its tail gives 1.15 ns against the
-database's 1.0 ns -- fit rho (then check tau) in `reference_fit` first. Open: the background
-histograms are still container-level (another lane writes `<run>/background` in
-`burst_background/view_model.py`); `pixi run -e docs docs-plugins` not rerun (others' uncommitted
-catalogue edits).
+6. *Red reference* (2026-11-04, later): the chi2_r 31 was one dye described twice -- IRF deconvolved
+   at the tail's 1.15 ns, shifts fitted at the database's 1.0 ns (`reference_lifetime`: the
+   database's within 5 % of the tail, else the tail's, flagged `tau_consistent` False). Alexa 647's
+   initial anisotropy is ~0.15, not 0.38 (`irf_from_reference(g_factor=)` tries `R0_STEPS` when
+   the fit at the pair's G is > 2; rho, r0 then ride in the records to the shift fit, the reference
+   fit and the IRF tool's payload). And **RVZMT150's red VV/VH are swapped** (`chs [2, 1]`): the
+   anisotropy right after the pulse is -0.10 (`reference_anisotropy`; Data Selection "VV/VH
+   swapped?", MLE warning). Not changed in the owner's library -- the owner must swap it in step 0.
+   Guard: `test/fluorescence/test_reference_dye_description.py`.
+Numbers now (`guide_21_mle_shifts.py`, `SWAP_RED=1` puts the red order right): G|G G 1.436, tau 4.00,
+rho 0.17, shifts +0.01 / +0.00, chi2_r 1.40; red pair G 1.564, tau 1.16 (database 1.0), rho 1.04,
+r0 0.15, shifts -0.00 / -0.00, chi2_r 1.66 (G free 1.511: 1.15). As defined (not swapped): red G
+0.629, chi2_r 13.2 + the swap warning. **Next:** (a) Data Selection's tail-ratio G is ~3 % high
+for a slowly rotating dye (r ~0.035 left at the tail start; 1.564 vs the fit's 1.511) -- take G
+from the rotation-aware reference fit, or start the tail at ~5 rho; (b) R|G is a tail fit by
+design (sensitised emission = donor decay feeding the acceptor's: no single-decay IRF model);
+its IRF (R|R's at the green pulse) waits for a donor-acceptor kinetic model in the registry;
+(c) the dye database's Alexa 647 entry (Molecular Probes handbook, water) has no URL. Burst MLE
+also writes its per-detector background rate as `<run>/background` (`background_rates`), which
+ndX reads as `Bg_<det>`. `pixi run -e docs docs-plugins` not rerun (others' uncommitted catalogue
+edits).
 
 **4. More samples: further measurements through the tuned pipeline (2026-11-04).** Owner: "last
 step in the pipeline should be to load more samples, that are processed the same way." Done: step 4

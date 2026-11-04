@@ -69,6 +69,7 @@ ESTIMATION_INPUTS = {
     "reference_tau_ns",
     "listed_tau_ns",
     "reference_rho_ns",
+    "reference_r0",
     "irf_model",
 }
 

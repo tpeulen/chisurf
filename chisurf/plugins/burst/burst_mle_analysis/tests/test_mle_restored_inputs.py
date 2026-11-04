@@ -131,7 +131,8 @@ def test_a_reference_dye_gives_the_irf_first_and_a_scatter_is_selectable(inputs,
     session.set_pattern_files("bg", "synthetic", [inputs["bg"]])
     assert session.set_pattern_files("irf", "synthetic", [dye]) == ["synthetic"]
     source = session.irf_source["synthetic"]
-    assert source.startswith("Rh110_ref.ptu (Rh110, ") and "ns from its tail" in source
+    # the database's 4 ns, the tail agreeing within 5 % (else the tail's, said so)
+    assert source.startswith("Rh110_ref.ptu (Rh110, ") and ("ns listed" in source or "ns from its tail" in source)
     assert float(source.split("Rh110, ")[1].split(" ns")[0]) == pytest.approx(4.0, rel=0.05)
     irf = session.irf_np["synthetic"]
     half = irf.size // 2

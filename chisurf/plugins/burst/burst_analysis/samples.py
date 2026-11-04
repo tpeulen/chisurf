@@ -588,7 +588,12 @@ def _g_of(vv, vh, dt_ns, info, setup, tail_offset_ns, calculate_g_factor_core) -
         "g_factor_stddev_corrected" if background is not None else "g_factor_stddev_uncorrected"
     )
     n = max(1, int(region[1] - region[0]))
+    from chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction import reference_anisotropy
+
     return {
+        # the dye's anisotropy right after the pulse with this G: below -0.05 the detector's VV
+        # and VH channels are swapped in the setup (a free dye starts positive)
+        "r_peak": float(reference_anisotropy(vv, vh, float(value), window=gate)),
         "g": float(value),
         # the spread of the per-bin ratios over the tail, and the error of their mean
         "std": float(std) if std is not None else float("nan"),

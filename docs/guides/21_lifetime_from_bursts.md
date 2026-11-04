@@ -269,12 +269,18 @@ data, bins) and **Shift VV/VH** (the VH decay against the VV decay, whole bins,
 applied to data, IRF and background). *Start* is the calibration (0 without a
 reference dye), *Fixed* is ticked, *Result* is what the fit used; hover a row for
 where the start came from ("calibrated on Rh110 (Rh110_thick_1.ptu) on G|G, χ²ᵣ
-1.45", or "set by hand"). Typing a start refits at once and replaces the
+1.40", or "set by hand"). Typing a start refits at once and replaces the
 calibration until **Reset shifts** (shown under the table when a shift was set);
 unticking *Fixed* lets the fit refine the shift within ±0.5 bin (±1 for Shift
 VV/VH) and fits the bursts with the refined value. The edits are kept with the
 step's settings, and the calibration report records calibrated and used values.
-A tail fit has no IRF and no shift rows.
+A tail fit has no IRF and no shift rows. That is `R|G`'s default, on purpose:
+the acceptor's sensitised emission is not the IRF convolved with one decay but
+the donor's decay feeding the acceptor's -- a rise, then the acceptor's
+lifetime -- so a burst fit with Fit23 would put the transfer into a wrong
+lifetime; the tail after the rise is the acceptor's alone. `R|G`'s IRF (R|R's at
+the green pulse) is there for a model with the donor-acceptor kinetics, which the
+registry does not have yet; choosing Fit23 for `R|G` brings its shift rows.
 
 ```{figure} figures/21_burst_mle_shift_rows.png
 :name: fig-21-burst-mle-shift-rows
@@ -282,7 +288,7 @@ A tail fit has no IRF and no shift rows.
 
 DNA13bp_3 (RVZMT150) in Simple mode, G|G after **Fit bursts**: the three shift
 rows under the model's parameters, each started at its calibration on
-Rh110_thick_1 (VV +0.02, VH +0.02 bins; Shift VV/VH 0) and fixed.
+Rh110_thick_1 (VV +0.01, VH +0.00 bins; Shift VV/VH 0) and fixed.
 ```
 
 Then the reference dye is fitted with that IRF and **the burst model**: one
@@ -297,21 +303,43 @@ Rh110_thick_1 (bulk, 61 kHz) with the setup's G 1.000 it is 309 (G free: 1.428,
 fit** view draws it with its residuals; the calibration report keeps its χ²ᵣ,
 G and residuals.
 
-On the owner's session after these fixes (DNA13bp_3 with Rh110_thick_1 and
-Alexa647_thick_1 proposed beside it): G|G 1.436, shifts VV +0.02 / VH +0.02
-bins, reference fit χ²ᵣ 1.45 (G free 1.428: 1.40); the red pair G 0.629 (Data
-Selection's tail ratio), shifts +0.55 / +0.47 bins for `R|R` and `R|G` alike,
-reference fit χ²ᵣ 31.4 (G free 0.525: 16.8). The red reference is not described
-yet: the dye's rotation is read as 0.02 ns where its VV and VH tails part for a
-nanosecond, and its tail gives 1.15 ns against the database's 1.0 ns.
+On the owner's session (DNA13bp_3 with Rh110_thick_1 and Alexa647_thick_1
+proposed beside it), each dye described once -- its IRF, its shifts and its
+reference fit with one lifetime, rotation and initial anisotropy:
+
+| Detector | Dye | τ (ns) | ρ (ns) | r0 | G | Shifts VV / VH (bins) | χ²ᵣ |
+|---|---|---|---|---|---|---|---|
+| G\|G | Rh110 | 4.00 (database) | 0.17 | 0.38 | 1.436 | +0.01 / +0.00 | 1.40 |
+| R\|R, R\|G | Alexa 647 | 1.16 (tail; database 1.0) | 1.04 | 0.15 | 1.564 | −0.00 / −0.00 | 1.66 |
+
+The red row holds only with RVZMT150's red channels in the right order: as
+defined, Alexa 647's anisotropy starts at −0.10 -- its VV and VH are swapped --
+and Data Selection marks the red reference *VV/VH swapped?* (Burst MLE ⚠): G
+reads 0.629 and the reference fit 13.2 until the order is changed in step 0.
+The 1.0 ns of the dye database (the Molecular Probes handbook, water) does not
+describe this measurement: both polarisations' tails give 1.15--1.16 ns, so that
+is used and said. The remaining 3 % between the tail-ratio G (1.564) and the G
+the fit asks for (1.511, χ²ᵣ 1.15) is the dye's slow rotation still in the tail.
+Before: the IRF deconvolved at 1.15 ns and the shifts fitted at 1.0 ns gave
+χ²ᵣ 31 and shifts of +0.55 / +0.47 bins that were no shifts at all.
 
 ```{figure} figures/21_reference_fits_per_detector.png
 :name: fig-21-reference-fits-per-detector
 :width: 100%
 
-The reference fits of the three detectors on the owner's session: G|G on
-Rh110_thick_1 (χ²ᵣ 1.45); R|G and R|R one calibration on Alexa647_thick_1 in
-R|R's window (χ²ᵣ 31.4, the rotation not yet described). Weighted residuals below.
+The reference fits of the three detectors on the owner's session, the red
+channels put in order: G|G on Rh110_thick_1 (χ²ᵣ 1.40); R|G and R|R one
+calibration on Alexa647_thick_1 in R|R's window (τ 1.16 ns, ρ 1.04 ns, r0 0.15,
+χ²ᵣ 1.66). Weighted residuals below.
+```
+
+```{figure} figures/21_data_selection_vv_vh_swapped.png
+:name: fig-21-data-selection-vv-vh-swapped
+:width: 100%
+
+Data Selection with RVZMT150 as defined: Rh110 and Alexa 647 found beside
+DNA13bp_3, and the red reference marked *VV/VH swapped?* (its anisotropy starts
+at −0.10; the tooltip says what to do).
 ```
 
 ```{figure} figures/21_irf_tool_reference_fit.png

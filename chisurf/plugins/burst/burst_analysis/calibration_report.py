@@ -114,7 +114,8 @@ def build_report(
         fit.update({f"{k}_err": volume[f"{k}_err"] for k in _FIT_KEYS if f"{k}_err" in volume})
         g = {
             det: {k: v for k, v in value.items() if k in ("g", "std", "sem", "region",
-                                                          "background_region", "from", "counts")}
+                                                          "background_region", "from", "counts",
+                                                          "r_peak")}
             for det, value in (entry.get("g_factor") or {}).items()
         }
         report["colours"][colour] = {
@@ -132,7 +133,17 @@ def build_report(
             "rho_ns", "source", "text", "reference_rate_khz", "burst_rate_khz", "warning",
             # the reference dye fitted with the IRF and the burst model (lifetime fixed): its
             # chi2_r with the setup's G, and the G it asks for
-            "fit_chi2r", "fit_g", "fit_g_fitted", "fit_chi2r_g_free", "fit_window", "fit_text")
+            "fit_chi2r", "fit_g", "fit_g_fitted", "fit_chi2r_g_free", "fit_window", "fit_text",
+            # calibrated against used (a shift set by hand stays over the calibration), and the
+            # reference fit at the shifts used
+            "calibrated_vv", "calibrated_vh", "calibrated_shift", "shift", "edited", "edit_source",
+            "used_fit_chi2r",
+            # the detection pair: R|G calibrated in R|R's window, its IRF moved by the PIE offset
+            "calibrated_on", "offset_bins",
+            # the dye as fitted: the database's lifetime against its tail's (inconsistent: the
+            # tail's is used), its initial anisotropy and the anisotropy after the pulse (below
+            # -0.05: the VV and VH channels are swapped in the setup)
+            "tau_listed_ns", "tau_tail_ns", "tau_consistent", "r0", "anisotropy_peak")
     report["irf_shift"] = {
         det: {
             **{k: entry[k] for k in keep if k in entry},
