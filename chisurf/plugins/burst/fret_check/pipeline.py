@@ -215,7 +215,7 @@ def _two_cde(data, exp, bursts, tau):
         two = tttrlib.TwoCDE(data)
         if exp.excitation == "alternating" and exp.windows:
             win = {w.name: w for w in exp.windows}
-            d = [[win["donor"].start, win["donor"].stop]]
+            d = [[win["donor"].start, win["donor"].stop - 1]]
             two.set_donor(exp.donor_channels, d)
             two.set_acceptor(exp.acceptor_channels, d)
         else:
@@ -227,9 +227,9 @@ def _two_cde(data, exp, bursts, tau):
             two = tttrlib.TwoCDE(data)
             win = {w.name: w for w in exp.windows}
             chans = exp.donor_channels + exp.acceptor_channels
-            two.set_donor_excitation(chans, [[win["donor"].start, win["donor"].stop]])
+            two.set_donor_excitation(chans, [[win["donor"].start, win["donor"].stop - 1]])
             two.set_acceptor_excitation(
-                exp.acceptor_channels, [[win["acceptor"].start, win["acceptor"].stop]]
+                exp.acceptor_channels, [[win["acceptor"].start, win["acceptor"].stop - 1]]
             )
             two.compute(bursts, tau, tttrlib.TwoCDE.ALEX_2CDE, tttrlib.TwoCDE.LAPLACE)
             alex = np.asarray(two.get_two_cde(), float).copy()

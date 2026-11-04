@@ -54,6 +54,18 @@ positions, always sits on its own peak and over-estimates the rate.
 **Donor / acceptor channels** are the physical detector routing channels. Get
 them backwards and the analysis still completes and still looks plausible.
 
+The excitation windows come from the burst run's recorded setup. FRET-2CDE
+uses the donor-excitation window on each detector; ALEX-2CDE compares both
+detectors in that window with the acceptor detector in the acceptor-excitation
+window. ALEX-2CDE requires separated windows and reports an error when they
+are missing. A setup's recorded micro-time channel width is used to convert
+the windows when the measurement has a different binning.
+
+Older 2CDE results may have been calculated without excitation windows. The
+tool warns when it finds such a result in the selected measurement container;
+choose each affected variant and press **Run** or **Restart** to recompute.
+The older artifact remains in the container and must not be used for filtering.
+
 **Variant** picks which of the two columns is computed. A run produces one, not
 both; `FRET-2CDE` and `ALEX-2CDE` are written into the burst run's measurement
 container (`m000.pto/<run>/2cde fret`), one row per burst, so the burst browser and

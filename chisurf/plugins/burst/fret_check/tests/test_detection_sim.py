@@ -99,6 +99,9 @@ def test_2cde_on_the_burst_neighbourhoods_equals_the_whole_stream(name, monkeypa
     near = pipeline._two_cde(data, exp, bursts, settings.cde_tau)
     monkeypatch.setattr(pipeline, "_near_bursts", lambda d, b, tau: (d, b))
     whole = pipeline._two_cde(data, exp, bursts, settings.cde_tau)
+    assert near[0] is not None
+    if exp.excitation == "alternating" and exp.windows:
+        assert near[1] is not None
     for a, b in zip(near, whole):
         assert (a is None) == (b is None)
         if a is not None:

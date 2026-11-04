@@ -28,6 +28,7 @@ from chisurf.plugins.burst.burst_bva.core.computation import read_burst_analysis
 # Column names written into the burst dataframe.
 COLUMN_FRET_2CDE = "FRET-2CDE"
 COLUMN_ALEX_2CDE = "ALEX-2CDE"
+STREAM_ALGORITHM_VERSION = 2
 
 
 def column_for_variant(variant: str) -> str:
@@ -74,7 +75,8 @@ def applied_streams(
     detector names when the streams came from one).
     """
     donor, acceptor = list(names)[:2]
-    streams = {donor: (list(donor_channels), _to_pairs(donor_micro_time_ranges))}
+    donor_chs = list(dict.fromkeys([*donor_channels, *acceptor_channels])) if variant == "alex" else list(donor_channels)
+    streams = {donor: (donor_chs, _to_pairs(donor_micro_time_ranges))}
     if variant == "alex":
         chs = acceptor_channels if acceptor_excitation_channels is None else (
             acceptor_excitation_channels)
@@ -91,6 +93,10 @@ def _to_pairs(ranges) -> list[tuple[int, int]]:
     return [(int(a), int(b)) for a, b in ranges]
 
 
+def _phase_pairs(ranges) -> list[tuple[float, float]]:
+    return [(float(a), float(b)) for a, b in ranges]
+
+
 def compute_2cde(
     df,
     tttrs: dict[str, tttrlib.TTTR],
@@ -103,6 +109,14 @@ def compute_2cde(
     variant: str = "fret",
     acceptor_excitation_channels: Sequence[int] | None = None,
     acceptor_excitation_micro_time_ranges: Sequence[tuple[int, int]] | None = None,
+    micro_time_resolution_ps: float | None = None,
+    alex_donor_channel_ranges=None,
+    alex_acceptor_channel_ranges=None,
+    donor_macro_phase_ranges=(),
+    acceptor_macro_phase_ranges=(),
+    acceptor_excitation_macro_phase_ranges=(),
+    alternation_period_ticks: float = 0,
+    alternation_offset_ticks: float = 0,
     progress_window=None,
 ):
     """Compute the per-burst 2CDE feature and add it as a dataframe column.
@@ -135,6 +149,22 @@ def compute_2cde(
     pandas.DataFrame
         ``df`` with a ``FRET-2CDE`` or ``ALEX-2CDE`` column added.
     """
+    if variant not in ("fret", "alex"):
+        raise ValueError("2CDE variant must be 'fret' or 'alex'")
+    if variant == "alex":
+        d_ranges = _to_pairs(donor_micro_time_ranges or ())
+        acc_ranges = _to_pairs(acceptor_micro_time_ranges or ())
+        d_ranges = list(dict.fromkeys(d_ranges + acc_ranges))
+        a_ranges = _to_pairs(acceptor_excitation_micro_time_ranges or ())
+        d_phase = _phase_pairs(donor_macro_phase_ranges or ())
+        a_phase = _phase_pairs(acceptor_excitation_macro_phase_ranges or ())
+        separated_micro = bool(d_ranges and a_ranges) and all(
+            d1 < a0 or a1 < d0 for d0, d1 in d_ranges for a0, a1 in a_ranges
+        )
+        # Macro-phase disjointness, including wrapped ranges, is validated by tttrlib.
+        separated_phase = bool(alternation_period_ticks and d_phase and a_phase)
+        if not (separated_micro or separated_phase):
+            raise ValueError("ALEX-2CDE requires separated donor- and acceptor-excitation windows; configure the setup and recompute")
     column = column_for_variant(variant)
     n = row_count(df)
     values = np.full(n, np.nan)
@@ -174,6 +204,21 @@ def compute_2cde(
     for ff, (rows_idx, bursts) in per_file.items():
         tttr = tttrs[ff]
         burst_pairs = np.asarray(bursts, dtype=np.int64).reshape(-1, 2)
+        from chisurf.core.fluorescence.burst.streams import ranges_in_data
+        d_ranges = ranges_in_data(donor_micro_time_ranges, micro_time_resolution_ps, tttr)
+        a_ranges = ranges_in_data(acceptor_micro_time_ranges, micro_time_resolution_ps, tttr)
+        ax_ranges = ranges_in_data(a_ex_mtr, micro_time_resolution_ps, tttr)
+        donor_gates = alex_donor_channel_ranges
+        if variant == "alex" and not donor_gates and d_ranges != a_ranges:
+            donor_gates = {}
+            for channels, ranges in ((donor_channels, d_ranges), (acceptor_channels, a_ranges)):
+                for channel in channels:
+                    donor_gates.setdefault(channel, []).extend(ranges)
+        else:
+            donor_gates = {int(c): ranges_in_data(ranges, micro_time_resolution_ps, tttr)
+                           for c, ranges in (donor_gates or {}).items()}
+        acceptor_gates = {int(c): ranges_in_data(ranges, micro_time_resolution_ps, tttr)
+                          for c, ranges in (alex_acceptor_channel_ranges or {}).items() if ranges}
         vals = _compute_file_cpp(
             tttr,
             burst_pairs,
@@ -181,11 +226,18 @@ def compute_2cde(
             kernel,
             variant,
             donor_channels,
-            donor_micro_time_ranges,
+            d_ranges,
             acceptor_channels,
-            acceptor_micro_time_ranges,
+            a_ranges,
             a_ex_ch,
-            a_ex_mtr,
+            ax_ranges,
+            donor_macro_phase_ranges,
+            acceptor_macro_phase_ranges,
+            acceptor_excitation_macro_phase_ranges,
+            alternation_period_ticks,
+            alternation_offset_ticks,
+            donor_gates,
+            acceptor_gates,
         )
         for k, ri in enumerate(rows_idx):
             values[ri] = vals[k]
@@ -209,17 +261,30 @@ def _compute_file_cpp(
     a_mtr,
     aex_ch,
     aex_mtr,
+    d_phase=(),
+    a_phase=(),
+    aex_phase=(),
+    period=0,
+    offset=0,
+    donor_gates=None,
+    acceptor_gates=None,
 ) -> np.ndarray:
     """Fast path: tttrlib.TwoCDE burst feature (parallel over bursts)."""
     eng = tttrlib.TwoCDE(tttr)
     k = tttrlib.TwoCDE.GAUSSIAN if kernel == "gaussian" else tttrlib.TwoCDE.LAPLACE
+    if period:
+        eng.set_alternation(float(period), float(offset))
     if variant == "alex":
-        eng.set_donor_excitation(list(d_ch), _to_pairs(d_mtr))
-        eng.set_acceptor_excitation(list(aex_ch), _to_pairs(aex_mtr))
+        excitation_ranges = list(dict.fromkeys(_to_pairs(d_mtr) + _to_pairs(a_mtr)))
+        eng.set_donor_excitation(list(dict.fromkeys([*d_ch, *a_ch])), excitation_ranges, _phase_pairs(d_phase))
+        eng.set_acceptor_excitation(list(aex_ch), _to_pairs(aex_mtr), _phase_pairs(aex_phase))
+        for stream, gates in (("donor_excitation", donor_gates), ("acceptor_excitation", acceptor_gates)):
+            for channel, ranges in (gates or {}).items():
+                eng.set_stream_channel_ranges(stream, int(channel), _to_pairs(ranges))
         eng.compute(burst_pairs, float(tau), tttrlib.TwoCDE.ALEX_2CDE, k)
     else:
-        eng.set_donor(list(d_ch), _to_pairs(d_mtr))
-        eng.set_acceptor(list(a_ch), _to_pairs(a_mtr))
+        eng.set_donor(list(d_ch), _to_pairs(d_mtr), _phase_pairs(d_phase))
+        eng.set_acceptor(list(a_ch), _to_pairs(a_mtr), _phase_pairs(a_phase))
         eng.compute(burst_pairs, float(tau), tttrlib.TwoCDE.FRET_2CDE, k)
     return np.asarray(eng.two_cde)
 
@@ -276,7 +341,7 @@ def write_2cde_container(
 
     container, search_from = destination_for(analysis_folder)
     column = column_for_variant(variant)
-    settings = {"variant": variant, **(parameters or {})}
+    settings = {**(parameters or {}), "variant": variant, "stream_algorithm_version": STREAM_ALGORITHM_VERSION}
     written = write_per_source(
         take_columns(as_table(df), ["First File", *run_column(df), column]),
         name=f"2cde {variant}",

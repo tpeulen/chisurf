@@ -71,7 +71,11 @@ def test_the_kernel_setting_changes_the_answer(variant):
         for _ in range(25):
             r = rng.random(300)
             bursts.append(np.where(r < 0.45, 0, np.where(r < 0.75, 1, 2)))
-        channels = dict(donor_channels=[0, 1], acceptor_channels=[2])
+        channels = dict(donor_channels=[0], acceptor_channels=[1, 2],
+                        acceptor_excitation_channels=[1, 2],
+                        donor_macro_phase_ranges=[(0, 9)],
+                        acceptor_excitation_macro_phase_ranges=[(10, 19)],
+                        alternation_period_ticks=20)
         column = core.COLUMN_ALEX_2CDE
 
     tttrs, df, _, _ = _build(bursts)
@@ -236,6 +240,132 @@ def test_workflow_prepare_resolves_context(tmp_path):
     s = resp["result"]["settings"]
     assert s["donor_channels"] == [8, 0]
     assert s["acceptor_channels"] == [9, 1]
+
+
+def test_setup_resolves_excitation_streams_and_width():
+    from chisurf.plugins.burst.burst_2cde.backend.services import settings_from_setup
+
+    settings = settings_from_setup({
+        "detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}},
+        "windows": {"prompt": [0, 100], "delayed": [100, 200]},
+        "tttr_reading": {"micro_time_resolution": 16},
+    })
+    assert settings["donor_micro_time_ranges"] == [(0, 99)]
+    assert settings["acceptor_micro_time_ranges"] == [(0, 99)]
+    assert settings["acceptor_excitation_micro_time_ranges"] == [(100, 199)]
+    assert settings["acceptor_excitation_channels"] == [1]
+    assert settings["micro_time_resolution_ps"] == pytest.approx(16)
+
+
+def test_setup_intersects_detector_gates_with_each_excitation_window():
+    from chisurf.plugins.burst.burst_2cde.backend.services import settings_from_setup
+
+    settings = settings_from_setup({
+        "detectors": {
+            "green": {"chs": [0], "micro_time_ranges": [[10, 90]]},
+            "red": {"chs": [1], "micro_time_ranges": [[20, 80]]},
+            "yellow": {"chs": [1], "micro_time_ranges": [[120, 180]]},
+        },
+        "windows": {"prompt": [0, 100], "delayed": [100, 200]},
+    })
+    assert settings["donor_micro_time_ranges"] == [(10, 89)]
+    assert settings["acceptor_micro_time_ranges"] == [(20, 79)]
+    assert settings["acceptor_excitation_micro_time_ranges"] == [(120, 179)]
+
+
+def test_alex_different_detector_gates_are_kept_per_channel(monkeypatch):
+    tttrs, frame, _, _ = _build([[0, 1] * 10])
+    seen = []
+    monkeypatch.setattr(core, "_compute_file_cpp", lambda *args: seen.append(args) or np.array([0.]))
+    core.compute_2cde(frame, tttrs, variant="alex", donor_channels=[0], acceptor_channels=[1],
+                      donor_micro_time_ranges=[(0, 20)], acceptor_micro_time_ranges=[(1, 20)],
+                      acceptor_excitation_micro_time_ranges=[(21, 30)])
+    assert seen[0][-2] == {0: [(0, 20)], 1: [(1, 20)]}
+
+
+def test_fractional_alternation_period_is_not_truncated(monkeypatch):
+    seen = []
+
+    class Engine:
+        LAPLACE = 0
+        GAUSSIAN = 1
+        FRET_2CDE = 0
+        two_cde = [0.0]
+
+        def __init__(self, tttr):
+            pass
+
+        def set_alternation(self, period, offset):
+            seen.append((period, offset))
+
+        def set_donor(self, *args):
+            seen.append(args[-1])
+
+        def set_acceptor(self, *args):
+            pass
+
+        def compute(self, *args):
+            pass
+
+    monkeypatch.setattr(core.tttrlib, "TwoCDE", Engine)
+    core._compute_file_cpp(None, np.array([[0, 1]]), 1.0, "laplace", "fret",
+                           [0], [], [1], [], [1], [], d_phase=[(0.25, 4.75)],
+                           period=10.5, offset=0.25)
+    assert seen == [(10.5, 0.25), [(0.25, 4.75)]]
+
+
+def test_cli_reads_recorded_setup(tmp_path, monkeypatch):
+    from click.testing import CliRunner
+
+    from chisurf.core.fio.fluorescence.burst_manifest import write_analysis_manifest
+    from chisurf.plugins.burst.burst_2cde.cli import main
+
+    write_analysis_manifest(tmp_path, [{"path": "x", "settings": {
+        "detectors": {"green": {"chs": [3]}, "red": {"chs": [4]}},
+        "micro_time_windows": {"windows": {"prompt": [10, 20], "delayed": [30, 40]},
+                               "micro_time_resolution_ps": 16},
+    }}])
+    frame = pd.DataFrame({"First File": ["x"], "First Photon": [0], "Last Photon": [1]})
+    monkeypatch.setattr(main, "read_burst_analysis", lambda *a, **kw: (frame, {}))
+    seen = {}
+    def compute(df, tttrs, **kwargs):
+        seen.update(kwargs)
+        return df.assign(**{"ALEX-2CDE": [0.]})
+    monkeypatch.setattr(main, "compute_2cde", compute)
+    monkeypatch.setattr(main, "write_2cde_container", lambda *a, **kw: [])
+    result = CliRunner().invoke(main.cli, ["compute", str(tmp_path), "--variant", "alex"])
+    assert result.exit_code == 0, result.output
+    assert seen["donor_channels"] == [3]
+    assert seen["acceptor_channels"] == [4]
+    assert seen["donor_micro_time_ranges"] == [(10, 19)]
+    assert seen["acceptor_excitation_micro_time_ranges"] == [(30, 39)]
+    assert seen["micro_time_resolution_ps"] == pytest.approx(16)
+
+
+def test_setup_from_run_restores_recorded_window_width(tmp_path):
+    from chisurf.core.fio.fluorescence.burst_manifest import write_analysis_manifest
+    from chisurf.plugins.burst.burst_2cde.backend.services import (
+        settings_from_setup,
+        setup_from_run,
+    )
+
+    recorded = {
+        "detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}},
+        "micro_time_windows": {
+            "windows": {"prompt": [0, 100], "delayed": [100, 200]},
+            "gates": {}, "micro_time_resolution_ps": 32,
+        },
+    }
+    write_analysis_manifest(tmp_path, [{"path": "data.ptu", "settings": recorded}])
+    settings = settings_from_setup(setup_from_run(tmp_path))
+    assert settings["micro_time_resolution_ps"] == pytest.approx(32)
+    assert settings["acceptor_excitation_micro_time_ranges"] == [(100, 199)]
+
+
+def test_alex_without_excitation_windows_is_rejected():
+    tttrs, frame, _, _ = _build([[0, 1] * 10])
+    with pytest.raises(ValueError, match="requires separated"):
+        core.compute_2cde(frame, tttrs, variant="alex")
 
 
 def test_services_register_workflow_prepare():

@@ -76678,6 +76678,22 @@ Background (kHz): {bg}</source>
             <source>3 — one lifetime per burst</source>
             <translation>3 — une durée de vie par burst</translation>
         </message>
+        <message>
+            <source>Add or remove files in step 1 (Data Selection); this step searches all of them.</source>
+            <translation>Ajoutez ou retirez des fichiers à l'étape 1 (Sélection des données) ; cette étape les analyse tous.</translation>
+        </message>
+        <message>
+            <source>Bursts: {run} from Burst Selection</source>
+            <translation>Bursts : {run} de la sélection de bursts</translation>
+        </message>
+        <message>
+            <source>Older 2CDE results have unrecorded excitation streams; recompute before using them: </source>
+            <translation>Des résultats 2CDE plus anciens n'ont pas de flux d'excitation enregistrés ; recalculez-les avant de les utiliser : </translation>
+        </message>
+        <message>
+            <source>JSON with named detectors (chs and micro_time_ranges), named PIE windows and micro_time_resolution_ps, the channel width (ps) the windows and gates are in (null: applied as raw channels of the data).</source>
+            <translation>JSON avec des détecteurs nommés (chs et micro_time_ranges), des fenêtres PIE nommées et micro_time_resolution_ps, la largeur de canal (ps) des fenêtres et des portes (null : appliquées comme canaux bruts des données).</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

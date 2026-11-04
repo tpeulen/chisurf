@@ -111,8 +111,18 @@ class TwoCdeController:
             tttrs,
             donor_channels=settings["donor_channels"],
             acceptor_channels=settings["acceptor_channels"],
-            donor_micro_time_ranges=[],
-            acceptor_micro_time_ranges=[],
+            donor_micro_time_ranges=settings.get("donor_micro_time_ranges", []),
+            acceptor_micro_time_ranges=settings.get("acceptor_micro_time_ranges", []),
+            acceptor_excitation_channels=settings.get("acceptor_excitation_channels"),
+            acceptor_excitation_micro_time_ranges=settings.get("acceptor_excitation_micro_time_ranges"),
+            micro_time_resolution_ps=settings.get("micro_time_resolution_ps"),
+            alex_donor_channel_ranges=settings.get("alex_donor_channel_ranges"),
+            alex_acceptor_channel_ranges=settings.get("alex_acceptor_channel_ranges"),
+            donor_macro_phase_ranges=settings.get("donor_macro_phase_ranges", []),
+            acceptor_macro_phase_ranges=settings.get("acceptor_macro_phase_ranges", []),
+            acceptor_excitation_macro_phase_ranges=settings.get("acceptor_excitation_macro_phase_ranges", []),
+            alternation_period_ticks=settings.get("alternation_period_ticks", 0),
+            alternation_offset_ticks=settings.get("alternation_offset_ticks", 0),
             tau=settings["tau_us"] * 1e-6,
             kernel=settings["kernel"],
             variant=settings["variant"],
@@ -178,6 +188,15 @@ class TwoCdeController:
     def adopt_folder(self, folder):
         """Take the burst run *folder* (an address from the workspace) and compute its 2CDE."""
         if not is_burst_source(folder):
+            return False
+        from ..backend.services import setup_from_run, stale_results
+
+        try:
+            setup = setup_from_run(folder)
+            self.model.stale_results = stale_results(folder)
+            self.model.apply_channel_settings(setup)
+        except (OSError, ValueError) as exc:
+            self.model.status_text = f"Cannot read burst setup: {exc}"
             return False
         self.model.set_folder(folder)
         self.run()

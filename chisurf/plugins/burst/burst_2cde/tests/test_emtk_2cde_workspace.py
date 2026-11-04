@@ -59,3 +59,37 @@ def test_a_burst_run_picked_in_the_input_section_runs_and_registers_its_table(
         save_png(app, SHOTS / "burst_2cde_workspace.png")
     finally:
         app.close()
+
+
+def test_old_result_is_flagged_and_new_result_records_stream_version(tmp_path):
+    from chisurf.core.fio.analysis_path import split_container_path
+    from chisurf.core.fio.fluorescence.burst_container import burst_table_name
+    from chisurf.core.fio.pto import Measurement
+    from chisurf.plugins.burst.burst_2cde.backend.services import stale_results
+    from chisurf.plugins.burst.burst_2cde.core.computation import STREAM_ALGORITHM_VERSION
+
+    run = burst_run_in_workspace(tmp_path)
+    container, run_name = split_container_path(run.address)
+    with Measurement.open(container, writable=True) as measurement:
+        name = burst_table_name(measurement, run_name)
+        parent = measurement._f.find(name)
+        measurement.put_table(
+            "old 2cde", {"FRET-2CDE": [1.0]}, artifact_kind="burst_table",
+            operation_type="burst_2cde", row_grain="burst", parameters={"variant": "fret"},
+            derived_from=parent,
+        )
+        measurement.put_table(
+            "new 2cde", {"ALEX-2CDE": [1.0]}, artifact_kind="burst_table",
+            operation_type="burst_2cde", row_grain="burst",
+            parameters={"variant": "alex", "stream_algorithm_version": STREAM_ALGORITHM_VERSION},
+            derived_from=parent,
+        )
+    assert stale_results(run.address) == ["fret"]
+    app = create_app()
+    try:
+        assert app.controller.adopt_folder(run.address)
+        strings = draw(app).strings
+        assert any("unrecorded excitation streams" in text for text in strings)
+        save_png(app, SHOTS / "burst_2cde_stale.png")
+    finally:
+        app.close()

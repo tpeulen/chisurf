@@ -25,7 +25,7 @@ try:
 except Exception:  # pragma: no cover
     _proximity_ratio = None
 
-ALGORITHM_VERSION = 1
+ALGORITHM_VERSION = 2
 logger = logging.getLogger(__name__)
 
 
@@ -40,6 +40,8 @@ class TwoCdeViewModel:
         self.donor_channels_text: str = "0,8"
         self.acceptor_channels_text: str = "1,9"
         self.file_type: str = "SPC-130"
+        self.channel_settings: dict = {}
+        self.stale_results: list[str] = []
 
         self.df: Any | None = None
         self.last_computed_variant: str = "fret"
@@ -96,6 +98,7 @@ class TwoCdeViewModel:
         file type (the burst workflow hands its setup over this way)."""
         from chisurf.core.fluorescence.burst.table import fret_detectors
 
+        self.channel_settings = dict(settings or {})
         found = fret_detectors(settings)
         for role in ("donor", "acceptor"):
             if role in found:
@@ -114,7 +117,15 @@ class TwoCdeViewModel:
         self.notify("folder")
 
     def settings(self) -> dict[str, Any]:
+        from chisurf.plugins.burst.burst_2cde.backend.services import settings_from_setup
+
+        streams = settings_from_setup(self.channel_settings)
+        if streams.get("acceptor_excitation_channels"):
+            streams["acceptor_excitation_channels"] = [
+                c for c in streams["acceptor_excitation_channels"] if c in self.acceptor_channels
+            ]
         return {
+            **streams,
             "variant": self.variant,
             "kernel": self.kernel,
             "tau_us": float(self.tau_us),

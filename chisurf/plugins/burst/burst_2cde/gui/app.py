@@ -12,6 +12,8 @@ Runs toolkit-free in a desktop window (:mod:`emtk.native`), or in a WebGPU brows
 from __future__ import annotations
 
 import json
+
+import numpy as np
 from pathlib import Path
 from typing import Any, Callable
 
@@ -258,6 +260,11 @@ class BurstTwoCdeGui:
     def _draw_input(self) -> None:
         """The generated Input section (the workspace's burst runs), then the run 2CDE reads."""
         self.input_form.rects.clear()
+        if getattr(self, "pipeline", False):
+            # In the pipeline the bursts are Burst Selection's: no Input to pick from.
+            run = Path(str(self.model.folder or "")).name or tr("none yet")
+            im.text_wrapped(tr("Bursts: {run} from Burst Selection").format(run=run))
+            return
         draw_form(self.input_spec, self.input, self.input_form)
         for name, rect in self.input_form.rects.items():
             self.remember(name, tuple(rect))
@@ -376,6 +383,9 @@ class BurstTwoCdeGui:
 
     def _draw_status(self) -> None:
         """Status readout, and the progress of a running computation."""
+        if self.model.stale_results:
+            im.separator()
+            im.text_wrapped(tr("Older 2CDE results have unrecorded excitation streams; recompute before using them: ") + ", ".join(self.model.stale_results))
         if self.model.is_running and self.model.progress_text:
             im.separator()
             fraction = self.model.progress
@@ -387,6 +397,28 @@ class BurstTwoCdeGui:
         if self.model.status_text:
             im.separator()
             im.text_wrapped(self.model.status_text)
+
+    def _burst_histogram(self, xs, ys):
+        """The bursts binned on (E, 2CDE), log counts, cached per result:
+        ``(grid, (rows, cols), bounds)``, row zero at the top."""
+        key = (id(xs), id(ys), len(xs) if xs is not None else 0)
+        cached = getattr(self, "_hist_cache", None)
+        if cached is not None and cached[0] == key:
+            return cached[1]
+        x = np.asarray(xs, dtype=float)
+        y = np.asarray(ys, dtype=float)
+        ok = np.isfinite(x) & np.isfinite(y)
+        top = float(np.percentile(y[ok], 99.5)) * 1.1 if ok.any() else 50.0
+        top = max(top, 10.0)
+        nx, ny = 60, 50
+        bounds = ((0.0, 0.0), (1.0, top))
+        if not ok.any():
+            result = (None, (ny, nx), bounds)
+        else:
+            counts, _, _ = np.histogram2d(y[ok], x[ok], bins=(ny, nx), range=((0.0, top), (0.0, 1.0)))
+            result = (np.log1p(np.flipud(counts)).ravel(), (ny, nx), bounds)
+        self._hist_cache = (key, result)
+        return result
 
     def _draw_plot(self, w: float, h: float) -> None:
         """Plot the computed 2CDE results."""
@@ -412,11 +444,13 @@ class BurstTwoCdeGui:
                         f"Threshold: {self.threshold_y:.1f}",
                     )
 
-                    # Scatter markers
-                    implot.set_next_marker_style(
-                        implot.MARKER_CIRCLE, 3.5, fill=(31, 119, 180, 140)
-                    )
-                    implot.plot_scatter("Bursts", plot_data["x"], plot_data["y"])
+                    # The bursts as a 2D histogram (log counts): thousands of circles were
+                    # unreadable and cost the window a polygon per burst every frame.
+                    grid, (rows, cols), bounds = self._burst_histogram(plot_data["x"], plot_data["y"])
+                    if grid is not None:
+                        implot.plot_heatmap(
+                            "Bursts", grid, rows, cols, 0.0, 0.0, None, bounds[0], bounds[1]
+                        )
                     implot.end_plot()
             elif plot_data["kind"] == "hist":
                 if implot.begin_plot(f"{plot_data['ylabel']}##twocde_plot", (w, h)):

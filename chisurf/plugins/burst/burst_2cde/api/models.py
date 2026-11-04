@@ -40,6 +40,14 @@ class TwoCdeSettings:
     acceptor_micro_time_ranges: list[tuple[int, int]] = field(default_factory=lambda: [(0, 32768)])
     acceptor_excitation_channels: list[int] = field(default_factory=list)
     acceptor_excitation_micro_time_ranges: list[tuple[int, int]] = field(default_factory=list)
+    micro_time_resolution_ps: float | None = None
+    alex_donor_channel_ranges: dict[int, list[tuple[int, int]]] = field(default_factory=dict)
+    alex_acceptor_channel_ranges: dict[int, list[tuple[int, int]]] = field(default_factory=dict)
+    donor_macro_phase_ranges: list[tuple[float, float]] = field(default_factory=list)
+    acceptor_macro_phase_ranges: list[tuple[float, float]] = field(default_factory=list)
+    acceptor_excitation_macro_phase_ranges: list[tuple[float, float]] = field(default_factory=list)
+    alternation_period_ticks: float = 0
+    alternation_offset_ticks: float = 0
     tau: float = 100e-6
     kernel: str = "laplace"
     variant: str = "fret"
