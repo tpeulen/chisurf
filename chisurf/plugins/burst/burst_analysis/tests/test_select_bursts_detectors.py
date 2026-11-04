@@ -48,3 +48,23 @@ def test_bursts_carry_per_detector_counts_and_recurrence_runs(workflow, names):
     recurrence = bursts.recurrence()
     expected = n_a / (n_d + n_a)
     np.testing.assert_allclose(recurrence.efficiency, expected)
+
+
+def test_workflow_records_named_windows_and_width(workflow):
+    from chisurf.core.fio.pto import Measurement
+    from chisurf.plugins.burst.burst_analysis.api.workflow import Detector, Setup
+
+    wf, handle = workflow
+    setup = Setup(
+        detectors=[Detector("green", (0, 8)), Detector("red", (1, 9))],
+        file_type="SPC-130",
+        micro_time_resolution_ps=32,
+        windows={"prompt": (50, 1000), "delayed": (1000, 2000)},
+    )
+    wf.select_bursts(handle, setup=setup, min_photons=20)
+    # Resolve from the file written next to the input by the workflow.
+    measurement_path = Path(wf._fetch(handle)).with_suffix(".pto")
+    with Measurement.open(measurement_path, writable=False) as measurement:
+        info = measurement.provenance(measurement._resolve("bursts"))["settings"]
+    assert info["micro_time_windows"]["windows"] == {"prompt": [50, 1000], "delayed": [1000, 2000]}
+    assert info["micro_time_windows"]["micro_time_resolution_ps"] == 32

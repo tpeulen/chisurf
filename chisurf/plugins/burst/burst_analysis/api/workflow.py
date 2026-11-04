@@ -147,6 +147,8 @@ class Setup:
 
     detectors: list[Detector]
     file_type: str | None = None
+    micro_time_resolution_ps: float | None = None
+    windows: dict[str, tuple[int, int]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Validate that at least two distinctly named detectors are present."""
@@ -157,7 +159,12 @@ class Setup:
             raise ValueError(f"duplicate detector names in {names}")
 
     @classmethod
-    def from_channels(cls, *, file_type: str | None = None, **channels: Sequence[int]) -> Setup:
+    def from_channels(
+        cls, *, file_type: str | None = None,
+        micro_time_resolution_ps: float | None = None,
+        windows: dict[str, tuple[int, int]] | None = None,
+        **channels: Sequence[int],
+    ) -> Setup:
         """Build a setup from ``name=routing_channels`` keyword arguments.
 
         Example::
@@ -165,7 +172,8 @@ class Setup:
             Setup.from_channels(green=(0, 8), red=(1, 9), yellow=(2, 10))
         """
         detectors = [Detector(name, tuple(chs)) for name, chs in channels.items()]
-        return cls(detectors=detectors, file_type=file_type)
+        return cls(detectors=detectors, file_type=file_type,
+                   micro_time_resolution_ps=micro_time_resolution_ps, windows=dict(windows or {}))
 
     # -- helpers --------------------------------------------------------
 
@@ -694,12 +702,16 @@ class Bursts:
         list of str
             One line per measurement whose ranges do not hold its excitation pulses.
         """
-        from chisurf.core.fluorescence.burst.streams import preflight_detectors, window_warnings
+        from chisurf.core.fluorescence.burst.streams import (
+            gates_record,
+            preflight_detectors,
+            window_warnings,
+        )
 
         detectors = preflight_detectors(streams, self.setup.summary_detectors())
-        key = repr(sorted(detectors.items()))
+        key = repr((sorted(detectors.items()), self.setup.micro_time_resolution_ps))
         if key not in self._window_checks:
-            self._window_checks[key] = window_warnings(self._tttrs, detectors)
+            self._window_checks[key] = window_warnings(self._tttrs, gates_record(detectors, self.setup.micro_time_resolution_ps), detectors)
         return list(self._window_checks[key])
 
     def irf_background(
@@ -735,9 +747,11 @@ class Bursts:
 
         pooled: dict[str, Any] = {}
         for tttr in self._tttrs.values():
+            from chisurf.core.fluorescence.burst.background import _applied_detectors
+            applied = _applied_detectors(tttr, detectors, self.setup.micro_time_resolution_ps)
             per_det = extract_irf_background(
                 tttr,
-                detectors,
+                applied,
                 min_photons=min_photons,
                 photon_window=photon_window,
                 time_window=time_window,
@@ -814,6 +828,7 @@ class Bursts:
             acceptor_channels=list(a.routing_channels),
             acceptor_micro_time_ranges=a.bva_ranges(),
             number_of_photons_per_slice=photons_per_slice,
+            micro_time_resolution_ps=self.setup.micro_time_resolution_ps,
         )
         warnings = self.window_warnings(
             {
@@ -858,15 +873,39 @@ class Bursts:
         d = self.setup.detector(donor_name)
         a = self.setup.detector(acceptor_name)
         aex = self.setup.detector(acceptor_excitation) if acceptor_excitation else None
+        from chisurf.plugins.burst.burst_2cde.backend.services import settings_from_setup
+
+        detector_defs = self.setup.summary_detectors()
+        ordered = {name: detector_defs[name] for name in (donor_name, acceptor_name)}
+        ordered.update({name: det for name, det in detector_defs.items() if name not in ordered})
+        resolved = settings_from_setup({
+            "detectors": ordered,
+            "windows": self.setup.windows,
+            "tttr_reading": {"micro_time_resolution": self.setup.micro_time_resolution_ps},
+        })
+        if aex and self.setup.windows.get("delayed"):
+            lo, hi = self.setup.windows["delayed"]
+            aex_ranges = [(max(start, lo), min(end, hi - 1))
+                          for start, end in aex.bva_ranges()
+                          if max(start, lo) <= min(end, hi - 1)]
+            if not aex_ranges:
+                raise ValueError("acceptor-excitation detector gate does not overlap delayed excitation")
+            resolved["alex_acceptor_channel_ranges"] = {c: aex_ranges for c in aex.routing_channels}
+        else:
+            aex_ranges = aex.bva_ranges() if aex else resolved.get("acceptor_excitation_micro_time_ranges")
         table = compute_2cde(
             self.table.copy(),
             self._tttrs,
             donor_channels=list(d.routing_channels),
-            donor_micro_time_ranges=d.bva_ranges(),
+            donor_micro_time_ranges=resolved.get("donor_micro_time_ranges", d.bva_ranges()),
             acceptor_channels=list(a.routing_channels),
-            acceptor_micro_time_ranges=a.bva_ranges(),
-            acceptor_excitation_channels=list(aex.routing_channels) if aex else None,
-            acceptor_excitation_micro_time_ranges=aex.bva_ranges() if aex else None,
+            acceptor_micro_time_ranges=resolved.get("acceptor_micro_time_ranges", a.bva_ranges()),
+            acceptor_excitation_channels=(list(aex.routing_channels) if aex else
+                                           resolved.get("acceptor_excitation_channels")),
+            acceptor_excitation_micro_time_ranges=aex_ranges,
+            micro_time_resolution_ps=self.setup.micro_time_resolution_ps,
+            alex_donor_channel_ranges=resolved.get("alex_donor_channel_ranges"),
+            alex_acceptor_channel_ranges=resolved.get("alex_acceptor_channel_ranges"),
             tau=tau,
             kernel=kernel,
             variant=variant,
@@ -981,7 +1020,8 @@ class Bursts:
         first_tttr = next(iter(self._tttrs.values()))
         base_time_s = float(first_tttr.header.macro_time_resolution)
         photons = bursts_from_dataframe(
-            self.table, self._tttrs, self.setup.stream_defs(), min_photons=min_photons
+            self.table, self._tttrs, self.setup.stream_defs(), min_photons=min_photons,
+            micro_time_resolution_ps=self.setup.micro_time_resolution_ps,
         )
         result = analyze(
             photons,
@@ -1371,6 +1411,8 @@ class BurstWorkflow:
         # Nothing else to create: with no ``output_dir`` the search writes the
         # container beside each measurement and implies no legacy ``.bur``
         # beside it (a directory request is what makes the search write one).
+        from chisurf.core.fluorescence.burst.streams import gates_record
+
         request = AnalysisRequest(
             files=[str(p) for p in local_paths],
             filetype=setup.file_type,
@@ -1378,6 +1420,7 @@ class BurstWorkflow:
             # (`Number of Photons (<name>)` ...), which recurrence and the
             # proximity ratio are computed from.
             detectors=setup.summary_detectors(),
+            windows=gates_record(setup.summary_detectors(), setup.micro_time_resolution_ps, setup.windows),
             settings=settings,
         )
         result = analyze_request(request)

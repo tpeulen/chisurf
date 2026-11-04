@@ -70,3 +70,24 @@ def test_an_ungated_setup_is_checked_as_the_full_axis(burst_data):
     bursts = _bursts(burst_data, [Detector("green", (0,)), Detector("red", (1,))])
     assert bursts.bva().warnings == []
     assert bursts.h2mm(states=(1,), engine="em").warnings == []
+
+
+def test_two_cde_uses_setup_windows_and_detector_gates(burst_data, monkeypatch):
+    from chisurf.plugins.burst.burst_2cde.core import computation
+
+    bursts = _bursts(burst_data, PIE)
+    bursts.setup.windows = {"prompt": [100, 1000], "delayed": [1500, 2500]}
+    bursts.setup.micro_time_resolution_ps = 16
+    seen = {}
+
+    def compute(table, tttrs, **kwargs):
+        seen.update(kwargs)
+        return table
+
+    monkeypatch.setattr(computation, "compute_2cde", compute)
+    bursts.two_cde(donor="green", acceptor="red", acceptor_excitation="yellow", variant="alex")
+    assert seen["micro_time_resolution_ps"] == 16
+    assert seen["donor_micro_time_ranges"][0][0] >= 100
+    assert seen["donor_micro_time_ranges"][0][1] < 1000
+    assert seen["acceptor_excitation_micro_time_ranges"][0][0] >= 1500
+    assert seen["acceptor_excitation_micro_time_ranges"][0][1] < 2500
