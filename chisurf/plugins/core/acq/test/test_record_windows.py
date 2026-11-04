@@ -93,6 +93,7 @@ def model(tmp_path):
     m = RecordModel(output_dir=tmp_path / "rec", realtime=False)
     m.load_example()
     m.duration_s = 4.0
+    m.stop_after = True  # the duration cap must be asked for; a run measures until Stop
     # a setup whose windows were made for another instrument, in raw channels
     m.settings_setup = {"detectors": SPC130["detectors"],
                         "windows": {"prompt": [2048, 3000], "delayed": [3000, 4000]}}
@@ -214,3 +215,19 @@ def test_a_gate_that_holds_no_pulse_is_flagged_live():
     live.update(_decays(), windows, RES, N, gates={"R|G": [[1700, 3000]]})
     assert live.asking
     assert live.check.proposal_gates["R|G"] == [[0, N]]
+
+
+def test_alex_phase_settings_roundtrip(tmp_path):
+    from chisurf.plugins.core.acq.gui.record_app import RecordModel
+
+    model = RecordModel(output_dir=tmp_path, realtime=False)
+    model.preset = "alex"
+    model.alex_period_us = 100.0
+    model.alex_windows_override = {"prompt": (2e-6, 40e-6), "delayed": (55e-6, 95e-6)}
+    doc = model.current_settings()
+    restored = RecordModel(output_dir=tmp_path, realtime=False)
+    restored._form_from(doc)
+    assert restored.alex_period_us == 100.0
+    assert restored.alex_windows_override == model.alex_windows_override
+    model.close()
+    restored.close()

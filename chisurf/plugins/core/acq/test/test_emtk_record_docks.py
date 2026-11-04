@@ -27,6 +27,9 @@ def app(tmp_path):
 
 
 def _run_to_end(ui, model, timeout=180.0):
+    # a run measures until Stop: old tests set only duration_s, so ask for the
+    # duration cap explicitly or the runs never end (stop_after defaults off)
+    model.stop_after = True
     end = time.monotonic() + timeout
     while model.running:
         assert time.monotonic() < end, "the run did not end"
@@ -36,6 +39,9 @@ def _run_to_end(ui, model, timeout=180.0):
 
 
 def test_every_dock_opens_and_closes(app):
+    # Setup quality is intentionally available only in Advanced mode.
+    app.model.ui_mode = 'advanced'
+    app.model.ui_mode_changed()
     ui = Driver(app, SIZE)
     ui.draw(2)
     for key, title, _region in DOCKS:
@@ -74,6 +80,7 @@ def test_every_tour_target_is_drawn_when_its_step_is_shown(app):
     model = app.model
     ui.click("load_example")
     model.duration_s = 3.0
+    model.stop_after = True  # the duration cap must be asked for; a run measures until Stop
     ui.click("start")  # plots and the quality panel have content
     _run_to_end(ui, model)
     app.tour.start()
@@ -107,6 +114,7 @@ def test_the_running_trace_is_mirrored_and_keeps_its_window(app):
     ui.click("load_example")
     model.duration_s = 4.0
     model.trace_window_s, model.trace_bin_ms = 0.5, 2.0
+    model.stop_after = True  # the duration cap must be asked for; a run measures until Stop
     ui.click("start")
     _run_to_end(ui, model)
     trace = model.snapshot["live_trace"]
@@ -115,6 +123,8 @@ def test_the_running_trace_is_mirrored_and_keeps_its_window(app):
     signs = {s["name"]: np.sign(np.asarray(s["counts"])) for s in trace["streams"]}
     assert all((v >= 0).all() for k, v in signs.items() if k.startswith("DD"))
     assert all((v <= 0).all() for k, v in signs.items() if not k.startswith("DD"))
+    app.focus_dock("plot_trace")
+    ui.draw(1)
     assert "Last 0.5 s" in " ".join(ui.strings())
 
 
@@ -151,3 +161,74 @@ def test_an_image_scan_lands_in_datasets_and_opens_in_an_imaging_tool(app, tmp_p
         Driver(tool, (1200, 800)).draw(3)
     finally:
         tool.close()
+
+
+def test_record_workspace_tabs_and_controls(app):
+    """The central main region acts as an EMTK workspace dock containing workspace documents
+    with tabs, tiling, cascading, mode-specific workspace documents, and dock-in-dock flexibility."""
+    assert app.docks.workspace == "main"
+    assert app.docks.region_of("plot_hist") == "main"
+    ws_keys = (
+        "plot_hist", "plot_correlation", "plot_polarization", "plot_image",
+        "power_calibration", "plot_trace", "plot_decays", "rates", "video",
+        "quality", "setup_quality", "points"
+    )
+    for key in ws_keys:
+        assert app.docks.windows[key].workspace, f"{key} should be a workspace window"
+        assert app.docks.region_of(key) == "main"
+
+    setup_keys = ("acquisition", "laser", "analysis")
+    for key in setup_keys:
+        assert not app.docks.windows[key].workspace, f"{key} should not be a workspace window"
+        assert app.docks.region_of(key) == "settings"
+
+    # Settings joins the workspace documents (the operator asked for it there), yet it
+    # stays an expert dock: outside Advanced mode it is hidden (see mode presets test).
+    assert app.docks.windows["settings"].workspace
+    assert app.docks.region_of("settings") == "main"
+
+    # Dock-in-docks: any dock can dock into main or other docks
+    assert app.docks.admits("plot_trace", "main")
+    assert app.docks.target_admits("plot_trace", "main:center")
+    assert app.docks.target_admits("plot_trace", "main:left")
+    assert app.docks.admits("plot_hist", "settings")
+
+    ui = Driver(app, SIZE)
+    ui.draw(2)
+    rendered_strings = " ".join(ui.strings())
+    for ctrl in ("Tile", "Cascade", "Tabbed", "Windows"):
+        assert ctrl in rendered_strings, f"Workspace control {ctrl} missing from header"
+
+    # Workspace layout operations
+    app.docks.tile_workspace()
+    ui.draw(1)
+    app.docks.cascade_workspace()
+    ui.draw(1)
+    app.docks.tab_workspace()
+    ui.draw(1)
+
+    # In point mode, Histogram tab is active in workspace
+    assert app.docks.windows["plot_hist"].visible
+    assert not app.docks.windows["plot_correlation"].visible
+
+    # Switching to FCS mode activates FCS Correlation tab in workspace
+    app.model.mode = "fcs"
+    app.model.mode_changed()
+    ui.draw(2)
+    assert app.docks.windows["plot_correlation"].visible
+    assert not app.docks.windows["plot_hist"].visible
+
+    # Switching to Polarization mode activates Polarization tab in workspace
+    app.model.mode = "pol"
+    app.model.mode_changed()
+    ui.draw(2)
+    assert app.docks.windows["plot_polarization"].visible
+    assert not app.docks.windows["plot_correlation"].visible
+
+    # Switching to Image mode activates Image tab in workspace
+    app.model.mode = "image"
+    app.model.mode_changed()
+    ui.draw(2)
+    assert app.docks.windows["plot_image"].visible
+    assert not app.docks.windows["plot_polarization"].visible
+

@@ -156,6 +156,9 @@ def test_the_survey_on_screen(tmp_path):
         model.mode_changed()
         ui.draw(2)
         ui.click("load_example")
+        if model.laser is not None:
+            model.laser.set_head(200, intensity_pct=100)
+            model.laser.set_emission(True)
         model.set_scan(ScanSettings(pixels_x=48, pixels_y=48, area_x_um=6.4, area_y_um=6.4,
                                     x0_um=30.0, y0_um=30.0, dwell_ms=0.1, frames=2))
         model.img_beads = 4
@@ -165,6 +168,7 @@ def test_the_survey_on_screen(tmp_path):
         model.autopick_max, model.point_time_s = 2, 1.0
         model.realtime = True  # at measurement pace: a point's live trace to look at
         # the survey's fold open, the per-point ones folded: the overview in view
+        app.focus_dock("points")
         app.form.folds.update({"Survey": True, "Auto-pick": False, "Measurement": False})
         ui.draw(2)
         ui.click("survey_start")
@@ -179,12 +183,14 @@ def test_the_survey_on_screen(tmp_path):
         while model.survey_active and not measuring_a_later_tile():
             assert time.monotonic() < end
             ui.draw(1)
+            time.sleep(0.02)  # yield: a tight draw loop starves the realtime worker (51 ms frames)
         SHOTS.mkdir(parents=True, exist_ok=True)
         save_png(app, str(SHOTS / "record_survey_running.png"), size=SIZE)
         assert "Tile" in model.survey_text
         while model.survey_active:
             assert time.monotonic() < end
             ui.draw(1)
+            time.sleep(0.02)
         ui.draw(3)
         save_png(app, str(SHOTS / "record_survey_done.png"), size=SIZE)
         assert all(t.state in ("done", "empty") for t in model.survey_tiles)

@@ -38,7 +38,8 @@ def test_the_example_runs_and_lands_in_the_workspace(app):
     ui = Driver(app, SIZE)
     ui.draw(3)
     ui.click("load_example")
-    model.duration_s = 5.0
+    model.duration_s = 10.0
+    model.stop_after = True
     ui.draw(2)
     ui.click("start")
     _run_to_end(ui, model)
@@ -63,7 +64,8 @@ def test_a_two_colour_run_shows_the_proximity_ratio_and_no_stoichiometry(app):
     ui = Driver(app, SIZE)
     ui.draw(3)
     ui.click("load_example")
-    model.sim_scheme, model.duration_s = "two_color", 8.0
+    model.sim_scheme, model.duration_s = "two_color", 12.0
+    model.stop_after = True
     ui.draw(2)
     assert model.make_experiment(400).preset == "two_color"
     ui.click("start")

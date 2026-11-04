@@ -15,11 +15,12 @@
           "description": "A settings file (⚙), a profile (★) or a measurement (⏱) of the workspace. Choosing a settings file or profile loads it at once: it connects the device and the laser it names and applies its settings (the laser's emission stays off). Settings files enter ChiSurf through the drop, like every input."
         },
         {
-          "type": "toggle",
-          "attr": "advanced",
-          "label": "Advanced",
-          "description": "Simple (off) or Advanced (on), for all the hardware at once. Simple shows what a measurement needs: the laser's intensity and on/off, the shutters, the run. Advanced adds the expert settings each driver marks: the TCSPC unit's thresholds (CFD levels), shifts (sync and input offsets), timing and markers; the laser's repetition rate and head details; the shutters' reported state and the diode averaging; the simulator's realism. A loaded settings file sets them all either way.",
-          "call": "advanced_changed"
+          "type": "choice",
+          "attr": "ui_mode",
+          "label": "User mode",
+          "options_source": "ui_mode_options",
+          "description": "Simple: routine controls and calibrated µW. Advanced: instrument configuration and approved wizard setup. Guided: one modal instruction at a time; unrelated controls are inaccessible.",
+          "call": "ui_mode_changed"
         },
         {
           "type": "progress",
@@ -47,6 +48,11 @@
               "label": "Load",
               "icon": "⚙",
               "description": "Load the chosen settings file again: connect the device and the laser it names, fill the form and send it to them. The laser's emission stays off."
+            },
+            {
+              "action": "request_settings_file",
+              "label": "…",
+              "description": "Load acquisition settings from a PTU measurement, PTO container or JSON file. Browsing or cancelling changes nothing."
             },
             {
               "action": "use_measurement_settings",
@@ -81,16 +87,17 @@
         {
           "type": "choice",
           "attr": "mode",
-          "label": "Mode",
+          "label": "Experiment",
           "options_source": "mode_options",
           "call": "mode_changed",
-          "description": "Point: a single-molecule measurement at one spot -- bursts, E-S and the running trace. FCS: a point measurement for fluorescence correlation -- the correlation curve builds up live. Image: a scan -- the image builds up line by line from the scanner's markers, with fast-FLIM maps."
+          "description": "Experiment type: smFRET (point bursts & E-S), FCS (fluorescence correlation & diffusion), Polarization (single-molecule anisotropy & lifetime), or Image (fast-FLIM scan)."
         },
         {
           "type": "choice",
           "attr": "source_kind",
           "label": "Source",
           "options_source": "source_options",
+          "call": "source_changed",
           "description": "Where the photons come from: the simulator (a MultiHarp measuring a PIE smFRET sample with a known answer — its records go through the same device path as a real measurement), a photon stream from the Datasets workspace played back at measurement speed, or a PicoQuant device connected over USB."
         },
         {
@@ -652,7 +659,12 @@
         {
           "type": "custom",
           "key": "laser_status",
-          "description": "The laser's state: connected, applied, emitting; the tooltip names the unit and its heads."
+          "description": "The connected laser and its state, plus why it cannot emit (hover)."
+        },
+        {
+          "type": "custom",
+          "key": "laser_power",
+          "description": "Select a connected laser and set its calibrated average objective power in µW; raw drive percentages are advanced controls."
         },
         {
           "type": "custom",
@@ -806,7 +818,9 @@
     },
     {
       "type": "panel",
-      "title": "Shutters",
+      "title": "Shutters & Diode",
+      "collapsible": true,
+      "collapsed": false,
       "description": "The microscope's shutters and power diode, as the loaded settings file defines them (its shutters section: the MT200's shutter box on the CAN card). Start opens the shutters the settings name and the end of a run closes the excitation shutter; the laser is not touched.",
       "sections": [
         {
@@ -819,7 +833,7 @@
           "description": "Generated from the settings file's shutters section (each shutter linked to its own endpoint: a CAN or I2C bus, a bit): a checkbox per shutter (ticked opens it), what the hardware reports (it differs while a box's own buttons have taken over), and the power diode (raw; in a.u. once the settings calibrate it)."
         }
       ],
-      "dock": "shutters"
+      "dock": "laser"
     },
     {
       "type": "panel",
@@ -961,6 +975,8 @@
         {
           "type": "panel",
           "title": "Running trace",
+          "collapsible": true,
+          "collapsed": true,
           "hidden_when": {
             "attr": "mode",
             "equals": "image"
@@ -1260,6 +1276,12 @@
       "title": "Run",
       "sections": [
         {
+          "type": "toggle",
+          "attr": "stop_after",
+          "label": "Stop after",
+          "description": "Off (default): measure until Stop or the backend's advertised single-acquisition limit. On: stop after Duration. The connected backend's limit is reported below; a finite hardware timer is never called unlimited."
+        },
+        {
           "type": "value",
           "attr": "duration_s",
           "label": "Duration (s)",
@@ -1269,7 +1291,16 @@
           "step": 10.0,
           "decimals": 1,
           "style": "spin",
-          "description": "Stop after this much measurement time; 0 measures until you press Stop."
+          "description": "The run's length with Stop after ticked (s); 0 with the tick means no limit. Without the tick nothing stops the run but your Stop."
+        },
+        {
+          "type": "info",
+          "source": "device_limit_text",
+          "hidden_when": {
+            "attr": "source_kind",
+            "not_equals": "device"
+          },
+          "description": "The connected backend's single-acquisition time limit. Read from its capability when available; old drivers may still have a one-hour fallback."
         },
         {
           "type": "value",
@@ -1283,7 +1314,7 @@
           "attr": "recording_store",
           "label": "Store photons",
           "options_source": "store_options",
-          "description": "Embed (default): the photons are stored inside the project's .cs.pto when the run stops, so the project carries its data. Link: the project records the file's path and checksum only. Written beside the project while measuring, so a crash leaves the photons on disk."
+          "description": "Separate PTU file (default): the photons stay their own .ptu file on disk and the project links its path and checksum -- the recording survives a crashed project file and the archive picks it up. Embed: a copy is stored inside the project's .cs.ptu when the run stops. Written beside the project while measuring, so a crash leaves the photons on disk."
         },
         {
           "type": "button_row",
@@ -1321,6 +1352,56 @@
     },
     {
       "type": "panel",
+      "title": "Session",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "operator_name",
+          "label": "Operator",
+          "kind": "str",
+          "description": "Who measured: carried in the header of every recording of the session (the archive's transfer reads it)."
+        },
+        {
+          "type": "value",
+          "attr": "project_name",
+          "label": "Project",
+          "kind": "str",
+          "description": "The project the session belongs to, in every recording's header."
+        },
+        {
+          "type": "value",
+          "attr": "sample_name",
+          "label": "Sample",
+          "kind": "str",
+          "description": "What is on the microscope, in every recording's header."
+        },
+        {
+          "type": "value",
+          "attr": "experiment_type",
+          "label": "Experiment type",
+          "kind": "str",
+          "description": "Free text (e.g. PIE smFRET), in every recording's header."
+        },
+        {
+          "type": "value",
+          "attr": "dye_names",
+          "label": "Dyes",
+          "kind": "str",
+          "description": "The dyes in the sample (e.g. Atto488+Atto647N), in every recording's header."
+        },
+        {
+          "type": "custom",
+          "key": "transfer_status",
+          "description": "The archive transfer of this session's recordings: what the registered backend did (hover for what it does)."
+        }
+      ],
+      "dock": "acquisition",
+      "description": "Who measured what, in the header of every recording of the session, and the archive transfer's state."
+    },
+    {
+      "type": "panel",
       "title": "Histogram",
       "dock": "plot_hist",
       "sections": [
@@ -1335,6 +1416,54 @@
             "not_equals": "point"
           }
         },
+
+        {
+          "type": "panel",
+          "title": "Histogram range",
+          "hidden_when": {"attr": "advanced", "equals": false},
+          "collapsible": true,
+          "collapsed": true,
+          "n_col": 3,
+          "sections": [
+            {
+              "type": "value",
+              "attr": "hist_x_min",
+              "label": "x min",
+              "kind": "float",
+              "minimum": 0.0,
+              "maximum": 1000000.0,
+              "step": 0.01,
+              "decimals": 3,
+              "style": "spin",
+              "description": "The histogram's x axis start (its unit); 0 shows the data's full range."
+            },
+            {
+              "type": "value",
+              "attr": "hist_x_max",
+              "label": "x max",
+              "kind": "float",
+              "minimum": 0.0,
+              "maximum": 1000000.0,
+              "step": 0.01,
+              "decimals": 3,
+              "style": "spin",
+              "description": "The histogram's x axis end; 0 shows the data's full range."
+            },
+            {
+              "type": "value",
+              "attr": "hist_y_max",
+              "label": "y max",
+              "kind": "float",
+              "minimum": 0.0,
+              "maximum": 1000000000.0,
+              "step": 1.0,
+              "decimals": 1,
+              "style": "spin",
+              "description": "The bursts axis' (and 2-D colour scale's) upper limit; 0 scales to the data."
+            }
+          ],
+          "description": "The histogram's viewing range (0 = the data's full extent)."
+        },
         {
           "type": "custom",
           "key": "live_view",
@@ -1342,6 +1471,32 @@
         }
       ],
       "description": "The live histograms of the measurement type (E–S for PIE), building up burst by burst."
+    },
+    {
+      "type": "panel",
+      "title": "FCS Correlation",
+      "dock": "plot_correlation",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "live_correlation",
+          "description": "The live correlation curve G(tau) - 1, amplitude N, molecular brightness, and diffusion time."
+        }
+      ],
+      "description": "Fluorescence correlation curve and real-time diffusion parameters."
+    },
+    {
+      "type": "panel",
+      "title": "Polarization",
+      "dock": "plot_polarization",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "live_polarization",
+          "description": "Time-resolved anisotropy decay r(t), lifetime estimate, and G-factor calibration helper."
+        }
+      ],
+      "description": "Single-molecule polarization, anisotropy decay r(t), lifetime, and G-factor helper."
     },
     {
       "type": "panel",
@@ -1829,6 +1984,54 @@
       "title": "Trace",
       "dock": "plot_trace",
       "sections": [
+
+        {
+          "type": "panel",
+          "title": "Trace range",
+          "hidden_when": {"attr": "advanced", "equals": false},
+          "collapsible": true,
+          "collapsed": true,
+          "n_col": 3,
+          "sections": [
+            {
+              "type": "value",
+              "attr": "rates_x_min",
+              "label": "x min (s)",
+              "kind": "float",
+              "minimum": 0.0,
+              "maximum": 1000000.0,
+              "step": 1.0,
+              "decimals": 2,
+              "style": "spin",
+              "description": "The rate plot's start (s); 0 shows the data's full range."
+            },
+            {
+              "type": "value",
+              "attr": "rates_x_max",
+              "label": "x max (s)",
+              "kind": "float",
+              "minimum": 0.0,
+              "maximum": 1000000.0,
+              "step": 1.0,
+              "decimals": 2,
+              "style": "spin",
+              "description": "The rate plot's end (s); 0 shows the data's full range."
+            },
+            {
+              "type": "value",
+              "attr": "rates_y_max",
+              "label": "y max (kHz)",
+              "kind": "float",
+              "minimum": 0.0,
+              "maximum": 1000000.0,
+              "step": 1.0,
+              "decimals": 1,
+              "style": "spin",
+              "description": "The rate axis' upper limit (kHz); 0 scales to the data."
+            }
+          ],
+          "description": "The count-rate plot's viewing range (0 = the data's full extent)."
+        },
         {
           "type": "custom",
           "key": "live_trace",
@@ -1843,6 +2046,59 @@
       "dock": "plot_decays",
       "sections": [
         {
+          "type": "toggle",
+          "attr": "decay_bursts_only",
+          "label": "Burst photons only (off: total decay)",
+          "description": "Off: live decay from all recorded photons. On: decay accumulated from photons in all accepted bursts, using tttrlib's burst-decay accumulator. This is not the last individual burst. Changing this view does not change the PTU or burst search."
+        },
+        {
+          "type": "panel",
+          "title": "Decay range",
+          "hidden_when": {"attr": "advanced", "equals": false},
+          "collapsible": true,
+          "collapsed": true,
+          "n_col": 3,
+          "sections": [
+            {
+              "type": "value",
+              "attr": "decays_x_min",
+              "label": "x min (ch)",
+              "kind": "float",
+              "minimum": 0.0,
+              "maximum": 1000000.0,
+              "step": 1.0,
+              "decimals": 1,
+              "style": "spin",
+              "description": "The decay's first channel shown; 0 shows the data's full range."
+            },
+            {
+              "type": "value",
+              "attr": "decays_x_max",
+              "label": "x max (ch)",
+              "kind": "float",
+              "minimum": 0.0,
+              "maximum": 1000000.0,
+              "step": 1.0,
+              "decimals": 1,
+              "style": "spin",
+              "description": "The decay's last channel shown; 0 shows the data's full range."
+            },
+            {
+              "type": "value",
+              "attr": "decays_y_max",
+              "label": "y max",
+              "kind": "float",
+              "minimum": 0.0,
+              "maximum": 1000000000.0,
+              "step": 1.0,
+              "decimals": 1,
+              "style": "spin",
+              "description": "The photons axis' upper limit; 0 scales to the data."
+            }
+          ],
+          "description": "The decays' viewing range (0 = the data's full extent)."
+        },
+        {
           "type": "custom",
           "key": "live_decays",
           "description": "Micro-time histograms per detector, with the windows of the setup."
@@ -1852,11 +2108,28 @@
     },
     {
       "type": "panel",
+      "title": "Count rates",
+      "dock": "rates",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "live_rates",
+          "description": "The channels' count rates in large digits (Hz, kHz or MHz as fits): during a run one row per detector with the whole-run mean, idle the connected device's sync and input rates."
+        }
+      ],
+      "description": "The count rates, large enough to read from the desk: per detector while measuring, the device's sync and inputs while idle."
+    },
+    {
+      "type": "panel",
       "title": "Video",
       "dock": "video",
       "description": "Preview and record a selected camera, capture card, video file or stream independently of photon acquisition. The Camera dock is available in every mode, including the simulator.",
       "sections": [
-        {"type": "custom", "key": "video_panel", "description": "Video source, live preview and recording."}
+        {
+          "type": "custom",
+          "key": "video_panel",
+          "description": "Video source, live preview and recording."
+        }
       ]
     },
     {
@@ -1868,9 +2141,65 @@
           "type": "custom",
           "key": "live_qc",
           "description": "Traffic lights: the quality checks of the measurement type, the worst one overall. Hover a line for what it means and what to do."
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "options": {
+            "source": "quality_rows",
+            "row_key": "metric",
+            "editable": false,
+            "tooltip_key": "detail",
+            "selection_note": false,
+            "min_height": 60,
+            "expand": true,
+            "fit_rows": false,
+            "columns": [
+              {
+                "key": "metric",
+                "title": "Metric",
+                "min_width": 84,
+                "tooltip": "The check: what the quality checker measures."
+              },
+              {
+                "key": "value",
+                "title": "Value",
+                "min_width": 56,
+                "tooltip": "The value measured in this run."
+              },
+              {
+                "key": "acceptable",
+                "title": "Limit",
+                "min_width": 62,
+                "tooltip": "The acceptable range as the checker configures it ('—' where this check names none)."
+              },
+              {
+                "key": "status",
+                "title": "Status",
+                "min_width": 48,
+                "tooltip": "Hover the row for the explanation and recommended action.",
+                "background": {"good": "#24683d", "watch": "#806523", "act now": "#8b3535", "no verdict": "#4a4a4a"}
+              }
+            ]
+          },
+          "hidden_when": {"attr": "advanced", "equals": false},
+          "description": "Advanced quality report: metric, value, configured limit and status. Explanations and actions appear only on hover."
         }
       ],
-      "description": "The quality checker's traffic lights: FRET (Point) or imaging (Image) checks, worst first, each with what to do."
+      "description": "The quality checker's traffic lights: FRET (Point) or imaging (Image) checks, worst first, each with what to do -- as a table."
+    },
+    {
+      "type": "panel",
+      "title": "Setup quality",
+      "dock": "setup_quality",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "setup_quality_rows",
+          "description": "The stored reference fits per dye: lifetime, diffusion time and brightness, each with its status ('missing' where no reference is stored; never green without verified power and user-established bounds)."
+        }
+      ],
+      "description": "Setup quality: externally fitted reference measurements per dye, compared only at matching conditions; the reference entry form sits below the rows."
     }
   ]
 }

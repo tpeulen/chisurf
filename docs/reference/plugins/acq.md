@@ -96,18 +96,33 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Plot type | `macro_type` | choice |  | choices: dt, absolute | dt plots the inter-photon time against time; absolute plots the photon time stamps against photon index. |
 | Update every (snapshots) | `macro_every` | int |  | 1 … 1000 (step 1) | Redraw this plot only on every N-th published snapshot (a snapshot is one data chunk batch); raise it to spare the CPU on fast streams. |
 
+### General
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Laser / color | `laser_name` | choice |  | choices: `laser_options` | The laser whose average power you are measuring. Only connected heads need calibration. |
+| Diode value | `raw` | float |  | 0 … 1000000000 | Diode reading automatically sampled from connected diode. |
+| Objective power (µW) | `uw` | float |  | 0 … 1000000 | Enter the simultaneous objective power reading from your calibrated external meter. |
+| Species | `species` | int |  | 1 … 999 | Which species' decay is being edited. Switching keeps each species' edits; OK writes them all back. |
+| Decay pattern file | `pattern_path` | str |  |  | Measured or saved decay pattern (.npy or text) that replaces the lifetimes for this species; empty = use the lifetimes. |
+| Gaussian FWHM (ns) | `irf_fwhm_ns` | float |  | 0.0 … 1000.0 | Full width at half maximum of the Gaussian instrument response shared by all species; 0 = no IRF convolution. |
+| Source | `address` | str |  |  | Camera index, Matrix Vision device, video file, or supported stream URL. Connect opens the selected source. |
+| Preview gain | `display_gain` | float |  | 0.1 … 20.0 (step 0.1) | Brighten the live preview to inspect dim backreflection. Recorded image data is unchanged. |
+| Recording file | `output` | str |  |  | New file for recorded frames. A name ending in .tif or .tiff records a multi-page TIFF: every captured frame becomes one page, needing no OpenCV. Any other name records a video file through the optional OpenCV package. Existing files are never overwritten; frame timestamps are saved alongside. |
+| AVI FPS | `fps` | float |  | 0.1 … 240.0 (step 1.0) | Playback frame rate of an AVI or other video-file recording. A TIFF recording stores every captured frame with its own capture time, so this does not apply to it. |
+
 ### Settings
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | From | `settings_address` | choice |  | choices: `settings_options` | A settings file (⚙), a profile (★) or a measurement (⏱) of the workspace. Choosing a settings file or profile loads it at once: it connects the device and the laser it names and applies its settings (the laser's emission stays off). Settings files enter ChiSurf through the drop, like every input. |
-| Advanced | `advanced` | bool |  |  | Simple (off) or Advanced (on), for all the hardware at once. Simple shows what a measurement needs: the laser's intensity and on/off, the shutters, the run. Advanced adds the expert settings each driver marks: the TCSPC unit's thresholds (CFD levels), shifts (sync and input offsets), timing and markers; the laser's repetition rate and head details; the shutters' reported state and the diode averaging; the simulator's realism. A loaded settings file sets them all either way. |
+| User mode | `ui_mode` | choice |  | choices: `ui_mode_options` | Simple: routine controls and calibrated µW. Advanced: instrument configuration and approved wizard setup. Guided: one modal instruction at a time; unrelated controls are inaccessible. |
 
 ### Source
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Mode | `mode` | choice |  | choices: `mode_options` | Point: a single-molecule measurement at one spot -- bursts, E-S and the running trace. FCS: a point measurement for fluorescence correlation -- the correlation curve builds up live. Image: a scan -- the image builds up line by line from the scanner's markers, with fast-FLIM maps. |
+| Experiment | `mode` | choice |  | choices: `mode_options` | Experiment type: smFRET (point bursts & E-S), FCS (fluorescence correlation & diffusion), Polarization (single-molecule anisotropy & lifetime), or Image (fast-FLIM scan). |
 | Source | `source_kind` | choice |  | choices: `source_options` | Where the photons come from: the simulator (a MultiHarp measuring a PIE smFRET sample with a known answer — its records go through the same device path as a real measurement), a photon stream from the Datasets workspace played back at measurement speed, or a PicoQuant device connected over USB. |
 | Seed | `sim_seed` | int |  | 0 … 2147483647 (step 1) | Seeds diffusion and emission, so a run is reproducible. |
 | Photon stream | `replay_address` | choice |  | choices: `photon_options` | A photons dataset of the Datasets workspace, played back at measurement speed. Drop the file on the ChiSurf window to add it. |
@@ -230,15 +245,34 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Duration (s) | `duration_s` | float |  | 0.0 … 86400.0 (step 10.0) | Stop after this much measurement time; 0 measures until you press Stop. |
+| Stop after | `stop_after` | bool |  |  | Off (default): measure until Stop or the backend's advertised single-acquisition limit. On: stop after Duration. The connected backend's limit is reported below; a finite hardware timer is never called unlimited. |
+| Duration (s) | `duration_s` | float |  | 0.0 … 86400.0 (step 10.0) | The run's length with Stop after ticked (s); 0 with the tick means no limit. Without the tick nothing stops the run but your Stop. |
 | Name | `run_name` | str |  |  | The recording's name: its file in the project's recordings folder and its row in Datasets. |
-| Store photons | `recording_store` | choice |  | choices: `store_options` | Embed (default): the photons are stored inside the project's .cs.pto when the run stops, so the project carries its data. Link: the project records the file's path and checksum only. Written beside the project while measuring, so a crash leaves the photons on disk. |
+| Store photons | `recording_store` | choice |  | choices: `store_options` | Separate PTU file (default): the photons stay their own .ptu file on disk and the project links its path and checksum -- the recording survives a crashed project file and the archive picks it up. Embed: a copy is stored inside the project's .cs.ptu when the run stops. Written beside the project while measuring, so a crash leaves the photons on disk. |
+
+### Session
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Operator | `operator_name` | str |  |  | Who measured: carried in the header of every recording of the session (the archive's transfer reads it). |
+| Project | `project_name` | str |  |  | The project the session belongs to, in every recording's header. |
+| Sample | `sample_name` | str |  |  | What is on the microscope, in every recording's header. |
+| Experiment type | `experiment_type` | str |  |  | Free text (e.g. PIE smFRET), in every recording's header. |
+| Dyes | `dye_names` | str |  |  | The dyes in the sample (e.g. Atto488+Atto647N), in every recording's header. |
 
 ### Histogram
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Histogram | `plot_choice` | choice |  | choices: `plot_options` | Which of the measurement type's histograms to show: E–S (with its marginals) for PIE and ALEX, the proximity ratio for two colour, anisotropy and proximity ratio for MFD, burst size and duration for a single colour. |
+
+### Histogram range
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| x min | `hist_x_min` | float |  | 0.0 … 1000000.0 (step 0.01) | The histogram's x axis start (its unit); 0 shows the data's full range. |
+| x max | `hist_x_max` | float |  | 0.0 … 1000000.0 (step 0.01) | The histogram's x axis end; 0 shows the data's full range. |
+| y max | `hist_y_max` | float |  | 0.0 … 1000000000.0 (step 1.0) | The bursts axis' (and 2-D colour scale's) upper limit; 0 scales to the data. |
 
 ### Image
 
@@ -268,13 +302,53 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Until bleached | `until_bleached` | bool |  |  | End a point early once its molecule has bleached: the count rate stays down near the background (the threshold is drawn in the trace). |
 | Background (kHz) | `bleach_background_kcps` | float |  | 0.0 … 10000.0 (step 0.5) | The count rate without a molecule, which the bleach rule's threshold sits above (0: the simulator's background, else none). |
 
-### General
+### Survey
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Species | `species` | int |  | 1 … 999 | Which species' decay is being edited. Switching keeps each species' edits; OK writes them all back. |
-| Decay pattern file | `pattern_path` | str |  |  | Measured or saved decay pattern (.npy or text) that replaces the lifetimes for this species; empty = use the lifetimes. |
-| Gaussian FWHM (ns) | `irf_fwhm_ns` | float |  | 0.0 … 1000.0 | Full width at half maximum of the Gaussian instrument response shared by all species; 0 = no IRF convolution. |
+| Area | `survey_area_kind` | choice |  | choices: `survey_area_options` | The whole travel of the scanner (the E-725: 0–100 µm on both axes; read from its driver), or a custom area. |
+| Tile overlap (µm) | `survey_overlap_um` | float |  | 0.0 … 100.0 (step 0.5) | How far neighbouring tiles overlap. With an overlap of at least twice the edge guard a molecule on a tile's edge is measured whole from its neighbour; a molecule measured already is never measured again. |
+| Min molecules | `survey_min_molecules` | int |  | 1 … 10000 (step 1) | A tile with fewer molecules to measure is logged as empty and passed (Max molecules and Min/Max photons of Auto-pick apply per tile). |
+| Stop after tiles | `survey_max_tiles` | int |  | 0 … 100000 (step 1) | End the survey after this many tiles (0: no limit). |
+| Stop after molecules | `survey_max_molecules` | int |  | 0 … 1000000 (step 10) | End the survey once this many molecules have been measured (0: no limit). |
+| Stop after (min) | `survey_max_minutes` | float |  | 0.0 … 100000.0 (step 10.0) | End the survey after this much time (0: no limit). |
+| Scanner learning | `survey_learning` | choice |  | choices: `survey_learning_options` | The scanner learns its pattern (linearization and line triggers) before an image; that is learn_s (5 s on the MT200) per tile. All tiles of a survey have the same raster, so it can learn once: First tile only reuses everything for the next tiles; First tile, re-check line triggers (default) also re-measures the line triggers per tile in one recorded period (well under a second). Every tile learns each time, as for a single image. |
+| Order | `survey_order` | choice |  | choices: `survey_order_options` | Spiral (default): the start tile, then ring after ring around it -- a coverslip is rarely flat, so the tiles nearest the focused spot come first. Serpentine: row by row, alternating direction. |
+| Spiral centre | `survey_centre` | choice |  | choices: `survey_centre_options` | Where the spiral starts: where you focused -- the centre of the last image (default; the scanner parks at the stage centre after every image, so its position is not the focus) -- or the area's centre. |
+| Edge guard (px) | `survey_guard_px` | int |  | 0 … 100 (step 1) | Spots closer than this to a tile's edge are left to the neighbouring tile (cut spots have biased positions and brightness). |
+| Stop after empty tiles | `survey_max_empty` | int |  | 0 … 10000 (step 1) | End the survey after this many empty tiles in a row (0: never) -- a ring of empty tiles far out usually means the sample has left the focus. |
+| Re-image after measuring | `survey_reimage` | bool |  |  | Image each tile again after its molecules were measured, to see what bleached (a second image dataset per tile). |
+
+### Custom area
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| X start (µm) | `survey_x0_um` | float |  | 0.0 … 1000.0 (step 1.0) | The area's corner on the fast axis. |
+| Y start (µm) | `survey_y0_um` | float |  | 0.0 … 1000.0 (step 1.0) | The area's corner on the slow axis. |
+| Width (µm) | `survey_w_um` | float |  | 0.1 … 1000.0 (step 5.0) | The area's width. |
+| Height (µm) | `survey_h_um` | float |  | 0.1 … 1000.0 (step 5.0) | The area's height. |
+
+### Trace range
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| x min (s) | `rates_x_min` | float |  | 0.0 … 1000000.0 (step 1.0) | The rate plot's start (s); 0 shows the data's full range. |
+| x max (s) | `rates_x_max` | float |  | 0.0 … 1000000.0 (step 1.0) | The rate plot's end (s); 0 shows the data's full range. |
+| y max (kHz) | `rates_y_max` | float |  | 0.0 … 1000000.0 (step 1.0) | The rate axis' upper limit (kHz); 0 scales to the data. |
+
+### Decays
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Burst photons only (off: total decay) | `decay_bursts_only` | bool |  |  | Off: live decay from all recorded photons. On: decay accumulated from photons in all accepted bursts, using tttrlib's burst-decay accumulator. This is not the last individual burst. Changing this view does not change the PTU or burst search. |
+
+### Decay range
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| x min (ch) | `decays_x_min` | float |  | 0.0 … 1000000.0 (step 1.0) | The decay's first channel shown; 0 shows the data's full range. |
+| x max (ch) | `decays_x_max` | float |  | 0.0 … 1000000.0 (step 1.0) | The decay's last channel shown; 0 shows the data's full range. |
+| y max | `decays_y_max` | float |  | 0.0 … 1000000000.0 (step 1.0) | The photons axis' upper limit; 0 scales to the data. |
 
 ### Acquisition
 
@@ -346,6 +420,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/core/acq/`
 - Manifest: {src}`chisurf/plugins/core/acq/manifest.json`
 - UI spec: {src}`chisurf/plugins/core/acq/gui/live_plots.view.json`
+- UI spec: {src}`chisurf/plugins/core/acq/gui/power.view.json`
 - UI spec: {src}`chisurf/plugins/core/acq/gui/record.view.json`
 - UI spec: {src}`chisurf/plugins/core/acq/gui/sim_decay_emtk.view.json`
 - UI spec: {src}`chisurf/plugins/core/acq/gui/sim_setup_emtk.view.json`
+- UI spec: {src}`chisurf/plugins/core/acq/gui/video.view.json`

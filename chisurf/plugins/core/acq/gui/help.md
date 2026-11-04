@@ -13,13 +13,108 @@ running trace), **Quality** (traffic lights) and one window per plot -- **Histog
 to make tabs, resize from any edge, double-click a title to fold it. The bar on top always holds
 **Start**, **Stop**, the run's state, **Laser off**, **Guide**, **Help** and **Reset layout**. The
 arrangement is kept between sessions.
+Dock accents group **acquisition** (blue), **illumination** (amber), **analysis**
+(violet), and **monitoring** (teal). These are task labels, not safety verdicts.
+
+Next to **Load**, **…** opens a file chooser for acquisition settings in **JSON**,
+**PTU**, or **PTO** files. Browsing/Cancel changes nothing. **Open** validates the
+document, then applies it using the normal settings-loading rules; a profile may
+connect the devices it names, with laser emission kept off. Loading is blocked
+during acquisition, another load, an active power adjustment, and Guided mode.
+An explicit file selection replaces the workspace reload target rather than
+leaving a different profile selected behind it.
+
+Double-click a detector or mean row in **Count rates** for a **large floating
+alignment display**. Its digits grow with the window and update from the same
+rate source. **Mean recorded** uses full-run photon/time counters when available,
+not the displayed trace ring. Closing the readout never stops acquisition.
+
+Choose the **Guided** operating mode to open the modal measurement wizard; there
+is no separate Guided measurement dock. Operator/sample entry and the sequential
+physical tasks stay inside that wizard. To edit an approved setup, enter the
+wizard after selecting **Advanced** first, then expand **Edit approved setup (Advanced)** on its
+first page; ordinary Guided mode keeps those expert settings hidden. Power calibration is
+opened from a laser's **Calibrate** control, not a second global toolbar button.
+**Help** opens this reference window; **Escape** closes it.
+
+The wizard uses emtk's shared **Wizard** control. Its background is blurred and
+cannot receive clicks or keys. **Previous**, **Stop / block light**, and **Next**
+stay at the bottom while the instructions scroll above them. Previous is guarded:
+it cannot change a running measurement or reuse saved references after going back.
+
+The workflow always keeps live **count rates, correlations, decays/IRF**, and a
+stage-specific **detector-count or FRET/stoichiometry** plot in the wizard itself.
+The wizard is built for inexperienced operators: the filter and beam-splitter
+checks are **one optics confirmation**, a single *Allow light and set approved
+power* gesture tunes **every laser head in turn**, and a stage whose checks all
+pass **advances automatically** — no extra Next click. On the power page you may
+**edit the target** for the current head; your target is bounded by that head's
+calibration and applies to the whole session.
+
+**FCS comes first.** After water and buffer you insert your FCS pre-dilution and
+run about **five minutes at low power**, increasing gradually while watching the
+Correlation amplitude (never start high — detectors can be damaged). The wizard
+reads how many molecules are in focus and prints **exact dilution volumes** for
+the single-molecule measurements (for example: *put 47 µL buffer on the slide,
+add 3 µL of the pre-dilution*), reusing the FCS concentration as instructed.
+
+During the DNA and sample stages the wizard shows the **burst/intensity trace**,
+the **E–S histogram with E and S marginals**, live **burst count, measurement
+time and photon counters**, and a **traffic light**: plain green when every
+configured check passes; yellow/red states say exactly **what to improve**.
+After the calibrations you may **measure several samples in a row** — the
+calibration, references and DNA-derived corrections stay valid for every
+sample; press **Measure another sample** or **Finish guided session**.
+The plot frames remain present while waiting for data. Their reference diagnostics
+use the recorded photons, not a simulated preview of a connected instrument.
+Amplitude-derived N and raw brightness are preliminary, not fitted diffusion times
+or calibrated molecular brightness. Missing scientific limits and unfitted
+diffusion/lifetime quantities remain explicitly **unverified**. A saved recording
+passing acquisition checks is not a claim of complete dye/timing calibration.
+Simulation practice is labeled **SIMULATION ONLY** throughout the wizard. Its
+reference and DNA curves still come from the photons written to its simulated
+PTUs; they are not evidence about a real instrument. The count-rate trace shows
+successive acquisition bins, while numerical summary rates use the full run.
+
+Every connected laser has its own visible name, power control, **On**, **Pulsed**
+and **Calibrate** block. Heads are not hidden behind a color selector. Committing a
+calibrated target performs the power request; there is no second Set button.
+Changes after recordings require a confirmation and warn about pulse-shape and
+timing/IRF validity. Routine controls cannot alter a running measurement's power.
+Without a valid diode-to-power calibration, the control displays **drive (%)**,
+not an invented optical-power value. Changing drive alone does not enable light.
+When the other heads are emitting and their diode contributions are verified for
+this session (verified alone points over one shared dark level, re-checked against
+live readback), their net contribution is subtracted and those heads, the sequencer
+and the shutters stay untouched. An unknown or changed mixture is never guessed:
+the request asks first, and confirming zeroes every other head.
 
 ## Point and Image
 
+Simple mode keeps only yellow/red quality warnings; missing data is not a passing
+verdict. Advanced shows the full compact quality table, stretched to fill its dock.
+Plot range controls are absent in Simple mode. In Advanced they are folded away
+by default: **Histogram range**, **Trace range**
+and **Decay range** each occupy one header line. Click the relevant header to show
+its compact three-column controls; the other plots stay folded. Zero retains automatic
+scaling. Fold the header again when finished to return the space to the plot.
+Idle histogram, trace and decay docks retain full-size empty axes; waiting for
+photons does not collapse or replace the plotting area with fabricated curves.
+
+In **Decays**, **Burst photons only** switches between two live accumulators:
+off shows the **total decay** from all recorded photons; on shows the decay from
+photons in **all accepted bursts**. Both come from tttrlib. This is a cumulative
+burst-selected decay, not the last individual burst. Switching the view never
+changes the recorded PTU, the burst-search settings or the accumulated data.
+
 **Point** measures single molecules at one spot: bursts are searched live, their histograms (E–S for
 PIE) and the quality lights of the FRET checker build up, and the **running trace** shows the last
-seconds -- donor up, acceptor (FRET and directly excited) down -- in bins you choose (**Analysis ›
-Running trace**: span, default 1 s; bin, default 1 ms).
+seconds in bins you choose (**Analysis › Running trace**: span, default 1 s; bin, default 1 ms).
+With donor and acceptor streams, donor-excitation donor counts are cyan and donor-excitation
+acceptor counts are magenta. Their common counts in the same time bin are white; directly
+excited acceptor (AA) is an orange line. **White indicates temporal coincidence, not proof
+of a FRET molecule:** background, leakage and independent molecules can also coincide. The
+vertical range follows the run's mean, not the largest burst; extreme bursts can be clipped.
 
 **Image** scans: the scanner's line markers arrive in the photon stream, and the image builds up
 line by line (intensity, mean arrival time as fast FLIM, each detector, each micro-time window of a
@@ -210,6 +305,10 @@ setup describes):
 | Three-colour PIE | proximity ratios BG, BR, GR; stoichiometries BG, GR | PR(GR) vs S(GR); PR(BG) vs PR(BR) |
 
 **Histogram** above the plots picks which one is shown; a 2-D histogram comes with both marginals.
+The 2-D colour scale defaults to `log10(1 + counts)` so a bright donor-only peak does not hide
+smaller populations; choose linear or logarithmic intensity and a colormap, or enter a maximum
+count to cap the display (0 uses the full range). This changes only the display, not the data
+or the linear marginal distributions.
 
 ## Excitation windows: checked against the data
 
@@ -249,6 +348,16 @@ channels) when you press *Use detected windows*. Method:
    Background per stream is the rate of its photons outside bursts.
 
 ## Quality lights
+
+The Quality dock has a short overall status and one compact table:
+**Metric · Value · Limit · Status**. Hover a row for its explanation and
+recommended action; those instructions are not repeated as paragraphs or a
+Guidance column. Missing values remain **no verdict**, never a pass. The wizard's
+quality-check table uses the same hover-only guidance convention.
+
+The Count rates dock uses aligned **Channel · Rate · Unit** columns for sync,
+every detector and the recorded mean when available. Hz/kHz/MHz scale automatically.
+Its default height is compact rather than half of the right-hand plot region.
 
 Every two seconds the FRET quality checker judges the bursts so far: green continue, amber read the
 note, red act now (the note says what to do). Checks that do not apply to the type are grey —

@@ -1,0 +1,26 @@
+{
+  "point": {
+    "title": "smFRET (point)",
+    "description": "Single-molecule FRET point measurement with stoichiometry and bursts",
+    "default_docks": ["plot_hist", "plot_trace", "plot_decays", "video"],
+    "focus_dock": "plot_hist"
+  },
+  "fcs": {
+    "title": "FCS",
+    "description": "Fluorescence correlation spectroscopy with real-time diffusion & bunching fits",
+    "default_docks": ["plot_correlation", "plot_decays", "video"],
+    "focus_dock": "plot_correlation"
+  },
+  "pol": {
+    "title": "Polarization single-molecule",
+    "description": "Time-resolved and steady-state fluorescence anisotropy",
+    "default_docks": ["plot_polarization", "plot_decays", "plot_trace", "video"],
+    "focus_dock": "plot_polarization"
+  },
+  "image": {
+    "title": "Image scan",
+    "description": "Confocal FLIM imaging and point selection",
+    "default_docks": ["plot_image", "points", "plot_trace", "video"],
+    "focus_dock": "plot_image"
+  }
+}
