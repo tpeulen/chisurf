@@ -43,6 +43,7 @@
 - 2026-11-04: Agent panel: the input wraps long prompts and grows to six lines (emtk 0.1.41 input_text_wrapped), Enter sends and Shift+Enter breaks the line, Up/Down recall the last 200 prompts (kept with the panel's settings). The input stays open while the agent works: While working (Hermes' busy_input_mode, /busy <mode>) interrupt (default) stops the run and sends once it has stopped, queue shows the message as queued for the next turn, steer hands it to the running agent (ACP: falls back to queue); Stop always interrupts and drops the queue. Grill first and Use memory (Mnemosyne) switches, persisted. Help, guided tour, AI assistant guide, workflow-agent concept and llm-agent OKF concept updated.
 - 2026-11-04: the generated Input section shows a workspace group as one folded row with its files as children (workspace_rows(tree=True), tree_key parent, workspace_input_expanded); Use selected / Add to this tool / drag on a group hand over its member files.
 - 2026-11-04: Datasets carry tags (`ChiSurfAPI.tag_dataset`, RPC `dataset.tag`, `meta_data['tags']`, listed as `tags` in dataset summaries); Burst Analysis' Data Selection tags each photon stream with its role (`sample`).
+- 2026-11-04: Dye database aliases R110, R6G, A647, Alexa647, A633, ATTO655, ATTO488 (mmfdb 878bc29, packaged copy recopied with its digest) so a reference-dye file name resolves to its entry.
 
 ## 2026-11-03
 

@@ -4,7 +4,8 @@
     "category": "organic_dye",
     "aliases": [
       "Rh6G",
-      "Rhodamine 6G (Rh6G)"
+      "Rhodamine 6G (Rh6G)",
+      "R6G"
     ],
     "d25_um2_s": 414.0,
     "sources": [
@@ -54,7 +55,9 @@
     "name": "Rhodamine 110",
     "category": "organic_dye",
     "aliases": [
-      "Rh110"
+      "Rh110",
+      "R110",
+      "Rhodamine110"
     ],
     "d25_um2_s": 470.0,
     "sources": [
@@ -103,7 +106,9 @@
     "name": "ATTO 488 (COOH)",
     "category": "organic_dye",
     "aliases": [
-      "ATTO488 carboxy"
+      "ATTO488 carboxy",
+      "ATTO488",
+      "Atto 488"
     ],
     "d25_um2_s": 400.0,
     "sources": [
@@ -120,7 +125,9 @@
     "name": "ATTO 655 (COOH)",
     "category": "organic_dye",
     "aliases": [
-      "ATTO655 carboxy"
+      "ATTO655 carboxy",
+      "ATTO655",
+      "Atto 655"
     ],
     "d25_um2_s": 426.0,
     "sources": [
@@ -192,7 +199,9 @@
     "category": "organic_dye",
     "aliases": [
       "Alexa 647",
-      "AF647"
+      "AF647",
+      "A647",
+      "Alexa647"
     ],
     "d25_um2_s": 330.0,
     "sources": [
@@ -210,7 +219,8 @@
     "category": "organic_dye",
     "aliases": [
       "Alexa 633",
-      "AF633"
+      "AF633",
+      "A633"
     ],
     "d25_um2_s": 340.0,
     "sources": [
