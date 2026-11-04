@@ -1,0 +1,18 @@
+{
+  "title": "Power calibration",
+  "sections": [
+    {"type":"info", "source":"message"},
+    {"type":"choice", "attr":"laser_name", "label":"Laser / color", "options_source":"laser_options", "description":"The laser whose average power you are measuring. Only connected heads need calibration."},
+    {"type":"value", "attr":"raw", "kind":"float", "style":"spin", "label":"Diode value", "minimum":0, "maximum":1000000000, "description":"Diode reading automatically sampled from connected diode."},
+    {"type":"value", "attr":"uw", "kind":"float", "style":"spin", "label":"Objective power (µW)", "minimum":0, "maximum":1000000, "description":"Enter the simultaneous objective power reading from your calibrated external meter."},
+    {"type":"info", "source":"calibration_date"},
+    {"type":"button_row", "buttons":[
+      {"action":"add_point", "label":"Add measured point", "role":"primary", "description":"Add this diode/µW pair to this laser's calibration (automatically saved)."},
+      {"action":"new_set", "label":"Start new set", "description":"Clear this laser's in-memory measured points before replacing an expired calibration."}
+    ]},
+    {"type":"custom", "key":"power_points", "options":{
+      "source":"rows", "row_key":"id", "selected_call":"select_row", "height":220,
+      "columns":[{"key":"raw", "title":"Diode value"}, {"key":"uw", "title":"Objective power (µW)"}]
+    }}
+  ]
+}
