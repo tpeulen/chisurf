@@ -1,19 +1,19 @@
 ---
 type: Manual Page
 title: Global fit of FCS curves
-description: 'Switch back to ChiSurf2016 and load the following correlation curves form your DNA-sample:'
+description: 'Switch back to ChiSurf2016 and load the following correlation curves from your DNA-sample:'
 tags: [manual, fitting, global-analysis, fcs, correlation]
 ---
 
 # Global fit of FCS curves
 
-Switch back to ChiSurf2016 and load the following correlation curves form your DNA-sample:
+Switch back to ChiSurf2016 and load the following correlation curves from your DNA-sample:
 
-*DNA_gp.cor*: Autocrrelation of green channels in prompt time window (detector `G|G`)
+*DNA_gp.cor*: Autocorrelation of green channels in prompt time window (detector `G|G`)
 
 *DNA_rd.cor*: Autocorrelation of red channels in delay time window (detector `R|R`)
 
-*DNA_PIE.cor*: Crosscorrelation of green signal in the prompt time window with red signal in the delay time window
+*DNA_PIE.cor*: Cross-correlation of green signal in the prompt time window with red signal in the delay time window (`G|G` with `R|R`)
 
 Add a "3D Gauss, 1 bunching" model to your correlation functions
 

@@ -4376,7 +4376,7 @@ guides/figures/65_record_device.png:
   - docs/guides/65_live_acquisition.md
 
 guides/figures/65_record_laser.png:
-  caption: Record's Laser panel for a Sepia II: soft lock, pulsed switch, repetition rate, intensity.
+  caption: 'Record''s Laser panel for a Sepia II: soft lock, pulsed switch, repetition rate, intensity.'
   kind: screenshot
   origin: docs/guides/screenshots/guides_56_65.py::_grab_65_record_devices
   recipe: >-
@@ -4387,3 +4387,196 @@ guides/figures/65_record_laser.png:
     panels are cropped from a 1500x1100 Record window.
   pages:
   - docs/guides/65_live_acquisition.md
+
+guides/figures/109_zenodo_deposit_create.png:
+  caption: 'The Create tab, four steps: a new record, its data (here one measurement and one calibration,
+    hard-linked), the Zenodo metadata -- checked as it is typed, the missing fields listed under the form
+    -- and the scan for review.'
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: No script draws this image. Open the tool described in docs/guides/109_zenodo_deposit.md, section
+    '0. Make the record', drive it headlessly (the emtk renderer for native windows, CHISURF_SETTINGS_DIR
+    on a scratch folder) into the state the caption and the surrounding text describe, using the data
+    that page names, and save the grab as guides/figures/109_zenodo_deposit_create.png.
+  pages:
+  - docs/guides/109_zenodo_deposit.md
+
+guides/figures/109_zenodo_deposit_review.png:
+  caption: 'The Review tab: one row per item, flagged items marked in the Check column, every folder''s
+    files nested under their item.'
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: No script draws this image. Open the tool described in docs/guides/109_zenodo_deposit.md, section
+    '1. Pick a record and review it', drive it headlessly (the emtk renderer for native windows, CHISURF_SETTINGS_DIR
+    on a scratch folder) into the state the caption and the surrounding text describe, using the data
+    that page names, and save the grab as guides/figures/109_zenodo_deposit_review.png.
+  pages:
+  - docs/guides/109_zenodo_deposit.md
+
+guides/figures/109_zenodo_deposit_upload.png:
+  caption: 'The Upload tab: the Zenodo metadata that is submitted (title, creators, license, keywords,
+    description), then what still blocks the upload; *Upload draft* stays grey until the list is empty.'
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: No script draws this image. Open the tool described in docs/guides/109_zenodo_deposit.md, section
+    '2. Build and upload', drive it headlessly (the emtk renderer for native windows, CHISURF_SETTINGS_DIR
+    on a scratch folder) into the state the caption and the surrounding text describe, using the data
+    that page names, and save the grab as guides/figures/109_zenodo_deposit_upload.png.
+  pages:
+  - docs/guides/109_zenodo_deposit.md
+
+guides/figures/115_excitation_windows_donor_only.png:
+  caption: 'The same measurement without its acceptor pulse (a donor-only sample): one pulse, so windows
+    cannot be placed from it. The tool says so and *Use detected windows* stays off; the range findings
+    about the setup''s windows are still listed.'
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: No script draws this image. Open the tool described in docs/guides/115_excitation_windows.md,
+    section '1. Check a setup against a measurement (Excitation Windows)', drive it headlessly (the emtk
+    renderer for native windows, CHISURF_SETTINGS_DIR on a scratch folder) into the state the caption
+    and the surrounding text describe, using the data that page names, and save the grab as guides/figures/115_excitation_windows_donor_only.png.
+  pages:
+  - docs/guides/115_excitation_windows.md
+
+guides/figures/115_excitation_windows_record_alex.png:
+  caption: 'A µs-ALEX stream alternating every 100 µs, recorded with *Alternation period* 60 µs: the warning
+    names both periods and offers the detected period and laser windows.'
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: No script draws this image. Open the tool described in docs/guides/115_excitation_windows.md,
+    section '3. During a Record run', drive it headlessly (the emtk renderer for native windows, CHISURF_SETTINGS_DIR
+    on a scratch folder) into the state the caption and the surrounding text describe, using the data
+    that page names, and save the grab as guides/figures/115_excitation_windows_record_alex.png.
+  pages:
+  - docs/guides/115_excitation_windows.md
+
+guides/figures/115_excitation_windows_burst_selection.png:
+  caption: 'Burst selection on the demo with the SPC-130 setup: the warning under the micro-time window
+    choice, with the detected windows on offer.'
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: No script draws this image. Open the tool described in docs/guides/115_excitation_windows.md,
+    section '4. Before burst selection', drive it headlessly (the emtk renderer for native windows, CHISURF_SETTINGS_DIR
+    on a scratch folder) into the state the caption and the surrounding text describe, using the data
+    that page names, and save the grab as guides/figures/115_excitation_windows_burst_selection.png.
+  pages:
+  - docs/guides/115_excitation_windows.md
+
+guides/figures/65_points_picked.png:
+  caption: 'A simulated scan of single molecules: Auto-pick has added the molecules (numbered rings) and
+    one point was clicked by hand; the Points table lists them.'
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: No script draws this image. Open the tool described in docs/guides/65_live_acquisition.md, section
+    'Imaging, picking molecules, measuring them point by point', drive it headlessly (the emtk renderer
+    for native windows, CHISURF_SETTINGS_DIR on a scratch folder) into the state the caption and the surrounding
+    text describe, using the data that page names, and save the grab as guides/figures/65_points_picked.png.
+  pages:
+  - docs/guides/65_live_acquisition.md
+
+guides/figures/65_points_running.png:
+  caption: 'Point 3 of 3 recording: its live trace with the bleach threshold; the points done already
+    carry their results.'
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: No script draws this image. Open the tool described in docs/guides/65_live_acquisition.md, section
+    'Imaging, picking molecules, measuring them point by point', drive it headlessly (the emtk renderer
+    for native windows, CHISURF_SETTINGS_DIR on a scratch folder) into the state the caption and the surrounding
+    text describe, using the data that page names, and save the grab as guides/figures/65_points_running.png.
+  pages:
+  - docs/guides/65_live_acquisition.md
+
+guides/figures/65_points_done.png:
+  caption: 'The sequence done: one row per molecule; the selected molecule''s trace per detector with
+    its HMM path (yellow) and the bleach time (red), two steps down.'
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: No script draws this image. Open the tool described in docs/guides/65_live_acquisition.md, section
+    'Imaging, picking molecules, measuring them point by point', drive it headlessly (the emtk renderer
+    for native windows, CHISURF_SETTINGS_DIR on a scratch folder) into the state the caption and the surrounding
+    text describe, using the data that page names, and save the grab as guides/figures/65_points_done.png.
+  pages:
+  - docs/guides/65_live_acquisition.md
+
+guides/figures/65_survey_running.png:
+  caption: 'A survey of 4 × 4 tiles running: the map shows the spiral (numbers and path), tile 5 being
+    measured (orange), measured tiles green with their molecules, an empty tile dark; the line above it
+    says tile, molecules, elapsed and remaining time.'
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: 'No script draws this image. Open the tool described in docs/guides/65_live_acquisition.md,
+    section ''Survey: a larger area, automatically'', drive it headlessly (the emtk renderer for native
+    windows, CHISURF_SETTINGS_DIR on a scratch folder) into the state the caption and the surrounding
+    text describe, using the data that page names, and save the grab as guides/figures/65_survey_running.png.'
+  pages:
+  - docs/guides/65_live_acquisition.md
+
+guides/figures/65_survey_done.png:
+  caption: 'The survey done: every tile visited, 26 molecules measured.'
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: 'No script draws this image. Open the tool described in docs/guides/65_live_acquisition.md,
+    section ''Survey: a larger area, automatically'', drive it headlessly (the emtk renderer for native
+    windows, CHISURF_SETTINGS_DIR on a scratch folder) into the state the caption and the surrounding
+    text describe, using the data that page names, and save the grab as guides/figures/65_survey_done.png.'
+  pages:
+  - docs/guides/65_live_acquisition.md
+
+guides/figures/fcs_toolbox_regions.png:
+  caption: 'The example measurement with two drawn regions: 3.5 s of its 5 s are correlated.'
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: No script draws this image. Open the tool described in docs/guides/75_fcs_toolbox.md, section
+    'Time regions', drive it headlessly (the emtk renderer for native windows, CHISURF_SETTINGS_DIR on
+    a scratch folder) into the state the caption and the surrounding text describe, using the data that
+    page names, and save the grab as guides/figures/fcs_toolbox_regions.png.
+  pages:
+  - docs/guides/75_fcs_toolbox.md
+
+images/settings_theme_light.png:
+  caption: The light theme, with a TCSPC lifetime fit open.
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: No script draws this image. Open the tool described in docs/getting_started/settings.md, section
+    'Theme', drive it headlessly (the emtk renderer for native windows, CHISURF_SETTINGS_DIR on a scratch
+    folder) into the state the caption and the surrounding text describe, using the data that page names,
+    and save the grab as images/settings_theme_light.png.
+  pages:
+  - docs/getting_started/settings.md
+
+guides/figures/115_excitation_windows_check.png:
+  caption: 'The simulated PIE demo (32 ps channels, 3125 per 100 ns; donor pulse at 2 ns, acceptor pulse
+    at 52 ns) checked against a setup made for an SPC-130 (50 ps channels, prompt 0–2048, delayed 2048–4095).
+    The windows are converted to 32 ps channels (0–3200 / 3200–6398, grey lines) and found wrong: *delayed*
+    lies beyond the data, *prompt* holds both pulses. Orange: the detected windows, prompt 50–1613 (donor
+    excitation, both detectors lit) and delayed 1613–3125 (acceptor excitation, the donor detector dark).'
+  kind: screenshot
+  origin: docs/guides/screenshots/excitation_windows_shot.py::tool
+  recipe: From the repository root run `CHISURF_SETTINGS_DIR=$(mktemp -d) python docs/guides/screenshots/excitation_windows_shot.py`
+    (headless emtk); tool() draws the Excitation Windows tool checking an SPC-130 setup (50 ps, prompt
+    0-2048, delayed 2048-4095) against the simulated PIE demo and writes guides/figures/115_excitation_windows_check.png.
+  pages:
+  - docs/guides/115_excitation_windows.md
+
+guides/figures/115_excitation_windows_setup_editor.png:
+  caption: Auto-detect in the setup editor, the setup still holding the SPC-130 windows.
+  kind: screenshot
+  origin: docs/guides/screenshots/excitation_windows_shot.py::setup_editor
+  recipe: From the repository root run `CHISURF_SETTINGS_DIR=$(mktemp -d) python docs/guides/screenshots/excitation_windows_shot.py`
+    (headless emtk); setup_editor() draws the setup editor's Auto-detect on the simulated PIE demo, the
+    setup still holding the SPC-130 windows and writes guides/figures/115_excitation_windows_setup_editor.png.
+  pages:
+  - docs/guides/115_excitation_windows.md
+
+guides/figures/115_excitation_windows_record.png:
+  caption: 'A simulated PIE run under windows of another instrument (prompt 2048–3000, delayed 3000–4000
+    of 4000 channels): the donor pulse at channel 39 is in no window. Left, the warning with Update windows
+    / Keep; right, the Decays dock with the run''s windows (grey) and the detected ones (orange, 4 / 2012
+    / 4000).'
+  kind: screenshot
+  origin: docs/guides/screenshots/excitation_windows_shot.py::record
+  recipe: From the repository root run `CHISURF_SETTINGS_DIR=$(mktemp -d) python docs/guides/screenshots/excitation_windows_shot.py`
+    (headless emtk); record() draws Record's live excitation-window check on the simulated PIE measurement
+    and writes guides/figures/115_excitation_windows_record.png.
+  pages:
+  - docs/guides/115_excitation_windows.md
