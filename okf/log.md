@@ -24,6 +24,7 @@
 - 2026-11-04: acq: guided measurement wizard (measurement_wizard, guided_panel, guided_plots, live/guided_analysis), modal-only, with live plots in every stage.
 - 2026-11-04: acq: unified phacq Settings dock, Simple/Advanced/Guided user modes and a Load … settings chooser (flagged by the input-file-dialog guard, owner decision pending).
 - 2026-11-04: acq: Record tool integration (experiment docks, compact rates + alignment readout, stop timer with backend limit, plot ranges, decay toggle, dock accents, Simple/Advanced/Guided); help, reference and UX backlog updated.
+- 2026-11-04: .gitignore: the TTTR image browser's .tttr_image_cache/ mosaic cache (written beside the data, e.g. test/data/clsm) and test/native_emtk/screenshots/ are ignored as generated output. Two cache .npz files committed earlier under test/data/clsm/.tttr_image_cache remain tracked.
 
 ## 2026-11-03
 

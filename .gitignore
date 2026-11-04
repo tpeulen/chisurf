@@ -154,3 +154,7 @@ okf/plugins/clsm-generator-qt/
 okf/plugins/emtk-ports/
 okf/validation/
 okf/**/*.zip
+
+# Generated: the TTTR image browser mosaic cache beside data, and emtk test screenshots
+.tttr_image_cache/
+test/native_emtk/screenshots/
