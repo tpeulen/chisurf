@@ -1314,12 +1314,17 @@ class MleViewModel(RunPickerMixin):
         The measurements are those Burst Analysis' Data Selection declared, *references*
         (``{"buffer": [...], "irf": {detector: [...]}, "reference": {detector: [...]}}``: a
         colour's IRF and reference dye for each of its detectors; they replace what was set
-        before, and a detector of a colour without its own IRF reads the others' files on its
-        channels); without any, those found by name beside the *analysed* files (or a folder up).
+        before, and a detector of a colour without its own IRF reads the other colours' IRF
+        measurements on its channels -- never their reference dyes: a green dye does not
+        calibrate the red detectors). In the pipeline that is all: Data Selection is the one
+        place references come from (it proposes those beside the measurement), even when it
+        declares none. Only the standalone tool (*references* ``None``) looks for them by name
+        beside the *analysed* files (or a folder up).
         """
         from chisurf.core.fio.reference_files import find_reference_measurements, reference_dye
 
         try:
+            standalone = references is None
             references = dict(references or {})
             per_det = {
                 kind: {str(d): [str(p) for p in v] for d, v in (references.get(kind) or {}).items() if v}
@@ -1328,7 +1333,7 @@ class MleViewModel(RunPickerMixin):
             buffers = [str(p) for p in references.get("buffer") or ()]
             declared = bool(buffers or per_det["irf"] or per_det["reference"])
             session = self.session
-            if declared:
+            if declared or not standalone:
                 for kind in ("bg", "irf"):  # what Data Selection declares replaces what was set
                     for det in list(session.detectors):
                         session.clear_pattern_files(kind, det)
@@ -1342,10 +1347,7 @@ class MleViewModel(RunPickerMixin):
                         session.bg_one_for_all = one
                 # a detector of a colour without its own IRF reads every declared one on its
                 # channels (one water measurement under all lasers serves every colour)
-                fallback = sorted(
-                    {p for v in per_det["irf"].values() for p in v}
-                    | {p for v in per_det["reference"].values() for p in v if reference_dye(p)}
-                )
+                fallback = sorted({p for v in per_det["irf"].values() for p in v})
                 one = session.irf_one_for_all
                 session.irf_one_for_all = False  # each detector its colour's files
                 try:
@@ -1355,7 +1357,7 @@ class MleViewModel(RunPickerMixin):
                         dyes = [p for p in per_det["reference"].get(det, []) if reference_dye(p)]
                         # both kinds: the IRF tool picks (a reference dye first, then the
                         # scatter) and the IRF selector offers each; else every declared file
-                        paths = (irf + dyes) or fallback
+                        paths = (irf + dyes) or (fallback if not per_det["reference"].get(det) else [])
                         if not paths:
                             continue
                         try:
@@ -1373,7 +1375,7 @@ class MleViewModel(RunPickerMixin):
                         session.irf_source[det] = f"the IRF measurement {text[len('scatter '):]}"
                     else:
                         session.irf_source[det] = f"the reference-dye measurement {text}"
-            else:
+            elif standalone:
                 found = (
                     find_reference_measurements(analysed)
                     if analysed

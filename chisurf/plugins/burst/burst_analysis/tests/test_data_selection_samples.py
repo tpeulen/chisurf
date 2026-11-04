@@ -244,6 +244,7 @@ def test_the_role_table_shows_the_setup_quality_in_both_modes_and_g_is_applied(d
 def test_without_calibration_files_the_workflow_goes_on_with_a_warning(demo_files):
     proceeded = []
     app, model, _ = _app(copy.deepcopy(demo.SETUP), on_proceed=lambda: proceeded.append(1))
+    model.propose = False  # a session without calibration files (the demo has them beside)
     model.add_paths([demo_files["measurement"]])
     warning = app.fallback_warning()
     assert warning == "Estimated (no buffer, IRF, reference dye)"

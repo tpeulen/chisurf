@@ -199,6 +199,13 @@ class BurstDataSelectionModel:
         #: ``{detector: G}`` this step wrote into the setup last: a setup value that differs
         #: was edited by hand and is kept.
         self.applied_g: dict[str, float] = {}
+        #: ``{path: measurement}`` of the buffer, IRF and reference-dye files this step found
+        #: beside a measurement and put into their rows itself (:meth:`propose_references`), and
+        #: the proposals the user removed: never proposed again.
+        self.proposed: dict[str, str] = {}
+        self.declined: set[str] = set()
+        #: Propose the references beside every new measurement (:meth:`propose_references`).
+        self.propose = True
 
     # -- the source protocol ------------------------------------------------------------------------------- #
     def paths(self) -> list[Path]:
@@ -239,7 +246,52 @@ class BurstDataSelectionModel:
                 self.import_path(path)
         if added and self.selected_index is None:
             self.selected_index = 0
+        new_measurements = [
+            p for p in self._paths[len(self._paths) - added:] if self.assignments.get(str(p)) == "measurement"
+        ] if added else []
+        if new_measurements and self.propose:
+            self.propose_references(new_measurements, notify=False)
         if added or moved:
+            self._changed()
+        return added
+
+    def propose_references(self, measurements, notify: bool = True) -> list[Path]:
+        """Put the buffer, IRF and reference-dye measurements found by name beside
+        *measurements* (:func:`chisurf.core.fio.reference_files.find_reference_measurements`:
+        their folder, else one up) into their rows -- a dye's row by its colour (Rh110 the
+        green reference, Alexa 647 the red). Data Selection is the one place the workflow's
+        references come from; a proposal is shown like any file, marked as found, and one the
+        user removes is not proposed again. Returns the files added."""
+        from chisurf.core.fio.reference_files import find_reference_measurements
+
+        from ..samples import colour_groups, guess_colour, guess_sample_type
+
+        measurements = [Path(p) for p in measurements]
+        # a dye of a colour the setup has no detectors for is not this workflow's (Alexa 647 for
+        # a green-only setup would land in the green row and give it a red dye's G)
+        colours = {g["colour"] for g in colour_groups(self.current_setup())}
+        if not measurements:
+            return []
+        try:
+            found = find_reference_measurements(measurements)
+        except Exception:  # noqa: BLE001 - nothing beside them: nothing proposed
+            return []
+        added: list[Path] = []
+        for path in expand_paths([*found["dye"], *found["irf"], *found["bg"]]):
+            key = str(path)
+            if path in self._paths or key in self.declined:
+                continue
+            kind = guess_sample_type(path)
+            if kind == "reference" and colours and guess_colour(path) not in colours:
+                continue
+            self._paths.append(path)
+            self.assignments[key] = kind
+            self.proposed[key] = measurements[0].name
+            added.append(path)
+            if self.auto_import and key not in self._imported:
+                self._imported.add(key)
+                self.import_path(path)
+        if added and notify:
             self._changed()
         return added
 
@@ -266,6 +318,8 @@ class BurstDataSelectionModel:
 
     def _forget(self, path: Path) -> None:
         key = str(path)
+        if self.proposed.pop(key, None) is not None:
+            self.declined.add(key)  # removed by the user: not proposed again
         self.assignments.pop(key, None)
         group = self.group_of.pop(key, None)
         if group and group not in self.group_of.values():
@@ -388,6 +442,8 @@ class BurstDataSelectionModel:
             "dyes": {k: dict(v) for k, v in self.dyes.items()},
             "applied_g": dict(self.applied_g),
             "calibration": self.calibration,
+            "proposed": {p: m for p, m in self.proposed.items() if p in paths},
+            "declined": sorted(self.declined),
         }
 
     def restore_settings(self, state: dict[str, Any] | None) -> None:
@@ -396,15 +452,22 @@ class BurstDataSelectionModel:
         self.dyes = {str(k): dict(v) for k, v in (state.get("dyes") or {}).items() if isinstance(v, dict)}
         self.applied_g = {str(k): float(v) for k, v in (state.get("applied_g") or {}).items()}
         self.calibration = dict(state.get("calibration") or {})
+        self.declined = {str(p) for p in state.get("declined") or ()}
         if paths:
             auto, self.auto_import = (
                 self.auto_import,
                 False,
             )  # restored files were registered when first added
+            propose, self.propose = self.propose, False  # the stored rows are the user's
             try:
                 self.add_paths(paths)
             finally:
                 self.auto_import = auto
+                self.propose = propose
+            self.proposed = {
+                str(Path(p).resolve()): str(m) for p, m in (state.get("proposed") or {}).items()
+                if str(Path(p).resolve()) in self.assignments
+            }
             for path, row in (state.get("assignments") or {}).items():
                 if str(Path(path).resolve()) in self.assignments:
                     self.assignments[str(Path(path).resolve())] = str(row)
@@ -856,12 +919,25 @@ class BurstDataSelectionApp(TourTarget, ImApp):
                         "info": "",
                         "size": _format_size(_size(path)),
                         "status": _status(imports.get(str(path))),
-                        "tip": str(path),
+                        **self._proposed_cells(path),
                         "dye": "",
                         **_NO_NUMBERS,
                     }
                 )
         return out
+
+    def _proposed_cells(self, path: Path) -> dict:
+        """A file entry's info and tooltip: ``found`` for a file proposed from beside a
+        measurement (where, and that Delete takes it out for good)."""
+        beside = (getattr(self.source, "proposed", {}) or {}).get(str(path))
+        if not beside:
+            return {"info": "", "tip": str(path)}
+        return {
+            "info": tr("found"),
+            "tip": str(tr("{path}\nFound beside {measurement} by its name and put into this row; "
+                          "move it to another row, or Delete it (it is not proposed again).")).format(
+                path=path, measurement=beside),
+        }
 
     def row_numbers(self, row: str, files: list[Path]) -> dict:
         """The cells of a role row: its key numbers (G, V_eff, τ_D, w0, s, brightness of a
@@ -1077,6 +1153,16 @@ class BurstDataSelectionApp(TourTarget, ImApp):
                     tags[str(member.get("uid"))] = str(member["tags"]["sample"])
             if (dto.get("tags") or {}).get("sample"):
                 tags[str(dto.get("uid"))] = str(dto["tags"]["sample"])
+        # The dataset each file came from is known before the file is added: adding it tells the
+        # workflow, which makes the file's analysis container at once -- in that dataset's folder
+        # (``container_dir(uid)``). Recorded after, the first container went to ``_`` and every
+        # later step wrote into a second one.
+        sources = getattr(self.source, "sources", None)
+        if isinstance(sources, dict):
+            for path, uid in zip(paths, uids):
+                if uid:
+                    sources[str(path)] = uid
+                    sources[str(path.resolve())] = uid
         added = 0
         add = self.source.add_paths
         for path, uid in zip(paths, uids + [""] * (len(paths) - len(uids))):
@@ -1085,11 +1171,6 @@ class BurstDataSelectionApp(TourTarget, ImApp):
                 added += int(add([path], chosen) or 0)
             except TypeError:  # a source without rows
                 added += int(add([path]) or 0)
-        sources = getattr(self.source, "sources", None)
-        if isinstance(sources, dict):
-            for path, uid in zip(paths, uids):
-                if uid:
-                    sources[str(path)] = uid
         by_group: dict[str, list[Path]] = {}
         for path, uid in zip(paths, uids):
             if uid in parent:

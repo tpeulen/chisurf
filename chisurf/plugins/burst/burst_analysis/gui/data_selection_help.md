@@ -24,6 +24,12 @@ role: the **measurements** are searched for bursts (step 2); the **buffer**, an 
 - *Use selected* and other hand-overs guess the role from the name (`buffer`, `bg` → Buffer;
   `irf`, `H2O`, `water`, `scatter` → IRF; `Rh110`, `A647`, `Cy5`, `dye`, `ref` → Reference dye
   of the dye's colour), else Measurement.
+- **Found beside the measurement**: a new measurement brings the buffer, IRF and reference-dye
+  files of its folder (else the folder above) into their rows by their names, marked **found**
+  (where from in the tooltip): Rh110 to *Reference · green*, Alexa 647 to *Reference · red*, so
+  G and the confocal volume are computed at once. Move one, or Delete it -- a removed proposal is
+  not proposed again. This step is the one place the workflow's references come from: Burst MLE
+  reads only what its rows hold, never files by name.
 - **Remove** (or Delete) takes the selected file, group or row's files out; **Clear** all.
 - A role the setup no longer has (a colour removed in step 0) shows its files as
   **Unassigned** — they are kept, and come back with the colour.

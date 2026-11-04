@@ -69,6 +69,7 @@
 - 2026-11-04: okf/plugins/burst.md: resume point for step 4 (More samples): how the recipe is captured and replayed, the by-hand equality measured on the demo, and what is open (IRF re-derived then overwritten per sample, no per-sample plot, threads only for large files, recipe captured at Run).
 - Burst MLE writes its lifetimes after every batch into the burst run they were fitted from (<run>/mle G|G, derived from the run's burst table, a refit replaces them): the pipeline had no Save results, so ndX showed no Tau columns ([burst](plugins/burst.md)).
 - Burst MLE: R|G and R|R calibrated once on the red reference in the window that sees it (R|G's IRF placed by the PIE gate offset); the three time shifts (IRF shift VV, VH, Shift VV/VH) are Fit-parameter rows, fixed at the calibration, editable, refined when unfixed, reset to the calibration ([IRF extraction](../docs/concepts/irf_extraction.md), [burst](plugins/burst.md)).
+- Data Selection proposes the buffer, IRF and reference-dye files beside a new measurement into their rows (found, removable, not proposed again); the pipeline's Burst MLE reads only Data Selection's references; a file's dataset is recorded before it is added, so no second container under _ ([burst](plugins/burst.md)).
 
 ## 2026-11-03
 
