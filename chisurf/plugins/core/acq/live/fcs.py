@@ -87,7 +87,8 @@ def fcs_truth(realism: Realism, population: float) -> dict:
 
 
 class LiveFcs:
-    """The live analysis of an FCS run: the correlation curve and the count rate.
+    """The live analysis of an FCS run: the correlation curve, multi-channel correlations,
+    fluorescence decays, and the count rate.
 
     Parameters
     ----------
@@ -97,63 +98,184 @@ class LiveFcs:
         Routing channels correlated (all when ``None``).
     """
 
-    def __init__(self, macro_clock_s: float, channels=None, *, n_bins: int = 8, n_casc: int = 25):
+    def __init__(self, macro_clock_s: float, channels=None, *, n_bins: int = 8, n_casc: int = 25, n_micro: int = 4096):
         self.macro_clock_s = float(macro_clock_s)
         self.channels = None if channels is None else np.asarray(list(channels), np.int64)
         self._n_bins, self._n_casc = int(n_bins), int(n_casc)
+        self.n_micro = int(n_micro)
         self.clear()
 
     def clear(self) -> None:
         self.correlator = tttrlib.StreamingCorrelator(self._n_bins, self._n_casc, 1.0)
+        self._correlators: dict[str, tttrlib.StreamingCorrelator] = {
+            "all": self.correlator,
+            "ch0": tttrlib.StreamingCorrelator(self._n_bins, self._n_casc, 1.0),
+            "ch1": tttrlib.StreamingCorrelator(self._n_bins, self._n_casc, 1.0),
+            "cross_01": tttrlib.StreamingCorrelator(self._n_bins, self._n_casc, 1.0),
+        }
         self.photons = 0
+        self.channel_photons: dict[str, int] = {"all": 0, "ch0": 0, "ch1": 0}
+        self.decays: dict[str, np.ndarray] = {}
         self._first: int | None = None
         self._last: int | None = None
 
     def push_np(self, macro, micro=None, channel=None) -> None:
         macro = np.asarray(macro, dtype=np.uint64)
-        if self.channels is not None and channel is not None:
-            macro = macro[np.isin(np.asarray(channel, np.int64), self.channels)]
         if macro.size == 0:
             return
-        self.correlator.push_np(macro)
-        self.photons += int(macro.size)
-        if self._first is None:
-            self._first = int(macro[0])
-        self._last = int(macro[-1])
+
+        if self.channels is not None and channel is not None:
+            mask = np.isin(np.asarray(channel, np.int64), self.channels)
+            macro_sel = macro[mask]
+        else:
+            macro_sel = macro
+            mask = slice(None)
+
+        if macro_sel.size > 0:
+            self._correlators["all"].push_np(macro_sel)
+            self.photons += int(macro_sel.size)
+            self.channel_photons["all"] += int(macro_sel.size)
+            if self._first is None:
+                self._first = int(macro_sel[0])
+            self._last = int(macro_sel[-1])
+
+        # Push channel-specific and cross correlations if channel is provided
+        if channel is not None:
+            ch_arr = np.asarray(channel, dtype=np.int32)
+            sel0 = (ch_arr == 0)
+            sel1 = (ch_arr == 1)
+            if np.any(sel0):
+                m0 = macro[sel0]
+                self._correlators["ch0"].push_np(m0)
+                self.channel_photons["ch0"] = self.channel_photons.get("ch0", 0) + int(m0.size)
+            if np.any(sel1):
+                m1 = macro[sel1]
+                self._correlators["ch1"].push_np(m1)
+                self.channel_photons["ch1"] = self.channel_photons.get("ch1", 0) + int(m1.size)
+            if np.any(sel0 | sel1):
+                # Cross correlation: channel 0 and channel 1
+                sel_both = (sel0 | sel1)
+                m_both = macro[sel_both]
+                c_both = ch_arr[sel_both]
+                self._correlators["cross_01"].push_np(m_both, channels=c_both)
+
+        # Accumulate micro-time decays per channel for fluorescence decay display
+        if micro is not None and channel is not None:
+            mic_arr = np.asarray(micro, dtype=np.int64)
+            ch_arr = np.asarray(channel, dtype=np.int32)
+            for ch in np.unique(ch_arr):
+                sel = (ch_arr == ch)
+                mic = mic_arr[sel]
+                valid = (mic >= 0) & (mic < self.n_micro)
+                if np.any(valid):
+                    counts = np.bincount(mic[valid], minlength=self.n_micro)[:self.n_micro].astype(np.uint64)
+                    ch_key = str(int(ch))
+                    if ch_key not in self.decays:
+                        self.decays[ch_key] = np.zeros(self.n_micro, dtype=np.uint64)
+                    self.decays[ch_key] += counts
+        elif micro is not None:
+            mic_arr = np.asarray(micro, dtype=np.int64)
+            valid = (mic_arr >= 0) & (mic_arr < self.n_micro)
+            if np.any(valid):
+                counts = np.bincount(mic_arr[valid], minlength=self.n_micro)[:self.n_micro].astype(np.uint64)
+                if "0" not in self.decays:
+                    self.decays["0"] = np.zeros(self.n_micro, dtype=np.uint64)
+                self.decays["0"] += counts
 
     def flush(self) -> None:
-        self.correlator.flush()
+        for c in self._correlators.values():
+            c.flush()
 
     def table(self) -> dict:
         return {}
 
+    def _extract_curve(self, sc: tttrlib.StreamingCorrelator) -> tuple[np.ndarray, np.ndarray]:
+        tau = np.asarray(sc.get_x_axis(), dtype=float) * self.macro_clock_s
+        g = np.asarray(sc.get_correlation_normalized(), dtype=float)
+        n = min(tau.size, g.size)
+        tau, g = tau[:n], g[:n]
+        keep = (tau > 0) & np.isfinite(g)
+        if self._first is not None and self._last is not None:
+            # The correlation window is bounded by the acquisition itself: a lag longer
+            # than the measurement has no (or a handful of) photon pairs, so its G(tau)
+            # is not a valid correlation. The window grows with the running acquisition.
+            keep &= tau <= (self._last - self._first) * self.macro_clock_s
+        return tau[keep], g[keep] - 1.0
+
     def snapshot(self) -> dict[str, Any]:
-        """``tau_s``, ``g`` (G(tau) - 1, normalised), count rate, the amplitude's N."""
+        """``tau_s``, ``g`` (G(tau) - 1, normalised), count rate, the amplitude's N, decays."""
         elapsed = (
             (self._last - self._first) * self.macro_clock_s
             if self._first is not None and self._last is not None
             else 0.0
         )
-        tau = np.asarray(self.correlator.get_x_axis(), dtype=float) * self.macro_clock_s
-        g = np.asarray(self.correlator.get_correlation_normalized(), dtype=float)
-        n = min(tau.size, g.size)
-        tau, g = tau[:n], g[:n]
-        keep = (tau > 0) & np.isfinite(g)
-        tau, g = tau[keep], g[keep] - 1.0
+        tau, g = self._extract_curve(self.correlator)
         rate = self.photons / elapsed if elapsed > 0 else 0.0
         amp = _amplitude(tau, g)
         n_focus = 1.0 / amp if amp > 0 else float("nan")
+
+        correlations = {}
+        for key, sc in self._correlators.items():
+            ctau, cg = self._extract_curve(sc)
+            if key == "ch0":
+                ch_rate = self.channel_photons.get("ch0", 0) / elapsed if elapsed > 0 else 0.0
+            elif key == "ch1":
+                ch_rate = self.channel_photons.get("ch1", 0) / elapsed if elapsed > 0 else 0.0
+            elif key == "cross_01":
+                r0 = self.channel_photons.get("ch0", 0) / elapsed if elapsed > 0 else 0.0
+                r1 = self.channel_photons.get("ch1", 0) / elapsed if elapsed > 0 else 0.0
+                ch_rate = math.sqrt(r0 * r1) if (r0 > 0 and r1 > 0) else 0.0
+            else:
+                ch_rate = rate
+            correlations[key] = {
+                "tau_s": ctau,
+                "g": cg,
+                "count_rate_hz": float(ch_rate),
+                "photons": self.channel_photons.get(key, self.photons),
+            }
+
+        tau_d_s = _estimate_diffusion_time_s(tau, g)
         return {
             "photons": self.photons,
             "bursts": 0,
             "elapsed_s": float(elapsed),
             "background_cps": {},
             "histograms": {},
+            "decays": {k: v.copy() for k, v in self.decays.items()},
             "correlation": {"tau_s": tau, "g": g},
+            "correlations": correlations,
             "count_rate_hz": float(rate),
             "n_focus": float(n_focus),
             "brightness_hz": float(rate / n_focus) if np.isfinite(n_focus) and n_focus > 0 else 0.0,
+            "diffusion_time_s": tau_d_s,
+            "tau_d_s": tau_d_s,
         }
+
+
+def _estimate_diffusion_time_s(tau, g) -> float | None:
+    """Estimate empirical diffusion time tau_D (s) as lag where G(tau)-1 decays to half of plateau."""
+    tau = np.asarray(tau, dtype=float)
+    g = np.asarray(g, dtype=float)
+    sel = (tau >= 1e-5) & (tau <= 5e-5) & np.isfinite(g)
+    amp = float(np.nanmedian(g[sel])) if sel.any() else (float(np.nanmax(g[tau > 0])) if (tau > 0).any() else 0.0)
+    if amp <= 0:
+        return None
+    half = amp / 2.0
+    post = (tau >= 1e-5) & np.isfinite(g)
+    if not post.any():
+        return None
+    post_tau, post_g = tau[post], g[post]
+    idx = np.where(post_g <= half)[0]
+    if len(idx) > 0:
+        i = idx[0]
+        if i == 0:
+            return float(post_tau[0])
+        t0, t1 = float(post_tau[i - 1]), float(post_tau[i])
+        g0, g1 = float(post_g[i - 1]), float(post_g[i])
+        if g1 != g0:
+            return float(t0 + (half - g0) / (g1 - g0) * (t1 - t0))
+        return float(t0)
+    return None
 
 
 def _amplitude(tau: np.ndarray, g: np.ndarray) -> float:

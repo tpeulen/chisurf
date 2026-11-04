@@ -16,6 +16,7 @@
 - 2026-11-04: acq: laser.py adds ObisBackend and CmcLightBackend (open_laser, PTU tags) and simulated diode lasing thresholds.
 - 2026-11-04: acq: MT200-style measurement naming, session metadata in PTU headers, profile storage paths and a verified archive transfer (live/naming, acq_metadata, storage_config, transfer).
 - 2026-11-04: acq: power calibration (diode -> µW from measured references), average-power control, diode attribution and the live/calibration workflow library.
+- 2026-11-04: acq: reference-measurement history, setup-quality panel, live FCS N/CPM and the dilution advisor.
 
 ## 2026-11-03
 
