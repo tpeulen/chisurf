@@ -223,6 +223,53 @@ def make_demo(folder: str | Path | None = None, *, overwrite: bool = False) -> d
     return paths
 
 
+#: The further measurements of the same sample (:func:`make_more_samples`): what step 4,
+#: *More samples*, processes with the recipe tuned on :data:`FILES` ``measurement``.
+MORE_FILES = ("sample_dsDNA_2.ptu", "sample_dsDNA_3.ptu")
+
+
+def _sample(rng, seed: int, path: Path) -> None:
+    """One measurement of the dilute 3 ns sample on the buffer's background (the photon stream
+    of :func:`make_demo`'s measurement, from *seed*)."""
+    t = TRUTH
+    seconds, delay = _diffusing(seed, tau_ns=3.0, n_photons=t["sample_photons"],
+                                population=0.15, q=600.0)
+    micro, channel, kept = _polarised(rng, delay, 1.5)
+    seconds = seconds[kept]
+    bt, bm, bc = _background(rng, float(seconds[-1]) if seconds.size else 1.0)
+    _write(path, np.concatenate([seconds, bt]), np.concatenate([micro, bm]),
+           np.concatenate([channel, bc]))
+
+
+def make_more_samples(folder: str | Path | None = None, *, overwrite: bool = False) -> list[Path]:
+    """Write :data:`MORE_FILES` beside the demo: the same sample measured again (other seeds,
+    so other molecules and other bursts), for step 4 to process with the first one's recipe.
+
+    Returns
+    -------
+    list of Path
+        The measurements, in :data:`MORE_FILES` order.
+    """
+    folder = Path(folder) if folder is not None else demo_folder()
+    folder.mkdir(parents=True, exist_ok=True)
+    paths = [folder / name for name in MORE_FILES]
+    manifest = folder / "demo_more.json"
+    if not overwrite and manifest.is_file() and all(p.is_file() for p in paths):
+        try:
+            recorded = json.loads(manifest.read_text())
+            hashes = [hashlib.sha256(p.read_bytes()).hexdigest() for p in paths]
+            if recorded.get("truth") == TRUTH and recorded.get("files") == hashes:
+                return paths
+        except (OSError, ValueError):
+            pass
+    for index, path in enumerate(paths):
+        seed = int(TRUTH["seed"]) + 101 + 10 * index
+        _sample(np.random.default_rng(seed), seed, path)
+    hashes = [hashlib.sha256(p.read_bytes()).hexdigest() for p in paths]
+    manifest.write_text(json.dumps({"truth": TRUTH, "files": hashes}, indent=2) + "\n")
+    return paths
+
+
 #: A two-colour PIE setup over the same files: green on channels 0 / 1 in the first half of the
 #: period, red on 2 / 3, under green excitation (R|G, first half) and red excitation (R|R,
 #: second half).
@@ -280,6 +327,6 @@ def make_red_reference(folder: str | Path | None = None, *, overwrite: bool = Fa
 
 
 __all__ = [
-    "FILES", "RED_FILE", "SETUP", "SETUP_PIE", "TRUTH", "TRUTH_RED",
-    "demo_folder", "make_demo", "make_red_reference", "veff_fl",
+    "FILES", "MORE_FILES", "RED_FILE", "SETUP", "SETUP_PIE", "TRUTH", "TRUTH_RED",
+    "demo_folder", "make_demo", "make_more_samples", "make_red_reference", "veff_fl",
 ]

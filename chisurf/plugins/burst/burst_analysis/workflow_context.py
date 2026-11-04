@@ -224,6 +224,19 @@ def materialize_handoff(
     return written or None
 
 
+def searched_runs(result: Any, files) -> list[Path]:
+    """The container runs (``m.pto/<run>``) a burst search wrote, in the order of *files*."""
+    from chisurf.core.fio.analysis_path import is_container_path
+
+    by_file = (result or {}).get("output_paths_by_file") or {} if isinstance(result, dict) else {}
+    runs = []
+    for path in [str(f) for f in files] or list(by_file):
+        folder = (by_file.get(path) or by_file.get(str(Path(path).resolve())) or {}).get("output_folder")
+        if folder and is_container_path(Path(folder)) and Path(folder).parent.exists():
+            runs.append(Path(folder))
+    return runs
+
+
 def _usable_run(container: Path, runs: list[str]) -> list[Path]:
     """The newest *usable* run: a search made before the detector definitions reached the
     step writes a table with no per-detector split at all, so the newest run whose
@@ -310,4 +323,5 @@ __all__ = [
     "burst_sources",
     "folder_from_result",
     "materialize_handoff",
+    "searched_runs",
 ]

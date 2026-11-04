@@ -1506,6 +1506,65 @@ class BurstWorkflow:
             baseline_quantile=baseline_quantile, bg_tail_fraction=bg_tail_fraction
         )
 
+    @classmethod
+    def offline(cls, *, workdir: str | Path | None = None) -> BurstWorkflow:
+        """A workflow without an MMFDB server: for :meth:`process_more`, which reads and writes
+        the measurements and their analysis containers directly."""
+        work = Path(workdir) if workdir else Path(tempfile.mkdtemp(prefix="burst_wf_"))
+        return cls(None, workdir=work)
+
+    def process_more(
+        self,
+        paths: str | Path | Sequence[str | Path],
+        recipe: Any,
+        *,
+        workers: int | None = None,
+    ) -> list[dict]:
+        """Process further measurements exactly as the first data was -- Burst Analysis' step 4,
+        *More samples*, from a script.
+
+        Each measurement is searched with the recipe's burst search, goes through the optional
+        steps that ran on the first data (Fusion, BVA, 2CDE, H2MM), and is fitted by Burst MLE with
+        the recipe's IRF, time shifts, model, start values and fit window (its background is its
+        own strict background selection, or the recipe's buffer). Its runs, the calibration report
+        and the recipe go into its analysis container. A measurement that fails is reported
+        ``failed`` and the others go on.
+
+        Parameters
+        ----------
+        paths : path or sequence of paths
+            The photon files (``.ptu``, ``.spc``, ``.ht3``, ...).
+        recipe : Recipe, dict or path
+            A :class:`~chisurf.plugins.burst.burst_analysis.more_samples.Recipe`, its payload
+            (``Recipe.to_payload()``), or a JSON file holding it -- the recipe the Burst Analysis
+            window captures (``hub.capture_recipe()``) and keeps in its settings.
+        workers : int, optional
+            Samples processed at once; default: as many as the burst search would use processes
+            for these files.
+
+        Returns
+        -------
+        list of dict
+            One row per measurement: ``name``, ``status`` (``done`` / ``failed``), ``error``,
+            ``bursts``, ``tau`` (``{detector: mean lifetime, ns}``), ``E`` (mean proximity ratio;
+            ``None`` for one colour), ``run``, ``container``, ``recipe_id``, ``report_id``.
+
+        Notes
+        -----
+        The burst fit runs in worker processes (``spawn``): a script calling this needs the usual
+        ``if __name__ == "__main__":`` guard.
+        """
+        import json as _json
+
+        from chisurf.plugins.burst.burst_analysis.more_samples import Recipe, process_more
+
+        if isinstance(recipe, (str, Path)):
+            recipe = _json.loads(Path(recipe).read_text(encoding="utf-8"))
+        if not isinstance(recipe, Recipe):
+            recipe = Recipe.from_payload(recipe)
+        files = [paths] if isinstance(paths, (str, Path)) else list(paths)
+        return process_more(recipe, [Path(p) for p in files], workers=workers)
+
     # -- lifecycle ------------------------------------------------------
 
     def close(self) -> None:

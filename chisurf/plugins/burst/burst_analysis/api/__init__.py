@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ..more_samples import Recipe
 from .workflow import (
     Bursts,
     BurstWorkflow,
@@ -20,6 +21,7 @@ __all__ = [
     "Detector",
     "GroundTruth",
     "H2mm",
+    "Recipe",
     "Setup",
     "Simulation",
 ]

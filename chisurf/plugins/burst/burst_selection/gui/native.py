@@ -376,27 +376,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                 self.sources[key] = found
 
     def _register_runs(self) -> None:
-        """Show the newest burst run of each searched measurement in the workspace: a child of the
-        photon dataset, read from that dataset's analysis container in the project (the run is not
-        stored as a dataset; the container is its record)."""
-        from chisurf.core.api import dataset_objects
-        from chisurf.core.fio.classify import container_entries
-        from chisurf.core.plugin.workspace_input import register_result
-
-        known = {str(getattr(d, "address", "")) for d in dataset_objects()}
-        folders = self.model.container_dirs()
-        for path in self.model.files:
-            container = Path(folders[str(path)]) / f"{Path(path).stem}.pto"
-            if not container.exists():
-                continue
-            try:
-                runs = [a for kind, a in container_entries(container) if kind == "bursts"]
-            except Exception:  # noqa: BLE001 - written either way; the row is a view of it
-                continue
-            if runs and runs[-1] not in known:
-                register_result(
-                    runs[-1], kind="bursts", result_of=self.sources.get(str(Path(path).resolve()), "")
-                )
+        """Show the newest burst run of each searched measurement in the workspace
+        (:func:`register_runs`)."""
+        register_runs(self.model, self.sources)
 
     def load_example(self) -> None:
         """Add the simulated stream with its known twelve bursts and select the matching detectors."""
@@ -1128,6 +1110,31 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
     def close(self) -> None:
         self.model.remember()
         self.editor.close()
+
+
+def register_runs(model, sources: dict) -> None:
+    """Show the newest burst run of each measurement *model* searched in the workspace: a child of
+    the photon dataset (*sources*: ``{resolved path: dataset uid}``), read from that dataset's
+    analysis container in the project (the run is not stored as a dataset; the container is its
+    record). Burst Analysis' *More samples* registers its runs the same way."""
+    from chisurf.core.api import dataset_objects
+    from chisurf.core.fio.classify import container_entries
+    from chisurf.core.plugin.workspace_input import register_result
+
+    known = {str(getattr(d, "address", "")) for d in dataset_objects()}
+    folders = model.container_dirs()
+    for path in model.files:
+        container = Path(folders[str(path)]) / f"{Path(path).stem}.pto"
+        if not container.exists():
+            continue
+        try:
+            runs = [a for kind, a in container_entries(container) if kind == "bursts"]
+        except Exception:  # noqa: BLE001 - written either way; the row is a view of it
+            continue
+        if runs and runs[-1] not in known:
+            register_result(
+                runs[-1], kind="bursts", result_of=(sources or {}).get(str(Path(path).resolve()), "")
+            )
 
 
 def create_app(**kwargs) -> BurstSelectionNativeApp:
