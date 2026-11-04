@@ -13,6 +13,7 @@
 - 2026-11-04: detector-name follow-ups: Trace Browser colours G|G/R|G/R|R series again (the label was lower-cased before the lookup in DETECTOR_COLOURS, whose keys are the upper-case names; guard test_detector_series_keep_their_own_colour); FCS Filter Calculator builds every detector|role key through Detectors.key instead of repeating the f-string.
 - 2026-11-04: plugin reference pages regenerated for ten tools whose committed specs moved to workspace input (fcs_merger, intensity_trace, microtime_histogram, pch, photon_table, ptu_alex_creator, synthetic_decay, tttr_time_windows, tttr_to_pto, vv_vh_g_factor): descriptions and File/IRF/Folder cells now say the input is picked from the Datasets workspace.
 - 2026-11-04: acq: cmc_light (SCPI 3-laser ALEX source, sequence compiler, optical sensor, emtk control panel, firmware sources) lives in-tree under chisurf/plugins/core/acq/live/cmc_light; its load dialogs are marked not-input (panel state), awaiting a NOT_INPUT entry in test/test_no_input_file_dialogs.py.
+- 2026-11-04: acq: laser.py adds ObisBackend and CmcLightBackend (open_laser, PTU tags) and simulated diode lasing thresholds.
 
 ## 2026-11-03
 

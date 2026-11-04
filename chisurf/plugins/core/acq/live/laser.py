@@ -26,9 +26,14 @@ part of it.
 from __future__ import annotations
 
 import contextlib
+import math
 import re
+import sys
+import time
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any
 
 #: Sequencer outputs of a Sepia II oscillator module (SOM 828 / SOM 828-D).
 SEQUENCER_OUTPUTS = 8
@@ -60,10 +65,38 @@ class HeadState:
     output: int = -1
     pulsed: bool = True
     intensity_pct: float = 0.0
+    #: Minimum driver percentage (%) where lasing begins (e.g. ~35% blue/green, ~47% red).
+    min_intensity_pct: float = 0.0
     #: Optical power when the API reports it (Sepia II does not; per-head calibrations may).
     power_mw: float | None = None
     #: Own repetition rate index (:data:`SLM_FREQUENCIES_HZ`) or a trigger mode (6, 7).
     trigger_index: int = SLM_TRIGGER_FALLING
+
+
+def laser_diode_threshold(head_or_name, wavelength_nm=None) -> float:
+    """Minimum driver percentage (threshold) where the physical laser diode begins lasing.
+
+    In PicoQuant hardware (e.g. Sepia II, PDL drivers), the user sets driver power (0..100%).
+    Blue / Green laser diodes (e.g. 405, 440, 485, 488 nm) typically have threshold ~35%.
+    Red laser diodes (e.g. 640 nm) typically have threshold ~47%.
+    """
+    min_pct = getattr(head_or_name, 'min_intensity_pct', None)
+    if min_pct is not None:
+        try:
+            val = float(min_pct)
+            if val > 0.0:
+                return val
+        except (ValueError, TypeError):
+            pass
+    name = str(getattr(head_or_name, 'name', head_or_name) or '').lower()
+    wl = getattr(head_or_name, 'wavelength_nm', wavelength_nm)
+    try:
+        wl_f = float(wl) if wl is not None else 0.0
+    except (ValueError, TypeError):
+        wl_f = 0.0
+    if 'red' in name or '640' in name or wl_f >= 600.0:
+        return 47.0
+    return 35.0
 
 
 @dataclass
@@ -338,7 +371,14 @@ class SimLaser(LaserBackend):
             oscillator=OscillatorState(slot=100, base_hz=self._base_hz),
         )
         self._sim.heads = [
-            HeadState(slot=200 + 100 * i, name=n, wavelength_nm=w, output=i, serial=f"SIM-HEAD-{i}")
+            HeadState(
+                slot=200 + 100 * i,
+                name=n,
+                wavelength_nm=w,
+                output=i,
+                serial=f"SIM-HEAD-{i}",
+                min_intensity_pct=laser_diode_threshold(n, w),
+            )
             for i, (n, w) in enumerate(self._heads_def)
         ]
         self.events.append("open")
@@ -515,6 +555,505 @@ class SepiaBackend(LaserBackend):
         )
 
 
+# ---------------------------------------------------------------------------------------
+# Coherent OBIS LS/LX through libphacq
+# ---------------------------------------------------------------------------------------
+def _obis_driver():
+    """The phacq ``obis`` driver, or ``None`` (libphacq without the plugin)."""
+    from chisurf.plugins.core.acq.live import devices
+
+    try:
+        return devices._registry().driver("obis")
+    except Exception:  # noqa: BLE001 - a registry without the plugin is just "not available"
+        return None
+
+
+def obis_available() -> tuple[bool, str]:
+    """Whether an OBIS laser can be opened here: the phacq ``obis`` driver is installed.
+
+    A port is named by the chooser/settings; without one the simulator answers
+    (``allow_simulated``). Opening never scans serial ports by itself.
+    """
+    if _obis_driver() is None:
+        return False, "not available: libphacq without the obis driver"
+    return True, "ready (simulator, or the port the settings name)"
+
+
+class ObisBackend(LaserBackend):
+    """Coherent OBIS LS/LX lasers through libphacq's native ``obis`` driver.
+
+    One phacq device carries one serial port: a single laser answers unprefixed (device
+    index 0), a combiner box answers per laser index (``SYSTem<i>:`` / ``SOURce<i>:``) --
+    the channel of every parameter IS the laser index, and the head's slot is that channel.
+
+    The heads run CW; the ALEX/PIE program is not played by the laser. The stored oscillator
+    describes the slot plan the **ni** card gates the heads with (their modulation source is
+    switched to DIGITAL), so :func:`pie_slots` and the ALEX→PIE machinery work unchanged.
+    Power is a setpoint in W between the unit's reported limits; ``intensity_pct`` scales
+    linearly between them.
+    """
+
+    kind = "obis"
+
+    #: the modulation-source enum value that switches the external (digital) gate on
+    MOD_DIGITAL = 2.0
+    MOD_CW = 0.0
+
+    def __init__(self, serial: str = "", allow_simulated: bool = False) -> None:
+        super().__init__()
+        self._serial = str(serial)
+        self._allow_simulated = bool(allow_simulated)
+        #: the phacq device (``schema()`` / ``settings()`` / ``apply()``), set by ``open()``
+        self.device: Any = None
+        self._channels = 1
+        self._osc = OscillatorState(slot=100, base_hz=0.0)
+
+    @classmethod
+    def available(cls) -> tuple[bool, str]:
+        return obis_available()
+
+    def _open_device(self, index: int) -> None:
+        drv = _obis_driver()
+        if drv is None:
+            raise LaserError(obis_available()[1])
+        address = self._serial
+        if not address:
+            if not self._allow_simulated:
+                raise LaserError(
+                    "no OBIS serial port given (pick the laser in the settings, or simulate)"
+                )
+            address = "sim:"
+        try:
+            self.device = drv.open(address)
+        except Exception as exc:  # noqa: BLE001 - shown; nothing emits
+            raise LaserError(f"cannot open OBIS {address!r}: {exc}") from None
+        self._channels = max(1, int(self.device.schema().get("channels", 1)))
+        # taking software control clears the 5 s CDRH delay on every laser (the lab-standard
+        # flow: storm-control and the smfBox software both switch it off); emission stays
+        # blocked -- open() ends with laser_off(), the same contract as the other backends
+        self.device.apply({f"cdrh_delay[{c}]": 0 for c in range(self._channels)})
+        self._state.warnings.append("CDRH 5 s delay cleared for software control")
+
+    def _close_device(self) -> None:
+        if self.device is not None:
+            self.device.close()
+        self.device = None
+
+    def _channel(self, slot: int) -> int:
+        c = int(slot)
+        if not 0 <= c < self._channels:
+            raise LaserError(f"no OBIS laser {slot} (channels 0..{self._channels - 1})")
+        return c
+
+    def _read_state(self) -> LaserState:
+        s = self.device.settings()
+        info = self.device.information()
+        heads = []
+        for c in range(self._channels):
+            lo = float(s.get(f"power_limit_low_w[{c}]") or 0.0)
+            hi = float(s.get(f"power_limit_high_w[{c}]") or 0.0)
+            setp = float(s.get(f"power_setpoint_w[{c}]") or 0.0)
+            span = (hi - lo) if hi > lo else max(hi, 1e-9)
+            heads.append(
+                HeadState(
+                    slot=c,
+                    name=f"{info.model} [{c}]" if self._channels > 1 else str(info.model),
+                    kind="laser",
+                    wavelength_nm=float(s.get(f"wavelength_nm[{c}]") or 0.0),
+                    output=c,
+                    pulsed=abs(float(s.get(f"modulation_source[{c}]") or 0.0) - self.MOD_DIGITAL)
+                    < 0.5,
+                    intensity_pct=max(0.0, min(100.0, (setp - lo) / span * 100.0)),
+                    trigger_index=0,
+                )
+            )
+        return LaserState(
+            model=str(info.model),
+            serial=str(info.serial_number),
+            library="libphacq",
+            heads=heads,
+            oscillator=self._osc,
+            emission_blocked=bool(self._state.emission_blocked),
+            warnings=list(self._state.warnings),
+        )
+
+    def _set_emission(self, on: bool) -> None:
+        values = {f"emission[{c}]": 1 if on else 0 for c in range(self._channels)}
+        self.device.apply(values)
+
+    def _set_head(self, slot, enabled, intensity_pct, pulsed, trigger_index) -> None:
+        c = self._channel(slot)
+        s = self.device.settings()
+        values: dict = {}
+        if intensity_pct is not None:
+            lo = float(s.get(f"power_limit_low_w[{c}]") or 0.0)
+            hi = float(s.get(f"power_limit_high_w[{c}]") or 0.0)
+            span = (hi - lo) if hi > lo else max(hi, 1e-9)
+            values[f"power_setpoint_w[{c}]"] = lo + span * float(intensity_pct) / 100.0
+        if pulsed is not None:
+            # the gate lives on the external (digital) modulation input -- the ni card's
+            # ALEX/PIE waveform drives it; CW power control stays internal otherwise
+            values[f"modulation_source[{c}]"] = self.MOD_DIGITAL if pulsed else self.MOD_CW
+        if enabled is not None:
+            values[f"emission[{c}]"] = 1 if enabled else 0
+        if values:
+            self.device.apply(values)
+
+    def _set_oscillator(
+        self, base_hz, divider, burst_lengths, output_enabled, sync_enabled, sync_inverse, delays_ns
+    ) -> None:
+        # a CW laser plays no sequencer: the plan is kept in the state and played by the ni
+        # card's gate waveform (slot_gate/slot_output parameters), so pie_slots() and the
+        # ALEX->PIE conversion see the same shape as with the other backends
+        o = self._osc
+        if base_hz is not None:
+            o.base_hz = float(base_hz)
+        if divider is not None:
+            o.divider = int(divider)
+        if burst_lengths is not None:
+            o.burst_lengths = [int(n) for n in burst_lengths]
+        if output_enabled is not None:
+            o.output_enabled = [bool(x) for x in output_enabled]
+        if sync_enabled is not None:
+            o.sync_enabled = [bool(x) for x in sync_enabled]
+        if sync_inverse is not None:
+            o.sync_inverse = bool(sync_inverse)
+        if delays_ns is not None:
+            o.delays_ns = [float(x) for x in delays_ns]
+
+
+# ---------------------------------------------------------------------------------------
+# CMC Light (SCPI 3-laser source for ALEX / smFRET on ESP8266, USB, WiFi, or simulator)
+# ---------------------------------------------------------------------------------------
+def _cmc_light_module():
+    """Lazily locate and import the cmc_light package (in-tree in ChiSurf, environment, or dev repository)."""
+    try:
+        from . import cmc_light
+        return cmc_light
+    except (ImportError, ValueError):
+        pass
+    try:
+        from chisurf.plugins.core.acq.live import cmc_light
+        return cmc_light
+    except ImportError:
+        pass
+    try:
+        import cmc_light
+        return cmc_light
+    except ImportError:
+        pass
+    for dev_path in [
+        Path("/Users/tpeulen/dev/chinalaser"),
+        Path(__file__).resolve().parents[5] / "chinalaser",
+        Path(__file__).resolve().parents[6] / "chinalaser",
+    ]:
+        if dev_path.exists() and (dev_path / "cmc_light").is_dir():
+            s = str(dev_path)
+            if s not in sys.path:
+                sys.path.insert(0, s)
+            try:
+                import cmc_light
+                return cmc_light
+            except ImportError:
+                pass
+    return None
+
+
+def cmc_light_available() -> tuple[bool, str]:
+    """Whether a CMC Light laser source can be opened (connected via USB/TCP or module available)."""
+    mod = _cmc_light_module()
+    if mod is None:
+        return False, "not available: cmc_light module not found"
+    try:
+        instruments = mod.find_instruments(timeout=0.1)
+        if instruments:
+            labels = [f"{port} ({idn.split(',')[1] if ',' in idn else idn})" for port, idn in instruments]
+            return True, ", ".join(labels)
+    except Exception:
+        pass
+    return True, "ready (simulated / TCP)"
+
+
+class CmcLightBackend(LaserBackend):
+    """CMC Light: 3-channel SCPI laser driver for ALEX / smFRET (ESP8266 / USB / WiFi / simulator).
+
+    Channels:
+      1: Blue (e.g. 405 nm)
+      2: Green (e.g. 532 nm / 488 nm)
+      3: Red (e.g. 640 nm)
+
+    Power is controlled via PWM or cycle dithering (0..100%).
+    Internal power monitor reads total emitted light (lux) via I2C photodiode (BH1750).
+    """
+
+    kind = "cmc_light"
+
+    def __init__(
+        self,
+        port: str = "",
+        host: str = "",
+        tcp_port: int = 5025,
+        simulated: bool = False,
+        allow_simulated: bool = False,
+        **kwargs,
+    ) -> None:
+        super().__init__()
+        self._port = str(port or "")
+        self._host = str(host or "")
+        self._tcp_port = int(tcp_port)
+        self._simulated = bool(simulated or self._port in ("sim", "simulated"))
+        self._allow_simulated = bool(allow_simulated)
+        self.source = None
+        self._channel_map: dict[int, int] = {}  # slot -> 1-based channel index
+        self._enabled_slots: set[int] = set()
+        self._diode_marked: float | None = None
+
+    @classmethod
+    def available(cls) -> tuple[bool, str]:
+        return cmc_light_available()
+
+    def _open_device(self, index: int) -> None:
+        mod = _cmc_light_module()
+        if mod is None:
+            raise LaserError("cmc_light module is not installed or available (check dev/chinalaser)")
+
+        src = None
+        if self._simulated:
+            src = mod.LaserSource.simulated()
+        elif self._host:
+            try:
+                src = mod.LaserSource.open_tcp(self._host, self._tcp_port)
+            except Exception as exc:
+                if self._allow_simulated:
+                    src = mod.LaserSource.simulated()
+                else:
+                    raise LaserError(f"Cannot connect to CMC Light at {self._host}:{self._tcp_port}: {exc}") from exc
+        elif self._port:
+            try:
+                src = mod.LaserSource.open(self._port)
+            except Exception as exc:
+                if self._allow_simulated:
+                    src = mod.LaserSource.simulated()
+                else:
+                    raise LaserError(f"Cannot connect to CMC Light on {self._port}: {exc}") from exc
+        else:
+            try:
+                instruments = mod.find_instruments(timeout=0.3)
+            except Exception:
+                instruments = []
+            if instruments and index < len(instruments):
+                src = mod.LaserSource.open(instruments[index][0])
+            elif self._allow_simulated or True:  # Default to simulated if no USB device attached
+                src = mod.LaserSource.simulated()
+            else:
+                raise LaserError("No CMC Light USB serial instrument found")
+
+        self.source = src
+        # Map channels to slots: Ch 1 -> 100 (Blue), Ch 2 -> 200 (Green), Ch 3 -> 300 (Red)
+        self._channel_map = {100 * ch["index"]: ch["index"] for ch in src.channels}
+        self._enabled_slots = set()
+        # Start safe: all lasers off and zero drive
+        for ch in src.channels:
+            with contextlib.suppress(Exception):
+                src.set_power(ch["index"], 0.0)
+            with contextlib.suppress(Exception):
+                src.set_emission(ch["index"], False)
+        self.source.all_off()
+
+    def _close_device(self) -> None:
+        if self.source is not None:
+            with contextlib.suppress(Exception):
+                self.source.all_off()
+            with contextlib.suppress(Exception):
+                self.source.close()
+            self.source = None
+
+    def _slot_to_ch(self, slot: int) -> int:
+        if slot in self._channel_map:
+            return self._channel_map[slot]
+        if slot in self._channel_map.values():
+            return slot
+        raise LaserError(f"no CMC Light channel for slot {slot} (valid slots: {list(self._channel_map.keys())})")
+
+    def _read_state(self) -> LaserState:
+        src = self.source
+        if src is None:
+            return LaserState(model="CMC Light (closed)", library="cmc_light")
+
+        parts = src.identity.split(",")
+        model = parts[1] if len(parts) > 1 else "CMC Light"
+        serial = parts[2] if len(parts) > 2 else "SIM"
+
+        default_wls = {"blue": 405.0, "green": 532.0, "red": 640.0}
+        default_thresholds = {"blue": 35.0, "green": 35.0, "red": 47.0}
+
+        try:
+            is_seq = src.source() == "SEQ"
+        except Exception:
+            is_seq = False
+
+        any_emitting = False
+        heads = []
+        for ch in src.channels:
+            k = ch["index"]
+            slot = 100 * k
+            raw_name = ch.get("name", f"Laser {k}")
+            wl = float(ch.get("wavelength") or 0.0)
+            if wl <= 0.0:
+                wl = default_wls.get(raw_name.lower(), 488.0)
+
+            try:
+                p_frac = float(src.power(k))
+            except Exception:
+                p_frac = 0.0
+
+            try:
+                on = bool(src.emission(k))
+            except Exception:
+                on = False
+            if on:
+                any_emitting = True
+
+            th = default_thresholds.get(raw_name.lower(), laser_diode_threshold(raw_name, wl))
+            display_name = f"{raw_name.capitalize()} {int(wl)} nm"
+            heads.append(
+                HeadState(
+                    slot=slot,
+                    name=display_name,
+                    wavelength_nm=wl,
+                    serial=f"{serial}-{k}",
+                    output=k - 1,
+                    pulsed=is_seq,
+                    intensity_pct=round(p_frac * 100.0, 2),
+                    min_intensity_pct=th,
+                )
+            )
+
+        osc = None
+        if is_seq:
+            try:
+                timing = src.timing()
+                period_us = timing.get("period_us", 1000)
+                base_hz = 1e6 / max(1, period_us)
+                osc = OscillatorState(
+                    slot=50,
+                    base_hz=base_hz,
+                    divider=1,
+                    burst_lengths=[1] * len(src.channels) + [0] * (SEQUENCER_OUTPUTS - len(src.channels)),
+                    output_enabled=[src.emission(ch["index"]) for ch in src.channels]
+                    + [False] * (SEQUENCER_OUTPUTS - len(src.channels)),
+                    sync_enabled=[True] + [False] * (SEQUENCER_OUTPUTS - 1),
+                )
+            except Exception:
+                pass
+
+        return LaserState(
+            model=model,
+            serial=serial,
+            library="cmc_light",
+            heads=heads,
+            oscillator=osc,
+            emission_blocked=not any_emitting,
+            warnings=list(self._state.warnings),
+        )
+
+    def _set_emission(self, on: bool) -> None:
+        if self.source is None:
+            return
+        if not on:
+            self.source.all_off()
+        else:
+            for slot, k in self._channel_map.items():
+                is_on = slot in self._enabled_slots
+                self.source.set_emission(k, is_on)
+
+    def _set_head(self, slot, enabled, intensity_pct, pulsed, trigger_index) -> None:
+        if self.source is None:
+            return
+        k = self._slot_to_ch(slot)
+        if enabled is not None:
+            if enabled:
+                self._enabled_slots.add(slot)
+            else:
+                self._enabled_slots.discard(slot)
+            if not self._state.emission_blocked:
+                self.source.set_emission(k, bool(enabled))
+        if intensity_pct is not None:
+            pct = max(0.0, min(100.0, float(intensity_pct)))
+            self.source.set_power(k, pct / 100.0)
+        if pulsed is not None:
+            self.source.set_source("SEQ" if pulsed else "CW")
+
+    def _set_oscillator(
+        self, base_hz, divider, burst_lengths, output_enabled, sync_enabled, sync_inverse, delays_ns
+    ) -> None:
+        if self.source is None:
+            return
+        if output_enabled is not None:
+            for out_idx, en in enumerate(output_enabled):
+                k = out_idx + 1
+                if k in self._channel_map.values():
+                    self.source.set_emission(k, bool(en))
+        if base_hz is not None and base_hz > 0:
+            period_us = max(20, int(round(1e6 / base_hz)))
+            self.source.set_pwm_period(period_us)
+
+    def load_alex(self, on_us: int = 500, gap_us: int = 50, sync_width_us: int = 100) -> None:
+        """Configure hardware ALEX sequence on CMC Light."""
+        if self.source is not None:
+            self.source.load_alex(int(on_us), int(gap_us))
+            if sync_width_us > 0:
+                self.source.set_sync_width(int(sync_width_us))
+
+    def set_sequence_steps(self, steps_or_text: list | str) -> None:
+        """Set arbitrary multi-channel pulse steps (from list of (duration, mask) or text like '20us 1; 5us; 20us 2')."""
+        if self.source is None:
+            return
+        mod = _cmc_light_module()
+        if mod is None:
+            return
+        if isinstance(steps_or_text, str):
+            names = [ch.get("name", str(ch["index"])) for ch in self.source.channels]
+            parsed = mod.parse_steps(steps_or_text, names)
+        else:
+            parsed = list(steps_or_text)
+        steps = []
+        for step in parsed:
+            dur = int(step[0])
+            mask = int(step[1]) if isinstance(step[1], (int, bool)) else sum((1 << i) for i, b in enumerate(step[1]) if b)
+            steps.append((dur, mask))
+        self.source.load_steps(steps)
+
+    def get_sequence_steps(self) -> list[tuple[int, int]]:
+        """Return the current step list as [(duration_us, mask_int), ...]."""
+        if self.source is None:
+            return []
+        return list(self.source.steps())
+
+    def monitor_lux(self) -> float:
+        """Read optical signal in lux from internal BH1750 photodiode."""
+        if self.source is not None and self.source.monitor_present():
+            try:
+                val = self.source.monitor_lux()
+                return 0.0 if math.isnan(val) else float(val)
+            except Exception:
+                return 0.0
+        return 0.0
+
+    def get_parameter(self, name: str, default: float = -1.0) -> float:
+        """Allow direct photodiode reading when queried as a device parameter."""
+        if name in ("diode_raw", "diode_mean", "monitor_lux"):
+            return self.monitor_lux()
+        if name == "diode_mark":
+            self._diode_marked = time.monotonic()
+            return 0.0
+        return default
+
+    def set_parameter(self, name: str, value: float) -> None:
+        if name == "diode_mark":
+            self._diode_marked = time.monotonic()
+
+
 def _parse_frequency(text: str) -> float | None:
     """'internal 80.00 MHz' -> 80e6 (Sepia2's decoded frequency/trigger mode)."""
     m = re.search(r"([\d.]+)\s*([kMG]?)Hz", text or "")
@@ -525,13 +1064,33 @@ def _parse_frequency(text: str) -> float | None:
 
 def open_laser(kind: str = "auto", **kwargs) -> LaserBackend:
     """A backend by kind: ``"sepia"`` (libphacq; ``"sepia2"`` in older settings files),
-    ``"simulated"`` or ``"auto"`` (a connected Sepia II, else the simulator)."""
+    ``"obis"`` (Coherent OBIS LS/LX through libphacq; ``"obis_sim"`` forces the simulator),
+    ``"cmc_light"`` (or ``"cmc"``, ``"cmc_sim"``, ``"scpi"``), ``"simulated"`` or
+    ``"auto"`` (a connected hardware driver, else the simulator)."""
     if kind == "simulated":
         return SimLaser(**kwargs)
     if kind in ("sepia", "sepia2"):
         return SepiaBackend(**kwargs)
+    if kind == "obis":
+        return ObisBackend(**kwargs)
+    if kind == "obis_sim":
+        return ObisBackend(allow_simulated=True, **kwargs)
+    if kind in ("cmc", "cmc_light", "cmclight", "scpi"):
+        return CmcLightBackend(**kwargs)
+    if kind in ("cmc_sim", "cmc_light_sim", "scpi_sim"):
+        return CmcLightBackend(simulated=True, **kwargs)
     if kind == "auto":
-        return SepiaBackend(**kwargs) if sepia_available()[0] else SimLaser()
+        if sepia_available()[0]:
+            return SepiaBackend(**kwargs)
+        if cmc_light_available()[0]:
+            mod = _cmc_light_module()
+            if mod:
+                try:
+                    if mod.find_instruments(timeout=0.1):
+                        return CmcLightBackend(**kwargs)
+                except Exception:
+                    pass
+        return SimLaser()
     raise ValueError(f"unknown laser backend {kind!r}")
 
 
@@ -647,6 +1206,15 @@ def ptu_tags(backend: LaserBackend | None, program: dict | None = None) -> dict:
     """
     dev = getattr(backend, "device", None)
     if dev is None:
+        if getattr(backend, "kind", "") == "cmc_light":
+            tags: dict = {"Laser_Backend": "cmc_light"}
+            src = getattr(backend, "source", None)
+            if src is not None:
+                tags["CMC_Identity"] = str(getattr(src, "identity", "CMC,LIGHT-3"))
+            for i, head in enumerate((program or {}).get("heads") or []):
+                if head.get("name"):
+                    tags[f"UsrHeadName({i})"] = str(head["name"])
+            return tags
         return {}
     tags: dict = {}
     try:
