@@ -18,6 +18,7 @@
 - 2026-11-04: acq: power calibration (diode -> µW from measured references), average-power control, diode attribution and the live/calibration workflow library.
 - 2026-11-04: acq: reference-measurement history, setup-quality panel, live FCS N/CPM and the dilution advisor.
 - 2026-11-04: acq: writer-first recording with a bounded analysis queue, analysis pause/resume markers, reserved/atomic point recordings and full-run trace means.
+- 2026-11-04: acq: instrument_sim.py, a synthetic PIE instrument (heads, shutters, diode) owned by source selection.
 
 ## 2026-11-03
 
