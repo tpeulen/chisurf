@@ -6,9 +6,10 @@ correction factors apply to the dye pair. Guessing silently turns the agent
 into a confident wrong analysis; asking turns it into a consultation. The
 runtime enforces the shape of this: the questions come back structured to the
 caller (``AgentResult.clarifications``), the run stops until the user answers,
-and one request gets **one** clarification round — a second ``ask_user`` in
-the same thread is refused, because an assistant that keeps asking instead of
-analysing is its own failure mode. The rule lives here so every host
+and the rounds are capped — three per request thread while the agent grills
+(``AgentConfig.grill``, the default), one otherwise; an ``ask_user`` past the
+cap is refused, because an assistant that keeps asking instead of analysing
+is its own failure mode. The rule lives here so every host
 (GUI panel, CLI, ACP) gets the same behaviour.
 """
 
@@ -87,13 +88,14 @@ def _clean_questions(raw: Any) -> list[dict[str, Any]]:
 @registry.add(
     name=ASK_USER,
     description=(
-        "Ask the user focused clarifying questions before acting, when a request "
-        "is ambiguous in a way that changes the analysis: which file is meant, "
-        "which species gate, how many fit components, which correction factors. "
-        "Each question carries concrete options (mark the one you would pick as "
-        "'default'). Ask ONCE per request — the runtime refuses a second round; "
-        "after the answers arrive, proceed and state the choices you used. Never "
-        "call this for something the tools can find out themselves."
+        "Ask the user focused questions before acting, about the choices that "
+        "change the analysis and that the request leaves open: which files, which "
+        "species gate, which model and how many components, which correction "
+        "factors, background, what output. Each question carries concrete options "
+        "(mark the one you would pick as 'default'). The runtime caps the rounds "
+        "per request and refuses one past the cap; after the answers arrive, "
+        "proceed and state the choices you used. Never call this for something "
+        "the tools can find out themselves."
     ),
     parameters={
         "type": "object",

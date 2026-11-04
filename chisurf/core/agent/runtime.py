@@ -15,13 +15,23 @@ Design decisions that matter for how well it behaves:
   short.
 * **Budgets, not guesses.**  Steps, wall-clock time, and consecutive-failure
   counts are explicit and reported in the result.
-* **One clarification round, then act.**  When a request is ambiguous in a
-  way that changes the analysis, the model asks through the ``ask_user``
-  tool; the run stops with ``stop_reason="needs_input"`` and the questions
-  come back structured (``AgentResult.clarifications``).  The user's next
-  message answers them and the plan resumes.  A second ``ask_user`` in the
-  same thread is refused — an assistant that keeps asking instead of
-  analysing is its own failure mode.
+* **Grill first, then act.**  Before an analysis the model interviews the
+  user through the ``ask_user`` tool about the choices that change the
+  result (``AgentConfig.grill``, on by default, with the procedure in the
+  ``grill-the-user`` skill); the run stops with ``stop_reason="needs_input"``
+  and the questions come back structured (``AgentResult.clarifications``).
+  The user's next message answers them and the plan resumes.  The rounds are
+  capped — three per request thread with grilling, one without — and an
+  ``ask_user`` past the cap is refused: an assistant that keeps asking
+  instead of analysing is its own failure mode.
+* **The user can steer a running request.**  :meth:`AgentSession.steer`
+  hands the loop a message from any thread; it is added to the conversation
+  as a user turn before the next model call, so the model sees it after the
+  tool call in flight, without the run being interrupted.
+* **It remembers.**  The memories relevant to a request are recalled from the
+  user's shared Mnemosyne store (:mod:`chisurf.core.agent.memory`) into the
+  system prompt, and the model keeps durable lessons with ``memory_remember``.
+  Without the store the agent runs as before.
 * **The conversation survives across questions**, so follow-ups like "now fix
   the lifetime and refit" work without repeating context.
 * **Skills are loaded from the request itself.**  Before the model sees a
@@ -36,6 +46,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import threading
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -58,6 +69,60 @@ from chisurf.core.agent.spec import (
 )
 from chisurf.core.agent.tools import build_default_registry
 from chisurf.core.agent.tools.clarify import ASK_USER, render_questions
+
+#: The skill that holds the interview procedure (loaded while ``grill`` is on).
+GRILL_SKILL = "grill-the-user"
+
+#: Words that make a request an analysis worth grilling about.
+_ANALYSIS_WORDS = re.compile(
+    r"\b(analy[sz]\w*|process\w*|pipeline|fit\w*|burst\w*|gate|gating|compute|"
+    r"calculate|determine|measure|extract|batch|global|distance|fret|"
+    r"lifetime|correlat\w*|pda|histogram|export)\b",
+    re.IGNORECASE,
+)
+#: How a purely informational question opens.
+_QUESTION_OPENING = re.compile(
+    r"^\s*(what|which|why|who|where|when|explain|describe|tell me|list|show me what|"
+    r"how (do|does|is|are|can|many|much|would)|can you explain|help)\b"
+    # "is it converged?", "does it fit?" -- a yes/no question; "do a burst analysis" is not.
+    r"|^\s*(is|are|does|do|did|was|were)\b.*\?\s*$",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def is_informational(question: str) -> bool:
+    """Whether *question* only asks for information ("what is loaded?", "explain X").
+
+    Such a request is answered directly and never grilled about.
+
+    Parameters
+    ----------
+    question : str
+        The user's message.
+
+    Returns
+    -------
+    bool
+    """
+    text = str(question or "").strip()
+    if not text:
+        return True
+    return bool(_QUESTION_OPENING.match(text))
+
+
+def wants_grilling(question: str) -> bool:
+    """Whether *question* starts an analysis the user should be interviewed about.
+
+    Parameters
+    ----------
+    question : str
+        The user's message.
+
+    Returns
+    -------
+    bool
+    """
+    return not is_informational(question) and bool(_ANALYSIS_WORDS.search(str(question or "")))
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +173,25 @@ class AgentConfig:
     #: ``None`` follows the model's settings (``LLMSettings.focus_tools``: on for
     #: the on-device model, off for hosted ones).
     focus_tools: bool | None = None
+    #: Interview the user before an analysis (the ``grill-the-user`` skill, up to
+    #: three ``ask_user`` rounds per request). Off: one round, only when ambiguous.
+    grill: bool = True
+    #: ``ask_user`` rounds allowed per request thread; ``None`` follows ``grill``
+    #: (three with it, one without).
+    max_clarification_rounds: int | None = None
+    #: Recall memories into the context and offer the memory tools (Mnemosyne).
+    use_memory: bool = True
+    #: How many memories are recalled before a request.
+    memory_recall_limit: int = 4
+    #: After a request that recovered from a failing tool, keep one short lesson.
+    auto_lesson: bool = True
+
+    @property
+    def clarification_rounds(self) -> int:
+        """The ``ask_user`` rounds one request thread may use."""
+        if self.max_clarification_rounds is not None:
+            return max(0, int(self.max_clarification_rounds))
+        return 3 if self.grill else 1
 
 
 @dataclass
@@ -267,6 +351,9 @@ class AgentSession:
         Procedures the agent may follow.  Discovered from the built-in,
         plugin and user directories when omitted; pass an empty library to
         run without skills.
+    memory : AgentMemory, optional
+        The long-term memory.  The user's shared store when omitted and
+        ``config.use_memory`` is on (:func:`chisurf.core.agent.memory.default_memory`).
     """
 
     def __init__(
@@ -277,6 +364,7 @@ class AgentSession:
         config: AgentConfig | None = None,
         extra_instructions: str = "",
         skills: SkillLibrary | None = None,
+        memory: Any = None,
     ):
         self.llm = llm
         self.context = context or AgentContext()
@@ -286,9 +374,22 @@ class AgentSession:
         self.skills = SkillLibrary.discover() if skills is None else skills
         self.messages: list[dict[str, Any]] = []
         self._cancelled = False
-        # A clarification round is open from the moment the model asks until
-        # the thread it belongs to ends with a real answer (see ``ask``).
-        self._clarification_pending = False
+        # The clarification rounds asked in the current request thread: from
+        # the model's first ask until the thread ends with a real answer.
+        self._clarification_rounds = 0
+        # Messages the user sent while a request runs (``steer``), drained
+        # into the conversation before the next model call.
+        self._steering: list[str] = []
+        self._steering_lock = threading.Lock()
+        self._running = False
+        self._memory_context = ""
+        self._lesson_thread: threading.Thread | None = None
+        if memory is None and self.config.use_memory:
+            from chisurf.core.agent.memory import default_memory
+
+            memory = default_memory()
+        self.memory = memory if self.config.use_memory else None
+        self.context.extras["memory"] = self.memory
         # The skill tools read the library through the context, so a tool
         # handler needs no back-reference to the session.
         self.context.extras["skill_library"] = self.skills
@@ -348,11 +449,68 @@ class AgentSession:
         """Ask the running loop to stop after the current tool call."""
         self._cancelled = True
 
+    @property
+    def running(self) -> bool:
+        """Whether :meth:`ask` is executing right now (on any thread)."""
+        return self._running
+
+    def steer(self, text: str) -> bool:
+        """Hand the running request a message from the user, without interrupting it.
+
+        Thread-safe. The message joins the conversation as a user turn before
+        the next model call -- after the tool call in flight -- so the model
+        reads it and adjusts. A message that arrives after the last model call
+        stays pending; :meth:`take_steering` gives it back to the caller,
+        which sends it as the next request.
+
+        Parameters
+        ----------
+        text : str
+            What the user typed.
+
+        Returns
+        -------
+        bool
+            ``False`` for an empty message (nothing is queued).
+        """
+        text = str(text or "").strip()
+        if not text:
+            return False
+        with self._steering_lock:
+            self._steering.append(text)
+        return True
+
+    def take_steering(self) -> list[str]:
+        """Return (and forget) the steering messages the loop never got to."""
+        with self._steering_lock:
+            pending, self._steering = self._steering, []
+        return pending
+
+    def _drain_steering(self) -> int:
+        """Append the pending steering messages as user turns; return how many."""
+        pending = self.take_steering()
+        for text in pending:
+            self.messages.append(
+                {
+                    "role": "user",
+                    "content": "(The user added this while you were working; take it "
+                    f"into account from here on.)\n{text}",
+                }
+            )
+            self.context.emit("agent.steered", {"text": text})
+        return len(pending)
+
+    @property
+    def _clarification_pending(self) -> bool:
+        """Whether the current request thread has asked at least one round."""
+        return self._clarification_rounds > 0
+
     def reset(self) -> None:
         """Forget the conversation and the loaded skills."""
         self.messages = []
         self._cancelled = False
-        self._clarification_pending = False
+        self._clarification_rounds = 0
+        self.take_steering()
         self.context.extras["active_skills"] = []
         if self._focus is not None:
             self._focus.clear()
@@ -370,8 +528,17 @@ class AgentSession:
         AgentResult
         """
         self._cancelled = False
+        self._running = True
+        try:
+            return self._ask(question)
+        finally:
+            self._running = False
+
+    def _ask(self, question: str) -> AgentResult:
+        """The loop behind :meth:`ask`."""
         self._activate_skills(question)
         self._grow_focus(question)
+        self._memory_context = self._recall(question)
         self._sync_system_prompt()
         self.messages.append({"role": "user", "content": str(question)})
         self.context.emit("agent.started", {"question": question})
@@ -392,6 +559,7 @@ class AgentSession:
                 result.stop_reason = "time_budget"
                 break
 
+            self._drain_steering()
             try:
                 response = self._complete()
             except LLMError as error:
@@ -421,15 +589,16 @@ class AgentSession:
                     break
 
                 if call.name == ASK_USER:
-                    if self._clarification_pending:
-                        # One round per request: the questions were asked and
-                        # answered; grilling again would keep the analysis
-                        # from ever starting. The refusal tells the model what
-                        # to do instead.
+                    limit = self.config.clarification_rounds
+                    if self._clarification_rounds >= limit:
+                        # The rounds are capped (three with grilling, one
+                        # without): asking on would keep the analysis from
+                        # ever starting. The refusal says what to do instead.
                         invocation = self._failure(
                             call,
                             time.perf_counter(),
-                            "a clarification was already asked in this request — "
+                            "a clarification was already asked in this request "
+                            f"({self._clarification_rounds} of {limit} round(s) used) — "
                             "proceed with the best-supported choice and state it "
                             "in your answer",
                             event="tool.refused",
@@ -447,7 +616,7 @@ class AgentSession:
                         # The run waits here: the questions leave as the
                         # result, the user's next message answers them, and
                         # the plan resumes in the same conversation.
-                        self._clarification_pending = True
+                        self._clarification_rounds += 1
                         result.clarifications = questions
                         result.stop_reason = "needs_input"
                         self.context.emit("agent.needs_input", {"questions": questions})
@@ -480,8 +649,9 @@ class AgentSession:
 
         if result.stop_reason == "answer":
             # A thread that ended in an answer is closed: the next request may
-            # earn its own clarification round.
-            self._clarification_pending = False
+            # earn its own clarification rounds.
+            self._clarification_rounds = 0
+            self._learn_from_recovery(result)
         if result.stop_reason == "needs_input" and result.clarifications:
             result.text = render_questions(result.clarifications)
         elif result.stop_reason != "answer" and not result.text:
@@ -744,12 +914,26 @@ class AgentSession:
             return []
         active = self.context.extras.setdefault("active_skills", [])
         experiments = session_experiments(self.context.datasets)
-        matched = self.skills.match(
-            question,
-            experiments,
-            limit=self.config.max_active_skills,
-            threshold=self.config.skill_match_threshold,
-        )
+        matched = [
+            skill
+            for skill in self.skills.match(
+                question,
+                experiments,
+                limit=self.config.max_active_skills,
+                threshold=self.config.skill_match_threshold,
+            )
+            if skill.name != GRILL_SKILL or self.config.grill
+        ]
+        grill = self.skills.get(GRILL_SKILL)
+        if (
+            grill is not None
+            and self.config.grill
+            and grill not in matched
+            and wants_grilling(question)
+        ):
+            # The interview comes first: its procedure leads the prompt, on top
+            # of (not instead of) the skills the request matched.
+            matched.insert(0, grill)
         # ``match`` has already applied the limit to the skills that matched
         # the wording, and then added the smaller skills those are composed of.
         # Truncating again here would drop the parts of a composed procedure
@@ -788,6 +972,9 @@ class AgentSession:
             for skill in (self.skills.get(name) for name in self.active_skills)
             if skill is not None
         ]
+        excluded = list(self.active_skills)
+        if not self.config.grill:
+            excluded.append(GRILL_SKILL)
         prompt = build_system_prompt(
             datasets=self.context.datasets,
             fits=self.context.fits,
@@ -795,7 +982,9 @@ class AgentSession:
             tool_catalogue=catalogue,
             extra=extra,
             active_skills=active,
-            skill_catalogue=self.skills.catalogue(exclude=self.active_skills),
+            skill_catalogue=self.skills.catalogue(exclude=excluded),
+            grill=self.config.grill,
+            memory=self._memory_context,
         )
         message = {"role": "system", "content": prompt}
         if self.messages and self.messages[0].get("role") == "system":
@@ -814,6 +1003,48 @@ class AgentSession:
         while tail and tail[0].get("role") == "tool":
             tail = tail[1:]
         self.messages = head + tail
+
+    # ── memory ────────────────────────────────────────────────────────
+
+    def _recall(self, question: str) -> str:
+        """The memories relevant to *question*, as a prompt block ("" without memory)."""
+        if self.memory is None:
+            return ""
+        try:
+            block = self.memory.as_context(question, limit=self.config.memory_recall_limit)
+        except Exception:  # noqa: BLE001 - recall is best effort, never a failed request
+            logger.debug("memory recall failed", exc_info=True)
+            return ""
+        if block:
+            self.context.emit("memory.recalled", {"count": block.count("\n- ")})
+        return block
+
+    def _learn_from_recovery(self, result: AgentResult) -> None:
+        """Keep one short lesson when a request recovered from a failing tool.
+
+        Conservative on purpose: only when a tool failed and the *same* tool
+        then succeeded with different arguments, only one lesson per request,
+        never a traceback or anything that looks like a credential, and never
+        when the model already stored a memory itself. Stored on a background
+        thread, so the answer is not held up by the store.
+        """
+        if self.memory is None or not self.config.auto_lesson:
+            return
+        if any(i.name == "memory_remember" and i.ok for i in result.invocations):
+            return
+        lesson = recovery_lesson(result)
+        if not lesson:
+            return
+        memory = self.memory
+
+        def store() -> None:
+            try:
+                memory.remember(lesson[0], lesson[1], kind="lesson", importance=0.4)
+            except Exception:  # noqa: BLE001 - a lesson not kept is not an error
+                logger.debug("could not keep the recovery lesson", exc_info=True)
+
+        self._lesson_thread = threading.Thread(target=store, daemon=True)
+        self._lesson_thread.start()
 
     # ── tool execution ────────────────────────────────────────────────
 
@@ -946,6 +1177,58 @@ class AgentSession:
             "error": f"I could not reach the language model: {result.error}",
         }
         return reasons.get(result.stop_reason, "I stopped before finishing.")
+
+
+def recovery_lesson(result: AgentResult) -> tuple[str, str] | None:
+    """The lesson of a request that recovered from a failing tool, or ``None``.
+
+    Parameters
+    ----------
+    result : AgentResult
+        A finished request.
+
+    Returns
+    -------
+    tuple of (str, str) or None
+        ``(fact, why)`` -- "``tool`` needs ...; ``tool`` failed with ..." --
+        when a tool failed and the same tool then succeeded with different
+        arguments (the error cut to its first sentence); ``None`` otherwise,
+        or when the error carries a traceback or anything that looks like a
+        secret.
+    """
+    from chisurf.core.agent.memory import looks_secret
+
+    if not result.ok:
+        return None
+    for index, failed in enumerate(result.invocations):
+        if failed.ok or failed.name in (ASK_USER, "memory_remember", "memory_recall"):
+            continue
+        error = str(failed.error or (failed.result or {}).get("error") or "").strip()
+        if not error or "Traceback" in error or "not run" in error:
+            continue
+        # The first sentence names the problem; the rest is the listing or hint.
+        error = error.split(". ")[0].split("\n")[0]
+        if len(error) > 160:
+            error = error[:159].rstrip() + "…"
+        for fixed in result.invocations[index + 1 :]:
+            if fixed.name != failed.name or not fixed.ok:
+                continue
+            changed = {
+                key: value
+                for key, value in fixed.arguments.items()
+                if failed.arguments.get(key) != value
+            }
+            if not changed:
+                break
+            arguments = json.dumps(changed, default=str, ensure_ascii=False)
+            if len(arguments) > 200:
+                break
+            fact = f"agent tool {fixed.name} worked with {arguments} after failing"
+            why = f"the first call failed with: {error}"
+            if looks_secret(fact + why):
+                return None
+            return fact, why
+    return None
 
 
 def build_session(

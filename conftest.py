@@ -41,6 +41,12 @@ os.environ["MMFDB_SETTINGS_DIR"] = str(_HERMETIC_SETTINGS_DIR)
 # The session's temporary projects (chisurf.core.project.temp_project) go there too, not to the
 # real temp folder.
 os.environ.setdefault("CHISURF_PROJECT_TEMP_DIR", str(_HERMETIC_SETTINGS_DIR / "temp-projects"))
+# The agent's long-term memory is the user's shared Mnemosyne store, the one every agent on
+# this machine uses: a test that wrote a memory there would teach the user's other agents
+# test fixtures. Mnemosyne reads MNEMOSYNE_DATA_DIR on every open, so the whole run gets a
+# hermetic store, and no embedding model is downloaded for it (full-text recall only).
+os.environ["MNEMOSYNE_DATA_DIR"] = str(_HERMETIC_SETTINGS_DIR / "mnemosyne")
+os.environ.setdefault("MNEMOSYNE_NO_EMBEDDINGS", "1")
 # One directory per pytest process, tens of MB each (the user database): without this a day of
 # runs fills the disk, and a full disk makes every later test fail with ENOSPC.
 atexit.register(shutil.rmtree, _HERMETIC_SETTINGS_DIR, ignore_errors=True)

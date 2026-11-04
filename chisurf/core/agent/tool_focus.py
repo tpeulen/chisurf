@@ -36,6 +36,8 @@ FIND_TOOLS = "find_tools"
 CORE_TOOLS = (
     FIND_TOOLS,
     "ask_user",
+    "memory_recall",
+    "memory_remember",
     "describe_session",
     "list_files",
     "load_data",

@@ -104,4 +104,8 @@ def build_default_registry() -> ToolRegistry:
     from chisurf.core.agent import user_okf
 
     user_okf.build_tool_handler(registry)
+    # Long-term memory: the user's shared Mnemosyne store (answers "off" without it).
+    from chisurf.core.agent import memory
+
+    memory.build_tools(registry)
     return registry

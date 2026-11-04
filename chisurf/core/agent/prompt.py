@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-SYSTEM_PROMPT = """\
+_PROMPT_TEMPLATE = """\
 You are the ChiSurf assistant. ChiSurf is a desktop program for analysing
 time-resolved and single-molecule fluorescence data (TCSPC decays, FCS
 correlation curves, smFRET bursts, PDA, DEER). You operate the program on
@@ -62,6 +62,18 @@ you need it.
 
 A loaded skill is not background reading. Follow its procedure.
 
+## Memory
+
+You share a long-term memory with the user's other agents. The memories
+relevant to a request are recalled into your context before it starts; use
+them when they apply, and the user's words in this request win.
+`memory_recall` looks up something specific. `memory_remember` keeps ONE
+durable lesson with why it matters — a user preference, a fix that worked, a
+setting a dataset needed. Never store session noise, stack traces, file
+contents or secrets. A memory is one fact; a whole procedure the user wants
+repeated is a skill (`save_skill`), and a finding about their data goes to
+their knowledge bundle (`record_finding`).
+
 ## Rules
 
 * Look before you act: when you do not know the state of the session, call
@@ -73,6 +85,34 @@ A loaded skill is not background reading. Follow its procedure.
   succeeded).
 * If a tool fails, read the error — it usually names the fix — then correct
   the call. Do not repeat an identical failing call.
+{clarify_rule}* If the request would destroy work (overwriting files, discarding fits),
+  ask instead of guessing — with `ask_user`, not a plain text answer.
+* `run_python` runs inside the live session and is the escape hatch for
+  anything the other tools do not cover. Prefer the dedicated tools when they
+  apply.
+* When you are done, answer in plain text: what you did, the numbers that
+  matter, and anything the user should check. Do not use markdown tables
+  longer than a few rows. Keep it short — these are results, not a report.
+"""
+
+
+#: The clarification rule with grilling on (the default): interview first.
+GRILL_RULE = """\
+* **Grill before you analyse.** Before starting an analysis, fit or
+  processing request, interview the user with `ask_user` about the choices
+  that change the result and that the request leaves open — which files or
+  datasets, which gate or species selection, which model and how many
+  components, which correction factors (Förster radius R0, gamma, leakage,
+  direct excitation), which background model, and what output they want.
+  Each question carries concrete options and your recommended default. Keep
+  going until those decisions are settled — at most three rounds per
+  request — then act and state the choices you used. Never grill a question
+  that only asks for information ("what is loaded?", "explain X") or a
+  request that leaves nothing open; answer or act directly.
+"""
+
+#: The clarification rule with grilling off: one round, only when ambiguous.
+ONE_ROUND_RULE = """\
 * **Grill before you guess.** When a request is ambiguous in a way that
   changes the analysis — which file or folder is meant, which species a gate
   selects, how many fit components, which correction factors (Förster radius
@@ -82,15 +122,27 @@ A loaded skill is not background reading. Follow its procedure.
   have asked about. The runtime allows ONE clarification round per request:
   when the user's answers arrive, continue with them, state the choices you
   finally used, and do not ask again.
-* If the request would destroy work (overwriting files, discarding fits),
-  ask instead of guessing — with `ask_user`, not a plain text answer.
-* `run_python` runs inside the live session and is the escape hatch for
-  anything the other tools do not cover. Prefer the dedicated tools when they
-  apply.
-* When you are done, answer in plain text: what you did, the numbers that
-  matter, and anything the user should check. Do not use markdown tables
-  longer than a few rows. Keep it short — these are results, not a report.
 """
+
+
+def system_prompt(grill: bool = True) -> str:
+    """The fixed part of the system prompt, with the clarification rule for *grill*.
+
+    Parameters
+    ----------
+    grill : bool
+        Grilling on (interview before every analysis, up to three rounds) or
+        off (one round, only for an ambiguous request).
+
+    Returns
+    -------
+    str
+    """
+    return _PROMPT_TEMPLATE.replace("{clarify_rule}", GRILL_RULE if grill else ONE_ROUND_RULE)
+
+
+#: The system prompt as sent by default (grilling on).
+SYSTEM_PROMPT = system_prompt(True)
 
 
 def session_context(
@@ -156,6 +208,8 @@ def build_system_prompt(
     extra: str = "",
     active_skills: list[Any] | None = None,
     skill_catalogue: str = "",
+    grill: bool = True,
+    memory: str = "",
 ) -> str:
     """Assemble the full system prompt.
 
@@ -177,14 +231,20 @@ def build_system_prompt(
     skill_catalogue : str
         One line per skill that is *not* active, so the model knows what it
         could load.
+    grill : bool
+        Which clarification rule the prompt carries (see :func:`system_prompt`).
+    memory : str
+        The memories recalled for this request (``AgentMemory.as_context``).
 
     Returns
     -------
     str
     """
-    parts = [SYSTEM_PROMPT]
+    parts = [system_prompt(grill)]
     if datasets is not None or fits is not None:
         parts.append(session_context(datasets or [], fits or [], working_directory))
+    if memory:
+        parts.append(memory)
     if skill_catalogue:
         parts.append("## Skills you can load\n\n" + skill_catalogue)
     for skill in active_skills or []:

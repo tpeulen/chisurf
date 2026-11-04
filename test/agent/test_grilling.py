@@ -1,10 +1,11 @@
-"""The clarification round ("grilling"): one structured round, then act.
+"""Grilling: the agent interviews the user before an analysis, then acts.
 
-An ambiguous request must stop the agent and come back as structured
+An analysis request must stop the agent and come back as structured
 questions; the user's answers must resume the plan in the same conversation;
-and a second round must be refused, because an assistant that keeps asking
-instead of analysing is its own failure mode. The runtime owns all three —
-the tests drive it with a scripted model, exactly as a live one would behave.
+grilling (the default) allows up to three rounds and then refuses, because an
+assistant that keeps asking instead of analysing is its own failure mode; with
+grilling off one round is all there is. The runtime owns all of it — the
+tests drive it with a scripted model, exactly as a live one would behave.
 """
 
 from __future__ import annotations
@@ -13,9 +14,10 @@ import json
 
 import pytest
 
-from chisurf.core.agent import AgentSession, LLMClient, LLMSettings
+from chisurf.core.agent import AgentConfig, AgentSession, LLMClient, LLMSettings
 from chisurf.core.agent.llm import LLMResponse, ToolCall
-from chisurf.core.agent.prompt import SYSTEM_PROMPT
+from chisurf.core.agent.prompt import SYSTEM_PROMPT, system_prompt
+from chisurf.core.agent.runtime import GRILL_SKILL, is_informational, wants_grilling
 from chisurf.core.agent.tools.clarify import ASK_USER, render_questions
 
 
@@ -150,8 +152,8 @@ def test_the_answers_resume_the_plan(context):
     )
 
 
-def test_a_second_clarification_round_is_refused(context):
-    """One round per request: after the answers, the model must act."""
+def test_without_grilling_a_second_round_is_refused(context):
+    """Grilling off restores one round per request: after the answers, the model must act."""
     model = ScriptedLLM(
         [
             {"calls": [_ask_user_call()]},
@@ -160,7 +162,7 @@ def test_a_second_clarification_round_is_refused(context):
             {"text": "Done with the stated assumptions."},
         ]
     )
-    agent = AgentSession(model, context=context)
+    agent = AgentSession(model, context=context, config=AgentConfig(grill=False))
     first = agent.ask("do a burstwise analysis of the data located in xy")
     assert first.stop_reason == "needs_input"
 
@@ -173,6 +175,83 @@ def test_a_second_clarification_round_is_refused(context):
     assert second.text == "Done with the stated assumptions."
     # A closed thread frees the round for the next request.
     assert not agent._clarification_pending
+
+
+def test_grilling_keeps_asking_until_the_decisions_are_settled(context):
+    """With grilling on, a follow-up round on what an answer opened up is allowed."""
+    model = ScriptedLLM(
+        [
+            {"calls": [_ask_user_call()]},
+            {"calls": [_ask_user_call("q2", [{"question": "Which gate for the FRET species?"}])]},
+            {"calls": [{"id": "t1", "name": "list_files", "arguments": {"directory": "xy"}}]},
+            {"text": "Analysis complete with R0 52 A, one Gaussian, gate S 0.3-0.7."},
+        ]
+    )
+    agent = AgentSession(model, context=context)
+    assert agent.config.grill and agent.config.clarification_rounds == 3
+    assert agent.ask("do a burstwise analysis of the data located in xy").stop_reason == (
+        "needs_input"
+    )
+    second = agent.ask("R0 = 52 A, one Gaussian.")
+    assert second.stop_reason == "needs_input", "the second round is part of the interview"
+    assert second.clarifications[0]["question"] == "Which gate for the FRET species?"
+    third = agent.ask("S between 0.3 and 0.7.")
+    assert third.ok, third.text
+    assert "list_files" in third.tool_names()
+    assert not agent._clarification_pending, "the answer closed the thread"
+
+
+def test_grilling_is_capped_at_three_rounds(context):
+    """The fourth ask_user of one request is refused; the model must act."""
+    turns = [{"calls": [_ask_user_call(f"q{i}")]} for i in range(1, 4)]
+    turns += [{"calls": [_ask_user_call("q4")]}, {"text": "Done with the stated choices."}]
+    agent = AgentSession(ScriptedLLM(turns), context=context)
+    for answer in ("analyse the bursts in xy", "52 A", "1"):
+        assert agent.ask(answer).stop_reason == "needs_input"
+    last = agent.ask("the default")
+    assert last.ok
+    refused = [i for i in last.invocations if i.name == ASK_USER]
+    assert len(refused) == 1 and not refused[0].ok
+    assert "3 of 3 round(s)" in refused[0].error
+
+
+def test_the_interview_procedure_is_loaded_for_an_analysis_only(context):
+    """The grill skill leads an analysis request; a question is answered directly."""
+    agent = AgentSession(ScriptedLLM([{"text": "Two datasets."}]), context=context)
+    agent.ask("what is loaded?")
+    assert GRILL_SKILL not in agent.active_skills
+    agent.reset()
+    agent = AgentSession(ScriptedLLM([{"calls": [_ask_user_call()]}]), context=context)
+    agent.ask("do a burstwise analysis of the data located in xy")
+    assert agent.active_skills[0] == GRILL_SKILL, "the interview leads"
+    assert "Settle the decisions before the analysis" in agent.messages[0]["content"]
+    agent.reset()
+    off = AgentSession(
+        ScriptedLLM([{"text": "ok"}]), context=context, config=AgentConfig(grill=False)
+    )
+    off.ask("do a burstwise analysis of the data located in xy")
+    assert GRILL_SKILL not in off.active_skills
+    assert GRILL_SKILL not in off.messages[0]["content"], "not even offered in the catalogue"
+    assert "ONE clarification round" in off.messages[0]["content"]
+
+
+@pytest.mark.parametrize(
+    ("request_text", "grill"),
+    [
+        ("what is loaded?", False),
+        ("explain the gamma factor", False),
+        ("how do I fit a decay?", False),
+        ("which models exist for FCS?", False),
+        ("do a burstwise analysis of the data located in xy", True),
+        ("fit these decays with the IRF", True),
+        ("write a script that processes multiple folders with burst analysis", True),
+        ("open the FCS tool", False),
+    ],
+)
+def test_which_requests_are_grilled(request_text, grill):
+    assert wants_grilling(request_text) is grill
+    if not grill and request_text.endswith("?"):
+        assert is_informational(request_text)
 
 
 def test_a_new_request_gets_its_own_round(context):
@@ -269,5 +348,10 @@ def test_the_tool_is_in_the_default_registry():
 def test_the_system_prompt_carries_the_grilling_rule():
     lowered = SYSTEM_PROMPT.lower()
     assert "ask_user" in lowered
-    assert "one clarification round" in lowered
+    assert "grill before you analyse" in lowered
+    assert "at most three rounds" in lowered
     assert "förster radius" in lowered
+    assert "what is loaded?" in lowered, "the never-grill examples are in the rule"
+    one_round = system_prompt(grill=False).lower()
+    assert "one clarification round" in one_round
+    assert "three rounds" not in one_round
