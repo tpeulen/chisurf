@@ -290,12 +290,14 @@ def lightpath_prior(
 
 #: The background rates (kHz) in the order of the channels I_DD, I_DA, I_AA, named
 #: after their detectors as ndX names them, and the detector of each.
-BACKGROUND_RATES = (("B_G|G", "G|G"), ("B_R|G", "R|G"), ("B_R|R", "R|R"))
+BACKGROUND_RATES = (("Bg_G|G", "G|G"), ("Bg_R|G", "R|G"), ("Bg_R|R", "R|R"))
 
 
 def burst_durations_ms(columns, detector: str):
-    """That detector's per-burst durations (ms), else the burst's, else ``None``."""
-    for name in (f"Duration ({detector}) (ms)", "Duration (ms)"):
+    """The bursts' durations (ms) a background accumulates over: the burst's ``Duration (ms)``,
+    the window every detector's photons were counted in (a detector's own ``Duration (<det>)
+    (ms)`` is the span of its photons -- 0 for one, -1 for none -- read only without it)."""
+    for name in ("Duration (ms)", f"Duration ({detector}) (ms)"):
         if name in columns:
             return np.asarray(columns[name], dtype=float)
     return None
@@ -312,7 +314,7 @@ def subtract_background(channels, rates, columns):
     channels : sequence
         ``(I_DD, I_DA, I_AA)`` per burst; an entry may be ``None``.
     rates : sequence of float
-        ``(B_G|G, B_R|G, B_R|R)`` in kHz.
+        ``(Bg_G|G, Bg_R|G, Bg_R|R)`` in kHz.
     columns : mapping
         The burst table, for the durations.
 
@@ -375,7 +377,7 @@ def calibrate(
         Width of the linker distance distribution (Å) used for the static line.
     background : tuple of float, optional
         Constant background counts per burst ``(I_DD, I_DA, I_AA)``; a rate
-        (``B_G|G``, kHz) is taken off first with :func:`subtract_background`.
+        (``Bg_G|G``, kHz) is taken off first with :func:`subtract_background`.
     gamma_source : str, optional
         ``"auto"``, ``"es"``, ``"lifetime"`` or ``"combined"``.
     n_bootstrap : int, optional

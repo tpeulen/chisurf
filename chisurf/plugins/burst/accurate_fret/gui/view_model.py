@@ -38,7 +38,7 @@ _CLASS_STYLE = {
 
 #: The background rates (kHz) and the fields holding them, in the order of the
 #: channels I_DD, I_DA, I_AA: named after their detectors as ndX names them.
-BACKGROUND_FIELDS = (("B_G|G", "background_dd"), ("B_R|G", "background_da"), ("B_R|R", "background_aa"))
+BACKGROUND_FIELDS = (("Bg_G|G", "background_dd"), ("Bg_R|G", "background_da"), ("Bg_R|R", "background_aa"))
 
 class AccurateFretViewModel:
     """State and logic of the accurate-FRET calibration tool (no Qt)."""
@@ -158,7 +158,7 @@ class AccurateFretViewModel:
         self.notify("file")
 
     def take_stored_background(self) -> bool:
-        """Fill B_G|G / B_R|G / B_R|R with the rates the measurement's container stores.
+        """Fill Bg_G|G / Bg_R|G / Bg_R|R with the rates the measurement's container stores.
 
         Burst Analysis estimates the background when the bursts arrive and stores it in
         the container; a table read from one starts with those rates (kHz). Returns
@@ -179,7 +179,7 @@ class AccurateFretViewModel:
         return taken
 
     def _background_subtracted(self, channels):
-        """The channels with B_G|G / B_R|G / B_R|R (rate x burst duration) taken off, and a note."""
+        """The channels with Bg_G|G / Bg_R|G / Bg_R|R (rate x burst duration) taken off, and a note."""
         rates = [getattr(self, attr) for _constant, attr in BACKGROUND_FIELDS]
         out, missing = _core.subtract_background(channels, rates, self._columns)
         note = (

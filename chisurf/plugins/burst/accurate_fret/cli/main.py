@@ -49,7 +49,7 @@ from .. import core as _core
     nargs=3,
     type=float,
     default=None,
-    help="Background rates B_G|G B_R|G B_R|R in kHz, subtracted as rate x burst duration "
+    help="Background rates Bg_G|G Bg_R|G Bg_R|R in kHz, subtracted as rate x burst duration "
     "(default: the rates the measurement's container stores, else none).",
 )
 @click.option(

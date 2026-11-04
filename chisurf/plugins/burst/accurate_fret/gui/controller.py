@@ -159,7 +159,7 @@ class AccurateFretController:
                         "column_i_da",
                         "column_i_aa",
                         "column_tau_f",
-                        # the B_G|G / B_R|G / B_R|R the measurement stores, read with the table
+                        # the Bg_G|G / Bg_R|G / Bg_R|R the measurement stores, read with the table
                         "background_dd",
                         "background_da",
                         "background_aa",

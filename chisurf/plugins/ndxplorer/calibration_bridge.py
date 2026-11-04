@@ -166,7 +166,7 @@ def _container_of(source):
 def background_from_container(source) -> dict:
     """The per-detector background **rates** stored in a measurement, as ndX constants.
 
-    ``{"B_G|G": kHz, "B_R|G": kHz, "B_R|R": kHz}`` for the detectors the measurement has
+    ``{"Bg_G|G": kHz, "Bg_R|G": kHz, "Bg_R|R": kHz}`` for the detectors the measurement has
     an estimate for; empty when it carries none. *source* is the container or a
     run path inside one. ndX reads it (with tttrlib alone): see
     :func:`ndxplorer.analysis.fret_background.stored_background_constants`.
@@ -279,7 +279,7 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
     # ndX's own reading of the container: the background step's rates and the
     # newest explicitly saved calibration (ndX's constants, gG/gR included --
     # the one thing the factor table does not carry), with the newer of the two
-    # winning B_G|G / B_R|G / B_R|R.
+    # winning Bg_G|G / Bg_R|G / Bg_R|R.
     from ndxplorer.io.fret_calibration_io import restorable
 
     path = _container_of(source)
@@ -316,12 +316,12 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
     for name, value in factors.items():
         setattr(calib, name, float(value))
     # The backgrounds travel on the calibration too -- ``calibration_to_ndx_constants``
-    # already maps bg_dd/bg_da/bg_aa onto B_G|G / B_R|G / B_R|R -- so one push carries both.
+    # already maps bg_dd/bg_da/bg_aa onto Bg_G|G / Bg_R|G / Bg_R|R -- so one push carries both.
     # That matters more than it looks: writing constants directly leaves the
     # *parameter table* holding the old values, and ndX's recompute throttle
     # resets ``constants`` from that table on the next parameter event. A value
     # written the short way is correct only until something happens.
-    for attribute, constant in (("bg_dd", "B_G|G"), ("bg_da", "B_R|G"), ("bg_aa", "B_R|R")):
+    for attribute, constant in (("bg_dd", "Bg_G|G"), ("bg_da", "Bg_R|G"), ("bg_aa", "Bg_R|R")):
         if constant in rates:
             setattr(calib, attribute, float(rates[constant]))
     applied = push_calibration_to_ndx(ndx, calib, recompute=not (saved or vectors))

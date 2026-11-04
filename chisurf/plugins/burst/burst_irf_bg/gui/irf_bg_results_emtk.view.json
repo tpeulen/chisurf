@@ -11,7 +11,7 @@
       "description": "The extraction result: the background rate, the prompt position and the photon counts it rests on, per detector.",
       "columns": [
         {"key": "detector", "title": "Detector", "description": "The detector the row belongs to."},
-        {"key": "background_khz", "title": "B (kHz)", "format": "%.3f", "description": "Background rate B of the detector (B_G|G, B_R|G, B_R|R in Accurate FRET and ndX) from the non-burst photons, averaged over the files."},
+        {"key": "background_khz", "title": "B (kHz)", "format": "%.3f", "description": "Background rate B of the detector (Bg_G|G, Bg_R|G, Bg_R|R in Accurate FRET and ndX) from the non-burst photons, averaged over the files."},
         {"key": "prompt_ns", "title": "Prompt (ns)", "format": "%.3f", "description": "Micro-time of the IRF's rising edge, from the pooled non-burst photons."},
         {"key": "n_bg", "title": "Non-burst", "shade": false, "description": "Non-burst photons the IRF and the background were taken from."},
         {"key": "n_burst", "title": "Burst", "shade": false, "description": "Photons in bursts, excluded from the estimate."}
