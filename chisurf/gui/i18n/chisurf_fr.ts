@@ -76662,6 +76662,22 @@ Background (kHz): {bg}</source>
             <source>No curve ticked: the merge averages all of them.</source>
             <translation>Aucune courbe cochée : la fusion calcule la moyenne de toutes.</translation>
         </message>
+        <message>
+            <source>No files yet: drop photon files (.ptu, .spc, .ht3, …) here, or pick them in the Input section above.</source>
+            <translation>Pas encore de fichiers : déposez ici des fichiers de photons (.ptu, .spc, .ht3, …) ou choisissez-les dans la section Entrée ci-dessus.</translation>
+        </message>
+        <message>
+            <source>Background: {share:.1%} of the photons in the window (from the non-burst rate).</source>
+            <translation>Fond : {share:.1%} des photons dans la fenêtre (d’après le taux hors bursts).</translation>
+        </message>
+        <message>
+            <source> Background rate: {rate:.4g} kHz.</source>
+            <translation> Taux de fond : {rate:.4g} kHz.</translation>
+        </message>
+        <message>
+            <source>3 — one lifetime per burst</source>
+            <translation>3 — une durée de vie par burst</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

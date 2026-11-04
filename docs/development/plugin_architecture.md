@@ -495,7 +495,9 @@ Data enters ChiSurf one way: files dropped on the window become rows of the
 **Datasets workspace** (and so of the project). A plugin never asks for an input
 file — no input `FileDialog`, no drop hook, no MMFDB picker handing it a local
 path. It **declares** what it takes on an `accepts` entry, and the host does the
-rest:
+rest — including a file dropped *on the tool*: the shell links it into the
+workspace as any drop, then feeds the rows of a kind the tool accepts to it
+(`EmtkShellApp._feed_dropped`), as if they had been dragged over from Datasets:
 
 ```json
 "accepts": [

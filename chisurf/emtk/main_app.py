@@ -229,6 +229,16 @@ def _apply_modal_blur_preference() -> None:
     set_modal_blur(bool((cs_settings.get("gui") or {}).get("modal_blur", True)))
 
 
+def _drop_key(path: Any) -> str:
+    """A dropped path and a dataset's address compared as the same file."""
+    from pathlib import Path
+
+    try:
+        return str(Path(str(path)).expanduser().resolve())
+    except (OSError, RuntimeError):
+        return str(path)
+
+
 def _is_focused(docks: DockManager, key: str) -> bool:
     """Whether *key* is the focused dock window (a *Window* menu entry's check mark)."""
     return bool(docks.focused == key)
@@ -642,6 +652,8 @@ class EmtkShellApp(ImApp):
         self._stage: dict = {}
         #: The strip's handles of the shell's own operations: ``kind -> (identity, task)``.
         self._strip_tasks: dict[str, tuple[Any, Any]] = {}
+        #: Files dropped on a tool, waiting to be linked before the tool gets them (:meth:`_feed_dropped`).
+        self._drop_feeds: list[dict] = []
         from chisurf.emtk.fit_docks import ANALYSIS_KEY, PLOT_KEY, DataDocks
 
         self.data = DataDocks(self, session_factory)
@@ -1114,6 +1126,7 @@ class EmtkShellApp(ImApp):
         self.project.guard_fit_windows()
         self.data.closed_by_user()
         self.data.focused_window()
+        self._feed_dropped()
         self.feed_status_strip()
 
     def present_tool(self, plugin_id: str, focus: bool = True) -> HostedPlugin | None:
@@ -2622,7 +2635,71 @@ class EmtkShellApp(ImApp):
                 handler = getattr(child, name, None)
                 if callable(handler) and handler(paths) is not False:
                     return True
-        return self.data.drop([str(path) for path in paths or ()])
+        paths = [str(path) for path in paths or ()]
+        tool = self.tool_at(*self.io.mouse_pos)
+        taken = self.data.drop(paths)
+        if taken and tool:
+            self._feed_after_import(tool, paths)
+        return taken
+
+    #: How long a tool waits for the files dropped on it to be linked (a big file hashes for minutes).
+    DROP_FEED_SECONDS = 900.0
+
+    def _feed_after_import(self, plugin_id: str, paths: list[str]) -> None:
+        """Files dropped on a tool enter the workspace as any drop does; those of a kind the tool
+        takes are handed to it (:meth:`feed_from_workspace`) once they are linked -- a PTU dropped
+        on Burst Analysis' file list is in Datasets *and* in the list."""
+        from chisurf.core.fio.classify import classify
+        from chisurf.core.plugin.workspace_input import spec_for
+
+        manifest = self.catalog.get(plugin_id)
+        wanted = set()
+        for path in paths:
+            kind = classify(path)
+            if kind == "container" or spec_for(manifest, kind=kind) is not None:
+                wanted.add(_drop_key(path))
+        if wanted:
+            self._drop_feeds.append(
+                {"tool": plugin_id, "paths": wanted, "until": time.monotonic() + self.DROP_FEED_SECONDS}
+            )
+
+    def _feed_dropped(self) -> None:
+        """Once per frame while a drop waits: the dropped files' datasets that have arrived go to the
+        tool they were dropped on (grouped by kind; a container gives its photon streams)."""
+        if not self._drop_feeds:
+            return
+        from chisurf.core.fio.address import container_of
+        from chisurf.core.plugin.workspace_input import _flatten, address_of, matches, spec_for
+
+        rows = _flatten(list(self.data.datasets.datasets))
+        now = time.monotonic()
+        for feed in list(self._drop_feeds):
+            tool = feed["tool"]
+            if now > feed["until"] or not any(h.entry.plugin_id == tool for h in self.hosted.values()):
+                self._drop_feeds.remove(feed)
+                continue
+            arrived: dict[str, list[dict]] = {}
+            done = set()
+            for row in rows:
+                address = address_of(row)
+                if address.startswith("@"):
+                    continue
+                keys = (_drop_key(address), _drop_key(container_of(address)))
+                key = next((k for k in keys if k in feed["paths"]), None)
+                if key is None:
+                    continue
+                kind = str(row.get("kind") or "")
+                found = spec_for(self.catalog.get(tool), kind=kind)
+                if found is not None and matches(found[1], row):
+                    arrived.setdefault(kind, []).append(row)
+                done.add(key)
+            if not done:
+                continue
+            for group in arrived.values():
+                self.feed_from_workspace(tool, group)
+            feed["paths"] -= done
+            if not feed["paths"]:
+                self._drop_feeds.remove(feed)
 
     # ── status strip ──────────────────────────────────────────────────────
 

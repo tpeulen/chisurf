@@ -77,7 +77,8 @@ def test_a_file_dropped_on_a_plugin_dock_enters_the_workspace_and_feeds_the_open
     """Imaging QA: open Image Tools, pick *1. Intensity*, click elsewhere, drop a .ptu on its dock.
 
     A drop is the one way files enter ChiSurf: even over a tool's dock it lands in the Datasets
-    workspace (tools take no files themselves); the open step then gets the row from there.
+    workspace (tools read no files themselves); once linked, the tool it was dropped on gets the
+    row from there, as if it had been dragged over from Datasets.
     """
     from chisurf.emtk.session import start_session
     from chisurf.plugins.microscopy.imaging_emtk import pixel_testing as data
@@ -105,10 +106,40 @@ def test_a_file_dropped_on_a_plugin_dock_enters_the_workspace_and_feeds_the_open
             ]
 
         _wait(driver, lambda: bool(dropped_rows()), "the drop to reach the workspace")
-        assert step.model.filename != str(source), "a tool takes no dropped file itself"
-        shell.feed_from_workspace("imaging_tools", dropped_rows()[:1])
         _wait(driver, lambda: step.model.filename == str(source), "the step to take the row")
+        assert not shell._drop_feeds  # handed over: nothing waits any more
         _shot(driver, "drop_on_imaging")
+    finally:
+        shell.close()
+
+
+def test_a_photon_file_dropped_on_burst_analysis_is_in_datasets_and_in_its_file_list(tmp_path):
+    """Burst Analysis QA: a .spc/.ptu dropped on *1. Data Selection* is linked into Datasets and
+    listed in the step's TTTR data files -- no detour through the Input table."""
+    import shutil
+
+    from chisurf.emtk.session import start_session
+    from chisurf.server.session import SessionState
+
+    source = tmp_path / "m000.spc"
+    shutil.copy(Path(__file__).resolve().parents[2] / "test/data/tttr/BH/132/BH_SPC132.spc", source)
+    shell = EmtkShellApp(console_history=False, console_session_file=False)
+    shell.data.adopt(start_session(state=SessionState()))
+    driver = _driver(shell)
+    try:
+        hosted = shell.open_plugin("burst_analysis")
+        _wait(driver, lambda: hosted.build is None and hosted.box is not None, "Burst Analysis")
+        hosted.app.select("data")
+        driver.frame(3)
+        bx, by, bw, bh = hosted.box
+        driver.drop_files([str(source)], (bx + bw * 0.6, by + bh * 0.7))
+        data = hosted.app.children["data"]
+        _wait(driver, lambda: [p.name for p in data.model.paths()] == ["m000.spc"], "the file list")
+        assert any(
+            r.get("kind") == "photons" and str(source) in str(r.get("source_address") or "")
+            for r in shell.data.datasets.datasets
+        )
+        _shot(driver, "drop_on_burst_analysis")
     finally:
         shell.close()
 

@@ -3,6 +3,8 @@
 ## 2026-11-04
 
 - Agent: tool focus for the on-device model (tool_focus.py; ~20 of 46 tools per request, prompt 11.7k→7.0k tokens for a decay fit; live suite 8/8 in 12:53 vs 7/8 in 14:32 without) and create_fit refuses IRF datasets (three tests had been fitting the IRF). See subsystems/llm-agent.md.
+- Docs gates green again (chisurf a974a3558, emtk bcd21e3): figures.yaml had an unquoted caption colon (every figure unrecorded); 16 figures of guides 109/115/65/75 + light-theme registered; 3 manual pages re-signed after the detector rename. The ~100 'overlapping text' pages were a recorder bug (baked atlas advance("") = one cell, emtk testing.py) plus 'monospace' measured in a random installed font (emtk font_render).
+- 2026-11-04: a file dropped on a tool enters the Datasets workspace and, once linked, the rows of a kind the tool accepts are fed to it (EmtkShellApp._feed_after_import/_feed_dropped via feed_from_workspace): a PTU dropped on Burst Analysis' Data Selection lands in Datasets and in the step's file list. Imaging drop test now expects the automatic feed; DE/FR for the new hint and the Burst MLE background strings.
 
 ## 2026-11-03
 

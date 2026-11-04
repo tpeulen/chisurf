@@ -533,7 +533,12 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         if "data_table" in self.form.rects:
             self.item_rects["files"] = tuple(self.form.rects["data_table"])
         if not paths:
-            im.text_disabled(tr("No files yet: pick photon streams in the Input section above."))
+            im.text_disabled(
+                tr(
+                    "No files yet: drop photon files (.ptu, .spc, .ht3, …) here, "
+                    "or pick them in the Input section above."
+                )
+            )
 
     def _draw_details(self, box=None) -> None:
         paths = self._paths()

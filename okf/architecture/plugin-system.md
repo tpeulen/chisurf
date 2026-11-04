@@ -217,7 +217,10 @@ the manifests against, so a declaration cannot drift from the code.
 One way in (owner 2026-10-26: "the user does not open files; one file entry point in the UI"): files
 dropped on the shell become Datasets-workspace rows (`chisurf.emtk.fit_docks.DataDocks.drop`, sorted by
 `chisurf.core.fio.classify`; curves by `classify.curve_reader` when no file type is chosen), and a plugin
-takes its input from the workspace, never from a file dialog or a drop of its own.
+takes its input from the workspace, never from a file dialog or a drop of its own. A file dropped **on a
+tool** still enters the workspace first; once linked, the rows of a kind the tool accepts are fed to it
+(`EmtkShellApp._feed_after_import` / `_feed_dropped`, through `feed_from_workspace`), so a PTU dropped on
+Burst Analysis' Data Selection is in Datasets *and* in the step's file list (owner 2026-11-04).
 
 * **Declaration.** `accepts[].from_workspace = {kinds, experiments, representations, many, key, with_setup,
   defaults}` on the existing hand-off (`HandoffSpec.from_workspace`, validated by `_validate_accepts`, parsed

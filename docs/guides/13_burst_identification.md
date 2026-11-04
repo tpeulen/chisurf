@@ -47,8 +47,9 @@ The **Burst Selection** tab after **Run** on copies of `m000.spc` and `m001.spc`
 
 **Spectroscopy → Single-Molecule → Burst Analysis → 2. Burst Selection**. The panel has no
 menu entry of its own (`python -m chisurf.emtk --plugin burst_selection` opens it
-alone); in the workflow the files of step 1 carry over. Add files with **Add files** / **Add folder** (or
-drop them on the window), pick the detectors on the **Detector setup** tab,
+alone); in the workflow the files of step 1 carry over. In step 1 drop the photon files on the
+file list (they enter the Datasets workspace and the list at once) or pick them in its **Input**
+table, pick the detectors on the **Detector setup** tab,
 then **Run**. **Restart** searches again even when nothing changed.
 
 ```{figure} figures/13_burst_selection_filter.png
