@@ -202,6 +202,7 @@ def _compute_bva_tttrlib(
     acceptor_micro_time_ranges,
     minimum_window_length: float,
     number_of_photons_per_slice: int,
+    micro_time_resolution_ps: float | None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Fast path: per-burst proximity-ratio mean/std via the tttrlib C++ BVA
     (parallel over bursts). Returns arrays aligned to ``table`` row order.
@@ -228,10 +229,12 @@ def _compute_bva_tttrlib(
     def to_pairs(rs):
         return [(int(a), int(b)) for a, b in rs]
 
+    from chisurf.core.fluorescence.burst.streams import ranges_in_data
+
     for ff, (rows_idx, bursts) in per_file.items():
         bva = tttrlib.BVA(tttrs[ff])
-        bva.set_donor(list(donor_channels), to_pairs(donor_micro_time_ranges))
-        bva.set_acceptor(list(acceptor_channels), to_pairs(acceptor_micro_time_ranges))
+        bva.set_donor(list(donor_channels), to_pairs(ranges_in_data(donor_micro_time_ranges, micro_time_resolution_ps, tttrs[ff])))
+        bva.set_acceptor(list(acceptor_channels), to_pairs(ranges_in_data(acceptor_micro_time_ranges, micro_time_resolution_ps, tttrs[ff])))
         # tttrlib BVA.compute expects burst boundaries as an (n, 2) [start, stop]
         # array; `bursts` is accumulated as a flat [s0, e0, s1, e1, ...] list.
         burst_pairs = np.asarray(bursts, dtype=np.int64).reshape(-1, 2)
@@ -254,6 +257,7 @@ def compute_bva(
     minimum_window_length: float = 0.01,
     number_of_photons_per_slice: int = -1,
     progress_window=None,
+    micro_time_resolution_ps: float | None = None,
 ) -> Any:
     """Compute BVA: proximity ratio mean and std per burst.
 
@@ -279,6 +283,7 @@ def compute_bva(
         acceptor_micro_time_ranges,
         minimum_window_length,
         number_of_photons_per_slice,
+        micro_time_resolution_ps,
     )
     # Results are addressed by *original* row index: a ``.bur`` table is
     # interleaved (every other row is a sentinel whose ``First File`` names no

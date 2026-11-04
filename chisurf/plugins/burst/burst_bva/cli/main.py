@@ -33,6 +33,7 @@ def cli():
 @click.option("--donor-mtr-end", default=32768, type=int)
 @click.option("--acceptor-mtr-start", default=0, type=int)
 @click.option("--acceptor-mtr-end", default=32768, type=int)
+@click.option("--micro-time-resolution-ps", type=float, default=None, help="Channel width of the supplied micro-time ranges (ps).")
 @click.option("--window-length", default=0.01, type=float, help="Minimum window length (s)")
 @click.option("--photons-per-slice", default=10, type=int, help="Photons per slice")
 @click.option("--output", "-o", type=click.Path(), help="Output directory for bv4 files")
@@ -47,6 +48,7 @@ def compute(
     donor_mtr_end,
     acceptor_mtr_start,
     acceptor_mtr_end,
+    micro_time_resolution_ps,
     window_length,
     photons_per_slice,
     output,
@@ -71,6 +73,7 @@ def compute(
         minimum_window_length=window_length,
         number_of_photons_per_slice=photons_per_slice,
         file_type=file_type,
+        micro_time_resolution_ps=micro_time_resolution_ps,
     )
 
     click.echo(f"Reading burst data from {af} ...")
@@ -87,19 +90,18 @@ def compute(
         acceptor_micro_time_ranges=settings.acceptor_micro_time_ranges,
         minimum_window_length=settings.minimum_window_length,
         number_of_photons_per_slice=settings.number_of_photons_per_slice,
+        micro_time_resolution_ps=settings.micro_time_resolution_ps,
     )
 
-    from chisurf.core.fluorescence.burst.streams import stream_detectors, window_warnings
+    from chisurf.core.fluorescence.burst.streams import gates_record, stream_detectors, window_warnings
 
-    for line in window_warnings(
-        tttrs,
-        stream_detectors(
+    detectors = stream_detectors(
             {
                 "donor": (settings.donor_channels, settings.donor_micro_time_ranges),
                 "acceptor": (settings.acceptor_channels, settings.acceptor_micro_time_ranges),
             }
-        ),
-    ):
+        )
+    for line in window_warnings(tttrs, gates_record(detectors, settings.micro_time_resolution_ps), detectors):
         click.echo(f"warning: {line}", err=True)
 
     n_valid = int((numeric_column(df_v, "Proximity Ratio Std") > 0.0).sum())

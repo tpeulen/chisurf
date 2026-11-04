@@ -392,7 +392,7 @@ def test_save_plot_dialog_cancel_writes_nothing(app, tmp_path, monkeypatch):
 @pytest.mark.parametrize(
     "name,start,typed",
     [
-        ("window_length", 0.01, "0.05"),
+        ("window_length", 0.01, "50"),  # typed in ms, kept in s
         ("photons_per_slice", 10, "30"),
         ("bins_x", 51, "80"),
         ("bins_y", 51, "120"),
@@ -403,8 +403,9 @@ def test_each_number_field_takes_a_typed_value_and_draws_it(app, name, start, ty
     assert getattr(app.model, name) == pytest.approx(start)
     type_number(app, name, typed)
     value = getattr(app.model, name)
-    assert value == pytest.approx(float(typed)), (name, value)
-    shown = f"{value:.4f}" if name == "window_length" else f"{value:.0f}"
+    scale = 1e3 if name == "window_length" else 1.0  # the window length is shown in ms
+    assert value * scale == pytest.approx(float(typed)), (name, value)
+    shown = f"{value * scale:.2f} ms" if name == "window_length" else f"{value:.0f}"
     assert shown in draw(app).strings  # the field shows the new value
 
 

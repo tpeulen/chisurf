@@ -13,14 +13,15 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
+import numpy as np
 from emtk import im, implot, style
 from emtk.app import ImApp
 from emtk.i18n import tr
 from emtk.im_core import get_current_context
 from emtk.view_form import FormState, draw_form, draw_sections
+from tttrlib import ranges_from_inclusive, ranges_to_inclusive
 
 from chisurf.core.fluorescence.burst.streams import FULL_MICRO_TIME
-from tttrlib import ranges_from_inclusive, ranges_to_inclusive
 from chisurf.core.plugin.workspace_input import (
     WorkspaceInputMixin,
     input_section,
@@ -28,6 +29,7 @@ from chisurf.core.plugin.workspace_input import (
     spec_for,
 )
 from chisurf.emtk.advanced import advanced_mode
+from chisurf.emtk.display_units import ScaledParameters
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import (
     action_caption,
@@ -57,14 +59,16 @@ PARAM_SECTIONS = [
     {
         "type": "value",
         "attr": "window_length",
-        "label": "Min window length (s):",
+        "label": "Min window length:",
         "kind": "float",
         "style": "spin",
-        "minimum": 0.0001,
-        "maximum": 10.0,
-        "decimals": 4,
+        "minimum": 0.1,
+        "maximum": 10000.0,
+        "decimals": 2,
+        "suffix": " ms",
         "call": "on_param_edited",
-        "description": "Minimum window length in seconds used to slice bursts into photon subsets.",
+        "description": "Minimum window length used to slice bursts into photon subsets "
+        "(kept in seconds, shown in ms).",
     },
     {
         "type": "value",
@@ -294,6 +298,9 @@ class BurstBvaGui:
     def _assign_pair(self, settings: dict) -> None:
         """Take the picked detectors' channels and micro-time gates, and the file type, into the model."""
         detectors = (settings or {}).get("detectors") or {}
+        from tttrlib import setup_micro_time_resolution
+        width = setup_micro_time_resolution(settings)
+        self.model.micro_time_resolution_ps = width * 1e12 if width else None
         self.model.setup_detectors = {str(k): dict(v) for k, v in detectors.items()}
         self.model.pair_names = (self.donor_detector or "donor", self.acceptor_detector or "acceptor")
         for role, name in (("donor", self.donor_detector), ("acceptor", self.acceptor_detector)):
@@ -537,6 +544,11 @@ class BurstBvaGui:
     def _draw_input(self) -> None:
         """The generated Input section (the workspace's burst runs), then the run BVA reads."""
         self.input_form.rects.clear()
+        if getattr(self, "pipeline", False):
+            # In the pipeline the bursts are Burst Selection's: no Input to pick from.
+            run = Path(str(self.model.analysis_folder or "")).name or tr("none yet")
+            im.text_wrapped(tr("Bursts: {run} from Burst Selection").format(run=run))
+            return
         draw_form(self.input_spec, self.input, self.input_form)
         for name, rect in self.input_form.rects.items():
             self.item_rects[name] = tuple(rect)
@@ -548,7 +560,7 @@ class BurstBvaGui:
         """Draw BVA parameter controls: spin fields (typed or stepped, keyboard-editable)."""
         im.spacing()
         im.text_colored(style.HEADING_4, "Analysis Parameters")
-        draw_sections(PARAM_SECTIONS, self.model, self.param_form)
+        draw_sections(PARAM_SECTIONS, ScaledParameters(self.model, {"window_length": 1e3}), self.param_form)
         im.spacing()
         im.text_colored(style.HEADING_4, "Display Options")
         draw_sections(BINS_SECTIONS, self.model, self.param_form)
@@ -713,6 +725,35 @@ class BurstBvaGui:
             im.separator()
             im.text_wrapped(self.model.status_text)
 
+    #: The BVA plane the histogram covers (mean proximity ratio x std) and its default bins
+    #: (the tool's Bins X / Bins Y settings win).
+    HIST_X, HIST_Y, HIST_BINS = (0.0, 1.0), (0.0, 0.44), (60, 44)
+
+    def _burst_histogram(self, xs, ys):
+        """The bursts binned on the BVA plane, cached per result: ``(grid, (rows, cols), bounds)``
+        with row zero at the top (as the heatmap draws it); ``(None, ...)`` for no bursts."""
+        nx = max(2, int(getattr(self.model, "bins_x", self.HIST_BINS[0]) or self.HIST_BINS[0]))
+        ny = max(2, int(getattr(self.model, "bins_y", self.HIST_BINS[1]) or self.HIST_BINS[1]))
+        key = (id(xs), id(ys), len(xs) if xs is not None else 0, nx, ny)
+        cached = getattr(self, "_hist_cache", None)
+        if cached is not None and cached[0] == key:
+            return cached[1]
+        x = np.asarray(xs, dtype=float)
+        y = np.asarray(ys, dtype=float)
+        ok = np.isfinite(x) & np.isfinite(y)
+        bounds = ((self.HIST_X[0], self.HIST_Y[0]), (self.HIST_X[1], self.HIST_Y[1]))
+        if not ok.any():
+            result = (None, (ny, nx), bounds)
+        else:
+            counts, _, _ = np.histogram2d(
+                y[ok], x[ok], bins=(ny, nx), range=(self.HIST_Y, self.HIST_X)
+            )
+            # log scale: a few dense cells would otherwise leave every other burst near black
+            grid = np.log1p(np.flipud(counts)).astype(np.float64)  # row zero: the largest std
+            result = (grid.ravel(), (ny, nx), bounds)
+        self._hist_cache = (key, result)
+        return result
+
     def _draw_plot(self, w: float, h: float) -> None:
         """Plot the computed BVA results."""
         origin = im.get_cursor_screen_pos()
@@ -730,9 +771,16 @@ class BurstBvaGui:
 
             # Data
             if plot_data.get("has_data"):
-                # Scatter of bursts
-                implot.set_next_marker_style(implot.MARKER_CIRCLE, 3.0, fill=(31, 119, 180, 110))
-                implot.plot_scatter("Bursts", plot_data["scatter_x"], plot_data["scatter_y"])
+                # The bursts as a 2D histogram: thousands of circles were unreadable (overlapping)
+                # and cost the window a polygon per burst every frame; a grid costs the same
+                # however many bursts there are.
+                grid, (rows, cols), bounds = self._burst_histogram(
+                    plot_data["scatter_x"], plot_data["scatter_y"]
+                )
+                if grid is not None:
+                    implot.plot_heatmap(
+                        "Bursts", grid, rows, cols, 0.0, 0.0, None, bounds[0], bounds[1]
+                    )
 
                 # Profile mean
                 prof_x = plot_data.get("profile_x")

@@ -73,7 +73,7 @@ def compute_bva_handler(
 ) -> dict[str, Any]:
     """Run BVA analysis from explicit parameters or a workflow handoff."""
     try:
-        from chisurf.core.fluorescence.burst.streams import window_warnings
+        from chisurf.core.fluorescence.burst.streams import gates_record, window_warnings
 
         from ..core.computation import compute_bva, read_burst_analysis, write_bva_container
 
@@ -96,9 +96,11 @@ def compute_bva_handler(
             acceptor_micro_time_ranges=bva_settings.acceptor_micro_time_ranges,
             minimum_window_length=bva_settings.minimum_window_length,
             number_of_photons_per_slice=bva_settings.number_of_photons_per_slice,
+            micro_time_resolution_ps=bva_settings.micro_time_resolution_ps,
         )
 
-        warnings = window_warnings(tttrs, _preflight_detectors(bva_settings, workflow_context))
+        detectors = _preflight_detectors(bva_settings, workflow_context)
+        warnings = window_warnings(tttrs, gates_record(detectors, bva_settings.micro_time_resolution_ps), detectors)
 
         output_paths: dict[str, str] = {}
         if write_output:
@@ -171,7 +173,8 @@ def _settings_from_workflow(
         return BvaSettings(**settings)
     from chisurf.core.fluorescence.burst.streams import fret_pair_from_workflow
 
-    return BvaSettings(**fret_pair_from_workflow(workflow_context)["settings"])
+    pair = fret_pair_from_workflow(workflow_context)
+    return BvaSettings(**pair["settings"], micro_time_resolution_ps=pair["micro_time_resolution_ps"])
 
 
 def _preflight_detectors(cfg: BvaSettings, workflow_context: dict[str, Any] | None) -> dict:

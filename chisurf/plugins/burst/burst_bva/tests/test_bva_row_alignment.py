@@ -111,3 +111,42 @@ def test_the_whole_burst_is_used(photons, interleaved_table):
         assert means[row] == pytest.approx(_proximity_ratio(first, last)), (
             f"row {row}: photons {first}..{last} inclusive"
         )
+
+
+def test_bva_converts_gate_for_each_measurement(monkeypatch):
+    """A gate recorded at 8 ps selects the same interval in 8 and 32 ps data."""
+    seen = []
+
+    class Engine:
+        def __init__(self, tttr):
+            self.tttr = tttr
+
+        def set_donor(self, channels, ranges):
+            seen.append((self.tttr.header.micro_time_resolution, ranges))
+
+        def set_acceptor(self, channels, ranges):
+            pass
+
+        def compute(self, bursts, count, window):
+            pass
+
+        def get_proximity_ratio_mean(self):
+            return [0.5]
+
+        def get_proximity_ratio_std(self):
+            return [0.1]
+
+    monkeypatch.setattr(tttrlib, "BVA", Engine)
+    tttrs = {}
+    for name, resolution in (("fine", 8e-12), ("coarse", 32e-12)):
+        tttr = tttrlib.TTTR()
+        tttr.header.set_micro_time_resolution(resolution)
+        tttrs[name] = tttr
+    table = store_from_arrays({
+        "First File": np.array(["fine", "coarse"]),
+        "First Photon": np.array([0, 0]),
+        "Last Photon": np.array([1, 1]),
+    })
+    compute_bva(table, tttrs, donor_micro_time_ranges=[(40, 79)],
+                acceptor_micro_time_ranges=[(40, 79)], micro_time_resolution_ps=8)
+    assert [ranges for _, ranges in seen] == [[(40, 79)], [(10, 19)]]

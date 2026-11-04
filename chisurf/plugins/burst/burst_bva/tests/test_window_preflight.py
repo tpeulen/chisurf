@@ -50,55 +50,59 @@ def test_inclusive_ranges_are_checked_as_the_channels_they_keep():
 
 def test_the_workflow_setup_is_read_into_inclusive_ranges():
     pair = streams.fret_pair_from_workflow({"channel_settings": {"detectors": {
-        "green": {"chs": [0], "micro_time_ranges": [[0, 1613]]},
-        "red": {"chs": [1], "micro_time_ranges": []},
+        "G|G": {"chs": [0], "micro_time_ranges": [[0, 1613]]},
+        "R|G": {"chs": [1], "micro_time_ranges": []},
     }}})
-    assert pair["names"] == ("green", "red")
+    assert pair["names"] == ("G|G", "R|G")
     assert pair["settings"]["donor_micro_time_ranges"] == [(0, 1612)]
     assert pair["settings"]["acceptor_micro_time_ranges"] == [FULL]
 
 
+def _window_warnings(tttrs, detectors):
+    return streams.window_warnings(tttrs, streams.gates_record(detectors, None), detectors)
+
+
 def test_ranges_of_another_instrument_warn(demo):
-    lines = streams.window_warnings(demo, _pair(WRONG_DONOR, FULL))
+    lines = _window_warnings(demo, _pair(WRONG_DONOR, FULL))
     assert len(lines) == 1 and "do not match the data" in lines[0], lines
     assert "donor" in lines[0] and "1613" in lines[0]  # the detected windows are named
 
 
 def test_ranges_that_hold_the_pulses_say_nothing(demo):
-    assert streams.window_warnings(demo, _pair(FULL, FULL)) == []
+    assert _window_warnings(demo, _pair(FULL, FULL)) == []
     # ALEX-2CDE streams: every photon after donor excitation, the acceptor's after acceptor
     # excitation -- one routing channel split by micro time
     alex = streams.stream_detectors({"dex": ([0, 1], [PROMPT]), "aex": ([1], [DELAYED])})
-    assert streams.window_warnings(demo, alex) == []
+    assert _window_warnings(demo, alex) == []
 
 
 def test_the_pie_split_of_the_setup_is_understood(demo):
-    """FRET pair gated to the prompt pulse, the setup's yellow detector holding the delayed one."""
+    """FRET pair gated to the prompt pulse, the setup's R|R detector holding the delayed one."""
     detectors = streams.preflight_detectors(
-        {"green": ([0], [PROMPT]), "red": ([1], [PROMPT])},
+        {"G|G": ([0], [PROMPT]), "R|G": ([1], [PROMPT])},
         {
-            "green": {"chs": [0], "micro_time_ranges": [[0, 1613]]},
-            "red": {"chs": [1], "micro_time_ranges": [[0, 1613]]},
-            "yellow": {"chs": [1], "micro_time_ranges": [[1613, 3125]]},
+            "G|G": {"chs": [0], "micro_time_ranges": [[0, 1613]]},
+            "R|G": {"chs": [1], "micro_time_ranges": [[0, 1613]]},
+            "R|R": {"chs": [1], "micro_time_ranges": [[1613, 3125]]},
             "blue": {"chs": [5], "micro_time_ranges": [[0, 10]]},  # other channels: not checked
         },
     )
-    assert set(detectors) == {"green", "red", "yellow"}
-    assert streams.window_warnings(demo, detectors) == []
+    assert set(detectors) == {"G|G", "R|G", "R|R"}
+    assert _window_warnings(demo, detectors) == []
 
 
 def test_a_fret_pair_gated_to_the_prompt_pulse_says_nothing(demo):
-    assert streams.window_warnings(demo, _pair(PROMPT, PROMPT)) == []
+    assert _window_warnings(demo, _pair(PROMPT, PROMPT)) == []
 
 
 def test_ungated_streams_are_not_checked(demo):
-    assert streams.window_warnings(demo, streams.stream_detectors(
+    assert _window_warnings(demo, streams.stream_detectors(
         {"donor": ([0], []), "acceptor": ([1], [])})) == []
 
 
 def test_a_donor_only_measurement_gives_no_false_warning(donor_only):
-    assert streams.window_warnings(donor_only, _pair(PROMPT, FULL)) == []
-    assert streams.window_warnings(donor_only, _pair(FULL, FULL)) == []
+    assert _window_warnings(donor_only, _pair(PROMPT, FULL)) == []
+    assert _window_warnings(donor_only, _pair(FULL, FULL)) == []
 
 
 def test_the_rpc_result_carries_the_warning(folder):
@@ -129,9 +133,9 @@ def test_the_workflow_context_supplies_the_pie_siblings(folder):
         "burst_folder": str(folder),
         "channel_settings": {
             "detectors": {
-                "green": {"chs": [0], "micro_time_ranges": [list(PROMPT)]},
-                "red": {"chs": [1], "micro_time_ranges": [list(PROMPT)]},
-                "yellow": {"chs": [1], "micro_time_ranges": [[1613, 3125]]},
+                "G|G": {"chs": [0], "micro_time_ranges": [list(PROMPT)]},
+                "R|G": {"chs": [1], "micro_time_ranges": [list(PROMPT)]},
+                "R|R": {"chs": [1], "micro_time_ranges": [[1613, 3125]]},
             },
             "tttr_reading": {"file_type": "PTU"},
         },

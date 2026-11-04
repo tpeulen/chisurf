@@ -36,6 +36,7 @@ class BvaSettings:
     minimum_window_length: float = 0.01
     number_of_photons_per_slice: int = 10
     file_type: str = "SPC-130"
+    micro_time_resolution_ps: float | None = None
 
 
 @dataclass

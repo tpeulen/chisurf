@@ -55,6 +55,7 @@ class BvaViewModel(WindowsPreflightMixin):
         #: of the donor and acceptor detectors in it: its detectors on the same routing channels
         #: are checked with the pair (PIE's prompt/delayed split of one detector).
         self.setup_detectors: dict[str, dict] = {}
+        self.micro_time_resolution_ps: float | None = None
         self.pair_names: tuple[str, str] = ("donor", "acceptor")
 
         # The excitation-window pre-flight of the last run (one line per measurement).
@@ -139,6 +140,9 @@ class BvaViewModel(WindowsPreflightMixin):
         from chisurf.core.fluorescence.burst.table import fret_detectors
 
         settings = dict(settings or {})
+        from tttrlib import setup_micro_time_resolution
+        width = setup_micro_time_resolution(settings)
+        self.micro_time_resolution_ps = width * 1e12 if width else None
         found = fret_detectors(settings)
         detectors = dict(settings.get("detectors") or {})
         self.setup_detectors = {str(k): dict(v) for k, v in detectors.items() if isinstance(v, dict)}
@@ -176,6 +180,7 @@ class BvaViewModel(WindowsPreflightMixin):
             "minimum_window_length": float(self.window_length),
             "number_of_photons_per_slice": int(self.photons_per_slice),
             "file_type": self.file_type.strip(),
+            "micro_time_resolution_ps": self.micro_time_resolution_ps,
         }
 
     # -- the excitation windows against the data (the shared pre-flight) ---------------------- #
@@ -184,6 +189,7 @@ class BvaViewModel(WindowsPreflightMixin):
         setup's detectors that share their routing channels."""
         donor, acceptor = self.pair_names
         return {
+            "tttr_reading": {"micro_time_resolution": self.micro_time_resolution_ps},
             "detectors": burst_streams.preflight_detectors(
                 {
                     donor: (self.donor_channels, self.donor_micro_time_ranges),
@@ -196,6 +202,9 @@ class BvaViewModel(WindowsPreflightMixin):
     def take_preflight_setup(self, setup: dict) -> None:
         """The user took the detected gates: they become the donor and acceptor ranges of the
         next run (inclusive, as BVA applies them)."""
+        from tttrlib import setup_micro_time_resolution
+        width = setup_micro_time_resolution(setup)
+        self.micro_time_resolution_ps = width * 1e12 if width else None
         detectors = setup.get("detectors") or {}
         for role, name in zip(("donor", "acceptor"), self.pair_names):
             gates = (detectors.get(name) or {}).get("micro_time_ranges")
@@ -212,17 +221,18 @@ class BvaViewModel(WindowsPreflightMixin):
         """The pre-flight of the current ranges on every measurement in *tttrs*: ``(key,
         checks)`` for :meth:`set_window_checks` (not repeated while the ranges are unchanged)."""
         detectors = self.preflight_setup()["detectors"]
-        key = repr(sorted(detectors.items()))
+        record = burst_streams.gates_record(detectors, self.micro_time_resolution_ps)
+        key = repr((sorted(detectors.items()), self.micro_time_resolution_ps))
         if self._checked is not None and self._checked[0] == key:
             return self._checked
-        return key, burst_streams.window_checks(dict(tttrs or {}), detectors)
+        return key, burst_streams.window_checks(dict(tttrs or {}), record, detectors)
 
     def set_window_checks(self, checked: tuple[str, dict] | None) -> None:
         """Show *checked*: the first measurement whose ranges do not match (else the first note)."""
         self._checked = checked
         checks = dict((checked or ("", {}))[1])
         detectors = self.preflight_setup()["detectors"]
-        self.windows_warnings = burst_streams.window_warnings({}, detectors, checks=checks)
+        self.windows_warnings = burst_streams.window_warnings({}, None, detectors, checks=checks)
         found = [c for c in checks.values() if c is not None]
         self.windows_check = next((c for c in found if c.mismatch), next(iter(found), None))
 
