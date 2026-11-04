@@ -161,6 +161,22 @@ def test_auto_irf_background_click_equals_the_engine_and_draws_its_curves(monkey
     assert "##zero" in [c[1] for c in spy.calls]
 
 
+def test_the_data_points_reach_the_painter_small(fitted):
+    """The decay's data are painted, not only handed to implot: a screenshot showed the legend's
+    "Data (VV|VH)" and no point (the realistic painter recorded the markers and never drew them,
+    emtk tests/test_testing_realistic.py). Each point a small dot, so the model stays visible."""
+    window, drv = fitted
+    drv.click_text("Decay and fit")
+    painter = drv.draw(2)
+    curves = window.model.fit_curves
+    positive = int(np.count_nonzero(curves.data_full > 0))
+    markers = [c for c in painter.calls if c[0] == "markers"]
+    assert markers, "no marker series was painted"
+    count, radius = max((c[1], c[5]) for c in markers)
+    assert count >= 0.9 * positive  # every positive bin on the log axis is a point
+    assert radius <= 2.5
+
+
 def test_typing_the_window_refits_and_changes_the_curves(fitted):
     window, drv = fitted
     _start, stop = window.model.micro_time_start, window.model.micro_time_stop

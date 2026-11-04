@@ -904,7 +904,8 @@ class MleNativeApp(TourTarget, ImApp):
                     )
             split = np.array([data.size / 2.0 - 0.5])  # where the VH half starts
             implot.plot_inf_lines("##VV|VH", split)
-            implot.plot_scatter("Data (VV|VH)", x, data, size=2.5)
+            # marker_size, not size (the spec's bar/digital size, which left every marker 4 px)
+            implot.plot_scatter("Data (VV|VH)", x, data, marker_size=1.8)
             for part, (lo, hi) in enumerate(curves.fit_windows):
                 seg = np.arange(lo, hi)
                 seg = seg[np.isfinite(curves.model_full[seg]) & (curves.model_full[seg] > 0)]
