@@ -77108,6 +77108,154 @@ Background (kHz): {bg}</source>
             <source>→ photons outside bursts</source>
             <translation>→ Photonen außerhalb der Bursts</translation>
         </message>
+        <message>
+            <source>B (kHz)</source>
+            <translation>B (kHz)</translation>
+        </message>
+        <message>
+            <source>Background rate of the buffer, all detectors (per detector in the row's tooltip). Below about 2 kHz per detector is good.</source>
+            <translation>Hintergrundrate des Puffers, alle Detektoren (pro Detektor im Tooltip der Zeile). Unter etwa 2 kHz pro Detektor ist gut.</translation>
+        </message>
+        <message>
+            <source>Brightness of one molecule of the reference dye: count rate / N. Higher is better; it drops with misalignment and saturation.</source>
+            <translation>Helligkeit eines Moleküls des Referenzfarbstoffs: Zählrate / N. Höher ist besser; sie sinkt bei Dejustage und Sättigung.</translation>
+        </message>
+        <message>
+            <source>Diffusion time of the reference dye through the focus. Rh110 in a 0.5 µm focus: about 100–200 µs.</source>
+            <translation>Diffusionszeit des Referenzfarbstoffs durch den Fokus. Rh110 in einem 0,5-µm-Fokus: etwa 100–200 µs.</translation>
+        </message>
+        <message>
+            <source>Drag data onto a role ↓</source>
+            <translation>Daten auf eine Rolle ziehen ↓</translation>
+        </message>
+        <message>
+            <source>Drag workspace data onto a row below to say what it is: measurement, buffer, IRF or reference dye.</source>
+            <translation>Arbeitsbereichsdaten auf eine Zeile darunter ziehen, um zu sagen, was sie sind: Messung, Puffer, IRF oder Referenzfarbstoff.</translation>
+        </message>
+        <message>
+            <source>Drop photon files (.ptu, .spc, .ht3, …) on a row, or drag workspace data from the table above onto a row.</source>
+            <translation>Photonendateien (.ptu, .spc, .ht3, …) auf eine Zeile ziehen oder Arbeitsbereichsdaten aus der Tabelle oben auf eine Zeile ziehen.</translation>
+        </message>
+        <message>
+            <source>Drop the measurements here.</source>
+            <translation>Die Messungen hier ablegen.</translation>
+        </message>
+        <message>
+            <source>Effective confocal volume from the reference dye. About 0.5–2 fL for a well-aligned confocal; larger means a defocused or underfilled objective.</source>
+            <translation>Effektives konfokales Volumen aus dem Referenzfarbstoff. Etwa 0,5–2 fL bei einem gut justierten Konfokalmikroskop; größer bedeutet ein defokussiertes oder unterfülltes Objektiv.</translation>
+        </message>
+        <message>
+            <source>Estimated (no {missing})</source>
+            <translation>Geschätzt (kein {missing})</translation>
+        </message>
+        <message>
+            <source>G factor of the colour's detectors (VV/VH tail ratio of the reference dye), written to the setup. Typically 0.8–1.3; 1 means equal detection of both polarisations.</source>
+            <translation>G-Faktor der Detektoren der Farbe (VV/VH-Schwanzverhältnis des Referenzfarbstoffs), ins Setup geschrieben. Typisch 0,8–1,3; 1 bedeutet gleiche Detektion beider Polarisationen.</translation>
+        </message>
+        <message>
+            <source>G from the setup, no confocal volume</source>
+            <translation>G aus dem Setup, kein konfokales Volumen</translation>
+        </message>
+        <message>
+            <source>IRF (ps)</source>
+            <translation>IRF (ps)</translation>
+        </message>
+        <message>
+            <source>IRF from the non-burst photons</source>
+            <translation>IRF aus den Nicht-Burst-Photonen</translation>
+        </message>
+        <message>
+            <source>Its &lt;b&gt;Dye&lt;/b&gt; cell picks the dye from the dye database — found in the file's header or name, else the colour's usual dye. Its row shows G, V_eff, τ_D, w0, s and the brightness per molecule: the setup's quality at a glance.</source>
+            <translation>Ihre &lt;b&gt;Farbstoff&lt;/b&gt;-Zelle wählt den Farbstoff aus der Farbstoffdatenbank — aus dem Header oder Namen der Datei, sonst der übliche Farbstoff der Farbe. Ihre Zeile zeigt G, V_eff, τ_D, w0, s und die Helligkeit pro Molekül: die Qualität des Setups auf einen Blick.</translation>
+        </message>
+        <message>
+            <source>Lateral 1/e² radius of the focus. About 0.2–0.6 µm.</source>
+            <translation>Lateraler 1/e²-Radius des Fokus. Etwa 0,2–0,6 µm.</translation>
+        </message>
+        <message>
+            <source>No IRF: estimated from the non-burst photons, else blindly from the burst decay.</source>
+            <translation>Keine IRF: aus den Nicht-Burst-Photonen geschätzt, sonst blind aus dem Burst-Abklingen.</translation>
+        </message>
+        <message>
+            <source>No buffer: the background is estimated from the photons outside the bursts.</source>
+            <translation>Kein Puffer: Der Hintergrund wird aus den Photonen außerhalb der Bursts geschätzt.</translation>
+        </message>
+        <message>
+            <source>No data yet</source>
+            <translation>Noch keine Daten</translation>
+        </message>
+        <message>
+            <source>No reference dye</source>
+            <translation>Kein Referenzfarbstoff</translation>
+        </message>
+        <message>
+            <source>No reference dye: G from the setup ({g}); no confocal volume.</source>
+            <translation>Kein Referenzfarbstoff: G aus dem Setup ({g}); kein konfokales Volumen.</translation>
+        </message>
+        <message>
+            <source>No setup</source>
+            <translation>Kein Setup</translation>
+        </message>
+        <message>
+            <source>No setup: no IRF / reference rows</source>
+            <translation>Kein Setup: keine IRF- / Referenzzeilen</translation>
+        </message>
+        <message>
+            <source>Structure parameter z0/w0. s ≈ 3–8 for a well-aligned confocal; much larger means a long, poorly defined focus.</source>
+            <translation>Strukturparameter z0/w0. s ≈ 3–8 bei einem gut justierten Konfokalmikroskop; viel größer bedeutet einen langen, schlecht definierten Fokus.</translation>
+        </message>
+        <message>
+            <source>The setup's G of {detectors} was edited by hand and is kept.</source>
+            <translation>Das G von {detectors} im Setup wurde von Hand geändert und bleibt erhalten.</translation>
+        </message>
+        <message>
+            <source>The temperature the dye's D is corrected to (or your own D), D with its source in the tooltip, and the fitted correlation. The numbers are in the table; G is written into the setup as it is computed.</source>
+            <translation>Die Temperatur, auf die das D des Farbstoffs korrigiert wird (oder Ihr eigenes D), D mit seiner Quelle im Tooltip und die angepasste Korrelation. Die Zahlen stehen in der Tabelle; G wird ins Setup geschrieben, sobald es berechnet ist.</translation>
+        </message>
+        <message>
+            <source>V_eff (fL)</source>
+            <translation>V_eff (fL)</translation>
+        </message>
+        <message>
+            <source>Width (FWHM) of the measured IRF. A few hundred ps for SPADs, under 100 ps for hybrid detectors.</source>
+            <translation>Breite (FWHM) der gemessenen IRF. Einige hundert ps bei SPADs, unter 100 ps bei Hybriddetektoren.</translation>
+        </message>
+        <message>
+            <source>background from the photons outside the bursts</source>
+            <translation>Hintergrund aus den Photonen außerhalb der Bursts</translation>
+        </message>
+        <message>
+            <source>cpm (kHz)</source>
+            <translation>cpm (kHz)</translation>
+        </message>
+        <message>
+            <source>estimated</source>
+            <translation>geschätzt</translation>
+        </message>
+        <message>
+            <source>failed</source>
+            <translation>fehlgeschlagen</translation>
+        </message>
+        <message>
+            <source>hand-edited</source>
+            <translation>von Hand</translation>
+        </message>
+        <message>
+            <source>measured</source>
+            <translation>gemessen</translation>
+        </message>
+        <message>
+            <source>measured, estimated (no file: estimated from the measurement), computing …, or hand-edited (the setup's G was changed by hand and is kept). The row's tooltip says more.</source>
+            <translation>gemessen, geschätzt (keine Datei: aus der Messung geschätzt), wird berechnet … oder von Hand (das G des Setups wurde von Hand geändert und bleibt erhalten). Der Tooltip der Zeile sagt mehr.</translation>
+        </message>
+        <message>
+            <source>w0 (µm)</source>
+            <translation>w0 (µm)</translation>
+        </message>
+        <message>
+            <source>τ_D (µs)</source>
+            <translation>τ_D (µs)</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

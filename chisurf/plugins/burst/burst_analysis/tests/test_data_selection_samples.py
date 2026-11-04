@@ -189,10 +189,11 @@ def test_the_dye_selector_lists_the_database_and_a_users_choice_is_kept(demo_fil
 
     app, model, _ = _app(copy.deepcopy(demo.SETUP))
     column = next(c for c in app.spec["sections"][0]["options"]["columns"] if c["key"] == "dye")
-    assert column["choices"] == list(dye_names()) + [samples.CUSTOM_DYE]
+    assert [c["value"] for c in column["choices"]] == list(dye_names()) + [samples.CUSTOM_DYE]
+    assert {c["value"]: c["label"] for c in column["choices"]}["Rhodamine 110"] == "Rh110"
     model.add_paths([demo_files["reference"]])
     row = next(r for r in app.assignment_rows() if r["key"] == "row:reference:G")
-    assert row["dye"] == "Rhodamine 110" and row["dye_how"] == "from file name"
+    assert row["dye"] == "Rhodamine 110" and model.dyes["G"]["how"] == "file name"
     assert app.cell_editable(row, "dye") and not app.cell_editable(row, "name")
     app.cell_edited(row, "dye", "Fluorescein")
     model.add_paths([demo_files["reference"].with_name("Rh110_ref.ptu")])  # nothing re-infers it
@@ -200,7 +201,7 @@ def test_the_dye_selector_lists_the_database_and_a_users_choice_is_kept(demo_fil
     assert app.reference_dyes()["G"]["how"] == "user"
 
 
-def test_simple_mode_hides_the_details_and_applies_g(demo_files):
+def test_the_role_table_shows_the_setup_quality_in_both_modes_and_g_is_applied(demo_files):
     applied = {}
     setup = copy.deepcopy(demo.SETUP)
 
@@ -212,17 +213,31 @@ def test_simple_mode_hides_the_details_and_applies_g(demo_files):
     app, model, _ = _app(setup, on_apply_g=apply)
     app.set_advanced(False)
     keys = [c["key"] for c in app.spec["sections"][0]["options"]["columns"]]
-    assert keys == ["name", "files", "dye", "info"]
+    assert keys == ["name", "files", "dye", "g", "veff", "taud", "w0", "s", "cpm", "bg", "fwhm", "info"]
     assert not app.docks.is_shown("calibration")
-    model.add_paths([demo_files["reference"], demo_files["buffer"], demo_files["measurement"]])
+    model.add_paths([demo_files["reference"], demo_files["buffer"], demo_files["irf"], demo_files["measurement"]])
     _settle(app)
     assert applied["G|G"] == pytest.approx(demo.TRUTH["g_factor"], rel=0.02)
-    row = next(r for r in app.assignment_rows() if r["key"] == "row:reference:G")
-    assert row["info"] == "G factor applied · volume stored"
-    assert next(r for r in app.assignment_rows() if r["key"] == "row:buffer")["info"].startswith("background")
+    rows = {r["key"]: r for r in app.assignment_rows()}
+    ref = rows["row:reference:G"]
+    assert ref["g"] == pytest.approx(demo.TRUTH["g_factor"], rel=0.02)
+    assert ref["veff"] > 0 and ref["taud"] > 0 and ref["w0"] > 0 and ref["s"] > 0 and ref["cpm"] > 0
+    assert ref["info"] == "measured"
+    assert rows["row:buffer"]["bg"] == pytest.approx(sum(demo.TRUTH["background_khz"]), rel=0.03)
+    fwhm = 2.3548 * demo.TRUTH["prompt_sigma_ns"] * 1e3
+    assert rows["row:irf:G"]["fwhm"] == pytest.approx(fwhm, rel=0.15)
+    assert rows["row:measurement"]["g"] is None  # a number only where it applies
+    # a G edited by hand in the setup is kept: not written over, said so
+    setup["detectors"]["G|G"]["g_factor"] = 1.05
+    applied.clear()
+    app.set_dye("G", temperature_c=24.0)  # recalibrates
+    _settle(app)
+    assert applied == {} and setup["detectors"]["G|G"]["g_factor"] == 1.05
+    assert app.hand_edited_g() == ["G|G"]
+    assert next(r for r in app.assignment_rows() if r["key"] == "row:reference:G")["info"] == "hand-edited"
     app.set_advanced(True)
     keys = [c["key"] for c in app.spec["sections"][0]["options"]["columns"]]
-    assert "dye_how" in keys and "status" in keys
+    assert "size" in keys and "status" in keys
     assert app.docks.is_shown("calibration")
 
 
@@ -231,17 +246,19 @@ def test_without_calibration_files_the_workflow_goes_on_with_a_warning(demo_file
     app, model, _ = _app(copy.deepcopy(demo.SETUP), on_proceed=lambda: proceeded.append(1))
     model.add_paths([demo_files["measurement"]])
     warning = app.fallback_warning()
-    assert warning.startswith("No buffer, IRF or reference dye")
+    assert warning == "Estimated (no buffer, IRF, reference dye)"
+    assert "photons outside the bursts" in app.fallback_detail()
     from emtk.testing import Driver
 
     driver = Driver(app, SIZE)
     driver.frame(3)
     drawn = " ".join(entry[5] for entry in driver.painter.texts)
-    assert "No buffer, IRF or reference dye" in drawn
-    rows = {r["row"]: r["info"] for r in app.assignment_rows() if r["parent"] == ""}
-    assert "photons outside" in rows["buffer"] and "non-burst" in rows["irf:G"]
+    assert warning in drawn
+    rows = {r["row"]: r for r in app.assignment_rows() if r["parent"] == ""}
+    assert rows["buffer"]["info"] == "estimated" and "photons outside" in rows["buffer"]["tip"]
+    assert "non-burst" in rows["irf:G"]["tip"]
     app.proceed()
-    assert proceeded == [1] and "Going on without them" in app.message
+    assert proceeded == [1] and warning in app.message
     app.proceed()
     assert proceeded == [1, 1]
 
@@ -297,7 +314,7 @@ def test_the_hub_hands_measurements_on_and_keeps_the_calibration(demo_files, tmp
 
     hub = create_app()
     try:
-        hub.set_advanced(True)  # Advanced: G waits for the user's Apply (Simple applies it)
+        hub.set_advanced(True)
         hub.setup_model.data = copy.deepcopy(demo.SETUP)
         hub.context.channel_settings = hub.setup_model.get_settings()
         data = hub.ensure_child("data")
@@ -316,10 +333,54 @@ def test_the_hub_hands_measurements_on_and_keeps_the_calibration(demo_files, tmp
         assert volume["veff_fl"] > 0
         assert hub.setup_model.data["confocal_volume"]["G"]["veff_fl"] == pytest.approx(volume["veff_fl"])
         g = hub.context.calibration["colours"]["G"]["g_factor"]["G|G"]["g"]
-        assert hub.setup_model.data["detectors"]["G|G"]["g_factor"] == 1.0  # never silently
-        assert hub.apply_reference_g({"G|G": g}) == 1
+        # written into the setup as computed, in Advanced too
         assert hub.setup_model.data["detectors"]["G|G"]["g_factor"] == pytest.approx(g)
         assert hub.context.channel_settings["detectors"]["G|G"]["g_factor"] == pytest.approx(g)
         assert hub.context.references()["irf"]["G|G"] == [str(Path(demo_files["irf"]).resolve())]
+        report = hub.context.calibration_report
+        assert report["colours"]["G"]["g_applied"]["G|G"] == pytest.approx(g)
+        assert hub.context.to_payload()["calibration_report"] == report
     finally:
         hub.close()
+
+
+def test_the_calibration_report_is_complete_and_round_trips_through_the_container(demo_files, tmp_path):
+    from chisurf.plugins.burst.burst_analysis.calibration_report import (
+        SCHEMA,
+        build_report,
+        read_report,
+        write_report,
+    )
+    from chisurf.plugins.burst.burst_analysis.workflow_context import BurstWorkflowContext
+
+    rows = {
+        str(demo_files["measurement"]): "measurement",
+        str(demo_files["buffer"]): "buffer",
+        str(demo_files["irf"]): "irf:G",
+        str(demo_files["reference"]): "reference:G",
+    }
+    result = samples.calibrate(rows, demo.SETUP)
+    context = BurstWorkflowContext(channel_settings=copy.deepcopy(demo.SETUP), samples=dict(rows))
+    report = build_report(result, rows, demo.SETUP, estimated=context.estimated(), applied_g={"G|G": 1.15})
+    assert report["schema"] == SCHEMA
+    roles = {f["role"]: f for f in report["files"]}
+    assert set(roles) == {"measurement", "buffer", "irf:G", "reference:G"}
+    import hashlib
+
+    assert roles["buffer"]["sha256"] == hashlib.sha256(Path(demo_files["buffer"]).read_bytes()).hexdigest()
+    green = report["colours"]["G"]
+    assert green["dye"]["dye"] == "Rhodamine 110" and "Kapusta" in green["D_citation"]
+    fit = green["volume_fit"]
+    for key in ("N", "tau_d_ms", "s", "w0_um", "veff_fl"):
+        assert fit[key] > 0 and fit[f"{key}_err"] >= 0
+    assert fit["chi2r"] > 0 and green["g_factor"]["G|G"]["sem"] > 0
+    assert report["buffer"]["rates"]["G|G"]["B_kHz"] > 0 and report["irf"]["G"]["fwhm_ps"] > 0
+    assert report["estimated"] == {}
+    container = write_report(demo_files["measurement"], report, tmp_path / "containers")
+    write_report(demo_files["measurement"], report, tmp_path / "containers")  # replaced, not added
+    assert read_report(container) == report
+    from chisurf.core.fio.pto import Measurement
+
+    with Measurement.open(container) as m:
+        names = [o.name for o in m._f.objects()]
+    assert names.count("burst_calibration") == 1

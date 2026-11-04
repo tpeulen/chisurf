@@ -42,10 +42,15 @@ Computed in the background as they are assigned (the step waits behind a progres
   the file's header or name, else the colour's usual dye); D is the database's value at 25 °C,
   corrected to the temperature in the Calibration window, or *Other (custom D)*.
 
-**Advanced** shows the Calibration window: the rates, the dye and where D comes from, G beside
-the setup's with **Apply G to the setup**, the volume and the fitted correlation. In **Simple**
-the G factors are written to the setup as they are computed and the volumes stored; each row
-says in a few words what it gave.
+Each role row shows its numbers — **G**, **V_eff** (fL), **τ_D** (µs), **w0** (µm), **s** and
+**cpm** (brightness per molecule, kHz) of a reference dye, **B** (kHz) of the buffer, the **IRF**
+width (ps) — and a one-word **Status** (*measured*, *estimated*, *hand-edited*). The headers'
+tooltips say what a good value is; a row's tooltip says more. The G factors are written into the
+setup as they are computed; a G you then edit in step 0 is kept. **Advanced** adds the
+Calibration window: the temperature (or your own D), D with its source, and the fitted
+correlation. The full record — files and hashes, fit parameters with uncertainties, D's
+literature source — is the analysis report, written into each measurement's container with the
+bursts.
 
 ## Without calibration files
 

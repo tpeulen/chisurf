@@ -196,6 +196,9 @@ class BurstDataSelectionModel:
         #: dye, where it came from -- ``user``, ``header``, ``file name``, ``default`` -- the
         #: temperature and a custom D). A dye the user chose is never replaced by an inference.
         self.dyes: dict[str, dict] = {}
+        #: ``{detector: G}`` this step wrote into the setup last: a setup value that differs
+        #: was edited by hand and is kept.
+        self.applied_g: dict[str, float] = {}
 
     # -- the source protocol ------------------------------------------------------------------------------- #
     def paths(self) -> list[Path]:
@@ -383,6 +386,7 @@ class BurstDataSelectionModel:
             "groups": dict(self.groups),
             "group_of": {p: g for p, g in self.group_of.items() if p in paths},
             "dyes": {k: dict(v) for k, v in self.dyes.items()},
+            "applied_g": dict(self.applied_g),
             "calibration": self.calibration,
         }
 
@@ -390,6 +394,7 @@ class BurstDataSelectionModel:
         state = state or {}
         paths = [p for p in state.get("paths", []) if Path(p).exists()]
         self.dyes = {str(k): dict(v) for k, v in (state.get("dyes") or {}).items() if isinstance(v, dict)}
+        self.applied_g = {str(k): float(v) for k, v in (state.get("applied_g") or {}).items()}
         self.calibration = dict(state.get("calibration") or {})
         if paths:
             auto, self.auto_import = (
@@ -436,14 +441,8 @@ ROW_PURPOSE = {
     "unassigned": "its row is not in this setup: drag it to a row",
 }
 
-#: What an empty role row says it is for (the table's column is narrow; the tooltip has more).
-ROW_SHORT = {
-    "measurement": "burst data",
-    "buffer": "background",
-    "irf": "scatter / water",
-    "reference": "G factor, volume",
-    "unassigned": "drag to a row",
-}
+#: The number cells of a role table row that holds none.
+_NO_NUMBERS = {k: None for k in ("g", "veff", "taud", "w0", "s", "cpm", "bg", "fwhm")}
 
 #: The colour of the step's warning line (missing calibration files).
 WARNING_COLOUR = (240, 190, 80, 255)
@@ -702,7 +701,13 @@ class BurstDataSelectionApp(TourTarget, ImApp):
                         names = list(dye_names())
                     except Exception:  # noqa: BLE001 - no dye database: the custom D only
                         names = []
-                    column["choices"] = names + [CUSTOM_DYE]
+                    from ..samples import dye_label
+
+                    # the cell shows the short name (Rh110, A647); the list too, the full one in
+                    # the row's tooltip and the Calibration window
+                    column["choices"] = [{"value": n, "label": dye_label(n)} for n in names] + [
+                        {"value": CUSTOM_DYE, "label": CUSTOM_DYE}
+                    ]
                 columns.append(column)
             options["columns"] = columns
         return spec
@@ -806,9 +811,8 @@ class BurstDataSelectionApp(TourTarget, ImApp):
                     "row": row,
                     "name": row_label(row, setup, short=True),
                     **self._dye_cells(row),
-                    "tip": f"{row_label(row, setup)}: {tr(ROW_PURPOSE.get(row.partition(':')[0], ''))}",
+                    **self.row_numbers(row, [p for _i, p in members]),
                     "files": str(len(members)) if members else "",
-                    "info": self.row_info(row, [p for _i, p in members]),
                     "size": _format_size(_total_size(p for _i, p in members)) if members else "",
                     "status": "",
                 }
@@ -831,12 +835,12 @@ class BurstDataSelectionApp(TourTarget, ImApp):
                                 "group": group,
                                 "name": f"🗂 {groups.get(group, group)}",
                                 "files": str(len(in_group)),
-                                "info": tr("workspace group"),
+                                "info": "",
                                 "size": _format_size(_total_size(in_group)),
                                 "status": "",
                                 "paths": [str(p) for p in in_group],
                                 "dye": "",
-                                "dye_how": "",
+                                **_NO_NUMBERS,
                                 "tip": "\n".join(p.name for p in in_group),
                             }
                         )
@@ -849,102 +853,100 @@ class BurstDataSelectionApp(TourTarget, ImApp):
                         "path": str(path),
                         "name": path.name,
                         "files": "",
-                        "info": "" if not self.advanced else path.suffix.upper().lstrip("."),
+                        "info": "",
                         "size": _format_size(_size(path)),
                         "status": _status(imports.get(str(path))),
                         "tip": str(path),
                         "dye": "",
-                        "dye_how": "",
+                        **_NO_NUMBERS,
                     }
                 )
         return out
 
-    def row_info(self, row: str, files: list[Path], simple: bool | None = None) -> str:
-        """One line per role row: what its files gave (Advanced: the key number; Simple: in plain
-        words), and for an empty row what is used instead -- a missing calibration never blocks."""
+    def row_numbers(self, row: str, files: list[Path]) -> dict:
+        """The cells of a role row: its key numbers (G, V_eff, τ_D, w0, s, brightness of a
+        reference dye; B of the buffer; the IRF's width), a one-word status and a tooltip that
+        says what the status means. Empty where a number does not apply."""
         from ..samples import kind_of, row_label
 
-        simple = (not self.advanced) if simple is None else simple
         kind = kind_of(row)
         colour = row.partition(":")[2]
         calibration = getattr(self.source, "calibration", {}) or {}
+        cells = dict(_NO_NUMBERS)
+        label = row_label(row, self.setup())
+        purpose = tr(ROW_PURPOSE.get(kind, ""))
         if not files:
-            dets = row_detectors(row, self.setup())
-            g = f"{(self.setup_g(dets[0]) if dets else None) or 1.0:.3f}"
-            if simple:
-                if kind == "buffer":
-                    return tr("not used: background from the photons outside the bursts")
-                if kind == "irf":
-                    return tr("not used: IRF from the non-burst photons / blind estimate")
-                if kind == "reference":
-                    return tr("not used: G factor from the setup ({g}); no confocal volume").format(g=g)
-            else:  # the column is narrow: what is used instead, in short (the tooltip has more)
-                if kind == "buffer":
-                    return tr("→ photons outside bursts")
-                if kind == "irf":
-                    return tr("→ non-burst photons")
-                if kind == "reference":
-                    return tr("→ G {g} (setup)").format(g=g)
-            if kind == "measurement":
-                return tr("drop the measurements here")
-            return tr(ROW_SHORT.get(kind, ""))
-        if self.job.busy and (kind == "buffer" or kind == "reference"):
-            return tr("computing …")
+            cells["info"] = "" if kind == "measurement" else tr("estimated")
+            cells["tip"] = f"{label}: {purpose}. " + self._fallback_tip(row)
+            return cells
+        cells["info"] = tr("measured")
+        cells["tip"] = f"{label}: {purpose}."
+        busy = self.job.busy and kind in ("buffer", "reference", "irf")
         if kind == "buffer":
             rates = ((calibration.get("buffer") or {}).get("rates")) or {}
             if rates:
-                total = sum(r["B_kHz"] for r in rates.values() if r["B_kHz"] == r["B_kHz"])
-                det = next(iter(rates))
-                if simple:
-                    return tr("background {rate:.2f} kHz").format(rate=total)
-                return (
-                    f"B_{det} {rates[det]['B_kHz']:.2f} kHz"
-                    if len(rates) == 1
-                    else tr("B {total:.2f} kHz, {n} detectors").format(total=total, n=len(rates))
-                )
-        if kind == "reference":
+                cells["bg"] = float(sum(r["B_kHz"] for r in rates.values() if r["B_kHz"] == r["B_kHz"]))
+                cells["tip"] += " " + ", ".join(f"B_{d} {r['B_kHz']:.2f} kHz" for d, r in rates.items())
+        elif kind == "irf":
+            irf = (calibration.get("irf") or {}).get(colour) or {}
+            if irf.get("fwhm_ps"):
+                cells["fwhm"] = float(irf["fwhm_ps"])
+                cells["tip"] += f" FWHM {irf['fwhm_ps']:.0f} ps on {irf.get('detector', '')}."
+        elif kind == "reference":
             entry = (calibration.get("colours") or {}).get(colour) or {}
             g = entry.get("g_factor") or {}
             volume = entry.get("volume") or {}
-            if simple:
-                parts = []
-                if g:
-                    applied = all(
-                        self.setup_g(d) is not None and abs(self.setup_g(d) - v["g"]) <= 5e-4 for d, v in g.items()
-                    )
-                    parts.append(tr("G factor applied") if applied else tr("G factor computed"))
-                if volume:
-                    parts.append(tr("volume stored"))
-                if parts:
-                    return " · ".join(parts)
-            else:
-                parts = []
-                if g:
-                    parts.append(f"G {next(iter(g.values()))['g']:.3f}")
-                if volume:
-                    parts.append(f"{volume['veff_fl']:.2f} fL")
-                if parts:
-                    return " · ".join(parts)
-            if entry.get("errors") or calibration.get("errors"):
-                return tr("could not be computed (see Calibration)")
-        if kind == "irf":
-            return tr("used as the IRF of Burst MLE") if simple else tr("the IRF of Burst MLE")
-        if kind == "measurement":
-            return tr("{n} to search for bursts").format(n=len(files))
-        return tr(ROW_SHORT.get(kind, ""))
+            if g:
+                cells["g"] = float(next(iter(g.values()))["g"])
+                hand = [d for d in g if d in self.hand_edited_g()]
+                if hand:
+                    cells["info"] = tr("hand-edited")
+                    cells["tip"] += " " + tr("The setup's G of {detectors} was edited by hand and is kept.").format(
+                        detectors=", ".join(hand))
+            if volume:
+                cells.update(
+                    veff=float(volume["veff_fl"]), taud=float(volume["tau_d_ms"]) * 1e3,
+                    w0=float(volume["w0_um"]), s=float(volume["s"]),
+                    cpm=float(volume.get("brightness_khz", float("nan"))),
+                )
+        numbers = [f"{k} {cells[k]:.3g}" for k in ("g", "veff", "taud", "w0", "s", "cpm", "bg", "fwhm")
+                   if isinstance(cells.get(k), float) and cells[k] == cells[k]]
+        if numbers:
+            cells["tip"] += " (" + ", ".join(numbers) + ")"
+        if busy:
+            cells["info"] = tr("computing …")
+        elif kind != "measurement" and calibration.get("errors") and not any(
+            cells[k] is not None for k in ("g", "veff", "bg", "fwhm")
+        ):
+            cells["info"] = tr("failed")
+            cells["tip"] += " " + "; ".join(calibration["errors"])
+        return cells
+
+    def _fallback_tip(self, row: str) -> str:
+        """What is used for a role without a file (the row's tooltip)."""
+        from ..samples import kind_of
+
+        kind = kind_of(row)
+        dets = row_detectors(row, self.setup())
+        g = f"{(self.setup_g(dets[0]) if dets else None) or 1.0:.3f}"
+        return {
+            "buffer": tr("No buffer: the background is estimated from the photons outside the bursts."),
+            "irf": tr("No IRF: estimated from the non-burst photons, else blindly from the burst decay."),
+            "reference": tr("No reference dye: G from the setup ({g}); no confocal volume.").format(g=g),
+            "measurement": tr("Drop the measurements here."),
+        }.get(kind, "")
 
     def _dye_cells(self, row: str) -> dict:
-        """The Dye and *from* cells of a role row (empty but on reference rows)."""
+        """The Dye cell of a role row (empty but on reference rows)."""
         if not row.startswith("reference:"):
-            return {"dye": "", "dye_how": ""}
+            return {"dye": ""}
         from ..samples import dye_choice
 
         colour = row.partition(":")[2]
-        dyes = self.reference_dyes()
-        choice = dyes.get(colour) or dye_choice((getattr(self.source, "dyes", {}) or {}).get(colour), colour)
-        how = choice["how"]
-        words = {"user": "chosen", "header": "from header", "file name": "from file name", "default": "default"}
-        return {"dye": choice["dye"], "dye_how": tr(words.get(how, how))}
+        choice = self.reference_dyes().get(colour) or dye_choice(
+            (getattr(self.source, "dyes", {}) or {}).get(colour), colour
+        )
+        return {"dye": choice["dye"]}
 
     def cell_editable(self, record, key: str) -> bool:
         """Only a reference row's Dye cell is edited in the table."""
@@ -964,19 +966,21 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         return [k for k in ("buffer", "irf", "reference") if k not in used]
 
     def fallback_warning(self) -> str:
-        """The step's one warning line when the calibration files are missing ("" when none)."""
+        """The step's one warning line when calibration files are missing ("" when none)."""
         missing = self.missing_references()
         if not self._paths() or not missing:
             return ""
-        if len(missing) == 3:
-            return tr(
-                "No buffer, IRF or reference dye: background and IRF are estimated from the "
-                "measurement; G is taken from the setup."
-            )
-        words = {"buffer": tr("no buffer: background from the photons outside the bursts"),
-                 "irf": tr("no IRF: estimated from the non-burst photons"),
-                 "reference": tr("no reference dye: G from the setup, no confocal volume")}
-        return "; ".join(words[k] for k in missing) + "."
+        words = {"buffer": tr("buffer"), "irf": tr("IRF"), "reference": tr("reference dye")}
+        return tr("Estimated (no {missing})").format(missing=", ".join(words[k] for k in missing))
+
+    def fallback_detail(self) -> str:
+        """The warning's tooltip: what is estimated instead of each missing file."""
+        parts = {
+            "buffer": tr("background from the photons outside the bursts"),
+            "irf": tr("IRF from the non-burst photons"),
+            "reference": tr("G from the setup, no confocal volume"),
+        }
+        return "; ".join(parts[k] for k in self.missing_references()) + "."
 
     def row_at(self, x: float, y: float) -> str | None:
         """The role of the assignment-table row under ``(x, y)`` (``None``: not over a row)."""
@@ -1126,11 +1130,11 @@ class BurstDataSelectionApp(TourTarget, ImApp):
     # -- calibration ---------------------------------------------------------------------------------------- #
     def calibration_input(self) -> tuple[dict, dict, dict, str]:
         """``(rows, setup, dyes, signature)`` of what the calibration is computed from: the
-        buffer and reference-dye files, the detectors and reading of the setup, the D values."""
+        buffer, IRF and reference-dye files, the detectors and reading of the setup, the D values."""
         setup = self.setup()
         rows_of = getattr(self.source, "rows", None)
         rows = {p: r for p, r in (rows_of() if callable(rows_of) else {}).items()
-                if r == "buffer" or r.startswith("reference:")}
+                if r == "buffer" or r.startswith(("reference:", "irf:"))}
         dyes = self.reference_dyes(setup, rows)
         signature = json.dumps(
             # the channels and gates, not the G factors the calibration itself writes
@@ -1196,13 +1200,12 @@ class BurstDataSelectionApp(TourTarget, ImApp):
             self._calibrated_for = signature
             if hasattr(self.source, "calibration"):
                 self.source.calibration = result
+            self.apply_all_g()  # written as computed; a value edited by hand in the setup is kept
             if callable(self.on_calibrated):
                 try:
                     self.on_calibrated(result)
                 except Exception:  # noqa: BLE001 - the result is shown here all the same
                     log.exception("handing the calibration on failed")
-            if not self.advanced:
-                self.apply_all_g()  # Simple: applied as computed (Advanced: the user's button)
         if self.job.busy:
             return
         rows, setup, dyes, signature = self.calibration_input()
@@ -1232,13 +1235,30 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         }
 
     def apply_all_g(self) -> int:
-        """Write every computed G factor that differs from the setup's into it."""
-        values = {d: g for d, g in self.computed_g().items()
-                  if self.setup_g(d) is None or abs(self.setup_g(d) - g) > 5e-4}
-        if not values or not callable(self.on_apply_g):
+        """Write every computed G factor into the setup -- unless the setup's value is no longer
+        the one written last (the user edited it by hand: kept, and said so)."""
+        applied = getattr(self.source, "applied_g", None)
+        if not isinstance(applied, dict) or not callable(self.on_apply_g):
             return 0
-        self.on_apply_g(values)
+        values = {}
+        for det, g in self.computed_g().items():
+            current, last = self.setup_g(det), applied.get(det)
+            if last is not None and current is not None and abs(current - float(last)) > 5e-4:
+                continue  # edited by hand since it was written
+            if current is None or abs(current - g) > 5e-4:
+                values[det] = g
+            applied[det] = g
+        if values:
+            self.on_apply_g(values)
         return len(values)
+
+    def hand_edited_g(self) -> list[str]:
+        """The detectors whose setup G differs from the one last written (edited by hand)."""
+        applied = getattr(self.source, "applied_g", None) or {}
+        return [
+            d for d, g in applied.items()
+            if self.setup_g(d) is not None and abs(self.setup_g(d) - float(g)) > 5e-4
+        ]
 
     def setup_g(self, det: str) -> float | None:
         info = (self.setup().get("detectors") or {}).get(det) or {}
@@ -1316,8 +1336,11 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         )
         self.remember("filter")
         if self.message:
-            im.text_wrapped(self.message)
-        im.text_disabled(tr("Drag workspace data onto a row below to say what it is."))
+            im.text(self.message)
+        im.text_disabled(tr("Drag data onto a role ↓"))
+        im.set_item_tooltip(
+            tr("Drag workspace data onto a row below to say what it is: measurement, buffer, IRF or reference dye.")
+        )
         self.remember("drag_hint")
         draw_sections(self.spec["sections"], self, self.form)
         if "data_table" in self.form.rects:
@@ -1336,8 +1359,9 @@ class BurstDataSelectionApp(TourTarget, ImApp):
             from emtk.im_core import Col
 
             im.push_style_color(Col.TEXT, WARNING_COLOUR)
-            im.text_wrapped("⚠ " + warning)
+            im.text("⚠ " + warning)
             im.pop_style_color()
+            im.set_item_tooltip(self.fallback_detail())
             self.remember("fallback_warning")
 
         rows = getattr(self.source, "rows", None)
@@ -1349,14 +1373,16 @@ class BurstDataSelectionApp(TourTarget, ImApp):
                 im.same_line()
                 im.text_disabled(" · " + tr("{n} unassigned").format(n=values.count("unassigned")))
         else:
-            im.text_disabled(
+            im.text_disabled(tr("No data yet"))
+            im.set_item_tooltip(
                 tr(
-                    "No data yet: drop photon files (.ptu, .spc, .ht3, …) on a row, or drag "
-                    "workspace data from the table above onto a row."
+                    "Drop photon files (.ptu, .spc, .ht3, …) on a row, or drag workspace data "
+                    "from the table above onto a row."
                 )
             )
         if not self.setup().get("detectors"):
-            im.text_disabled(tr(NO_SETUP_HINT))
+            im.text_disabled(tr("No setup: no IRF / reference rows"))
+            im.set_item_tooltip(tr(NO_SETUP_HINT))
 
     def _draw_details(self, box=None) -> None:
         record = self.selected_entry
@@ -1370,7 +1396,7 @@ class BurstDataSelectionApp(TourTarget, ImApp):
             return
         if not record.get("path"):
             im.text(str(record.get("name", "")))
-            im.text_wrapped(self.row_info(str(record.get("row", "")), paths) or "")
+            im.text_wrapped(str(self.row_numbers(str(record.get("row", "")), paths).get("tip", "")))
             im.text(tr("{n} file(s), {size}").format(n=len(paths), size=_format_size(_total_size(paths))))
             for path in paths[:12]:
                 im.bullet_text(path.name)
@@ -1431,7 +1457,7 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         warning = self.fallback_warning()
         if warning and not self._noticed:
             self._noticed = True
-            self.message = tr("Going on without them: {warning}").format(warning=warning)
+            self.message = "⚠ " + warning
         if callable(self.on_proceed):
             self.on_proceed()
 
@@ -1442,34 +1468,31 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         """Below the proceed button: nothing here; a workflow adds its own controls (the ALEX Suite's demo data)."""
 
     def _draw_calibration(self, box=None) -> None:
-        """What the buffer and the reference dyes gave: B per detector; per colour the G factors
-        (applied to step 0 with a button, never silently), the confocal volume and its D."""
+        """Per colour: the dye, its temperature (or a custom D), D in one value with its source in
+        the tooltip, and the fitted correlation. The numbers are in the table; everything else is
+        in the analysis report (:mod:`..calibration_report`)."""
         from ..samples import CUSTOM_DYE, colour_groups, dye_choice, dye_diffusion
 
         self.remember("calibration", box)
         setup = self.setup()
-        calibration = getattr(self.source, "calibration", {}) or {}
         if not setup.get("detectors"):
-            im.text_wrapped(tr(NO_SETUP_HINT))
+            im.text_disabled(tr("No setup"))
+            im.set_item_tooltip(tr(NO_SETUP_HINT))
             return
-        if self.job.busy:
-            im.text_wrapped(self.job.progress)
-        rates = ((calibration.get("buffer") or {}).get("rates")) or {}
-        if rates:
-            im.separator_text(tr("Background (buffer)"))
-            im.text_wrapped(" · ".join(f"B_{d} = {r['B_kHz']:.2f} kHz" for d, r in rates.items()))
+        calibration = getattr(self.source, "calibration", {}) or {}
         colours = calibration.get("colours") or {}
         rows_of = getattr(self.source, "rows", None)
         rows = rows_of() if callable(rows_of) else {}
         dyes = self.reference_dyes(setup, rows)
+        shown = False
         for group in colour_groups(setup):
             colour = group["colour"]
-            files = [p for p, r in rows.items() if r == f"reference:{colour}"]
-            im.separator_text(tr("Reference dye — {colour}").format(colour=tr(group["word"])))
+            if not any(r == f"reference:{colour}" for r in rows.values()):
+                continue
+            shown = True
             choice = dyes.get(colour) or dye_choice((getattr(self.source, "dyes", {}) or {}).get(colour), colour)
-            im.text(f"{choice['dye']}  ·  {tr(choice['how'])}")
-            im.set_item_tooltip(tr("Choose the dye in the Dye cell of the row (the dye database)."))
-            im.set_next_item_width(90.0)
+            im.separator_text(f"{choice['dye']} · {tr(group['word'])}")
+            im.set_next_item_width(80.0)
             changed, value = im.input_float(f"°C##T{colour}", float(choice["temperature_c"]), 0.0, 0.0, "%.1f")
             im.set_item_tooltip(
                 tr(
@@ -1483,65 +1506,26 @@ class BurstDataSelectionApp(TourTarget, ImApp):
                 self.set_dye(colour, temperature_c=float(value))
             if choice["dye"] == CUSTOM_DYE:
                 im.same_line()
-                im.set_next_item_width(90.0)
-                changed, value = im.input_float(f"D (µm²/s)##D{colour}", float(choice["custom_D"]), 0.0, 0.0, "%.0f")
+                im.set_next_item_width(80.0)
+                changed, value = im.input_float(f"D µm²/s##D{colour}", float(choice["custom_D"]), 0.0, 0.0, "%.0f")
                 im.set_item_tooltip(tr("Your own diffusion coefficient of the reference dye, at its temperature."))
                 self.remember(f"diffusion_{colour}")
                 if changed and value > 0:
                     self.set_dye(colour, custom_D=float(value))
-            d, source = dye_diffusion(choice, colour)
-            im.text_wrapped(tr("D = {d:.0f} µm²/s — {source}").format(d=d, source=source) if d == d else source)
-            entry = colours.get(colour) or {}
-            if not files:
-                im.text_disabled(tr("Drop a reference-dye measurement on its row."))
-                continue
-            g = entry.get("g_factor") or {}
-            for det, value in g.items():
-                old = self.setup_g(det)
-                im.bullet_text(
-                    f"G ({det}) = {value['g']:.3f} ± {value['sem']:.3f}"
-                    + (f"   ({tr('setup')}: {old:.3f})" if old is not None else "")
-                )
-            if g:
-                differs = any(
-                    self.setup_g(d) is None or abs(self.setup_g(d) - v["g"]) > 5e-4 for d, v in g.items()
-                )
-                can = callable(self.on_apply_g)
-                key = f"apply_g_{colour}"
-                if button_row(
-                    [
-                        {
-                            "label": "Apply G to the setup",
-                            "key": key,
-                            "keys": ["apply_g"],
-                            "enabled": differs and can,
-                            "tip": (
-                                "Write these G factors into the G-Factor column of 0. Setup Selection."
-                                if can
-                                else "Open this step in Burst Analysis to write into its setup."
-                            )
-                            if differs
-                            else "The setup has these G factors.",
-                        }
-                    ],
-                    remember=self.remember,
-                ) == key:
-                    self.track("apply_g")
-                    self.on_apply_g({d: v["g"] for d, v in g.items()})
-            volume = entry.get("volume") or {}
+            else:
+                d, source = dye_diffusion(choice, colour)
+                im.same_line()
+                im.text(f"D {d:.0f} µm²/s" if d == d else "D —")
+                im.set_item_tooltip(source)
+            volume = (colours.get(colour) or {}).get("volume") or {}
             if volume:
-                im.bullet_text(
-                    f"w0 = {volume['w0_um']:.3f} µm, z0 = {volume['z0_um']:.2f} µm, "
-                    f"V_eff = {volume['veff_fl']:.2f} fL"
-                )
-                im.text_wrapped(
-                    f"{volume['detector']}: N = {volume['N']:.2f}, c = {volume['concentration_nM']:.2f} nM, "
-                    f"τ_D = {volume['tau_d_ms'] * 1e3:.0f} µs, s = {volume['s']:.1f}, "
-                    f"D = {volume['D_um2_s']:.0f} µm²/s, χ²r = {volume['chi2r']:.2f}"
-                )
                 self._volume_plot(colour, volume)
-        for error in calibration.get("errors") or ():
-            im.text_wrapped(f"⚠ {error}")
+        if not shown:
+            im.text_disabled(tr("No reference dye"))
+            im.set_item_tooltip(tr("Drop a reference-dye measurement on its row."))
+        if calibration.get("errors"):
+            im.text("⚠ " + tr("failed"))
+            im.set_item_tooltip("\n".join(calibration["errors"]))
 
     def _volume_plot(self, colour: str, volume: dict) -> None:
         """The reference dye's correlation and the fitted 3-D diffusion model."""

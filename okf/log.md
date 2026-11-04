@@ -50,6 +50,7 @@
 - 2026-11-04: Docs for Data Selection's roles and calibration: concept `reference_dye_calibration`, guides 13 and 21, OKF burst resume point; known issue for the order-dependent ALEX titration test.
 - 2026-11-04: Burst Selection in the Burst Analysis pipeline hides its 'Burst Selection' tab (files, runs, Run/Restart, output) in Simple and Advanced: step 1 has the files, Next runs; the step opens on Filter settings, the status moves to Summary, the tour drops steps pointing into the hidden tab.
 - 2026-11-04: Burst Analysis calibration report (`calibration_report.py`): files with hashes, dye and D source, fit with uncertainties, G, buffer, IRF FWHM, what was estimated; written as `burst_calibration` into each measurement's container with the bursts.
+- 2026-11-04: Data Selection's role table shows G, V_eff, tau_D, w0, s, cpm, B and IRF width in both modes with a one-word status; G is applied as computed (hand edits kept); the Calibration window is reduced to temperature/D and the fit plot; details live in the calibration report.
 
 ## 2026-11-03
 

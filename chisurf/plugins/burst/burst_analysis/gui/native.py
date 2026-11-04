@@ -456,6 +456,8 @@ class BurstAnalysisHubApp(ToolHubApp):
             folder = legacy_folder
         if folder is not None:
             self.status = f"Bursts for the later steps: {folder}"
+            # the calibration's record goes beside the bursts it belongs to
+            self._update_report(write=True)
         self._apply_downstream(skip=("data", "selection"))
         if folder is not None:
             # at once, each in a process of its own (background_tasks): while the user sets up Burst
@@ -494,9 +496,10 @@ class BurstAnalysisHubApp(ToolHubApp):
         return applied or len(patterns or {})
 
     def _calibrated(self, result: dict) -> None:
-        """Data Selection computed what its buffer and reference dyes give: into the workflow's
-        context for every later step, and each colour's confocal volume into the setup (the G
-        factors only by the user's *Apply G*, never silently)."""
+        """Data Selection computed what its buffer, IRF and reference dyes give: into the
+        workflow's context for every later step, each colour's confocal volume into the setup
+        (the G factors were written by the step itself), and the full record into the analysis
+        report -- the context, and once there are bursts each measurement's container."""
         self.context.calibration = dict(result or {})
         volumes = {
             colour: {k: v for k, v in (entry.get("volume") or {}).items()
@@ -509,11 +512,47 @@ class BurstAnalysisHubApp(ToolHubApp):
                 volume["files"] = list((result["colours"][colour] or {}).get("files") or [])
             self.setup_model.data["confocal_volume"] = volumes
             self.context.channel_settings = self.setup_model.get_settings()
-            self.status = "Confocal volume: " + ", ".join(
-                f"{c} {v['veff_fl']:.2f} fL" for c, v in volumes.items()
-            )
+        self._update_report(write=self.context.burst_folder is not None)
         self._apply_downstream(skip=("setup", "data"))
         self.wants_frame = True
+
+    def _update_report(self, write: bool = False) -> None:
+        """Rebuild the calibration report of the context; with *write*, put it into every
+        measurement's container (on a thread: hashing and writing take a moment)."""
+        from ..calibration_report import build_report
+
+        data = self.children.get("data")
+        if data is None or not (self.context.calibration or self.context.samples):
+            return
+        applied = dict(getattr(getattr(data, "source", None), "applied_g", {}) or {})
+        hand = set(getattr(data, "hand_edited_g", lambda: [])())
+        applied = {d: ("edited by hand" if d in hand else g) for d, g in applied.items()}
+        try:
+            self.context.calibration_report = build_report(
+                self.context.calibration, self.context.rows(), self.context.channel_settings,
+                estimated=self.context.estimated(), applied_g=applied,
+            )
+        except Exception:  # noqa: BLE001 - the calibration is shown all the same
+            logging.getLogger(__name__).exception("calibration report")
+            return
+        if not write or not self.context.raw_files:
+            return
+        report = dict(self.context.calibration_report)
+        sources = dict(getattr(getattr(data, "model", None), "sources", None) or {})
+        files = [str(p) for p in self.context.raw_files]
+
+        def work() -> None:
+            from chisurf.core.project.analysis import container_dir
+
+            from ..calibration_report import write_report
+
+            for path in files:
+                try:
+                    write_report(path, report, container_dir(sources.get(path, "")))
+                except Exception:  # noqa: BLE001 - the report stays in the context
+                    logging.getLogger(__name__).exception("writing the calibration report")
+
+        threading.Thread(target=work, name="burst-calibration-report", daemon=True).start()
 
     def apply_reference_g(self, values: dict) -> int:
         """Write the reference dye's G factors into the setup's G-Factor column (step 0); returns

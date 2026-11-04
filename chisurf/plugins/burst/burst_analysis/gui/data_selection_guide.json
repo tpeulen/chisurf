@@ -9,33 +9,47 @@
     {
       "title": "The workspace's data",
       "text": "The photon streams in the Datasets workspace. A group of files dropped together is one row. Drop files on the ChiSurf window to add more.",
-      "target": {"name": "add_files"}
+      "target": {
+        "name": "add_files"
+      }
     },
     {
       "title": "Drag each dataset onto its role",
       "text": "One row per role, made from the setup of step 0: Measurement, Buffer, and per colour an IRF and a Reference dye. Drag a workspace row onto the role it is; the row under the pointer lights up. Right-click › Move to changes it later.",
-      "target": {"name": "samples"},
-      "await": {"hint": "Drag a workspace row onto a role row (or right-click it › <b>Add to</b>)."}
+      "target": {
+        "name": "samples"
+      },
+      "await": {
+        "hint": "Drag a workspace row onto a role row (or right-click it › <b>Add to</b>)."
+      }
     },
     {
       "title": "The reference dye",
-      "text": "Its <b>Dye</b> cell picks the dye from the dye database — found in the file's header or name, else the colour's usual dye. Its D gives the confocal volume; its decays give the G factor.",
-      "target": {"name": "samples"}
+      "text": "Its <b>Dye</b> cell picks the dye from the dye database — found in the file's header or name, else the colour's usual dye. Its row shows G, V_eff, τ_D, w0, s and the brightness per molecule: the setup's quality at a glance.",
+      "target": {
+        "name": "samples"
+      }
     },
     {
       "title": "What is estimated instead",
       "text": "No row but Measurement is needed. Missing ones are said here: the background and IRF are then estimated from the measurement and G is taken from the setup.",
-      "target": {"name": "sample_summary"}
+      "target": {
+        "name": "sample_summary"
+      }
     },
     {
       "title": "The calibration (Advanced)",
-      "text": "The buffer's background rates, each colour's G factor beside the setup's with <b>Apply G to the setup</b>, the temperature D is corrected to, and the confocal volume with its fitted correlation. In Simple mode G is applied as it is computed.",
-      "target": {"name": "calibration"}
+      "text": "The temperature the dye's D is corrected to (or your own D), D with its source in the tooltip, and the fitted correlation. The numbers are in the table; G is written into the setup as it is computed.",
+      "target": {
+        "name": "calibration"
+      }
     },
     {
       "title": "Go on",
       "text": "The burst search (step 2) gets the measurements and the detector setup of step 0; Burst MLE gets the IRF and buffer.",
-      "target": {"name": "proceed"}
+      "target": {
+        "name": "proceed"
+      }
     }
   ]
 }

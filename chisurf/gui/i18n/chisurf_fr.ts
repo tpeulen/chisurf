@@ -77246,6 +77246,154 @@ Background (kHz): {bg}</source>
             <source>→ photons outside bursts</source>
             <translation>→ photons hors des bursts</translation>
         </message>
+        <message>
+            <source>B (kHz)</source>
+            <translation>B (kHz)</translation>
+        </message>
+        <message>
+            <source>Background rate of the buffer, all detectors (per detector in the row's tooltip). Below about 2 kHz per detector is good.</source>
+            <translation>Taux de fond du tampon, tous détecteurs (par détecteur dans l'infobulle de la ligne). Moins d'environ 2 kHz par détecteur est bon.</translation>
+        </message>
+        <message>
+            <source>Brightness of one molecule of the reference dye: count rate / N. Higher is better; it drops with misalignment and saturation.</source>
+            <translation>Brillance d'une molécule du colorant de référence : taux de comptage / N. Plus elle est élevée, mieux c'est ; elle baisse avec le désalignement et la saturation.</translation>
+        </message>
+        <message>
+            <source>Diffusion time of the reference dye through the focus. Rh110 in a 0.5 µm focus: about 100–200 µs.</source>
+            <translation>Temps de diffusion du colorant de référence à travers le foyer. Rh110 dans un foyer de 0,5 µm : environ 100–200 µs.</translation>
+        </message>
+        <message>
+            <source>Drag data onto a role ↓</source>
+            <translation>Glisser les données sur un rôle ↓</translation>
+        </message>
+        <message>
+            <source>Drag workspace data onto a row below to say what it is: measurement, buffer, IRF or reference dye.</source>
+            <translation>Glissez les données de l'espace de travail sur une ligne ci-dessous pour dire ce qu'elles sont : mesure, tampon, IRF ou colorant de référence.</translation>
+        </message>
+        <message>
+            <source>Drop photon files (.ptu, .spc, .ht3, …) on a row, or drag workspace data from the table above onto a row.</source>
+            <translation>Déposez des fichiers de photons (.ptu, .spc, .ht3, …) sur une ligne, ou glissez des données de l'espace de travail du tableau ci-dessus sur une ligne.</translation>
+        </message>
+        <message>
+            <source>Drop the measurements here.</source>
+            <translation>Déposez les mesures ici.</translation>
+        </message>
+        <message>
+            <source>Effective confocal volume from the reference dye. About 0.5–2 fL for a well-aligned confocal; larger means a defocused or underfilled objective.</source>
+            <translation>Volume confocal effectif à partir du colorant de référence. Environ 0,5–2 fL pour un confocal bien aligné ; plus grand signifie un objectif défocalisé ou sous-rempli.</translation>
+        </message>
+        <message>
+            <source>Estimated (no {missing})</source>
+            <translation>Estimé (pas de {missing})</translation>
+        </message>
+        <message>
+            <source>G factor of the colour's detectors (VV/VH tail ratio of the reference dye), written to the setup. Typically 0.8–1.3; 1 means equal detection of both polarisations.</source>
+            <translation>Facteur G des détecteurs de la couleur (rapport VV/VH de la queue du colorant de référence), écrit dans la configuration. Typiquement 0,8–1,3 ; 1 signifie une détection égale des deux polarisations.</translation>
+        </message>
+        <message>
+            <source>G from the setup, no confocal volume</source>
+            <translation>G de la configuration, pas de volume confocal</translation>
+        </message>
+        <message>
+            <source>IRF (ps)</source>
+            <translation>IRF (ps)</translation>
+        </message>
+        <message>
+            <source>IRF from the non-burst photons</source>
+            <translation>IRF à partir des photons hors bursts</translation>
+        </message>
+        <message>
+            <source>Its &lt;b&gt;Dye&lt;/b&gt; cell picks the dye from the dye database — found in the file's header or name, else the colour's usual dye. Its row shows G, V_eff, τ_D, w0, s and the brightness per molecule: the setup's quality at a glance.</source>
+            <translation>Sa cellule &lt;b&gt;Colorant&lt;/b&gt; choisit le colorant dans la base de colorants — trouvé dans l'en-tête ou le nom du fichier, sinon le colorant habituel de la couleur. Sa ligne affiche G, V_eff, τ_D, w0, s et la brillance par molécule : la qualité de la configuration d'un coup d'œil.</translation>
+        </message>
+        <message>
+            <source>Lateral 1/e² radius of the focus. About 0.2–0.6 µm.</source>
+            <translation>Rayon latéral 1/e² du foyer. Environ 0,2–0,6 µm.</translation>
+        </message>
+        <message>
+            <source>No IRF: estimated from the non-burst photons, else blindly from the burst decay.</source>
+            <translation>Pas d'IRF : estimée à partir des photons hors bursts, sinon à l'aveugle à partir du déclin des bursts.</translation>
+        </message>
+        <message>
+            <source>No buffer: the background is estimated from the photons outside the bursts.</source>
+            <translation>Pas de tampon : le fond est estimé à partir des photons hors des bursts.</translation>
+        </message>
+        <message>
+            <source>No data yet</source>
+            <translation>Pas encore de données</translation>
+        </message>
+        <message>
+            <source>No reference dye</source>
+            <translation>Pas de colorant de référence</translation>
+        </message>
+        <message>
+            <source>No reference dye: G from the setup ({g}); no confocal volume.</source>
+            <translation>Pas de colorant de référence : G de la configuration ({g}) ; pas de volume confocal.</translation>
+        </message>
+        <message>
+            <source>No setup</source>
+            <translation>Pas de configuration</translation>
+        </message>
+        <message>
+            <source>No setup: no IRF / reference rows</source>
+            <translation>Pas de configuration : pas de lignes IRF / référence</translation>
+        </message>
+        <message>
+            <source>Structure parameter z0/w0. s ≈ 3–8 for a well-aligned confocal; much larger means a long, poorly defined focus.</source>
+            <translation>Paramètre de structure z0/w0. s ≈ 3–8 pour un confocal bien aligné ; beaucoup plus grand signifie un foyer long et mal défini.</translation>
+        </message>
+        <message>
+            <source>The setup's G of {detectors} was edited by hand and is kept.</source>
+            <translation>Le G de {detectors} dans la configuration a été modifié à la main et est conservé.</translation>
+        </message>
+        <message>
+            <source>The temperature the dye's D is corrected to (or your own D), D with its source in the tooltip, and the fitted correlation. The numbers are in the table; G is written into the setup as it is computed.</source>
+            <translation>La température à laquelle le D du colorant est corrigé (ou votre propre D), D avec sa source dans l'infobulle, et la corrélation ajustée. Les nombres sont dans le tableau ; G est écrit dans la configuration dès qu'il est calculé.</translation>
+        </message>
+        <message>
+            <source>V_eff (fL)</source>
+            <translation>V_eff (fL)</translation>
+        </message>
+        <message>
+            <source>Width (FWHM) of the measured IRF. A few hundred ps for SPADs, under 100 ps for hybrid detectors.</source>
+            <translation>Largeur (FWHM) de l'IRF mesurée. Quelques centaines de ps pour les SPAD, moins de 100 ps pour les détecteurs hybrides.</translation>
+        </message>
+        <message>
+            <source>background from the photons outside the bursts</source>
+            <translation>fond à partir des photons hors des bursts</translation>
+        </message>
+        <message>
+            <source>cpm (kHz)</source>
+            <translation>cpm (kHz)</translation>
+        </message>
+        <message>
+            <source>estimated</source>
+            <translation>estimé</translation>
+        </message>
+        <message>
+            <source>failed</source>
+            <translation>échec</translation>
+        </message>
+        <message>
+            <source>hand-edited</source>
+            <translation>modifié à la main</translation>
+        </message>
+        <message>
+            <source>measured</source>
+            <translation>mesuré</translation>
+        </message>
+        <message>
+            <source>measured, estimated (no file: estimated from the measurement), computing …, or hand-edited (the setup's G was changed by hand and is kept). The row's tooltip says more.</source>
+            <translation>mesuré, estimé (pas de fichier : estimé à partir de la mesure), calcul … ou modifié à la main (le G de la configuration a été changé à la main et est conservé). L'infobulle de la ligne en dit plus.</translation>
+        </message>
+        <message>
+            <source>w0 (µm)</source>
+            <translation>w0 (µm)</translation>
+        </message>
+        <message>
+            <source>τ_D (µs)</source>
+            <translation>τ_D (µs)</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>
