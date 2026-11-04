@@ -21,9 +21,15 @@ workspace dataset gets a `sample` tag (`ChiSurfAPI.tag_dataset`, `dataset.tag` R
 (`samples.calibrate`, a thread, busy overlay via the step's `job`): buffer `B_<det>` kHz; per colour
 the reference dye's G (tail ratio, `calculate_g_factor_core`, shared by detectors on the same
 channels) and confocal volume (VV x VH cross-correlation in 10 parts, SEM-weighted 3-D Gauss fit,
-D from `dyes.get_dye` corrected by `diffusion_at_temperature`). G is written to the setup only by
-*Apply G* (Advanced) or automatically in Simple; volumes go to `setup["confocal_volume"][colour]` and
-`context.calibration`. Burst MLE gets `context.references()` per detector (IRF before dye, a colour
+D from `dyes.get_dye` corrected by `diffusion_at_temperature`), and the IRF's FWHM. G is written to
+the setup as computed, in both modes (`apply_all_g`; a G edited by hand afterwards is kept,
+`applied_g`/`hand_edited_g`); volumes go to `setup["confocal_volume"][colour]` and
+`context.calibration`. The role table holds one number per column (G, V_eff, τ_D, w0, s, cpm, B,
+IRF ps, a one-word status; owner rule: key value in the cell, explanations in tooltips, details in
+the report). The full record is `calibration_report.build_report` (files + sha256, dye and D
+source, fit with standard errors and χ²r, G, buffer, IRF, estimated): `context.calibration_report`
+and, once the bursts exist, object `burst_calibration` in each measurement's container
+(`write_report` / `read_report`). Burst MLE gets `context.references()` per detector (IRF before dye, a colour
 without IRF reads all IRF files; buffer for every detector); its source line names the IRF
 measurement and the buffer's `B_<det>`; the fit background is still the non-burst photons.
 `context.estimated()` records what was estimated (also in the container provenance). Measured on

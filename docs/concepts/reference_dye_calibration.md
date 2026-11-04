@@ -52,7 +52,8 @@ gate leaves room for it, and averages the per-bin ratio — the tail matching of
 G-factor tool (`calculate_g_factor_core`), with the same convention as the setup's G-Factor
 column ($G$ multiplies $VH$). Detectors on the same channels (``R|G`` and ``R|R``: one red pair,
 two PIE windows) share one value, taken in the window that saw the dye best. The value is shown
-beside the setup's; *Apply G to the setup* writes it (Simple mode: automatically).
+into the setup's G-Factor column as soon as it is computed; a G the user then edits in the setup is kept
+(the role row says *hand-edited*).
 
 Assumptions: the dye rotates much faster than it decays ($\rho \ll \tau$); no polarisation
 mixing by the objective ($l_1, l_2$ are separate parameters of the setup); the gate covers the
@@ -96,6 +97,38 @@ Literature values differ: the database lists Rh110 at 470 µm²/s (25 °C, PFG-N
 Gendron et al. propose 440 µm²/s, many labs use 430 µm²/s at 22.5 °C. Use the value your lab's
 volumes were calibrated with — through the temperature or a custom $D$ — so volumes stay
 comparable. $V_\mathrm{eff}$ scales with $D^{3/2}$.
+
+## What the table shows, and what a good value is
+
+The role table holds one number per column; the rest is in the analysis report below.
+
+| Column | Row | Good value |
+|---|---|---|
+| G | reference dye | 0.8–1.3 (1: both polarisations detected alike) |
+| V_eff (fL) | reference dye | 0.5–2 fL for a well-aligned confocal |
+| τ_D (µs) | reference dye | Rh110 in a 0.5 µm focus: 100–200 µs |
+| w0 (µm) | reference dye | 0.2–0.6 µm |
+| s | reference dye | 3–8; much larger: a long, poorly defined focus |
+| cpm (kHz) | reference dye | count rate / N, the brightness of one molecule: higher is better |
+| B (kHz) | buffer | below about 2 kHz per detector |
+| IRF (ps) | IRF | FWHM: a few hundred ps (SPAD), under 100 ps (hybrid detector) |
+
+The IRF width is the full width at half maximum of the scatter's VV + VH decay above the median
+floor of the gate, at the full micro-time resolution.
+
+## The analysis report
+
+Everything else -- the files with their SHA-256, the dye with its database entry, temperature,
+D and its literature source, the correlation fit (N, τ_D, s, offset, w0, z0, V_eff, c,
+brightness) with standard errors from the fit's curvature scaled by χ²r, the fit range and χ²r,
+G per detector with its spread, tail and background regions, which G was written to the setup
+(or kept as edited by hand), the buffer rates per detector, the IRF files and width, and what was
+estimated for want of a file -- is the calibration report
+(`chisurf.plugins.burst.burst_analysis.calibration_report.build_report`). It is the workflow
+context's `calibration_report`, part of the workflow's payload, and once the bursts exist it is
+written into each measurement's analysis container as the object `burst_calibration`
+(`calibration_data`, JSON, operation `calibration`, derived from the photon streams);
+`read_report(container)` reads it back.
 
 ## Without calibration files
 

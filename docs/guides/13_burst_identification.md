@@ -47,11 +47,17 @@ Only the Measurement row goes to Burst Selection. The others calibrate, off the 
 
 - **Buffer**: the background rate of every detector, `B_<detector>` in kHz.
 - **IRF**: Burst MLE's measured IRF of that colour's detectors (corrected with the buffer).
-- **Reference dye**: the G factor of the colour's detectors (tail ratio VV/VH) and the confocal
-  volume (w0, z0, V_eff) from the dye's correlation and its diffusion coefficient. The **Dye**
-  cell picks the dye from the dye database — found in the file's header or name, else the
-  colour's usual dye; the Calibration window takes the temperature D is corrected to, or your
-  own D.
+- **Reference dye**: the G factor of the colour's detectors (tail ratio VV/VH), written into the
+  setup as it is computed (a value you then edit by hand is kept), and the confocal volume from
+  the dye's correlation and its diffusion coefficient. The **Dye** cell picks the dye from the
+  dye database — found in the file's header or name, else the colour's usual dye; the Calibration
+  window (Advanced) takes the temperature D is corrected to, or your own D.
+
+Each role row shows its key numbers, in Simple and Advanced alike, so the setup's quality reads
+at a glance: G, V_eff, τ_D, w0, s and the brightness per molecule of each reference dye, B of
+the buffer, the IRF's width; the column headers' tooltips say what a good value is. The full
+record (files and hashes, fit parameters with uncertainties, D and its source) is the
+calibration report, written into each measurement's container with the bursts.
 
 ```{figure} figures/13_data_selection_roles.png
 :name: fig-data-selection-roles
@@ -59,17 +65,15 @@ Only the Measurement row goes to Burst Selection. The others calibrate, off the 
 
 Advanced mode, two-colour PIE setup: a workspace group of three dsDNA measurements, the buffer,
 a water IRF for green and Rh110 / Alexa 647 for green and red (simulated, `burst_analysis/demo.py`).
-The table shows each role's key number; the Calibration window the buffer's rates, the dye and
-where its D comes from, G against the setup's with *Apply G to the setup*, the volume and the
-fitted correlation.
+The table shows each role's numbers; the Calibration window the dye's temperature, its D (the
+source in the tooltip) and the fitted correlation.
 ```
 
 ```{figure} figures/13_data_selection_roles_simple.png
 :name: fig-data-selection-roles-simple
 :width: 100%
 
-The same in Simple mode: the roles, the dye of each reference row and one plain status each.
-The G factors are written to the setup as they are computed and the volumes stored.
+The same in Simple mode: the roles, the dye of each reference row and the same numbers.
 ```
 
 No row but Measurement is needed. Without a buffer the background is estimated from the photons
