@@ -37,6 +37,9 @@ SETTING_ATTRS: dict[str, tuple[type, bool]] = {
     "fix_gamma": (bool, False),
     "fix_r0": (bool, False),
     "fix_rho": (bool, False),
+    "fix_shift_sp": (bool, False),
+    "fix_shift_ss": (bool, False),
+    "fix_shift": (bool, False),
     "micro_time_start": (int, True),
     "micro_time_stop": (int, True),
     "shift": (int, True),
@@ -68,6 +71,9 @@ SETUP_KEYS = (
     "fix_gamma",
     "fix_r0",
     "fix_rho",
+    "fix_shift_sp",
+    "fix_shift_ss",
+    "fix_shift",
     "min_photons",
 )
 
@@ -84,7 +90,11 @@ def _setting_property(name: str, kind: type, rebuild_decay: bool):
         value = kind(value)
         if getattr(self.session.settings, name) == value:
             return
-        setattr(self.session.settings, name, value)
+        if name in ("shift", "shift_sp", "shift_ss"):
+            # a shift set by hand is the start the fit holds it at (over the calibration)
+            self.session.set_shift(self.session.current_detector, MleViewModel._EDIT_KEY[name], value)
+        else:
+            setattr(self.session.settings, name, value)
         self._settings_changed(rebuild_decay)
 
     return property(getter, setter)
@@ -200,15 +210,28 @@ class MleViewModel(RunPickerMixin):
         return list(self.session.detectors)
 
     def set_setup(self, settings: dict) -> None:
-        """Take the detector definition of the shared editor (every change of it)."""
+        """Take the detector definition of the shared editor (every change of it). A new G, l1
+        or l2 (Data Selection's G from the reference dye) calibrates the IRF's time shifts again:
+        the reference fit is the dye fitted with the polarisation factors the bursts get."""
+
+        def factors(detectors) -> dict:
+            return {d: tuple(float((v or {}).get(k, x)) for k, x in (("g_factor", 1.0), ("l1", 0.0), ("l2", 0.0)))
+                    for d, v in (detectors or {}).items()}
+
         self._ensure_editable()
+        before = factors(self.session.detectors)
         self.session.set_definition(settings)
+        polarisation = factors(self.session.detectors) != before
         if self.session.current_tttr() is not None:
             self._refresh_measured()
             if self.auto_patterns:
-                self.session.extract_irf_background()
+                self.session.extract_irf_background()  # calibrates the shifts with it
+            elif polarisation:
+                self.session.recalibrate_shifts()
             self.session.build_decay()
             self.refit()
+        elif polarisation:
+            self.session.recalibrate_shifts()
         self.notify("setup")
 
     # -- split by H2MM state ------------------------------------------------------------------------------------ #
@@ -270,6 +293,15 @@ class MleViewModel(RunPickerMixin):
             if key in saved:
                 kind = SETTING_ATTRS[key][0]
                 setattr(settings, key, kind(saved[key]))
+        shifts = [k for k in ("shift", "shift_sp", "shift_ss") if k in saved]
+        if shifts:
+            # the setup's saved shifts are the detector's own: its base, over any edit of them
+            base = self.session.shift_base(det)
+            edits = self.session.shift_edits.get(det) or {}
+            for key in shifts:
+                base[key] = int(saved[key]) if key == "shift" else float(saved[key])
+                edits.pop(self._EDIT_KEY[key], None)
+            self.session.calibrate_shift(det)
 
     def save_fit_to_setup(self, definition) -> str:
         """Store the current detector's window, thresholds, shifts, 2I*/BIFL flags and fix flags on the selected setup.
@@ -631,7 +663,10 @@ class MleViewModel(RunPickerMixin):
         tool (tuned)"); ``False`` (said in the status) when it does not fit this decay."""
         shifts = (inputs or {}).get("shifts")
         if shifts is not None:  # shifts set in the IRF tool replace the calibrated ones
-            self.session.shift_override[det] = (float(shifts[0]), float(shifts[1]))
+            self.session.shift_edits[det] = dict(
+                self.session.shift_edits.get(det) or {},
+                shift_vv=float(shifts[0]), shift_vh=float(shifts[1]), source="IRF tool",
+            )
         ok = self.session.take_tuned_irf(det, irf, text, inputs)
         if not ok:
             self.status_text = str(tr("The IRF tool's IRF has another length than this decay (binning?)."))
@@ -1091,12 +1126,115 @@ class MleViewModel(RunPickerMixin):
                     "result": f"{result:.4g}" if outcome is not None else "",
                 }
             )
+        if self.fit_model != engine.TAIL_MODEL:
+            rows += self.shift_records()
         return rows
+
+    #: The Fit parameters table's names of the detector's time shifts -> their setting.
+    SHIFT_ROWS = {label: key for key, label in engine.SHIFT_PARAMETERS}
+    #: The setting of a shift -> its key in a shift calibration / edit.
+    _EDIT_KEY = {"shift_sp": "shift_vv", "shift_ss": "shift_vh", "shift": "shift"}
+
+    def shift_records(self) -> list[dict]:
+        """The current detector's three time shifts as rows of the Fit parameters table: the
+        IRF against the VV data, against the VH data, and the VH decay against the VV decay.
+        ``start`` is the calibrated value (or the one set by hand, or 0), ``fixed`` holds it,
+        ``result`` is what the fit used; ``tip`` says where the start came from."""
+        session = self.session
+        det = session.current_detector
+        if det not in session.detectors:
+            return []
+        settings = session.settings
+        starts = session.shift_starts(det)
+        shown = session.outcome is not None
+        rows = []
+        for key, label in engine.SHIFT_PARAMETERS:
+            used = getattr(settings, key)
+            rows.append({
+                "name": label,
+                "start": int(starts[key]) if key == "shift" else round(float(starts[key]), 2),
+                "fixed": bool(getattr(settings, f"fix_{key}")),
+                "result": (f"{int(used):d}" if key == "shift" else f"{float(used):.2f}") if shown else "",
+                "tip": self.shift_tooltip(key),
+            })
+        return rows
+
+    def shift_tooltip(self, key: str) -> str:
+        """Where the start of the shift *key* (``shift_sp``, ``shift_ss``, ``shift``) came from."""
+        session, det = self.session, self.session.current_detector
+        entry = session.shift_calibration.get(det) or {}
+        edit_key = self._EDIT_KEY[key]
+        meaning = {
+            "shift_sp": tr("The IRF's time shift against the VV decay, bins (sub-bin)."),
+            "shift_ss": tr("The IRF's time shift against the VH decay, bins (sub-bin)."),
+            "shift": tr("The VH decay's shift against the VV decay, whole bins: the VH half of the "
+                        "data, IRF and background is moved by it."),
+        }[key]
+        lines = [str(meaning)]
+        edits = session.shift_edits.get(det) or {}
+        if edit_key in edits:
+            calibrated = entry.get("calibrated_shift" if key == "shift" else f"calibrated_{edit_key[6:]}")
+            lines.append(str(tr("Start: set by hand ({source}); calibrated {value}.")).format(
+                source=tr(str(edits.get("source") or "edited")),
+                value="—" if calibrated is None else (f"{int(calibrated):d}" if key == "shift" else f"{float(calibrated):+.2f}"),
+            ))
+            if entry.get("used_fit_chi2r") is not None:
+                lines.append(str(tr("Reference fit at these shifts: χ²ᵣ {value:.2f}.")).format(value=entry["used_fit_chi2r"]))
+            lines.append(str(tr("Reset shifts goes back to the calibrated values.")))
+        elif key != "shift" and entry.get("dye"):
+            lines.append(str(tr("Start: calibrated on {dye} ({files}) on {detector}, χ²ᵣ {chi2r}.")).format(
+                dye=entry["dye"], files=entry.get("files", ""),
+                detector=entry.get("calibrated_on") or det,
+                chi2r=f"{entry['fit_chi2r']:.2f}" if entry.get("fit_chi2r") is not None else "—",
+            ))
+            if entry.get("offset_bins"):
+                lines.append(str(tr(
+                    "{detector} shares the detectors of {source}: their IRF and timing, placed at "
+                    "the {detector} window ({offset:+d} bins, the setup's PIE windows)."
+                )).format(detector=det, source=entry.get("calibrated_on"), offset=int(entry["offset_bins"])))
+        else:
+            lines.append(str(tr("Start: not calibrated (no reference dye of this detector in Data Selection).")))
+        lines.append(str(tr("Fixed: held at the start. Unfixed: the fit refines it within ±{bound} bin.")).format(
+            bound=engine.SHIFT_BOUNDS[key]))
+        return "\n".join(lines)
+
+    @property
+    def shifts_edited(self) -> bool:
+        """Whether a shift of the current detector was set by hand (Reset shifts is offered)."""
+        edits = self.session.shift_edits.get(self.session.current_detector) or {}
+        return any(k in edits for k in ("shift_vv", "shift_vh", "shift"))
+
+    def reset_shifts(self) -> None:
+        """The current detector's shifts back to their calibrated values, and fitted again."""
+        self._ensure_editable()
+        det = self.session.current_detector
+        roll = int(self.session.settings.shift)
+        self.session.reset_shifts(det)
+        if int(self.session.settings.shift) != roll:
+            self.session.build_decay()
+        self.refit()
+        self.notify("settings")
 
     def edit_parameter(self, record: dict, key: str, value: Any) -> None:
         """A cell of the parameter table was edited (the start value or the fixed flag)."""
         name = str(record.get("name"))
         self._ensure_editable()
+        if name in self.SHIFT_ROWS:
+            setting = self.SHIFT_ROWS[name]
+            session = self.session
+            roll = int(session.settings.shift)
+            if key == "start":
+                session.set_shift(session.current_detector, self._EDIT_KEY[setting], float(value))
+            elif key == "fixed":
+                setattr(session.settings, f"fix_{setting}", bool(value))
+                session.calibrate_shift(session.current_detector)  # back to the starts first
+            else:
+                return
+            if int(session.settings.shift) != roll:
+                session.build_decay()
+            self.refit()
+            self.notify("settings")
+            return
         if not self.parameter_cell_editable(record, key):
             raise ValueError("Fit25 lifetime candidates are always fixed.")
         if key in ("start", "fixed"):
@@ -1105,6 +1243,8 @@ class MleViewModel(RunPickerMixin):
 
     def parameter_cell_editable(self, record: dict, key: str) -> bool:
         """Keep discrete candidates fixed while retaining editable lifetime inputs."""
+        if str(record.get("name", "")) in self.SHIFT_ROWS:
+            return key in ("start", "fixed")
         return key == "start" or (
             key == "fixed"
             and not (self.fit_model == "fit25" and str(record.get("name", "")).startswith("tau"))

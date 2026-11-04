@@ -44,7 +44,8 @@ def test_the_choice_is_writable_validated_and_model_aware(model):
     model.fit_model = "fit25"
     assert model.fit_model == "fit25"
     names = [r["name"] for r in model.parameter_records()]
-    assert names == ["tau1", "tau2", "tau3", "tau4", "gamma"]
+    # the model's parameters, then the detector's three time shifts
+    assert names == ["tau1", "tau2", "tau3", "tau4", "gamma", "IRF shift VV", "IRF shift VH", "Shift VV/VH"]
     model.edit_parameter({"name": "tau1"}, "start", 0.75)
     model.fit_model = "fit24"
     model.fit_model = "fit25"

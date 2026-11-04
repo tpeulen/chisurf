@@ -77,12 +77,14 @@ def _apply(session: Any, cfg: dict) -> None:
     for key, value in cfg.items():
         kind = TUNABLES.get(key) or ("int" if key.startswith("micro_time") else "float")
         setattr(session.settings, key, int(round(value)) if kind == "int" else float(value))
-    if "micro_time_start" in cfg or "micro_time_stop" in cfg:
+    # the whole-bin VH shift rolls the data's VH half: the decay is built again with it
+    if "micro_time_start" in cfg or "micro_time_stop" in cfg or "shift" in cfg:
         session.build_decay()
 
 
 def _loss(session: Any) -> float:
-    outcome = session.fit()
+    # one fit at the trial's shifts (``fit`` would hold fixed shifts at their starts)
+    outcome = getattr(session, "_fit_once", session.fit)()
     if outcome is None:
         return float("inf")
     value = float(outcome.two_istar)
@@ -224,6 +226,16 @@ def optimize_hyperparameters(
             "stopped": True,
         }
     _apply(session, best_cfg)
+    shifts = {k: best_cfg[k] for k in ("shift_sp", "shift_ss", "shift") if k in best_cfg}
+    if shifts and hasattr(session, "shift_edits"):
+        # the shifts Opt found are their starts from now on (the Fit parameters table's Start),
+        # over the calibration until reset
+        names = {"shift_sp": "shift_vv", "shift_ss": "shift_vh", "shift": "shift"}
+        session.shift_edits[session.current_detector] = {
+            **{names[k]: (int(round(v)) if k == "shift" else float(v)) for k, v in shifts.items()},
+            "source": "Opt",
+        }
+        session.calibrate_shift(session.current_detector)
     session.fit()
     return {
         "config": best_cfg,

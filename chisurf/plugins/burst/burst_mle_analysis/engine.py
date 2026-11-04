@@ -618,6 +618,17 @@ def burst_histogram(
 #: Counts an IRF from a reference measurement needs in each polarisation to be used for a detector.
 MIN_IRF_COUNTS = 500
 
+#: The time shifts of a detector, as the Fit parameters table names them: ``(setting, label)``.
+#: ``shift_sp`` / ``shift_ss``: the IRF against the VV / VH data (bins, sub-bin); ``shift``: the VH
+#: decay against the VV decay (whole bins, the VH half of the data rolled).
+SHIFT_PARAMETERS = (
+    ("shift_sp", "IRF shift VV"),
+    ("shift_ss", "IRF shift VH"),
+    ("shift", "Shift VV/VH"),
+)
+#: How far an unfixed shift is refined from its start by the decay fit, bins.
+SHIFT_BOUNDS = {"shift_sp": 0.5, "shift_ss": 0.5, "shift": 1}
+
 #: The IRF models of the Auto IRF/background estimate: (value, label).
 #: Where Burst MLE takes a detector's IRF from: (key, the selector's label). Every one is the IRF
 #: Estimation tool's extraction (``irf_estimator/core/extraction.py``).
@@ -993,9 +1004,17 @@ class MleSettings:
     fix_gamma: bool = False
     fix_r0: bool = True
     fix_rho: bool = True
+    #: The relative shift of the VH decay against VV, whole bins: the VH half of the data (and of
+    #: the IRF and background with it) is rolled by it.
     shift: int = 0
+    #: The IRF's time shift against the VV and the VH data, bins (sub-bin, linear interpolation).
     shift_sp: float = 0.0
     shift_ss: float = 0.0
+    #: The three shifts are held at their start (the calibration, or a value set by hand) unless
+    #: unfixed: then the decay fit refines them within :data:`SHIFT_BOUNDS` of the start.
+    fix_shift_sp: bool = True
+    fix_shift_ss: bool = True
+    fix_shift: bool = True
     irf_start: int = -1
     irf_stop: int = -1
     #: Background levels taken off the IRF (a fraction of each polarisation's peak). Zero: every
@@ -1146,8 +1165,13 @@ class MleSession:
     #: The IRF time shifts of each detector as calibrated (:meth:`calibrate_shift`): VV, VH in
     #: bins, the dye, its lifetime and where it came from; also what the calibration report keeps.
     shift_calibration: dict[str, dict] = field(default_factory=dict)
-    #: Shifts set in the IRF tool for a detector (``(vv, vh)`` bins): they replace the calibrated.
-    shift_override: dict[str, tuple] = field(default_factory=dict)
+    #: Shifts set by hand for a detector -- in Burst MLE's IRF tab or the IRF tool:
+    #: ``{"shift_vv", "shift_vh" (bins, sub-bin), "shift" (VH roll, whole bins), "source"}``,
+    #: any of the three. They replace the calibrated values until reset (:meth:`reset_shifts`).
+    shift_edits: dict[str, dict] = field(default_factory=dict)
+    #: Fixed flags of the shifts (``{detector: {"fix_shift_sp": bool, ...}}``) restored before the
+    #: detector was defined: applied when the setup brings it (:meth:`set_definition`).
+    pending_shift_fixed: dict[str, dict] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.tttrs = LazyTTTRs(self.tttr_paths, self.file_type, self.definition)
@@ -1161,6 +1185,12 @@ class MleSession:
         self._single_molecule: dict[str, bool] = {}
         self._count_rate_khz: dict[tuple, float] = {}
         self.batch_files_snapshot: dict[str, Path] = {}
+        #: Shift calibrations by what they were computed from: the detectors of one detection
+        #: pair (``R|G``, ``R|R``) calibrated on the same dye with the same IRF share one fit.
+        self._shift_cache: dict[tuple, Any] = {}
+        #: Each detector's shifts before any calibration or edit (the template's, or the setup's
+        #: saved MLE settings): the start of a shift with neither, and what a reset of it restores.
+        self._shift_base: dict[str, dict] = {}
 
     @property
     def settings(self) -> MleSettings:
@@ -1255,6 +1285,11 @@ class MleSession:
         for det in new:
             if det in defaults:
                 self.settings_of(det).model = defaults[det]
+        for det in [d for d in self.pending_shift_fixed if d in self.detectors]:
+            settings = self.settings_of(det)
+            for key, value in self.pending_shift_fixed.pop(det).items():
+                if hasattr(settings, key):
+                    setattr(settings, key, bool(value))
 
     def definition_payload(self) -> dict:
         """Return the portable setup with the current authoritative detector and reader state."""
@@ -1825,30 +1860,86 @@ class MleSession:
         photons = int(channel_mask(np.asarray(tttr.routing_channels)[idx], chs).sum())
         return photons / times[0] / 1e3
 
+    def detection_siblings(self, det: str) -> list[str]:
+        """The detectors on *det*'s channels (itself included): ``R|G`` and ``R|R`` are one red
+        detector pair under two PIE windows. The G factor, the IRF's shape and the detectors'
+        timing are properties of the detection side, so one reference calibrates them all."""
+        chs = [int(c) for c in self.detectors.get(det, {}).get("chs", [])]
+        return [d for d, info in self.detectors.items() if [int(c) for c in info.get("chs", [])] == chs]
+
+    def window_offset(self, det: str, source: str) -> int:
+        """Bins from *source*'s PIE window to *det*'s (at the current binning): where *det*'s
+        excitation pulse sits relative to *source*'s, from the setup's windows (0 without gates)."""
+        a, b = self._gate_window(det), self._gate_window(source)
+        if a is None or b is None:
+            return 0
+        return int(a[0] - b[0])
+
+    def _reference_source(self, det: str, vv: np.ndarray, vh: np.ndarray) -> str:
+        """The detector of *det*'s detection pair whose window sees a reference dye best (most
+        photons in its gate): ``R|R`` for Alexa 647 -- red-excited, on the red detectors."""
+        n = int(np.size(vv))
+
+        def gated(d: str) -> float:
+            lo, hi = self._gate_window(d, n) or (0, n)
+            return float(np.sum(vv[lo:hi]) + np.sum(vh[lo:hi]))
+
+        return max(self.detection_siblings(det), key=lambda d: (gated(d), d == det))
+
     def calibrate_shift(self, det: str) -> dict | None:
-        """Calibrate the time shift of *det*'s IRF, VV and VH, against a reference dye before any
-        fit (the IRF Estimation tool's :func:`calibrate_shifts`): the dye's decay fitted with the
-        IRF, the shifts free, its lifetime fixed to the dye database's (fitted where it has
-        none). A dye measured at single-molecule conditions (:func:`single_molecule`) is
-        preferred: SPAD timing moves with the count rate, so a reference at the bursts' rates
+        """The time shift of *det*'s IRF, VV and VH: calibrated against a reference dye before
+        any fit, then any value set by hand on top (:attr:`shift_edits`).
+
+        The calibration (the IRF Estimation tool's :func:`calibrate_shifts`): the dye's decay
+        fitted with the IRF, the shifts free, its lifetime fixed to the dye database's (fitted
+        where it has none). A dye measured at single-molecule conditions (:func:`single_molecule`)
+        is preferred: SPAD timing moves with the count rate, so a reference at the bursts' rates
         has their timing offset, a bulk one at a high rate is shifted (the count rates of both
-        are recorded; a bulk reference at more than three times the bursts' rate is warned of). The shifts are this
-        detector's ``shift_sp`` (VV) and ``shift_ss`` (VH), fixed in the fit; Opt refines them
-        within half a bin. Shifts set in the IRF tool (:attr:`shift_override`) win. ``None``
-        (shifts left as they are) without a reference dye."""
+        are recorded; a bulk reference at more than three times the bursts' rate is warned of).
+
+        The detectors of one detection pair (``R|G``, ``R|R``) are calibrated once, on the
+        window that sees the dye (:meth:`_reference_source`), with that detector's G, l1, l2:
+        the shifts are the detectors' timing. *det*'s IRF is taken to the calibrating window by
+        the PIE window offset (:meth:`window_offset`) and the shifts it gets there are *det*'s.
+
+        The shifts are this detector's ``shift_sp`` (VV) and ``shift_ss`` (VH), fixed in the fit;
+        Opt refines them within half a bin. The record keeps the calibrated values
+        (``calibrated_vv`` / ``calibrated_vh``) beside those used (``shift_vv`` / ``shift_vh``)
+        and what was edited (``edited``). ``None`` (shifts left as they are) without a reference
+        dye and without an edit."""
         settings = self.settings_of(det)
-        override = self.shift_override.get(det)
-        if override is not None:
-            settings.shift_sp, settings.shift_ss = float(override[0]), float(override[1])
-            self.shift_calibration[det] = {
-                "shift_vv": float(override[0]), "shift_vh": float(override[1]),
-                "source": "set in the IRF tool", "dye": "", "single_molecule": False,
-            }
-            return self.shift_calibration[det]
+        edits = dict(self.shift_edits.get(det) or {})
+        base = self.shift_base(det)
+        found = self._calibrated_shift(det)
+        if found is None and not edits:
+            self.shift_calibration.pop(det, None)
+            settings.shift_sp, settings.shift_ss = float(base["shift_sp"]), float(base["shift_ss"])
+            settings.shift = int(base["shift"])
+            return None
+        entry = dict(found or {"source": "", "dye": "", "single_molecule": False, "warning": ""})
+        calibrated = (entry.get("shift_vv"), entry.get("shift_vh")) if found else (None, None)
+        entry["calibrated_vv"], entry["calibrated_vh"] = calibrated
+        entry["calibrated_shift"] = int(base["shift"])
+        vv = edits.get("shift_vv", calibrated[0] if calibrated[0] is not None else base["shift_sp"])
+        vh = edits.get("shift_vh", calibrated[1] if calibrated[1] is not None else base["shift_ss"])
+        settings.shift_sp, settings.shift_ss = float(vv), float(vh)
+        settings.shift = int(edits.get("shift", base["shift"]))
+        entry.update({"shift_vv": float(vv), "shift_vh": float(vh), "shift": int(settings.shift)})
+        entry["edited"] = sorted(k for k in ("shift_vv", "shift_vh", "shift") if k in edits)
+        if entry["edited"]:
+            entry["edit_source"] = str(edits.get("source") or "edited")
+            if not found:
+                entry["source"] = entry["edit_source"]
+            self._fit_at_used_shifts(det, entry)
+        self.shift_calibration[det] = entry
+        return entry
+
+    def _calibrated_shift(self, det: str) -> dict | None:
+        """The calibration of :meth:`calibrate_shift` alone (no edits): ``None`` without a
+        reference dye of *det*'s detection pair or without an IRF."""
         records = [r for r in self.reference_records.get(det, []) if np.sum(r["vv"]) > 0]
         irf = np.asarray(self.irf_np.get(det, []), dtype=float)
         if not records or irf.size < 4:
-            self.shift_calibration.pop(det, None)
             return None
         sm = [r for r in records if r["single_molecule"]]
         chosen = sm or records
@@ -1866,26 +1957,48 @@ class MleSession:
             reference_tail_lifetime,
         )
 
+        settings = self.settings_of(det)
+        source = str(group[0].get("detector") or det)
+        if source not in self.detectors:
+            source = det
+        offset = int(group[0].get("offset_bins") or 0)
         dt, window = group[0]["dt_ns"], group[0]["window"]
         tau = group[0]["tau_ns"]
         two = len(self.detectors[det].get("chs", [])) > 1
+        clean = process_irf(
+            irf, micro_time_range=(settings.micro_time_start, settings.micro_time_stop),
+            binning=settings.micro_time_binning, irf_start=settings.irf_start,
+            irf_stop=settings.irf_stop, threshold_vv=settings.irf_threshold_vv,
+            threshold_vh=settings.irf_threshold_vh,
+        )
+        half = clean.size // 2
+        if offset:  # the IRF of det's window, taken to the window it is calibrated in
+            clean = np.hstack([np.roll(clean[:half], -offset), np.roll(clean[half:], -offset)])
+        names = ", ".join(Path(r["path"]).name for r in group)
+        # the polarisation factors of the detection side: the calibrating detector's
+        g, l1, l2 = (float(self.detectors[source].get(k, d)) for k, d in (("g_factor", 1.0), ("l1", 0.0), ("l2", 0.0)))
         rho = None
         if two:
             guess = tau or reference_tail_lifetime(vv + 2.0 * vh, dt, window=window) or 4.0
             rho = reference_rotation(vv, vh, dt, guess, window=window)
-        clean = process_irf(
-            irf, micro_time_range=self.micro_time_range, binning=settings.micro_time_binning,
-            irf_start=settings.irf_start, irf_stop=settings.irf_stop,
-            threshold_vv=settings.irf_threshold_vv, threshold_vh=settings.irf_threshold_vh,
-        )
-        half = clean.size // 2
-        names = ", ".join(Path(r["path"]).name for r in group)
-        g, l1, l2 = (float(self.detectors[det].get(k, d)) for k, d in (("g_factor", 1.0), ("l1", 0.0), ("l2", 0.0)))
-        found = calibrate_shifts(
-            [vv, vh] if two else [vv], [clean[:half], clean[half:]] if two else [clean[:half]],
-            dt, tau_ns=tau, rho_ns=rho, window=window, name=names, g_factor=g, l1=l1, l2=l2,
-        )
-        settings.shift_sp, settings.shift_ss = found.shift_vv, found.shift_vh
+        import hashlib
+
+        key = (dye, names, hashlib.sha1(clean.tobytes()).hexdigest(), tuple(window or ()), g, l1, l2, tau)
+        found = self._shift_cache.get(key)
+        if found is None:
+            found = calibrate_shifts(
+                [vv, vh] if two else [vv], [clean[:half], clean[half:]] if two else [clean[:half]],
+                dt, tau_ns=tau, rho_ns=rho, window=window, name=names, g_factor=g, l1=l1, l2=l2,
+            )
+            if len(self._shift_cache) > 32:
+                self._shift_cache.clear()
+            self._shift_cache[key] = found
+        #: what the shifts were calibrated from, for a fit at shifts set by hand
+        self._shift_inputs = getattr(self, "_shift_inputs", {})
+        self._shift_inputs[det] = {
+            "parts": [vv, vh] if two else [vv], "irfs": [clean[:half], clean[half:]] if two else [clean[:half]],
+            "dt": dt, "tau": found.tau_ns, "rho": rho, "window": window, "g": g, "l1": l1, "l2": l2,
+        }
         rates = [r.get("rate_khz") for r in group if r.get("rate_khz") is not None]
         reference_rate = float(np.mean(rates)) if rates else None
         burst_rate = self.burst_count_rate_khz(det)
@@ -1896,19 +2009,21 @@ class MleSession:
                 f"the bursts' {burst_rate:.0f} kHz: SPAD timing moves with the count rate, so the "
                 "shift may be off; measure the dye at single-molecule conditions"
             )
-        self.shift_calibration[det] = {
+        entry = {
             "reference_rate_khz": reference_rate, "burst_rate_khz": burst_rate, "warning": warning,
             "shift_vv": found.shift_vv, "shift_vh": found.shift_vh, "dye": dye, "files": names,
             "single_molecule": bool(sm), "tau_ns": found.tau_ns, "tau_known": found.tau_known,
             "tau_source": group[0]["tau_source"], "rho_ns": rho, "text": found.text,
             "source": "single-molecule reference dye" if sm else "reference dye",
+            # the detector whose window saw the dye, and how far det's window is from it
+            "calibrated_on": source, "offset_bins": offset,
         }
         fit = found.fit
         if fit is not None:
             #: the dye fitted with the burst model at these shifts (the IRF tool's reference_fit):
             #: the data, model and weighted residuals the IRF tab, the IRF tool and the
             #: calibration report show, and the G the reference asks for
-            self.shift_calibration[det].update({
+            entry.update({
                 "fit_chi2r": fit.chi2r, "fit_g": fit.g_factor, "fit_g_fitted": fit.g_fitted,
                 "fit_chi2r_g_free": fit.chi2r_g_free, "fit_window": fit.window,
                 "fit_data": fit.data, "fit_model": fit.model, "fit_residuals": fit.residuals,
@@ -1919,8 +2034,125 @@ class MleSession:
                     f"the reference asks for G {fit.g_fitted:.3f}, the setup has {fit.g_factor:.3f} "
                     f"(chi2_r {fit.chi2r:.1f} against {fit.chi2r_g_free:.2f}): apply the G of Data Selection"
                 )
-                self.shift_calibration[det]["warning"] = "; ".join(w for w in (warning, g_warning) if w)
-        return self.shift_calibration[det]
+                entry["warning"] = "; ".join(w for w in (warning, g_warning) if w)
+        return entry
+
+    def _fit_at_used_shifts(self, det: str, entry: dict) -> None:
+        """The reference fit at the shifts in use (edited): its chi2_r is ``used_fit_chi2r``."""
+        inputs = getattr(self, "_shift_inputs", {}).get(det)
+        if not inputs or "fit_chi2r" not in entry:
+            return
+        from chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction import reference_fit
+
+        try:
+            fit = reference_fit(
+                inputs["parts"], inputs["irfs"], inputs["dt"], tau_ns=inputs["tau"],
+                rho_ns=inputs["rho"] if len(inputs["parts"]) > 1 else None, g_factor=inputs["g"],
+                l1=inputs["l1"], l2=inputs["l2"], window=inputs["window"],
+                shifts=(entry["shift_vv"], entry["shift_vh"]), hold_shifts=True,
+            )
+        except Exception:  # noqa: BLE001 - the calibrated fit stays the record
+            return
+        entry["used_fit_chi2r"] = float(fit.chi2r)
+
+    def set_shift(self, det: str, key: str, value: float) -> dict | None:
+        """Set *det*'s ``shift_vv`` / ``shift_vh`` (bins) or ``shift`` (VH roll, whole bins) by
+        hand: it replaces the calibrated value until :meth:`reset_shifts`."""
+        if key not in ("shift_vv", "shift_vh", "shift"):
+            raise ValueError(f"Unknown shift {key!r}: use 'shift_vv', 'shift_vh' or 'shift'.")
+        edits = self.shift_edits.setdefault(det, {})
+        edits[key] = int(round(value)) if key == "shift" else float(value)
+        edits.setdefault("source", "edited")
+        self.outcome = None
+        return self.calibrate_shift(det)
+
+    def reset_shifts(self, det: str, keys=None) -> dict | None:
+        """Back to the calibrated shifts of *det* (*keys*: only those; default all)."""
+        edits = self.shift_edits.get(det) or {}
+        for key in keys or ("shift_vv", "shift_vh", "shift"):
+            edits.pop(key, None)
+        if not any(k in edits for k in ("shift_vv", "shift_vh", "shift")):
+            self.shift_edits.pop(det, None)
+        self.outcome = None
+        return self.calibrate_shift(det)
+
+    def shift_base(self, det: str) -> dict:
+        """*det*'s shifts before any calibration or edit (kept from the first time asked)."""
+        settings = self.settings_of(det)
+        return self._shift_base.setdefault(
+            det, {"shift_sp": float(settings.shift_sp), "shift_ss": float(settings.shift_ss),
+                  "shift": int(settings.shift)},
+        )
+
+    def shift_starts(self, det: str) -> dict:
+        """The start of each of *det*'s shifts (:data:`SHIFT_PARAMETERS`): the value set by hand,
+        else the calibrated one, else :meth:`shift_base` -- what the fit holds them at when fixed."""
+        entry = self.shift_calibration.get(det)
+        if entry:
+            return {"shift_sp": float(entry["shift_vv"]), "shift_ss": float(entry["shift_vh"]),
+                    "shift": int(entry.get("shift", self.shift_base(det)["shift"]))}
+        return dict(self.shift_base(det))
+
+    def _refine_shifts(self) -> dict:
+        """Refine the current detector's unfixed shifts within :data:`SHIFT_BOUNDS` of their
+        starts, for the lowest 2I* of the decay fit (the whole-bin VH shift by trying its
+        neighbours, the sub-bin IRF shifts by golden section); the fixed ones are held at
+        their starts. Returns the values the fit then uses."""
+        det = self.current_detector
+        settings = self.settings
+        starts = self.shift_starts(det)
+        free = [k for k, _label in SHIFT_PARAMETERS if not getattr(settings, f"fix_{k}")]
+        for key, value in starts.items():
+            setattr(settings, key, int(value) if key == "shift" else float(value))
+        if not free or settings.model == TAIL_MODEL:
+            return starts
+
+        def score() -> float:
+            out = self._fit_once()
+            return float(out.two_istar) if out is not None and np.isfinite(out.two_istar) else np.inf
+
+        if "shift" in free:
+            best = (np.inf, int(starts["shift"]))
+            bound = int(SHIFT_BOUNDS["shift"])
+            for value in range(int(starts["shift"]) - bound, int(starts["shift"]) + bound + 1):
+                settings.shift = value
+                self.build_decay()
+                got = score()
+                if got < best[0]:
+                    best = (got, value)
+            settings.shift = best[1]
+            self.build_decay()
+        for key in ("shift_sp", "shift_ss"):
+            if key not in free:
+                continue
+            lo, hi = starts[key] - SHIFT_BOUNDS[key], starts[key] + SHIFT_BOUNDS[key]
+
+            def at(value: float, _key=key) -> float:
+                setattr(settings, _key, float(value))
+                return score()
+
+            phi = (np.sqrt(5.0) - 1.0) / 2.0
+            a, b = lo, hi
+            c, d = b - phi * (b - a), a + phi * (b - a)
+            fc, fd = at(c), at(d)
+            while b - a > 0.02:
+                if fc < fd:
+                    b, d, fd = d, c, fc
+                    c = b - phi * (b - a)
+                    fc = at(c)
+                else:
+                    a, c, fc = c, d, fd
+                    d = a + phi * (b - a)
+                    fd = at(d)
+            candidates = [(fc, c), (fd, d), (at(starts[key]), starts[key])]
+            setattr(settings, key, float(min(candidates)[1]))
+        return {k: getattr(settings, k) for k, _label in SHIFT_PARAMETERS}
+
+    def recalibrate_shifts(self) -> None:
+        """Calibrate every detector's shifts again (the setup's G, l1 or l2 changed)."""
+        for det in list(self.detectors):
+            if self.reference_records.get(det) or self.shift_edits.get(det):
+                self.calibrate_shift(det)
 
     def take_tuned_irf(self, det: str, irf: np.ndarray, text: str, inputs: dict | None = None) -> bool:
         """The IRF the IRF tool computed for *det* (sent back from its window): used from now on
@@ -1931,6 +2163,10 @@ class MleSession:
         if current.size and irf.size != current.size:
             return False
         source = inputs or self.irf_inputs.get(det)
+        offset = int((source or {}).get("offset_bins") or 0)
+        if offset:  # extracted in the window of the detection pair that saw the dye: to det's
+            half = irf.size // 2
+            irf = np.hstack([np.roll(irf[:half], offset), np.roll(irf[half:], offset)])
         self.irf_candidates.setdefault(det, {})["tuned"] = (irf, f"IRF tool (tuned): {text}", source)
         self.irf_choice[det] = "tuned"
         self.apply_irf_choice(det)
@@ -1941,7 +2177,8 @@ class MleSession:
         if choice not in dict(IRF_CHOICES):
             raise ValueError(f"unknown IRF source {choice!r}")
         self.irf_candidates.get(det, {}).pop("tuned", None)
-        self.shift_override.pop(det, None)  # the tool's shifts went with its IRF
+        if (self.shift_edits.get(det) or {}).get("source") == "IRF tool":
+            self.shift_edits.pop(det, None)  # the tool's shifts went with its IRF
         self.irf_choice[det] = choice
         return self.apply_irf_choice(det)
 
@@ -2151,31 +2388,46 @@ class MleSession:
             }
         records = []
         for name, group in groups.items():
-            vv = vh = 0.0
-            dt = 0.0
-            for p in group:
-                a, b, _t, dt = self._reference_counts(det, p)
-                vv, vh = vv + a, vh + b
+            counts = [self._reference_counts(det, p) for p in group]
+            vv = np.sum([c[0] for c in counts], axis=0)
+            vh = np.sum([c[1] for c in counts], axis=0)
+            dt = counts[-1][3]
+            # The detectors of one detection pair (R|G, R|R) share the IRF's shape and timing: the
+            # dye is read in the window that sees it (Alexa 647: R|R's), and the IRF placed at
+            # det's window by the setup's PIE offset -- never fitted in a window it barely reaches.
+            source = self._reference_source(det, vv, vh)
+            offset = self.window_offset(det, source) if source != det else 0
+            window = self._gate_window(source, np.size(vv))
+            lo, hi = window or (0, np.size(vv))
+            if float(np.sum(vv[lo:hi]) + np.sum(vh[lo:hi])) <= 0:
+                continue  # a dye these detectors do not see (Alexa 647 on the green ones)
+            for p, (a, b, _t, _dt) in zip(group, counts):
                 dye_entry = reference_dye(p)
                 records.append({
-                    "path": str(p), "dye": name, "vv": a, "vh": b, "dt_ns": dt,
-                    "window": self._gate_window(det, np.size(a)),
+                    "path": str(p), "dye": name, "vv": a, "vh": b, "dt_ns": dt, "window": window,
                     "single_molecule": self._single_molecule.get(str(p), False),
                     "rate_khz": self._count_rate_khz.get((str(p), det)),
                     "tau_ns": dye_entry.get("tau_ns"), "tau_source": dye_entry.get("tau_source") or {},
+                    "detector": source, "offset_bins": offset,
                 })
-            window = self._gate_window(det, np.size(vv))
             names = ", ".join(p.name for p in group)
             listed = reference_dye(group[0])["tau_ns"]
             one = len(self.detectors[det].get("chs", [])) < 2  # one channel: no rotation to see
-            found.append(
-                irf_from_reference(
-                    vv, None if one else vh, dt, listed_tau_ns=listed, window=window, name=names, dye=name
-                )
+            got = irf_from_reference(
+                vv, None if one else vh, dt, listed_tau_ns=listed, window=window, name=names, dye=name
             )
+            if offset:
+                got = dataclasses.replace(
+                    got,
+                    irf=np.hstack([np.roll(h, offset) for h in got.halves]),
+                    text=f"{got.text}; calibrated on {source}, placed at the {det} window ({offset:+d} bins)",
+                    info=dict(got.info, calibrated_on=source, offset_bins=offset),
+                )
+            found.append(got)
             sources[found[-1].text] = {
                 "kind": "reference", "vv": vv, "vh": vh, "dt_ns": dt, "window": window,
                 "name": names, "dye": name, "listed_tau_ns": listed,
+                "calibrated_on": source, "offset_bins": offset,
             }
         self.reference_records[det] = records
         candidates = self.irf_candidates.setdefault(det, {})
@@ -2234,6 +2486,7 @@ class MleSession:
                 if kind == "irf":
                     self.irf_source.pop(d, None)
                     self.irf_inputs.pop(d, None)
+                    self.reference_records.pop(d, None)  # no dye left to calibrate on
                     for key in ("measurement", "reference"):
                         self.irf_candidates.get(d, {}).pop(key, None)
         self.outcome = None
@@ -2332,7 +2585,18 @@ class MleSession:
         return None
 
     def fit(self) -> FitOutcome | None:
-        """Fit the current decay (``update_fit`` without the plots); ``None`` with the reason in :attr:`status`."""
+        """Fit the current decay (``update_fit`` without the plots); ``None`` with the reason in
+        :attr:`status`. The detector's time shifts are held at their starts, or refined first
+        where unfixed (:meth:`_refine_shifts`)."""
+        if self.decay is not None and self.current_detector in self.detectors:
+            before = int(self.settings.shift)
+            self._refine_shifts()
+            if int(self.settings.shift) != before:
+                self.build_decay()
+        return self._fit_once()
+
+    def _fit_once(self) -> FitOutcome | None:
+        """One fit of the current decay at the current settings (:meth:`fit`)."""
         self.ensure_background()
         reason = self.blocked_reason()
         if reason is not None:
@@ -2540,6 +2804,19 @@ class MleSession:
         det_order = list(self.detectors)
         binning = int(self.settings.micro_time_binning)
         self.ensure_background()
+        # unfixed time shifts are refined on each detector's summed decay before its bursts are
+        # fitted with them (the current detector's were, by its last fit)
+        current = self.current_detector
+        for det in det_order:
+            st = self.settings_of(det)
+            if det != current and not all(getattr(st, f"fix_{k}") for k, _l in SHIFT_PARAMETERS):
+                self.current_detector = det
+                self.build_decay()
+                self.fit()
+        if self.current_detector != current:
+            self.current_detector = current
+            self.build_decay()
+            self.fit()
         configs = {det: self.batch_config(det) for det in det_order}
         # one polarisation's histogram length: the IRF's -- or, for a model without one (the tail
         # fit), one excitation period of the measurement at this binning
@@ -2830,6 +3107,8 @@ class MleSession:
             "irf_one_for_all": bool(self.irf_one_for_all),
             "bg_one_for_all": bool(self.bg_one_for_all),
             "save_vv_vhs": bool(self.save_vv_vhs),
+            # shifts set by hand: they stay over the calibration until reset
+            "shift_edits": {d: dict(v) for d, v in self.shift_edits.items() if v},
         }
 
     def apply_settings_payload(self, payload: dict) -> None:
@@ -2850,6 +3129,9 @@ class MleSession:
         self.irf_one_for_all = bool(payload.get("irf_one_for_all", self.irf_one_for_all))
         self.bg_one_for_all = bool(payload.get("bg_one_for_all", self.bg_one_for_all))
         self.save_vv_vhs = bool(payload.get("save_vv_vhs", self.save_vv_vhs))
+        self.shift_edits = {
+            str(d): dict(v) for d, v in (payload.get("shift_edits") or {}).items() if isinstance(v, dict)
+        }
         for kind, key in (("bg", "bg_files"), ("irf", "irf_files")):
             files, _np, _normalize, _one = self._pattern_store(kind)
             for det, paths in (payload.get(key) or {}).items():

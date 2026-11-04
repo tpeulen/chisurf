@@ -212,6 +212,35 @@ class MleNativeApp(TourTarget, ImApp):
     def track(self, name: str) -> None:
         self.on_used(name)
 
+    # -- the step's settings (the workflow hub keeps them) ----------------------------------------- #
+    def export_settings(self) -> dict[str, Any]:
+        """What the step keeps between sessions: per detector the time shifts set by hand and
+        whether each shift is fixed (the calibration itself is made again from the references)."""
+        session = self.model.session
+        fixed = {
+            det: {f"fix_{k}": bool(getattr(session.settings_of(det), f"fix_{k}"))
+                  for k, _label in engine.SHIFT_PARAMETERS}
+            for det in session.detectors
+        }
+        return {"shift_edits": {d: dict(v) for d, v in session.shift_edits.items() if v},
+                "shift_fixed": fixed}
+
+    def restore_settings(self, state: dict[str, Any] | None) -> None:
+        """Take back :meth:`export_settings` (edits stay over the calibration until reset)."""
+        state = state or {}
+        session = self.model.session
+        session.shift_edits = {
+            str(d): dict(v) for d, v in (state.get("shift_edits") or {}).items() if isinstance(v, dict)
+        }
+        for det, flags in (state.get("shift_fixed") or {}).items():
+            if str(det) not in session.detectors:  # applied when the setup brings the detector
+                session.pending_shift_fixed[str(det)] = dict(flags or {})
+                continue
+            settings = session.settings_of(str(det))
+            for key, value in (flags or {}).items():
+                if hasattr(settings, key):
+                    setattr(settings, key, bool(value))
+
     # -- actions ------------------------------------------------------------------------------------------ #
     def auto_extract(self) -> None:
         self.model.status_text = "Estimating IRF and background ..."
@@ -383,6 +412,8 @@ class MleNativeApp(TourTarget, ImApp):
                         _without_attrs(x, {"current_file"})  # one measurement per run here
                         for x in self._pipeline_sections
                         if x.get("title") in keep
+                        # the time shifts are rows of Fit parameters: their reset goes with them
+                        or any(b.get("action") == "reset_shifts" for b in x.get("buttons", []))
                     ]
                 return self._simple_sections
             return self._pipeline_sections

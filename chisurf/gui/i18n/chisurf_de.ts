@@ -77804,6 +77804,72 @@ Background (kHz): {bg}</source>
             <source>Written into {count} container(s).</source>
             <translation>In {count} Container geschrieben.</translation>
         </message>
+        <message>
+            <source>found</source>
+            <translation>gefunden</translation>
+        </message>
+        <message>
+            <source>{path}
+Found beside {measurement} by its name and put into this row; move it to another row, or Delete it (it is not proposed again).</source>
+            <translation>{path}
+Neben {measurement} am Namen erkannt und in diese Zeile gelegt; in eine andere Zeile ziehen oder löschen (dann nicht erneut vorgeschlagen).</translation>
+        </message>
+        <message>
+            <source>The IRF's time shift against the VV decay, bins (sub-bin).</source>
+            <translation>Zeitverschiebung der IRF gegen den VV-Zerfall, in Bins (Bruchteile).</translation>
+        </message>
+        <message>
+            <source>The IRF's time shift against the VH decay, bins (sub-bin).</source>
+            <translation>Zeitverschiebung der IRF gegen den VH-Zerfall, in Bins (Bruchteile).</translation>
+        </message>
+        <message>
+            <source>The VH decay's shift against the VV decay, whole bins: the VH half of the data, IRF and background is moved by it.</source>
+            <translation>Verschiebung des VH-Zerfalls gegen den VV-Zerfall in ganzen Bins: die VH-Hälfte von Daten, IRF und Hintergrund wird verschoben.</translation>
+        </message>
+        <message>
+            <source>Start: set by hand ({source}); calibrated {value}.</source>
+            <translation>Start: von Hand gesetzt ({source}); kalibriert {value}.</translation>
+        </message>
+        <message>
+            <source>Reference fit at these shifts: χ²ᵣ {value:.2f}.</source>
+            <translation>Referenz-Fit bei diesen Verschiebungen: χ²ᵣ {value:.2f}.</translation>
+        </message>
+        <message>
+            <source>Reset shifts goes back to the calibrated values.</source>
+            <translation>„Verschiebungen zurücksetzen“ kehrt zu den kalibrierten Werten zurück.</translation>
+        </message>
+        <message>
+            <source>Start: calibrated on {dye} ({files}) on {detector}, χ²ᵣ {chi2r}.</source>
+            <translation>Start: kalibriert an {dye} ({files}) auf {detector}, χ²ᵣ {chi2r}.</translation>
+        </message>
+        <message>
+            <source>{detector} shares the detectors of {source}: their IRF and timing, placed at the {detector} window ({offset:+d} bins, the setup's PIE windows).</source>
+            <translation>{detector} nutzt die Detektoren von {source}: deren IRF und Timing, ins Fenster von {detector} gesetzt ({offset:+d} Bins, die PIE-Fenster des Setups).</translation>
+        </message>
+        <message>
+            <source>Start: not calibrated (no reference dye of this detector in Data Selection).</source>
+            <translation>Start: nicht kalibriert (kein Referenzfarbstoff dieses Detektors in der Datenauswahl).</translation>
+        </message>
+        <message>
+            <source>Fixed: held at the start. Unfixed: the fit refines it within ±{bound} bin.</source>
+            <translation>Fixiert: auf dem Startwert gehalten. Frei: der Fit verfeinert ihn innerhalb ±{bound} Bin.</translation>
+        </message>
+        <message>
+            <source>Reset shifts</source>
+            <translation>Verschiebungen zurücksetzen</translation>
+        </message>
+        <message>
+            <source>Shown when a time shift of this detector was set by hand.</source>
+            <translation>Erscheint, wenn eine Zeitverschiebung dieses Detektors von Hand gesetzt wurde.</translation>
+        </message>
+        <message>
+            <source>The detector's time shifts back to their calibration on the reference dye (0 without one), and the decay fitted again.</source>
+            <translation>Die Zeitverschiebungen des Detektors zurück auf ihre Kalibrierung am Referenzfarbstoff (0 ohne einen), und der Zerfall neu gefittet.</translation>
+        </message>
+        <message>
+            <source>The selected model's free input parameters, start values, fixed flags and fitted values, and the detector's three time shifts: IRF shift VV and VH (the IRF against the VV and VH data, bins) and Shift VV/VH (the VH decay against the VV decay, whole bins). A shift starts at its calibration on the reference dye (hover its row for where it came from) and is fixed by default; unfixed, the fit refines it within half a bin (one bin for Shift VV/VH). Fit25 lifetimes remain classification candidates; its primary fitted lifetime identifies the winning candidate. Double-click a start value to type. A change refits the current decay.</source>
+            <translation>Die freien Eingangsparameter des gewählten Modells mit Startwerten, Fixier-Häkchen und gefitteten Werten, dazu die drei Zeitverschiebungen des Detektors: IRF shift VV und VH (die IRF gegen die VV- und VH-Daten, Bins) und Shift VV/VH (der VH-Zerfall gegen den VV-Zerfall, ganze Bins). Eine Verschiebung startet bei ihrer Kalibrierung am Referenzfarbstoff (die Zeile überfahren: woher) und ist standardmäßig fixiert; frei verfeinert der Fit sie innerhalb eines halben Bins (eines Bins für Shift VV/VH). Fit25-Lebensdauern bleiben Klassifikationskandidaten; die gefittete primäre Lebensdauer benennt den gewinnenden Kandidaten. Doppelklick auf einen Startwert zum Tippen. Eine Änderung fittet den aktuellen Zerfall neu.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

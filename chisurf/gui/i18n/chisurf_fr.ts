@@ -77942,6 +77942,72 @@ Background (kHz): {bg}</source>
             <source>Written into {count} container(s).</source>
             <translation>Écrit dans {count} conteneur(s).</translation>
         </message>
+        <message>
+            <source>found</source>
+            <translation>trouvé</translation>
+        </message>
+        <message>
+            <source>{path}
+Found beside {measurement} by its name and put into this row; move it to another row, or Delete it (it is not proposed again).</source>
+            <translation>{path}
+Trouvé à côté de {measurement} par son nom et placé dans cette ligne ; déplacez-le vers une autre ligne ou supprimez-le (il ne sera plus proposé).</translation>
+        </message>
+        <message>
+            <source>The IRF's time shift against the VV decay, bins (sub-bin).</source>
+            <translation>Décalage temporel de l'IRF par rapport au déclin VV, en canaux (fraction de canal).</translation>
+        </message>
+        <message>
+            <source>The IRF's time shift against the VH decay, bins (sub-bin).</source>
+            <translation>Décalage temporel de l'IRF par rapport au déclin VH, en canaux (fraction de canal).</translation>
+        </message>
+        <message>
+            <source>The VH decay's shift against the VV decay, whole bins: the VH half of the data, IRF and background is moved by it.</source>
+            <translation>Décalage du déclin VH par rapport au déclin VV, en canaux entiers : la moitié VH des données, de l'IRF et du fond est déplacée.</translation>
+        </message>
+        <message>
+            <source>Start: set by hand ({source}); calibrated {value}.</source>
+            <translation>Départ : fixé à la main ({source}) ; calibré {value}.</translation>
+        </message>
+        <message>
+            <source>Reference fit at these shifts: χ²ᵣ {value:.2f}.</source>
+            <translation>Ajustement de référence à ces décalages : χ²ᵣ {value:.2f}.</translation>
+        </message>
+        <message>
+            <source>Reset shifts goes back to the calibrated values.</source>
+            <translation>« Réinitialiser les décalages » revient aux valeurs calibrées.</translation>
+        </message>
+        <message>
+            <source>Start: calibrated on {dye} ({files}) on {detector}, χ²ᵣ {chi2r}.</source>
+            <translation>Départ : calibré sur {dye} ({files}) sur {detector}, χ²ᵣ {chi2r}.</translation>
+        </message>
+        <message>
+            <source>{detector} shares the detectors of {source}: their IRF and timing, placed at the {detector} window ({offset:+d} bins, the setup's PIE windows).</source>
+            <translation>{detector} partage les détecteurs de {source} : leur IRF et leur synchronisation, placées dans la fenêtre de {detector} ({offset:+d} canaux, fenêtres PIE du montage).</translation>
+        </message>
+        <message>
+            <source>Start: not calibrated (no reference dye of this detector in Data Selection).</source>
+            <translation>Départ : non calibré (aucun colorant de référence pour ce détecteur dans la sélection des données).</translation>
+        </message>
+        <message>
+            <source>Fixed: held at the start. Unfixed: the fit refines it within ±{bound} bin.</source>
+            <translation>Fixé : maintenu à la valeur de départ. Libre : l'ajustement l'affine à ±{bound} canal près.</translation>
+        </message>
+        <message>
+            <source>Reset shifts</source>
+            <translation>Réinitialiser les décalages</translation>
+        </message>
+        <message>
+            <source>Shown when a time shift of this detector was set by hand.</source>
+            <translation>Affiché quand un décalage temporel de ce détecteur a été fixé à la main.</translation>
+        </message>
+        <message>
+            <source>The detector's time shifts back to their calibration on the reference dye (0 without one), and the decay fitted again.</source>
+            <translation>Les décalages temporels du détecteur reviennent à leur calibration sur le colorant de référence (0 sans colorant), et le déclin est réajusté.</translation>
+        </message>
+        <message>
+            <source>The selected model's free input parameters, start values, fixed flags and fitted values, and the detector's three time shifts: IRF shift VV and VH (the IRF against the VV and VH data, bins) and Shift VV/VH (the VH decay against the VV decay, whole bins). A shift starts at its calibration on the reference dye (hover its row for where it came from) and is fixed by default; unfixed, the fit refines it within half a bin (one bin for Shift VV/VH). Fit25 lifetimes remain classification candidates; its primary fitted lifetime identifies the winning candidate. Double-click a start value to type. A change refits the current decay.</source>
+            <translation>Les paramètres d'entrée libres du modèle choisi, valeurs de départ, cases « fixé » et valeurs ajustées, puis les trois décalages temporels du détecteur : IRF shift VV et VH (l'IRF par rapport aux données VV et VH, en canaux) et Shift VV/VH (le déclin VH par rapport au déclin VV, en canaux entiers). Un décalage part de sa calibration sur le colorant de référence (survolez la ligne : d'où il vient) et est fixé par défaut ; libre, l'ajustement l'affine à un demi-canal près (un canal pour Shift VV/VH). Les durées de vie Fit25 restent des candidats de classification ; la durée de vie principale ajustée désigne le candidat gagnant. Double-cliquez une valeur de départ pour la saisir. Un changement réajuste le déclin courant.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

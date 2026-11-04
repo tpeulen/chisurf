@@ -235,14 +235,15 @@
       "type": "custom",
       "key": "data_table",
       "title": "Fit parameters",
-      "description": "The selected model's free input parameters, start values, fixed flags and fitted values. Fit25 lifetimes remain classification candidates; its primary fitted lifetime identifies the winning candidate. Double-click a start value to type. A change refits the current decay.",
+      "description": "The selected model's free input parameters, start values, fixed flags and fitted values, and the detector's three time shifts: IRF shift VV and VH (the IRF against the VV and VH data, bins) and Shift VV/VH (the VH decay against the VV decay, whole bins). A shift starts at its calibration on the reference dye (hover its row for where it came from) and is fixed by default; unfixed, the fit refines it within half a bin (one bin for Shift VV/VH). Fit25 lifetimes remain classification candidates; its primary fitted lifetime identifies the winning candidate. Double-click a start value to type. A change refits the current decay.",
       "options": {
         "source": "parameter_records",
         "row_key": "name",
+        "tooltip_key": "tip",
         "editable": true,
         "edited_call": "edit_parameter",
         "editable_call": "parameter_cell_editable",
-        "height": 112,
+        "height": 168,
         "fit_columns": false,
         "min_column_width": 60,
         "columns": [
@@ -276,6 +277,21 @@
           }
         ]
       }
+    },
+    {
+      "type": "button_row",
+      "hidden_when": {
+        "attr": "shifts_edited",
+        "equals": false
+      },
+      "description": "Shown when a time shift of this detector was set by hand.",
+      "buttons": [
+        {
+          "action": "reset_shifts",
+          "label": "Reset shifts",
+          "description": "The detector's time shifts back to their calibration on the reference dye (0 without one), and the decay fitted again."
+        }
+      ]
     },
     {
       "type": "panel",

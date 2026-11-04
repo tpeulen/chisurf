@@ -93,7 +93,9 @@ def test_the_parameter_table_is_the_models_not_a_copy(hermetic_env):
         while not catalog.prefetch() and time.monotonic() < deadline:
             time.sleep(0.05)
         records = app.model.parameter_records()
-        assert [r["name"] for r in records] == ["tau", "gamma", "r0", "rho"]
+        assert [r["name"] for r in records] == [
+            "tau", "gamma", "r0", "rho", "IRF shift VV", "IRF shift VH", "Shift VV/VH"
+        ]
         assert records[0]["start"] == app.model.tau == 4.0
         shown = texts(Driver(app).draw(3))
         for record in records:

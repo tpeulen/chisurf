@@ -238,9 +238,11 @@ def test_the_shift_is_calibrated_against_the_single_molecule_dye_first():
     assert found["reference_rate_khz"] == 400.0 and found["burst_rate_khz"] == 20.0
     assert "bulk reference" in found["warning"] and "20x" in found["warning"]
     del session.burst_count_rate_khz
-    session.shift_override["G|G"] = (0.4, -0.3)  # set in the IRF tool: wins
+    session.shift_edits["G|G"] = {"shift_vv": 0.4, "shift_vh": -0.3, "source": "IRF tool"}  # wins
     found = session.calibrate_shift("G|G")
-    assert (settings.shift_sp, settings.shift_ss) == (0.4, -0.3) and found["source"] == "set in the IRF tool"
+    assert (settings.shift_sp, settings.shift_ss) == (0.4, -0.3) and found["edit_source"] == "IRF tool"
+    assert found["edited"] == ["shift_vh", "shift_vv"]
+    assert found["calibrated_vv"] == pytest.approx(0.0, abs=0.15)  # the calibration is kept beside
 
 
 def test_the_demo_irf_shift_is_calibrated_near_zero(session, files):

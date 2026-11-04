@@ -137,7 +137,36 @@ reference and of the bursts are recorded, and a bulk reference at more than
 three times the bursts' rate is warned of (⚠ in the status, the numbers in its
 tooltip and in the calibration report). The shifts are the fit's
 `shift_sp` (VV) and `shift_ss` (VH), fixed; **Opt** refines them within half a
-bin. Shifts set in the IRF tool (Advanced) replace them.
+bin.
+
+**Three shifts, each a parameter.** A burst fit has three time shifts per
+detector, rows of Burst MLE's *Fit parameters* table in Simple and Advanced:
+**IRF shift VV** and **IRF shift VH** (`shift_sp`, `shift_ss`: the IRF moved
+against the VV and the VH data by linear interpolation of the fraction) and
+**Shift VV/VH** (`shift`: the VH decay moved against the VV decay in whole bins,
+its IRF and background with it). *Start* is the calibration above (0 without a
+reference dye; Shift VV/VH the setup's saved value), *Fixed* holds it and is set
+by default, *Result* is what the fit used. Unfixed, the decay fit refines a
+shift within ±0.5 bin of its start (±1 bin for Shift VV/VH, whole bins tried)
+for the lowest 2I*, and the bursts are fitted with the refined value. A start
+typed by hand, or set in the IRF tool, or found by **Opt**, replaces the
+calibration until **Reset shifts**; the calibration report keeps both the
+calibrated and the used values (`calibrated_vv`, `shift_vv`, `edited`) and the
+reference fit's χ²ᵣ at the shifts used (`used_fit_chi2r`).
+
+**One detection pair, one calibration.** Under PIE the red detectors are two
+detectors of the setup: `R|R` (red-excited) and `R|G` (the same channels, gated
+on the green pulse). The G factor is the detection side's -- the efficiencies of
+the VV and VH detectors, whatever laser excited -- and so are the IRF's shape and
+the SPAD's timing. So both are calibrated once, on the reference dye of their
+colour (Alexa 647) in the window that sees it (`R|R`'s), with that detector's G,
+l1 and l2: `R|G` gets `R|R`'s IRF placed at the green pulse by the setup's PIE
+windows (the offset of their gates, `R|G` start − `R|R` start; said in the
+tooltip and the report as `calibrated_on` / `offset_bins`), and `R|R`'s shifts
+and reference fit. Nothing is fitted in a window the dye barely reaches: on
+DNA13bp_3 that used to give `R|G` its own Alexa 647 fit (+0.86 / +0.73 bins,
+χ²ᵣ 10.9) beside `R|R`'s (+0.55 / +0.47, 242, both with G 1). A green dye never
+calibrates the red pair, nor a red dye the green detector.
 
 On a simulated Rh110 with the IRF measured 1.25 or −2.5 bins away, the shift is
 recovered within 0.06 bins (lifetime fixed) and 0.05 bins with the lifetime

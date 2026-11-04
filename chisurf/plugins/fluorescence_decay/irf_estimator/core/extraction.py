@@ -899,11 +899,13 @@ def reference_fit(
     l2: float = 0.0,
     window: tuple[int, int] | None = None,
     shifts: Sequence[float] = (0.0, 0.0),
+    hold_shifts: bool = False,
 ) -> ReferenceFit:
     """Fit a reference dye's decay with its IRF and the burst fit's polarised model.
 
     One amplitude for both polarisations, a flat background each, the IRF's time shift of each
-    free; the lifetime *tau_ns* (the dye database's), the rotation *rho_ns*, *r0* and the
+    free (with *hold_shifts*: held at *shifts* -- how well shifts set by hand describe the
+    reference); the lifetime *tau_ns* (the dye database's), the rotation *rho_ns*, *r0* and the
     polarisation factors fixed. Everything a burst fit takes for granted is tested at once: an
     IRF that is too narrow or late shows at the rise, a wrong G or l1/l2 as VV and VH pulling
     apart, a wrong rotation in the first nanosecond. Fitted by least squares with Neyman weights;
@@ -946,15 +948,16 @@ def reference_fit(
         return x, g, model, res, chi2r
 
     two = k > 1
+    held = [float(s) for s in shifts[:k]] if hold_shifts else None
     # The shifts come from the fit with G free: a G the setup has wrong must show as a bad fit,
     # not be absorbed into the IRF's timing.
-    free = solve(True, float(g_factor or 1.0)) if two else None
+    free = solve(True, float(g_factor or 1.0), at=held) if two else None
     if g_factor is None and two:
         x, g, model, res, chi2r = free
     elif two:
         x, g, model, res, chi2r = solve(False, float(g_factor), at=free[0][1 + k : 1 + 2 * k])
     else:
-        x, g, model, res, chi2r = solve(False, float(g_factor or 1.0))
+        x, g, model, res, chi2r = solve(False, float(g_factor or 1.0), at=held)
     g_fitted, chi2r_free = (free[1], free[4]) if free is not None else (g, chi2r)
     shift_vv = float(x[1 + k])
     shift_vh = float(x[1 + k + 1]) if two else shift_vv

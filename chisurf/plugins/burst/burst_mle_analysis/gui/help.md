@@ -16,7 +16,11 @@ placeholder.
   window does the same as **Use selected**), then **Clear**, **Auto IRF/background**, **Refit**, **Fit bursts**,
   **Stop**, **Save results** and **Save/Load settings**; below them the burst-file table, the detector and fit window,
   the IRF settings and the editable *Fit parameters* table (start value, fixed flag, fitted value). A change refits the
-  current decay. **Detector setup** is the shared detector editor. Every finished **Fit bursts** writes its lifetimes
+  current decay. Its last three rows are the detector's time shifts, in Simple mode too: **IRF shift VV** and
+  **IRF shift VH** (the IRF against the VV and VH data, bins) and **Shift VV/VH** (the VH decay against the VV decay,
+  whole bins). They start at the calibration on the reference dye (hover a row: from which dye, its χ²ᵣ, or "set by
+  hand"), fixed; unfixed, the fit refines them within half a bin (one bin). A start you type replaces the calibration
+  until **Reset shifts**. **Detector setup** is the shared detector editor. Every finished **Fit bursts** writes its lifetimes
   into the burst run they were fitted from (`<run>/mle G|G`, one row per burst, linked to the run's burst table): ndX
   opens that run with `Tau (G|G)`, `Tau (R|G)`, `Tau (R|R)` beside the burst columns. **Save results** writes them
   again.
@@ -27,6 +31,8 @@ placeholder.
   there comes back here ("IRF tool (tuned)") and is fitted. The IRF's settings are the tool's. With a
   reference dye the IRF's time shift (VV, VH) is calibrated before the fit against it, its lifetime
   fixed to the dye database's; a single-molecule dye measurement is preferred ("shift calibrated").
+  The red detectors under green excitation (`R|G`) are `R|R`'s detectors: they take `R|R`'s calibration
+  on the red dye (G, IRF shape, shifts), the IRF placed at the green pulse by the setup's PIE windows.
   Then the dye itself is fitted with the IRF and the burst model (one amplitude, the setup's G, l1, l2,
   its rotation): the line shows that **reference fit's χ²ᵣ** -- about 1 when the IRF, G and the rotation
   describe the reference -- and ⚠ when the dye asks for another G than the setup has (apply Data
