@@ -1,29 +1,96 @@
 {
-  "_comment": "Step 1 of the burst workflow (Data Selection), emtk app: the raw TTTR files as a data_table over BurstDataSelectionApp.file_rows. Every column carries a tooltip.",
+  "_comment": "Step 1 of the burst workflow (Data Selection), emtk app: the assignment table, one row per role made from the detector setup (Measurement, Buffer, and per colour IRF and Reference dye), each listing the files, workspace groups and datasets assigned to it, as a tree over BurstDataSelectionApp.assignment_rows. Every column carries a tooltip.",
   "sections": [
     {
       "type": "custom",
       "key": "data_table",
-      "title": "",
-      "description": "The raw TTTR files every later step reads, in order. Click a row to select it (its details appear on the right); Delete removes it. Dropping files or a folder on the window adds them.",
+      "title": "What this workflow works on",
+      "description": "One row per role: the measurements (searched for bursts), the buffer, and for every colour of the detector setup an IRF and a reference dye. Drag workspace data from the table above onto a row to assign it; drag an entry onto another row, or right-click it › Move to, to change its role. A workspace group is one entry; unfold it for its files. Delete removes the selected entry. A reference row's Dye cell chooses its dye.",
       "options": {
-        "source": "file_rows",
-        "row_key": "path",
-        "selected_call": "select_file",
-        "delete_call": "remove_file_row",
+        "source": "assignment_rows",
+        "row_key": "key",
+        "tree_key": "parent",
+        "expanded_attr": "expanded_rows",
+        "highlight_attr": "drop_target",
+        "tooltip_key": "tip",
+        "selected_call": "select_entry",
+        "delete_call": "remove_entry",
+        "drag_call": "assignment_drag",
+        "selection": "single",
         "editable": false,
-        "height": 260,
+        "height": 240,
         "expand": true,
         "fit_columns": true,
-        "min_column_width": 50,
-        "tooltip_key": "path",
+        "min_column_width": 40,
+        "selection_note": false,
+        "context_menu": [
+          {
+            "label": "Move to",
+            "items_source": "assignment_menu_move",
+            "description": "Assign this entry to another row."
+          },
+          {
+            "label": "Remove",
+            "call": "remove_entry",
+            "description": "Take this file, group or row's files out of the workflow."
+          }
+        ],
         "columns": [
-          {"key": "number", "title": "#", "width": 36, "tooltip": "Position of the file in the workflow."},
-          {"key": "file", "title": "File", "width": 200, "tooltip": "The file name; hover a row for the full path."},
-          {"key": "size", "title": "Size", "width": 70, "tooltip": "Size on disk."},
-          {"key": "format", "title": "Format", "width": 60, "tooltip": "The file extension (the reader is chosen by the detector setup's file type)."},
-          {"key": "status", "title": "MMFDB", "width": 110, "tooltip": "Whether the file is stored in the MMFDB object store and registered as raw TTTR data."}
-        ]
+          {
+            "key": "name",
+            "title": "Role / data",
+            "width": 200,
+            "tooltip": "A role (measurement, buffer, IRF or reference dye of a colour), and under it what is assigned to it: a workspace group as one entry, single files as themselves."
+          },
+          {
+            "key": "files",
+            "title": "Files",
+            "width": 44,
+            "shade": false,
+            "tooltip": "How many files the role or group holds."
+          },
+          {
+            "key": "dye",
+            "title": "Dye",
+            "width": 110,
+            "editable": true,
+            "choices": [],
+            "tooltip": "The reference dye of this colour, from the dye database (its D at 25 °C in water, corrected to the temperature of the measurement): found in the file's header or name, else the colour's usual dye. Click to choose another, or Other (custom D)."
+          },
+          {
+            "key": "dye_how",
+            "title": "from",
+            "width": 80,
+            "advanced": true,
+            "collapse_order": 1,
+            "tooltip": "Where the dye came from: chosen by you, the file's header, its name, or the colour's default."
+          },
+          {
+            "key": "info",
+            "title": "Purpose · result",
+            "width": 150,
+            "tooltip": "What the role is for and, once computed, what its files gave; for an empty role, what is used instead (the background and IRF estimated from the measurement, G from the setup).",
+            "simple_title": "Status"
+          },
+          {
+            "key": "size",
+            "title": "Size",
+            "width": 64,
+            "collapse_order": 2,
+            "tooltip": "Size on disk.",
+            "advanced": true
+          },
+          {
+            "key": "status",
+            "title": "MMFDB",
+            "width": 90,
+            "collapse_order": 1,
+            "tooltip": "Whether the file is stored in the MMFDB object store and registered as raw TTTR data.",
+            "advanced": true
+          }
+        ],
+        "editable_call": "cell_editable",
+        "edited_call": "cell_edited"
       }
     }
   ]

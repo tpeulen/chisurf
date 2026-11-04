@@ -273,7 +273,28 @@ class BurstAnalysisHubApp(ToolHubApp):
         from .data_selection_app import BurstDataSelectionApp, BurstDataSelectionModel
 
         model = BurstDataSelectionModel(on_change=self._data_changed)
-        return BurstDataSelectionApp(model, on_proceed=lambda: self.select("selection"))
+        app = BurstDataSelectionApp(
+            model,
+            on_proceed=lambda: self.select("selection"),
+            setup_provider=self._data_setup,
+            on_apply_g=self.apply_reference_g,
+            on_calibrated=self._calibrated,
+        )
+        app.on_wake = self._wake
+        return app
+
+    def _wake(self) -> None:
+        self.wants_frame = True
+
+    def _data_setup(self) -> dict:
+        """The setup Data Selection makes its rows from: the workflow's, else the shared editor's."""
+        settings = self.context.channel_settings or {}
+        if settings.get("detectors"):
+            return settings
+        try:
+            return self.setup_model.get_settings()
+        except Exception:  # noqa: BLE001 - no setup yet
+            return {}
 
     def _make_selection(self):
         from chisurf.plugins.burst.burst_selection.gui.native import create_app
@@ -324,7 +345,11 @@ class BurstAnalysisHubApp(ToolHubApp):
         data = self.children.get("data")
         if data is None:
             return
-        self.context.raw_files = list(data.model.paths())
+        measurements = getattr(data.model, "measurement_paths", None)
+        # only the Measurement row is searched; the buffer, IRF and reference dyes calibrate
+        self.context.raw_files = list(measurements() if callable(measurements) else data.model.paths())
+        assignments = getattr(data.model, "assignments", None) or {}
+        self.context.samples = {str(p): assignments.get(str(p), "measurement") for p in data.model.paths()}
         if self.context.raw_files:
             # Every step reads these photons: read them now, in the background, while the user
             # is still on this step (the search, its check and its preview then find them read).
@@ -468,6 +493,49 @@ class BurstAnalysisHubApp(ToolHubApp):
                 )
         return applied or len(patterns or {})
 
+    def _calibrated(self, result: dict) -> None:
+        """Data Selection computed what its buffer and reference dyes give: into the workflow's
+        context for every later step, and each colour's confocal volume into the setup (the G
+        factors only by the user's *Apply G*, never silently)."""
+        self.context.calibration = dict(result or {})
+        volumes = {
+            colour: {k: v for k, v in (entry.get("volume") or {}).items()
+                     if k in ("detector", "D_um2_s", "w0_um", "z0_um", "veff_fl", "tau_d_ms", "s", "N")}
+            for colour, entry in (result or {}).get("colours", {}).items()
+            if entry.get("volume")
+        }
+        if volumes:
+            for colour, volume in volumes.items():
+                volume["files"] = list((result["colours"][colour] or {}).get("files") or [])
+            self.setup_model.data["confocal_volume"] = volumes
+            self.context.channel_settings = self.setup_model.get_settings()
+            self.status = "Confocal volume: " + ", ".join(
+                f"{c} {v['veff_fl']:.2f} fL" for c, v in volumes.items()
+            )
+        self._apply_downstream(skip=("setup", "data"))
+        self.wants_frame = True
+
+    def apply_reference_g(self, values: dict) -> int:
+        """Write the reference dye's G factors into the setup's G-Factor column (step 0); returns
+        how many detectors changed."""
+        detectors = self.setup_model.data.get("detectors") or {}
+        changed = 0
+        for det, value in (values or {}).items():
+            if det in detectors and value and float(value) > 0:
+                detectors[det]["g_factor"] = float(value)
+                for key in ("g_factor_decay_uuid", "g_factor_calibration_id"):
+                    detectors[det].pop(key, None)
+                changed += 1
+        if changed:
+            self.setup_model.changed()
+            self.context.channel_settings = self.setup_model.get_settings()
+            self._apply_downstream(skip=("data",))
+            self.status = "G factor from the reference dye: " + ", ".join(
+                f"{d} {float(v):.3f}" for d, v in values.items() if d in detectors
+            )
+            self.wants_frame = True
+        return changed
+
     # -- the hand-off ------------------------------------------------------------------------------------ #
     def _changed(self, role: str, what: str, value: Any) -> bool:
         """Whether *value* differs from what *role* was last handed as *what* (and remember it)."""
@@ -579,10 +647,11 @@ class BurstAnalysisHubApp(ToolHubApp):
             if settings:
                 self._handed[(role, "setup")] = _signature(settings)
             prepare_from = ()
+            references = self.context.references()
             if not patterns and self.context.raw_files:
-                self._handed[(role, "prepared")] = _signature(str(self.context.burst_folder))
+                self._handed[(role, "prepared")] = _signature([str(self.context.burst_folder), references])
                 prepare_from = self.context.raw_files  # measured buffer / scatter, else estimated
-            take(self.context.bur_files, settings, prepare_from)
+            take(self.context.bur_files, settings, prepare_from, references)
             if patterns:
                 self._resync.add(role)  # the patterns go in once the bursts are there
             return
@@ -598,11 +667,14 @@ class BurstAnalysisHubApp(ToolHubApp):
         elif (
             child.model.session.bur_files
             and self.context.raw_files
-            and self._changed(role, "prepared", str(self.context.burst_folder))
+            and self._changed(
+                role, "prepared", [str(self.context.burst_folder), self.context.references()]
+            )
         ):
             prepare = getattr(child, "prepare", None)
             if callable(prepare):
-                prepare(self.context.raw_files)  # measured buffer / scatter, else estimated
+                # the IRF / buffer / reference dyes of Data Selection, else those beside the data
+                prepare(self.context.raw_files, self.context.references())
 
     _to_segment_mle = _to_mle
 
@@ -874,6 +946,15 @@ class BurstAnalysisHubApp(ToolHubApp):
         # frame never collects its result: the hub polls it until it is done.
         for role, child in list(self.children.items()):
             if role == self.selected:
+                continue
+            if role == "data":
+                # its calibration runs (and is collected) while another step is on screen
+                poll = getattr(child, "poll_calibration", None)
+                if callable(poll):
+                    try:
+                        poll()
+                    except Exception as exc:  # noqa: BLE001 - shown in the status line
+                        self.status = f"data: {type(exc).__name__}: {exc}"
                 continue
             controller = getattr(child, "controller", None)
             if controller is not None and getattr(controller, "running", False):

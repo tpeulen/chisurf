@@ -54756,7 +54756,7 @@ de corrélation) dans un seul outil à navigation latérale. Construit sur l'env
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="11478" />
             <source>default</source>
-            <translation type="obsolete">défaut</translation>
+            <translation>défaut</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="11305" />
@@ -76801,6 +76801,450 @@ Background (kHz): {bg}</source>
         <message>
             <source>Edit the request if you like, then press &lt;b&gt;Enter&lt;/b&gt; or &lt;b&gt;Send&lt;/b&gt; (Shift+Enter starts a new line; ↑ and ↓ bring back earlier requests). Before an analysis the agent asks about the open choices first; answer in the same box.</source>
             <translation>Modifiez la requête si vous le souhaitez, puis appuyez sur &lt;b&gt;Entrée&lt;/b&gt; ou &lt;b&gt;Envoyer&lt;/b&gt; (Maj+Entrée commence une nouvelle ligne ; ↑ et ↓ rappellent les requêtes précédentes). Avant une analyse, l’agent pose d’abord ses questions sur les choix ouverts ; répondez dans le même champ.</translation>
+        </message>
+        <message>
+            <source>3-D diffusion</source>
+            <translation>diffusion 3-D</translation>
+        </message>
+        <message>
+            <source>A role (measurement, buffer, IRF or reference dye of a colour), and under it what is assigned to it: a workspace group as one entry, single files as themselves.</source>
+            <translation>Un rôle (mesure, tampon, IRF ou colorant de référence d'une couleur) et, en dessous, ce qui lui est attribué : un groupe de l'espace de travail comme une seule entrée, les fichiers isolés tels quels.</translation>
+        </message>
+        <message>
+            <source>Add to</source>
+            <translation>Ajouter à</translation>
+        </message>
+        <message>
+            <source>Apply G to the setup</source>
+            <translation>Appliquer G à la configuration</translation>
+        </message>
+        <message>
+            <source>Assign a measurement first.</source>
+            <translation>Attribuez d'abord une mesure.</translation>
+        </message>
+        <message>
+            <source>Assign it to this row instead.</source>
+            <translation>L'attribuer plutôt à cette ligne.</translation>
+        </message>
+        <message>
+            <source>Assign the row to one row of the table below.</source>
+            <translation>Attribuer la ligne à une ligne du tableau ci-dessous.</translation>
+        </message>
+        <message>
+            <source>Assign this dataset (or the selected ones) to this row.</source>
+            <translation>Attribuer ce jeu de données (ou ceux sélectionnés) à cette ligne.</translation>
+        </message>
+        <message>
+            <source>Assign this entry to another row.</source>
+            <translation>Attribuer cette entrée à une autre ligne.</translation>
+        </message>
+        <message>
+            <source>B {total:.2f} kHz, {n} detectors</source>
+            <translation>B {total:.2f} kHz, {n} détecteurs</translation>
+        </message>
+        <message>
+            <source>Background (buffer)</source>
+            <translation>Fond (tampon)</translation>
+        </message>
+        <message>
+            <source>Background rates from the buffer …</source>
+            <translation>Taux de fond à partir du tampon …</translation>
+        </message>
+        <message>
+            <source>Calibrating with the buffer and reference-dye files …</source>
+            <translation>Étalonnage avec les fichiers de tampon et de colorant de référence …</translation>
+        </message>
+        <message>
+            <source>Choose a setup in 0. Setup Selection for the IRF and reference-dye rows.</source>
+            <translation>Choisissez une configuration dans 0. Sélection de la configuration pour les lignes IRF et colorant de référence.</translation>
+        </message>
+        <message>
+            <source>Choose the dye in the Dye cell of the row (the dye database).</source>
+            <translation>Choisissez le colorant dans la cellule Colorant de la ligne (la base de colorants).</translation>
+        </message>
+        <message>
+            <source>D = {d:.0f} µm²/s — {source}</source>
+            <translation>D = {d:.0f} µm²/s — {source}</translation>
+        </message>
+        <message>
+            <source>Drag a workspace row onto a role row (or right-click it › &lt;b&gt;Add to&lt;/b&gt;).</source>
+            <translation>Faites glisser une ligne de l'espace de travail sur une ligne de rôle (ou clic droit › &lt;b&gt;Ajouter à&lt;/b&gt;).</translation>
+        </message>
+        <message>
+            <source>Drag each dataset onto its role</source>
+            <translation>Glissez chaque jeu de données sur son rôle</translation>
+        </message>
+        <message>
+            <source>Drag workspace data onto a row below to say what it is.</source>
+            <translation>Glissez les données de l'espace de travail sur une ligne ci-dessous pour dire ce qu'elles sont.</translation>
+        </message>
+        <message>
+            <source>Drop a reference-dye measurement on its row.</source>
+            <translation>Déposez une mesure de colorant de référence sur sa ligne.</translation>
+        </message>
+        <message>
+            <source>Every later step reads the files of this step. Each has a role: the measurements are searched for bursts; the buffer, an IRF and a reference dye per colour calibrate.</source>
+            <translation>Chaque étape suivante lit les fichiers de cette étape. Chacun a un rôle : les bursts sont recherchés dans les mesures ; le tampon, une IRF et un colorant de référence par couleur servent à l'étalonnage.</translation>
+        </message>
+        <message>
+            <source>G factor applied</source>
+            <translation>facteur G appliqué</translation>
+        </message>
+        <message>
+            <source>G factor computed</source>
+            <translation>facteur G calculé</translation>
+        </message>
+        <message>
+            <source>G factor, volume</source>
+            <translation>facteur G, volume</translation>
+        </message>
+        <message>
+            <source>Go on to 2. Burst Selection with the measurements.</source>
+            <translation>Passer à 2. Sélection des bursts avec les mesures.</translation>
+        </message>
+        <message>
+            <source>Going on without them: {warning}</source>
+            <translation>Suite sans eux : {warning}</translation>
+        </message>
+        <message>
+            <source>How many files the role or group holds.</source>
+            <translation>Combien de fichiers le rôle ou le groupe contient.</translation>
+        </message>
+        <message>
+            <source>IRFs</source>
+            <translation>IRF</translation>
+        </message>
+        <message>
+            <source>Its &lt;b&gt;Dye&lt;/b&gt; cell picks the dye from the dye database — found in the file's header or name, else the colour's usual dye. Its D gives the confocal volume; its decays give the G factor.</source>
+            <translation>Sa cellule &lt;b&gt;Colorant&lt;/b&gt; choisit le colorant dans la base de colorants — trouvé dans l'en-tête ou le nom du fichier, sinon le colorant habituel de la couleur. Son D donne le volume confocal ; ses déclins donnent le facteur G.</translation>
+        </message>
+        <message>
+            <source>Move to</source>
+            <translation>Déplacer vers</translation>
+        </message>
+        <message>
+            <source>No buffer, IRF or reference dye: background and IRF are estimated from the measurement; G is taken from the setup.</source>
+            <translation>Ni tampon, ni IRF, ni colorant de référence : le fond et l'IRF sont estimés à partir de la mesure ; G est pris de la configuration.</translation>
+        </message>
+        <message>
+            <source>No data yet: drop photon files (.ptu, .spc, .ht3, …) on a row, or drag workspace data from the table above onto a row.</source>
+            <translation>Pas encore de données : déposez des fichiers de photons (.ptu, .spc, .ht3, …) sur une ligne, ou glissez des données de l'espace de travail du tableau ci-dessus sur une ligne.</translation>
+        </message>
+        <message>
+            <source>No row but Measurement is needed. Missing ones are said here: the background and IRF are then estimated from the measurement and G is taken from the setup.</source>
+            <translation>Seule la ligne Mesure est nécessaire. Les manquantes sont signalées ici : le fond et l'IRF sont alors estimés à partir de la mesure et G est pris de la configuration.</translation>
+        </message>
+        <message>
+            <source>Nothing selected. Click an entry of the table to see its details.</source>
+            <translation>Rien de sélectionné. Cliquez sur une entrée du tableau pour voir ses détails.</translation>
+        </message>
+        <message>
+            <source>One row per role, made from the setup of step 0: Measurement, Buffer, and per colour an IRF and a Reference dye. Drag a workspace row onto the role it is; the row under the pointer lights up. Right-click › Move to changes it later.</source>
+            <translation>Une ligne par rôle, issue de la configuration de l'étape 0 : Mesure, Tampon et, par couleur, une IRF et un colorant de référence. Glissez une ligne de l'espace de travail sur son rôle ; la ligne sous le pointeur s'illumine. Clic droit › Déplacer vers le change plus tard.</translation>
+        </message>
+        <message>
+            <source>One row per role: the measurements (searched for bursts), the buffer, and for every colour of the detector setup an IRF and a reference dye. Drag workspace data from the table above onto a row to assign it; drag an entry onto another row, or right-click it › Move to, to change its role. A workspace group is one entry; unfold it for its files. Delete removes the selected entry. A reference row's Dye cell chooses its dye.</source>
+            <translation>Une ligne par rôle : les mesures (où l'on cherche les bursts), le tampon et, pour chaque couleur de la configuration des détecteurs, une IRF et un colorant de référence. Glissez des données de l'espace de travail du tableau ci-dessus sur une ligne pour les attribuer ; glissez une entrée sur une autre ligne, ou clic droit › Déplacer vers, pour changer son rôle. Un groupe de l'espace de travail est une entrée ; dépliez-le pour ses fichiers. Suppr retire l'entrée sélectionnée. La cellule Colorant d'une ligne de référence choisit son colorant.</translation>
+        </message>
+        <message>
+            <source>Open this step in Burst Analysis to write into its setup.</source>
+            <translation>Ouvrez cette étape dans l'analyse des bursts pour écrire dans sa configuration.</translation>
+        </message>
+        <message>
+            <source>Other (custom D)</source>
+            <translation>Autre (D personnalisé)</translation>
+        </message>
+        <message>
+            <source>Proceed to Burst Selection</source>
+            <translation>Passer à la sélection des bursts</translation>
+        </message>
+        <message>
+            <source>Purpose · result</source>
+            <translation>Rôle · résultat</translation>
+        </message>
+        <message>
+            <source>Reference dye — {colour}</source>
+            <translation>Colorant de référence — {colour}</translation>
+        </message>
+        <message>
+            <source>Remove every file from the step.</source>
+            <translation>Retirer tous les fichiers de l'étape.</translation>
+        </message>
+        <message>
+            <source>Remove the selected file, group or row's files from the step.</source>
+            <translation>Retirer de l'étape le fichier, le groupe ou les fichiers de la ligne sélectionnés.</translation>
+        </message>
+        <message>
+            <source>Role / data</source>
+            <translation>Rôle / données</translation>
+        </message>
+        <message>
+            <source>Select an entry in the table first.</source>
+            <translation>Sélectionnez d'abord une entrée du tableau.</translation>
+        </message>
+        <message>
+            <source>Take this file, group or row's files out of the workflow.</source>
+            <translation>Retirer ce fichier, ce groupe ou les fichiers de la ligne du flux de travail.</translation>
+        </message>
+        <message>
+            <source>Temperature of the reference measurement: the database's D (25 °C, water) is corrected to it with the viscosity of water (Stokes-Einstein), as in the FCS calculator. About 2.6 % in D per °C.</source>
+            <translation>Température de la mesure de référence : le D de la base (25 °C, eau) y est corrigé avec la viscosité de l'eau (Stokes-Einstein), comme dans le calculateur FCS. Environ 2,6 % de D par °C.</translation>
+        </message>
+        <message>
+            <source>The buffer's background rates, each colour's G factor beside the setup's with &lt;b&gt;Apply G to the setup&lt;/b&gt;, the temperature D is corrected to, and the confocal volume with its fitted correlation. In Simple mode G is applied as it is computed.</source>
+            <translation>Les taux de fond du tampon, le facteur G de chaque couleur à côté de celui de la configuration avec &lt;b&gt;Appliquer G à la configuration&lt;/b&gt;, la température à laquelle D est corrigé et le volume confocal avec sa corrélation ajustée. En mode simple, G est appliqué dès qu'il est calculé.</translation>
+        </message>
+        <message>
+            <source>The burst search (step 2) gets the measurements and the detector setup of step 0; Burst MLE gets the IRF and buffer.</source>
+            <translation>La recherche de bursts (étape 2) reçoit les mesures et la configuration des détecteurs de l'étape 0 ; la MLE des bursts reçoit l'IRF et le tampon.</translation>
+        </message>
+        <message>
+            <source>The calibration (Advanced)</source>
+            <translation>L'étalonnage (Avancé)</translation>
+        </message>
+        <message>
+            <source>The photon streams in the Datasets workspace. A group of files dropped together is one row. Drop files on the ChiSurf window to add more.</source>
+            <translation>Les flux de photons de l'espace de travail Jeux de données. Un groupe de fichiers déposés ensemble forme une ligne. Déposez des fichiers sur la fenêtre ChiSurf pour en ajouter.</translation>
+        </message>
+        <message>
+            <source>The photon streams in the workspace. Drag a row (a group is one row) onto a row of the table below to say what it is: measurement, buffer, IRF or reference dye; or right-click it › Add to.</source>
+            <translation>Les flux de photons de l'espace de travail. Glissez une ligne (un groupe est une ligne) sur une ligne du tableau ci-dessous pour dire ce qu'elle est : mesure, tampon, IRF ou colorant de référence ; ou clic droit › Ajouter à.</translation>
+        </message>
+        <message>
+            <source>The reference dye</source>
+            <translation>Le colorant de référence</translation>
+        </message>
+        <message>
+            <source>The reference dye of this colour, from the dye database (its D at 25 °C in water, corrected to the temperature of the measurement): found in the file's header or name, else the colour's usual dye. Click to choose another, or Other (custom D).</source>
+            <translation>Le colorant de référence de cette couleur, tiré de la base de colorants (son D à 25 °C dans l'eau, corrigé à la température de la mesure) : trouvé dans l'en-tête ou le nom du fichier, sinon le colorant habituel de la couleur. Cliquez pour en choisir un autre, ou Autre (D personnalisé).</translation>
+        </message>
+        <message>
+            <source>The setup has these G factors.</source>
+            <translation>La configuration a ces facteurs G.</translation>
+        </message>
+        <message>
+            <source>The workspace's data</source>
+            <translation>Les données de l'espace de travail</translation>
+        </message>
+        <message>
+            <source>Unassigned</source>
+            <translation>Non attribué</translation>
+        </message>
+        <message>
+            <source>What is estimated instead</source>
+            <translation>Ce qui est estimé à la place</translation>
+        </message>
+        <message>
+            <source>What the role is for and, once computed, what its files gave; for an empty role, what is used instead (the background and IRF estimated from the measurement, G from the setup).</source>
+            <translation>À quoi sert le rôle et, une fois calculé, ce que ses fichiers ont donné ; pour un rôle vide, ce qui est utilisé à la place (fond et IRF estimés à partir de la mesure, G de la configuration).</translation>
+        </message>
+        <message>
+            <source>What the workflow works on</source>
+            <translation>Ce sur quoi travaille le flux</translation>
+        </message>
+        <message>
+            <source>What this workflow works on</source>
+            <translation>Ce sur quoi travaille ce flux</translation>
+        </message>
+        <message>
+            <source>Where the dye came from: chosen by you, the file's header, its name, or the colour's default.</source>
+            <translation>D'où vient le colorant : choisi par vous, l'en-tête du fichier, son nom ou le défaut de la couleur.</translation>
+        </message>
+        <message>
+            <source>Workspace data</source>
+            <translation>Données de l'espace de travail</translation>
+        </message>
+        <message>
+            <source>Write these G factors into the G-Factor column of 0. Setup Selection.</source>
+            <translation>Écrire ces facteurs G dans la colonne Facteur G de 0. Sélection de la configuration.</translation>
+        </message>
+        <message>
+            <source>Your own diffusion coefficient of the reference dye, at its temperature.</source>
+            <translation>Votre propre coefficient de diffusion du colorant de référence, à sa température.</translation>
+        </message>
+        <message>
+            <source>a fast-rotating free dye: G factor and confocal volume</source>
+            <translation>un colorant libre à rotation rapide : facteur G et volume confocal</translation>
+        </message>
+        <message>
+            <source>background</source>
+            <translation>fond</translation>
+        </message>
+        <message>
+            <source>background {rate:.2f} kHz</source>
+            <translation>fond {rate:.2f} kHz</translation>
+        </message>
+        <message>
+            <source>blue</source>
+            <translation>bleu</translation>
+        </message>
+        <message>
+            <source>buffer</source>
+            <translation>tampon</translation>
+        </message>
+        <message>
+            <source>buffers</source>
+            <translation>tampons</translation>
+        </message>
+        <message>
+            <source>burst data</source>
+            <translation>données de bursts</translation>
+        </message>
+        <message>
+            <source>burst data: searched in 2. Burst Selection</source>
+            <translation>données de bursts : recherchées dans 2. Sélection des bursts</translation>
+        </message>
+        <message>
+            <source>computing …</source>
+            <translation>calcul …</translation>
+        </message>
+        <message>
+            <source>could not be computed (see Calibration)</source>
+            <translation>n'a pas pu être calculé (voir Étalonnage)</translation>
+        </message>
+        <message>
+            <source>drag to a row</source>
+            <translation>glisser sur une ligne</translation>
+        </message>
+        <message>
+            <source>drop the measurements here</source>
+            <translation>déposez les mesures ici</translation>
+        </message>
+        <message>
+            <source>file name</source>
+            <translation>nom de fichier</translation>
+        </message>
+        <message>
+            <source>from</source>
+            <translation>de</translation>
+        </message>
+        <message>
+            <source>from file name</source>
+            <translation>du nom de fichier</translation>
+        </message>
+        <message>
+            <source>from header</source>
+            <translation>de l'en-tête</translation>
+        </message>
+        <message>
+            <source>green</source>
+            <translation>vert</translation>
+        </message>
+        <message>
+            <source>header</source>
+            <translation>en-tête</translation>
+        </message>
+        <message>
+            <source>its row is not in this setup: drag it to a row</source>
+            <translation>sa ligne n'existe pas dans cette configuration : glissez-le sur une ligne</translation>
+        </message>
+        <message>
+            <source>measurement</source>
+            <translation>mesure</translation>
+        </message>
+        <message>
+            <source>measurements</source>
+            <translation>mesures</translation>
+        </message>
+        <message>
+            <source>no IRF: estimated from the non-burst photons</source>
+            <translation>pas d'IRF : estimée à partir des photons hors bursts</translation>
+        </message>
+        <message>
+            <source>no buffer: background from the photons outside the bursts</source>
+            <translation>pas de tampon : fond à partir des photons hors des bursts</translation>
+        </message>
+        <message>
+            <source>no reference dye: G from the setup, no confocal volume</source>
+            <translation>pas de colorant de référence : G de la configuration, pas de volume confocal</translation>
+        </message>
+        <message>
+            <source>not used: G factor from the setup ({g}); no confocal volume</source>
+            <translation>non utilisé : facteur G de la configuration ({g}) ; pas de volume confocal</translation>
+        </message>
+        <message>
+            <source>not used: IRF from the non-burst photons / blind estimate</source>
+            <translation>non utilisé : IRF à partir des photons hors bursts / estimation aveugle</translation>
+        </message>
+        <message>
+            <source>not used: background from the photons outside the bursts</source>
+            <translation>non utilisé : fond à partir des photons hors des bursts</translation>
+        </message>
+        <message>
+            <source>red</source>
+            <translation>rouge</translation>
+        </message>
+        <message>
+            <source>reference dye</source>
+            <translation>colorant de référence</translation>
+        </message>
+        <message>
+            <source>reference dyes</source>
+            <translation>colorants de référence</translation>
+        </message>
+        <message>
+            <source>scatter / water</source>
+            <translation>diffusion / eau</translation>
+        </message>
+        <message>
+            <source>scatter / water: the IRF of Burst MLE</source>
+            <translation>diffusion / eau : l'IRF de la MLE des bursts</translation>
+        </message>
+        <message>
+            <source>setup</source>
+            <translation>configuration</translation>
+        </message>
+        <message>
+            <source>the IRF of Burst MLE</source>
+            <translation>l'IRF de la MLE des bursts</translation>
+        </message>
+        <message>
+            <source>the buffer without dye: background rate, scatter correction</source>
+            <translation>le tampon sans colorant : taux de fond, correction de la diffusion</translation>
+        </message>
+        <message>
+            <source>used as the IRF of Burst MLE</source>
+            <translation>utilisée comme IRF de la MLE des bursts</translation>
+        </message>
+        <message>
+            <source>user</source>
+            <translation>utilisateur</translation>
+        </message>
+        <message>
+            <source>volume stored</source>
+            <translation>volume enregistré</translation>
+        </message>
+        <message>
+            <source>workspace group</source>
+            <translation>groupe de l'espace de travail</translation>
+        </message>
+        <message>
+            <source>yellow</source>
+            <translation>jaune</translation>
+        </message>
+        <message>
+            <source>{n} file(s), {size}</source>
+            <translation>{n} fichier(s), {size}</translation>
+        </message>
+        <message>
+            <source>{n} to search for bursts</source>
+            <translation>{n} où chercher des bursts</translation>
+        </message>
+        <message>
+            <source>{n} unassigned</source>
+            <translation>{n} non attribué(s)</translation>
+        </message>
+        <message>
+            <source>→ G {g} (setup)</source>
+            <translation>→ G {g} (configuration)</translation>
+        </message>
+        <message>
+            <source>→ non-burst photons</source>
+            <translation>→ photons hors bursts</translation>
+        </message>
+        <message>
+            <source>→ photons outside bursts</source>
+            <translation>→ photons hors des bursts</translation>
         </message>
     </context>
     <context>

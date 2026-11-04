@@ -1,20 +1,26 @@
 """Step 1 of the burst workflow, *Data Selection*, drawn with emtk.
 
-:class:`BurstDataSelectionModel` holds the raw TTTR files every later step reads, and registers each newly added
-local file in MMFDB (object store + raw-data registry) through :func:`import_raw_file`. Nothing in it imports Qt.
+:class:`BurstDataSelectionModel` holds the raw TTTR files every later step reads and the role
+each is assigned to -- measurement, buffer, and per colour of the detector setup an IRF and a
+reference dye (:mod:`..samples`) -- and registers each newly added local file in MMFDB (object
+store + raw-data registry) through :func:`import_raw_file`. Nothing in it imports Qt.
 
-:class:`BurstDataSelectionApp` draws a *source* -- the model, or any object that
-speaks the same few methods (``paths``, ``add_paths``, ``remove_index``, ``clear``, ``mmfdb_payload``,
-``import_path``) -- as three windows: the file table (``data_table`` from ``data_selection.view.json``), the
-selected file's details with its MMFDB status, and a summary. Files come from the Datasets workspace: the
-Input section lists its photon streams (the hosting plugin's manifest ``accepts`` ``photons``).
+:class:`BurstDataSelectionApp` draws a *source* -- the model, or any object that speaks the same
+few methods (``paths``, ``add_paths``, ``remove_index``, ``clear``, ``mmfdb_payload``,
+``import_path``) -- as four windows: the data (the Datasets workspace's photon streams on top,
+the assignment table under them: one row per role, made from the setup, each listing what is
+assigned to it), the selected entry's details, a summary, and the calibrations the buffer and
+reference-dye files give (computed off the UI thread). A dataset dropped on a row of the
+assignment table is that role; only the Measurement row goes to Burst Selection.
 """
 
 from __future__ import annotations
 
 import base64
 import datetime
+import json
 import logging
+import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -27,6 +33,7 @@ from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.core.fio.staging import TTTR_EXTENSIONS
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.burst.workspace_io import NamedWorkspaceInput
 from chisurf.plugins.emtk_layout import action_caption, action_tooltip, button_row
 
 HERE = Path(__file__).resolve().parent
@@ -134,7 +141,13 @@ def import_raw_file(client: Any, path: Path) -> dict[str, Any]:
 
 
 class BurstDataSelectionModel:
-    """The raw TTTR files of a burst workflow, and their MMFDB registration (no Qt, no emtk).
+    """The raw TTTR files of a burst workflow, what each is, and their MMFDB registration (no Qt, no emtk).
+
+    Every file is assigned to a row of the step's assignment table (:attr:`assignments`,
+    ``{path: row key}``): ``measurement`` (searched for bursts), ``buffer``, and per colour of the
+    detector setup ``irf:<colour>`` and ``reference:<colour>``
+    (:func:`chisurf.plugins.burst.burst_analysis.samples.row_keys`). Files that came from one
+    workspace group stay one group (:attr:`groups`, :attr:`group_of`).
 
     Parameters
     ----------
@@ -144,7 +157,7 @@ class BurstDataSelectionModel:
     auto_import : bool
         Register each newly added file in MMFDB, on every add.
     on_change : callable, optional
-        Called after the file list changed.
+        Called after the file list or an assignment changed.
     """
 
     def __init__(
@@ -167,10 +180,26 @@ class BurstDataSelectionModel:
         #: Which workspace dataset each file came from (its burst runs go into that dataset's
         #: analysis container in the project).
         self.sources: dict[str, str] = {}
+        #: ``{path: row key}``: the row each file is assigned to (as stored: a row of a colour the
+        #: setup no longer has is kept, and shown as unassigned).
+        self.assignments: dict[str, str] = {}
+        #: ``{group uid: name}`` of the workspace groups files came from, and ``{path: group uid}``.
+        self.groups: dict[str, str] = {}
+        self.group_of: dict[str, str] = {}
+        #: The detector setup the rows are made from (the workflow's step 0), and where the
+        #: live one is read from (set by the app).
+        self.setup: dict[str, Any] = {}
+        self.setup_provider: Callable[[], dict] | None = None
+        #: What the buffer and reference-dye files gave (:func:`..samples.calibrate`).
+        self.calibration: dict[str, Any] = {}
+        #: ``{colour: dye}`` of the reference-dye rows (:func:`..samples.dye_choice`: the database
+        #: dye, where it came from -- ``user``, ``header``, ``file name``, ``default`` -- the
+        #: temperature and a custom D). A dye the user chose is never replaced by an inference.
+        self.dyes: dict[str, dict] = {}
 
     # -- the source protocol ------------------------------------------------------------------------------- #
     def paths(self) -> list[Path]:
-        """The selected raw TTTR files, in order."""
+        """Every file of the step, in order (measurements and calibration files)."""
         return list(self._paths)
 
     def mmfdb_payload(self) -> dict[str, Any]:
@@ -184,21 +213,31 @@ class BurstDataSelectionModel:
             self._client = session_client()
         return self._client
 
-    def add_paths(self, paths) -> int:
-        """Add files and folders (expanded, de-duplicated); register new local files. Returns how many were added."""
+    def add_paths(self, paths, row: str | None = None) -> int:
+        """Add files and folders (expanded, de-duplicated) to *row* (default: guessed from each
+        name, else ``measurement``); register new local files. A file already listed moves to
+        *row* when one is given. Returns how many were added."""
+        from ..samples import guess_sample_type
+
         added = 0
+        moved = False
         for path in expand_paths(paths):
+            key = str(path)
             if path in self._paths:
+                if row and self.assignments.get(key) != row:
+                    self.assignments[key] = row
+                    moved = True
                 continue
             self._paths.append(path)
+            self.assignments[key] = row or guess_sample_type(path)
             added += 1
-            key = str(path)
             if self.auto_import and key not in self._imported:
                 self._imported.add(key)
                 self.import_path(path)
         if added and self.selected_index is None:
             self.selected_index = 0
-        self._changed()
+        if added or moved:
+            self._changed()
         return added
 
     def import_path(self, path: Path) -> dict[str, Any]:
@@ -222,15 +261,40 @@ class BurstDataSelectionModel:
         self._changed(notify=False)
         return entry
 
+    def _forget(self, path: Path) -> None:
+        key = str(path)
+        self.assignments.pop(key, None)
+        group = self.group_of.pop(key, None)
+        if group and group not in self.group_of.values():
+            self.groups.pop(group, None)
+
     def remove_index(self, index: int) -> None:
         if 0 <= index < len(self._paths):
-            del self._paths[index]
+            self._forget(self._paths.pop(index))
             if self.selected_index is not None and self.selected_index >= len(self._paths):
                 self.selected_index = len(self._paths) - 1 if self._paths else None
             self._changed()
 
+    def remove_paths(self, paths) -> int:
+        """Take *paths* out of the step; returns how many were listed."""
+        wanted = {str(p) for p in paths}
+        keep = [p for p in self._paths if str(p) not in wanted]
+        removed = len(self._paths) - len(keep)
+        for path in self._paths:
+            if str(path) in wanted:
+                self._forget(path)
+        self._paths = keep
+        if self.selected_index is not None and self.selected_index >= len(self._paths):
+            self.selected_index = len(self._paths) - 1 if self._paths else None
+        if removed:
+            self._changed()
+        return removed
+
     def clear(self) -> None:
         self._paths.clear()
+        self.assignments.clear()
+        self.groups.clear()
+        self.group_of.clear()
         self.selected_index = None
         self._changed()
 
@@ -244,6 +308,57 @@ class BurstDataSelectionModel:
         }
         self._imported.add(str(path))
         self.add_paths([path])
+
+    # -- rows ------------------------------------------------------------------------------------------------ #
+    def assign(self, paths, row: str) -> int:
+        """Move *paths* to *row*; returns how many changed."""
+        changed = 0
+        for path in paths:
+            key = str(Path(path))
+            if key in self.assignments and self.assignments[key] != row:
+                self.assignments[key] = row
+                changed += 1
+        if changed:
+            self._changed()
+        return changed
+
+    def set_group(self, paths, uid: str, name: str) -> None:
+        """Keep *paths* together as the workspace group *uid* named *name*."""
+        if not uid:
+            return
+        self.groups[str(uid)] = str(name or uid)
+        for path in paths:
+            if Path(path) in self._paths or str(path) in self.assignments:
+                self.group_of[str(Path(path))] = str(uid)
+
+    def row_of(self, path) -> str:
+        """The row *path* is shown in with the current setup (``"unassigned"``: its row is gone)."""
+        from ..samples import resolve_row
+
+        key = str(path)
+        return resolve_row(self.assignments.get(key, "measurement"), self.current_setup(), key)
+
+    def current_setup(self) -> dict:
+        """The setup the rows are made from: the workflow's live (:attr:`setup_provider`), else
+        the last one the step was given (:attr:`setup`)."""
+        if callable(self.setup_provider):
+            try:
+                self.setup = dict(self.setup_provider() or {})
+            except Exception:  # noqa: BLE001 - keep the last one
+                pass
+        return self.setup
+
+    def rows(self) -> dict[str, str]:
+        """``{path: row}`` of every file, as the current setup shows them."""
+        return {str(p): self.row_of(p) for p in self._paths}
+
+    def measurement_paths(self) -> list[Path]:
+        """The files in the Measurement row: what Burst Selection searches."""
+        return [p for p in self._paths if self.row_of(p) == "measurement"]
+
+    def paths_in(self, row: str) -> list[Path]:
+        """The files shown in *row*."""
+        return [p for p in self._paths if self.row_of(p) == row]
 
     # -- views --------------------------------------------------------------------------------------------- #
     def imported_count(self) -> int:
@@ -261,10 +376,21 @@ class BurstDataSelectionModel:
 
     # -- persistence --------------------------------------------------------------------------------------- #
     def export_settings(self) -> dict[str, Any]:
-        return {"paths": [str(p) for p in self._paths]}
+        paths = [str(p) for p in self._paths]
+        return {
+            "paths": paths,
+            "assignments": {p: self.assignments.get(p, "measurement") for p in paths},
+            "groups": dict(self.groups),
+            "group_of": {p: g for p, g in self.group_of.items() if p in paths},
+            "dyes": {k: dict(v) for k, v in self.dyes.items()},
+            "calibration": self.calibration,
+        }
 
     def restore_settings(self, state: dict[str, Any] | None) -> None:
-        paths = [p for p in (state or {}).get("paths", []) if Path(p).exists()]
+        state = state or {}
+        paths = [p for p in state.get("paths", []) if Path(p).exists()]
+        self.dyes = {str(k): dict(v) for k, v in (state.get("dyes") or {}).items() if isinstance(v, dict)}
+        self.calibration = dict(state.get("calibration") or {})
         if paths:
             auto, self.auto_import = (
                 self.auto_import,
@@ -274,6 +400,14 @@ class BurstDataSelectionModel:
                 self.add_paths(paths)
             finally:
                 self.auto_import = auto
+            for path, row in (state.get("assignments") or {}).items():
+                if str(Path(path).resolve()) in self.assignments:
+                    self.assignments[str(Path(path).resolve())] = str(row)
+            self.groups.update({str(k): str(v) for k, v in (state.get("groups") or {}).items()})
+            for path, group in (state.get("group_of") or {}).items():
+                if str(Path(path).resolve()) in self.assignments:
+                    self.group_of[str(Path(path).resolve())] = str(group)
+            self._changed()
 
 
 def _registered(entry: dict | None) -> bool:
@@ -293,8 +427,134 @@ def _status(entry: dict | None) -> str:
     return "in MMFDB"
 
 
+#: What each row of the assignment table is for (shown until a result replaces it).
+ROW_PURPOSE = {
+    "measurement": "burst data: searched in 2. Burst Selection",
+    "buffer": "the buffer without dye: background rate, scatter correction",
+    "irf": "scatter / water: the IRF of Burst MLE",
+    "reference": "a fast-rotating free dye: G factor and confocal volume",
+    "unassigned": "its row is not in this setup: drag it to a row",
+}
+
+#: What an empty role row says it is for (the table's column is narrow; the tooltip has more).
+ROW_SHORT = {
+    "measurement": "burst data",
+    "buffer": "background",
+    "irf": "scatter / water",
+    "reference": "G factor, volume",
+    "unassigned": "drag to a row",
+}
+
+#: The colour of the step's warning line (missing calibration files).
+WARNING_COLOUR = (240, 190, 80, 255)
+
+#: Said under the table while no setup gives the per-colour rows.
+NO_SETUP_HINT = "Choose a setup in 0. Setup Selection for the IRF and reference-dye rows."
+
+
+class CalibrationJob:
+    """The calibrations of :func:`..samples.calibrate`, computed on a thread.
+
+    ``busy`` and ``progress`` are what the shell's busy overlay reads (the step is blurred with a
+    progress card while it runs); :meth:`take` hands the finished ``(signature, result)`` back
+    once."""
+
+    def __init__(self) -> None:
+        self.busy = False
+        self.progress = ""
+        self._result: tuple | None = None
+        self._lock = threading.Lock()
+
+    def start(self, rows: dict, setup: dict, dyes: dict, signature: str, on_done=None) -> bool:
+        if self.busy:
+            return False
+        from ..samples import calibrate
+
+        self.busy = True
+        self.progress = tr("Calibrating with the buffer and reference-dye files …")
+
+        def say(text: str) -> None:
+            self.progress = tr(text)
+
+        def run() -> None:
+            try:
+                result = calibrate(rows, setup, dyes=dyes, progress=say)
+            except Exception as exc:  # noqa: BLE001 - reported with the results
+                result = {"errors": [str(exc)], "colours": {}}
+            with self._lock:
+                self._result = (signature, result)
+            self.busy = False
+            if callable(on_done):
+                on_done()
+
+        threading.Thread(target=run, name="burst-calibration", daemon=True).start()
+        return True
+
+    def take(self) -> tuple | None:
+        with self._lock:
+            result, self._result = self._result, None
+        return result
+
+
+def _workspace_listing() -> list[dict]:
+    """The Datasets workspace's summaries (empty without a session)."""
+    try:
+        from chisurf.core.plugin.workspace_input import _api
+
+        return list(_api().list_datasets() or [])
+    except Exception:  # noqa: BLE001 - no workspace: nothing to read
+        return []
+
+
+class _SampleInput(NamedWorkspaceInput):
+    """The Input section of Data Selection: a row dropped on a row of the assignment table is
+    assigned to it; right-click › *Add to* › a row does the same."""
+
+    def workspace_input_drag(self, record, x, y, dropped, on_table=False) -> None:
+        app = self.workspace_input_app
+        row = app.row_at(x, y) if app is not None and not on_table else None
+        if app is not None:
+            # the role row the drag would land on is shown as the drop target until it is let go
+            app.drop_target = None if dropped or not row else f"row:{row}"
+        if not dropped or on_table:
+            return
+        rows = self._workspace_input_rows_of(record)
+        if rows:
+            self._deliver_to(rows, row)
+
+    def workspace_input_add_to(self, record) -> list[dict]:
+        """The rows of the assignment table, for the Input table's *Add to* submenu."""
+        app = self.workspace_input_app
+        if app is None:
+            return []
+        return [
+            {
+                "label": label,
+                "group": "Add to",
+                "description": tr("Assign this dataset (or the selected ones) to this row."),
+                "call": lambda rec, row=row: self._deliver_to(self._workspace_input_rows_of(rec), row),
+            }
+            for row, label in app.row_choices()
+        ]
+
+    def _deliver_to(self, rows: list[dict], row: str | None) -> None:
+        app = self.workspace_input_app
+        if app is not None:
+            app._drop_row = row
+        try:
+            self._workspace_input_deliver(rows)
+        finally:
+            if app is not None:
+                app._drop_row = None
+
+
 class BurstDataSelectionApp(TourTarget, ImApp):
-    """Files, details and summary of the workflow's raw data (emtk; no Qt).
+    """What the workflow works on, by role, and the calibrations of the non-measurement files (emtk; no Qt).
+
+    The Input section (top) lists the workspace's photon streams; the assignment table (bottom)
+    has one row per role -- Measurement, Buffer, and per colour of the detector setup an IRF and
+    a Reference dye -- and lists what is assigned to each. A dataset dropped on a row is that
+    role; only the Measurement row goes to Burst Selection.
 
     Parameters
     ----------
@@ -302,13 +562,19 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         What is drawn and edited (default: a new :class:`BurstDataSelectionModel`).
     on_proceed : callable, optional
         Called by *Proceed to Burst Selection* (the workflow hub moves to the next step).
+    setup_provider : callable, optional
+        Returns the workflow's detector setup (the rows are made from it).
+    on_apply_g : callable, optional
+        ``on_apply_g({detector: G})``: write G factors into the setup (step 0's G-Factor column).
+    on_calibrated : callable, optional
+        Called with the calibration result once it is computed.
     """
 
     #: The plugin whose manifest ``accepts`` ``photons`` the Input section feeds.
     WORKSPACE_PLUGIN = "burst_analysis"
     #: The Summary dock's proceed button and its tooltip (a workflow whose next step is another one renames it).
     PROCEED_LABEL = "Proceed to Burst Selection"
-    PROCEED_TIP = "Go on to 2. Burst Selection with these files."
+    PROCEED_TIP = "Go on to 2. Burst Selection with the measurements."
 
     def __init__(
         self,
@@ -317,26 +583,65 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         on_proceed: Callable[[], None] | None = None,
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
+        setup_provider: Callable[[], dict] | None = None,
+        on_apply_g: Callable[[dict], Any] | None = None,
+        on_calibrated: Callable[[dict], Any] | None = None,
     ) -> None:
         self.source = source if source is not None else BurstDataSelectionModel()
         self.model = self.source
         self.on_proceed = on_proceed
         self._on_guide = on_guide
         self._on_help = on_help
+        self.setup_provider = setup_provider
+        if setup_provider is not None and hasattr(self.source, "setup_provider"):
+            self.source.setup_provider = setup_provider
+        self.on_apply_g = on_apply_g
+        self.on_calibrated = on_calibrated
+        #: Called from the calibration thread when it is done (a hub wakes its frame loop).
+        self.on_wake: Callable[[], Any] | None = None
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.filter_text = ""
         self.selected_index: int | None = None
+        #: The selected entry of the assignment table (its record).
+        self.selected_entry: dict | None = None
+        #: Rows of the assignment table shown unfolded (the role rows at first, never a group).
+        self.expanded_rows: set = set()
+        self._seen_rows: set = set()
+        #: The row a drop or an *Add to* assigns to (``None``: guessed from the name).
+        self._drop_row: str | None = None
+        #: The row under the pointer: where a file dropped on the window goes.
+        self._hover_row: str | None = None
+        #: The role row a workspace row being dragged would land on (drawn as the drop target).
+        self.drop_target: str | None = None
+        self.job = CalibrationJob()
+        self._calibrated_for = ""
         self.form = FormState()
-        self.spec = load_view_spec(str(HERE / "data_selection.view.json"))
+        self._spec_full = load_view_spec(str(HERE / "data_selection.view.json"))
+        self.spec = self._table_spec(True)
         self.message = ""
-        # The Input section: the workspace's photon streams.
+        # The Input section: the workspace's photon streams; a row dropped on a role row is that role.
         from chisurf.core.plugin.workspace_input import input_section, spec_for
         from chisurf.emtk.plugins import manifest
-        from chisurf.plugins.burst.workspace_io import NamedWorkspaceInput
 
-        self.input = NamedWorkspaceInput(self.WORKSPACE_PLUGIN, "photons", app=self)
+        self.input = _SampleInput(self.WORKSPACE_PLUGIN, "photons", app=self)
         found = spec_for(manifest(self.WORKSPACE_PLUGIN), kind="photons")
-        self.input_spec = {"sections": [input_section(found[1])]} if found else {"sections": []}
+        section = input_section(found[1], title="Workspace data") if found else None
+        if section is not None:
+            table = next(
+                (x for x in section.get("sections", []) if (x.get("options") or {}).get("source") == "workspace_input_rows"),
+                None,
+            )
+            if table is not None:
+                table["options"]["context_menu"] = list(table["options"].get("context_menu") or []) + [
+                    {"label": "Add to", "items_source": "workspace_input_add_to",
+                     "description": "Assign the row to one row of the table below."}
+                ]
+                table["description"] = (
+                    "The photon streams in the workspace. Drag a row (a group is one row) onto a "
+                    "row of the table below to say what it is: measurement, buffer, IRF or "
+                    "reference dye; or right-click it › Add to."
+                )
+        self.input_spec = {"sections": [section]} if section else {"sections": []}
         self.input_form = FormState()
         self.help_window = EmTkHelpWindow(
             title="Data Selection - Help",
@@ -354,30 +659,66 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         self.form.on_used = self.tour.notify_used
         self.docks = DockManager(
             Split(
-                "h", 0.62, Region("files"), Split("v", 0.55, Region("details"), Region("summary"))
+                "h",
+                0.64,
+                Region("files"),
+                Split("v", 0.3, Region("details"), Split("v", 0.34, Region("summary"), Region("calibration"))),
             ),
             name="burst_data_selection",
         )
+        self.docks.add_window("files", "Data", self._draw_files, dock="files", closable=False)
+        self.docks.add_window("details", "Details", self._draw_details, dock="details", closable=False)
+        self.docks.add_window("summary", "Summary", self._draw_summary, dock="summary", closable=False)
         self.docks.add_window(
-            "files", "TTTR data files", self._draw_files, dock="files", closable=False
-        )
-        self.docks.add_window(
-            "details", "File details", self._draw_details, dock="details", closable=False
-        )
-        self.docks.add_window(
-            "summary", "Summary", self._draw_summary, dock="summary", closable=False
+            "calibration", "Calibration", self._draw_calibration, dock="calibration", closable=False
         )
         super().__init__(gui=self._render, continuous=False)
 
     #: The workflow's Simple / Advanced mode (standalone: everything).
     advanced = True
 
+    def _table_spec(self, advanced: bool) -> dict:
+        """The assignment table for a mode: Simple leaves out the technical columns (where a dye
+        came from, size, MMFDB) and calls the result column *Status*; the Dye cell lists the dye
+        database (:func:`chisurf.core.fluorescence.dyes.dye_names`) and *Other (custom D)*."""
+        import copy
+
+        from chisurf.core.fluorescence.dyes import dye_names
+
+        from ..samples import CUSTOM_DYE
+
+        spec = copy.deepcopy(self._spec_full)
+        for section in spec["sections"]:
+            options = section.get("options") or {}
+            columns = []
+            for column in options.get("columns") or []:
+                if column.pop("advanced", False) and not advanced:
+                    continue
+                title = column.pop("simple_title", None)
+                if title and not advanced:
+                    column["title"] = title
+                if column.get("key") == "dye":
+                    try:
+                        names = list(dye_names())
+                    except Exception:  # noqa: BLE001 - no dye database: the custom D only
+                        names = []
+                    column["choices"] = names + [CUSTOM_DYE]
+                columns.append(column)
+            options["columns"] = columns
+        return spec
+
     def set_advanced(self, advanced: bool) -> None:
-        """Simple: the files and how to add them. The file details (path, MMFDB import) and the
-        summary are Advanced -- unless a workflow puts controls of its own in the summary."""
+        """Simple: the data, its roles with a plain status each, and the dye of each reference
+        row; the G factors are applied and the volumes stored as they are computed. The details,
+        the summary and the Calibration window (curves, D, temperature, Apply G) are Advanced --
+        the summary stays when a workflow puts controls of its own in it."""
+        changed = bool(advanced) != self.advanced
         self.advanced = bool(advanced)
+        if changed:
+            self.spec = self._table_spec(self.advanced)
+            self.form.tables.pop("assignment_rows", None)  # bound again with the mode's columns
         keep_summary = type(self)._draw_summary_extra is not BurstDataSelectionApp._draw_summary_extra
-        for key in ("details",) + (() if keep_summary else ("summary",)):
+        for key in ("details", "calibration") + (() if keep_summary else ("summary",)):
             if key in self.docks.windows:
                 if advanced:
                     self.docks.show(key)
@@ -401,69 +742,514 @@ class BurstDataSelectionApp(TourTarget, ImApp):
     def track(self, name: str) -> None:
         self.tour.notify_used(name)
 
-    # -- what the file table binds to ----------------------------------------------------------------------- #
+    # -- the setup the rows come from ----------------------------------------------------------------------- #
+    def setup(self) -> dict:
+        """The detector setup of the workflow (``{}``: none chosen)."""
+        setup = {}
+        if callable(self.setup_provider):
+            try:
+                setup = dict(self.setup_provider() or {})
+            except Exception:  # noqa: BLE001 - no setup: the rows without colours
+                setup = {}
+        if hasattr(self.source, "setup"):
+            self.source.setup = setup
+        return setup
+
+    def row_keys(self) -> list[str]:
+        """The rows of the assignment table, from the setup (plus ``unassigned`` while used)."""
+        from ..samples import row_keys
+
+        keys = row_keys(self.setup())
+        rows = getattr(self.source, "rows", None)
+        if callable(rows) and "unassigned" in rows().values():
+            keys.append("unassigned")
+        return keys
+
+    def row_choices(self) -> list[tuple[str, str]]:
+        """``[(row key, label)]`` a dataset can be assigned to."""
+        from ..samples import row_keys, row_label
+
+        setup = self.setup()
+        return [(key, row_label(key, setup)) for key in row_keys(setup)]
+
+    # -- what the assignment table binds to ----------------------------------------------------------------- #
     def _paths(self) -> list[Path]:
         return list(self.source.paths())
 
-    def file_rows(self) -> list[dict]:
+    def _row_of(self, path) -> str:
+        row_of = getattr(self.source, "row_of", None)
+        return row_of(path) if callable(row_of) else "measurement"
+
+    def assignment_rows(self) -> list[dict]:
+        """The role rows and, under each, what is assigned to it: a workspace group as one entry
+        (its files under it), single files as themselves."""
+        from ..samples import row_label
+
+        setup = self.setup()
         imports = self.source.mmfdb_payload().get("imports", {})
+        groups = dict(getattr(self.source, "groups", {}) or {})
+        group_of = dict(getattr(self.source, "group_of", {}) or {})
         query = self.filter_text.casefold()
-        rows = []
-        for index, path in enumerate(self._paths()):
-            if query and query not in path.name.casefold():
-                continue
-            try:
-                size = _format_size(path.stat().st_size)
-            except OSError:
-                size = "missing"
-            rows.append(
+        paths = self._paths()
+        out: list[dict] = []
+        for row in self.row_keys():
+            key = f"row:{row}"
+            if key not in self._seen_rows:
+                self._seen_rows.add(key)
+                self.expanded_rows.add(key)  # a role row shows what it holds
+            members = [(i, p) for i, p in enumerate(paths) if self._row_of(p) == row]
+            shown = [(i, p) for i, p in members if not query or query in p.name.casefold()]
+            out.append(
                 {
-                    "index": index,
-                    "number": index + 1,
-                    "file": path.name,
-                    "size": size,
-                    "format": path.suffix.upper().lstrip("."),
-                    "status": _status(imports.get(str(path))),
-                    "path": str(path),
+                    "key": key,
+                    "parent": "",
+                    "row": row,
+                    "name": row_label(row, setup, short=True),
+                    **self._dye_cells(row),
+                    "tip": f"{row_label(row, setup)}: {tr(ROW_PURPOSE.get(row.partition(':')[0], ''))}",
+                    "files": str(len(members)) if members else "",
+                    "info": self.row_info(row, [p for _i, p in members]),
+                    "size": _format_size(_total_size(p for _i, p in members)) if members else "",
+                    "status": "",
                 }
             )
-        return rows
+            done_groups: set = set()
+            for index, path in shown:
+                group = group_of.get(str(path))
+                parent = key
+                if group:
+                    gkey = f"grp:{group}@{row}"
+                    parent = gkey
+                    if group not in done_groups:
+                        done_groups.add(group)
+                        in_group = [p for _i, p in members if group_of.get(str(p)) == group]
+                        out.append(
+                            {
+                                "key": gkey,
+                                "parent": key,
+                                "row": row,
+                                "group": group,
+                                "name": f"🗂 {groups.get(group, group)}",
+                                "files": str(len(in_group)),
+                                "info": tr("workspace group"),
+                                "size": _format_size(_total_size(in_group)),
+                                "status": "",
+                                "paths": [str(p) for p in in_group],
+                                "dye": "",
+                                "dye_how": "",
+                                "tip": "\n".join(p.name for p in in_group),
+                            }
+                        )
+                out.append(
+                    {
+                        "key": f"file:{path}",
+                        "parent": parent,
+                        "row": row,
+                        "index": index,
+                        "path": str(path),
+                        "name": path.name,
+                        "files": "",
+                        "info": "" if not self.advanced else path.suffix.upper().lstrip("."),
+                        "size": _format_size(_size(path)),
+                        "status": _status(imports.get(str(path))),
+                        "tip": str(path),
+                        "dye": "",
+                        "dye_how": "",
+                    }
+                )
+        return out
 
-    def select_file(self, record) -> None:
+    def row_info(self, row: str, files: list[Path], simple: bool | None = None) -> str:
+        """One line per role row: what its files gave (Advanced: the key number; Simple: in plain
+        words), and for an empty row what is used instead -- a missing calibration never blocks."""
+        from ..samples import kind_of, row_label
+
+        simple = (not self.advanced) if simple is None else simple
+        kind = kind_of(row)
+        colour = row.partition(":")[2]
+        calibration = getattr(self.source, "calibration", {}) or {}
+        if not files:
+            dets = row_detectors(row, self.setup())
+            g = f"{(self.setup_g(dets[0]) if dets else None) or 1.0:.3f}"
+            if simple:
+                if kind == "buffer":
+                    return tr("not used: background from the photons outside the bursts")
+                if kind == "irf":
+                    return tr("not used: IRF from the non-burst photons / blind estimate")
+                if kind == "reference":
+                    return tr("not used: G factor from the setup ({g}); no confocal volume").format(g=g)
+            else:  # the column is narrow: what is used instead, in short (the tooltip has more)
+                if kind == "buffer":
+                    return tr("→ photons outside bursts")
+                if kind == "irf":
+                    return tr("→ non-burst photons")
+                if kind == "reference":
+                    return tr("→ G {g} (setup)").format(g=g)
+            if kind == "measurement":
+                return tr("drop the measurements here")
+            return tr(ROW_SHORT.get(kind, ""))
+        if self.job.busy and (kind == "buffer" or kind == "reference"):
+            return tr("computing …")
+        if kind == "buffer":
+            rates = ((calibration.get("buffer") or {}).get("rates")) or {}
+            if rates:
+                total = sum(r["B_kHz"] for r in rates.values() if r["B_kHz"] == r["B_kHz"])
+                det = next(iter(rates))
+                if simple:
+                    return tr("background {rate:.2f} kHz").format(rate=total)
+                return (
+                    f"B_{det} {rates[det]['B_kHz']:.2f} kHz"
+                    if len(rates) == 1
+                    else tr("B {total:.2f} kHz, {n} detectors").format(total=total, n=len(rates))
+                )
+        if kind == "reference":
+            entry = (calibration.get("colours") or {}).get(colour) or {}
+            g = entry.get("g_factor") or {}
+            volume = entry.get("volume") or {}
+            if simple:
+                parts = []
+                if g:
+                    applied = all(
+                        self.setup_g(d) is not None and abs(self.setup_g(d) - v["g"]) <= 5e-4 for d, v in g.items()
+                    )
+                    parts.append(tr("G factor applied") if applied else tr("G factor computed"))
+                if volume:
+                    parts.append(tr("volume stored"))
+                if parts:
+                    return " · ".join(parts)
+            else:
+                parts = []
+                if g:
+                    parts.append(f"G {next(iter(g.values()))['g']:.3f}")
+                if volume:
+                    parts.append(f"{volume['veff_fl']:.2f} fL")
+                if parts:
+                    return " · ".join(parts)
+            if entry.get("errors") or calibration.get("errors"):
+                return tr("could not be computed (see Calibration)")
+        if kind == "irf":
+            return tr("used as the IRF of Burst MLE") if simple else tr("the IRF of Burst MLE")
+        if kind == "measurement":
+            return tr("{n} to search for bursts").format(n=len(files))
+        return tr(ROW_SHORT.get(kind, ""))
+
+    def _dye_cells(self, row: str) -> dict:
+        """The Dye and *from* cells of a role row (empty but on reference rows)."""
+        if not row.startswith("reference:"):
+            return {"dye": "", "dye_how": ""}
+        from ..samples import dye_choice
+
+        colour = row.partition(":")[2]
+        dyes = self.reference_dyes()
+        choice = dyes.get(colour) or dye_choice((getattr(self.source, "dyes", {}) or {}).get(colour), colour)
+        how = choice["how"]
+        words = {"user": "chosen", "header": "from header", "file name": "from file name", "default": "default"}
+        return {"dye": choice["dye"], "dye_how": tr(words.get(how, how))}
+
+    def cell_editable(self, record, key: str) -> bool:
+        """Only a reference row's Dye cell is edited in the table."""
+        return key == "dye" and isinstance(record, dict) and str(record.get("key", "")).startswith("row:reference:")
+
+    def cell_edited(self, record, key: str, value) -> None:
+        if key == "dye" and self.cell_editable(record, key):
+            self.set_dye(str(record["row"]).partition(":")[2], dye=str(value))
+            self.track("dye")
+
+    def missing_references(self) -> list[str]:
+        """The calibration roles nothing is assigned to (``buffer``, ``irf``, ``reference``)."""
+        from ..samples import kind_of
+
+        rows_of = getattr(self.source, "rows", None)
+        used = {kind_of(r) for r in (rows_of() if callable(rows_of) else {}).values()}
+        return [k for k in ("buffer", "irf", "reference") if k not in used]
+
+    def fallback_warning(self) -> str:
+        """The step's one warning line when the calibration files are missing ("" when none)."""
+        missing = self.missing_references()
+        if not self._paths() or not missing:
+            return ""
+        if len(missing) == 3:
+            return tr(
+                "No buffer, IRF or reference dye: background and IRF are estimated from the "
+                "measurement; G is taken from the setup."
+            )
+        words = {"buffer": tr("no buffer: background from the photons outside the bursts"),
+                 "irf": tr("no IRF: estimated from the non-burst photons"),
+                 "reference": tr("no reference dye: G from the setup, no confocal volume")}
+        return "; ".join(words[k] for k in missing) + "."
+
+    def row_at(self, x: float, y: float) -> str | None:
+        """The role of the assignment-table row under ``(x, y)`` (``None``: not over a row)."""
+        binding = self.form.tables.get("assignment_rows")
+        if binding is None:
+            return None
+        control = binding.control
+        position = control.row_at(x, y)
+        if position is None:
+            return None
+        record = binding.record(control.order()[position])
+        row = record.get("row") if isinstance(record, dict) else None
+        return row if row and row != "unassigned" else None
+
+    def _entry_paths(self, record) -> list[Path]:
+        if not isinstance(record, dict):
+            return []
+        if record.get("path"):
+            return [Path(record["path"])]
+        if record.get("paths"):
+            return [Path(p) for p in record["paths"]]
+        if record.get("key", "").startswith("row:"):
+            return [p for p in self._paths() if self._row_of(p) == record.get("row")]
+        return []
+
+    def select_entry(self, record) -> None:
+        self.selected_entry = record if isinstance(record, dict) else None
         if isinstance(record, dict) and "index" in record:
             self.selected_index = int(record["index"])
-            self.track("files")
+        self.track("files")
 
-    def remove_file_row(self, record) -> None:
-        if isinstance(record, dict) and "index" in record:
+    def remove_entry(self, record) -> None:
+        """Remove (Delete, the context menu): a file, a group's files, or every file of a row."""
+        paths = self._entry_paths(record)
+        remove = getattr(self.source, "remove_paths", None)
+        if paths and callable(remove):
+            remove(paths)
+        elif isinstance(record, dict) and "index" in record:
             self.source.remove_index(int(record["index"]))
-            self._clamp_selection()
+        self.selected_entry = None
+        self._clamp_selection()
+
+    def move_entry(self, record, row: str) -> None:
+        """Assign what *record* holds to *row*."""
+        assign = getattr(self.source, "assign", None)
+        paths = self._entry_paths(record)
+        if paths and callable(assign) and row:
+            assign(paths, row)
+            self._tag_workspace(paths)
+            self.track("samples")
+
+    def assignment_menu_move(self, record) -> list[dict]:
+        """The *Move to* submenu of an assignment-table row."""
+        here = record.get("row") if isinstance(record, dict) else None
+        return [
+            {
+                "label": label,
+                "group": "Move to",
+                "enabled": row != here,
+                "description": tr("Assign it to this row instead."),
+                "call": lambda rec, row=row: self.move_entry(rec, row),
+            }
+            for row, label in self.row_choices()
+        ]
+
+    def assignment_drag(self, record, x, y, dropped, on_table=False) -> None:
+        """An entry dragged within the table: let go on another row, it moves there."""
+        if not dropped or not on_table:
+            return
+        row = self.row_at(x, y)
+        if row and isinstance(record, dict) and row != record.get("row"):
+            self.move_entry(record, row)
 
     def _clamp_selection(self) -> None:
         n = len(self._paths())
         if self.selected_index is not None and self.selected_index >= n:
             self.selected_index = n - 1 if n else None
 
-    # -- actions -------------------------------------------------------------------------------------------- #
+    # -- the workspace ------------------------------------------------------------------------------------- #
     def take_photons(self, paths, uids=()) -> int:
-        """Add photon streams from the workspace; remember the dataset each came from."""
+        """Add photon streams from the workspace -- to the row they were dropped on, else to the
+        row the workspace tagged them with, else by their names; remember the dataset each came
+        from and keep a workspace group together."""
         paths = [Path(str(p)) for p in paths]
-        added = self.source.add_paths(paths)
+        uids = [str(u or "") for u in uids]
+        row = self._drop_row or self._hover_row
+        listing = _workspace_listing() if any(uids) else []
+        tags: dict[str, str] = {}
+        parent: dict[str, tuple[str, str]] = {}
+        for dto in listing:
+            for member in dto.get("members") or ():
+                parent[str(member.get("uid", ""))] = (str(dto.get("uid", "")), str(dto.get("name", "")))
+                if (member.get("tags") or {}).get("sample"):
+                    tags[str(member.get("uid"))] = str(member["tags"]["sample"])
+            if (dto.get("tags") or {}).get("sample"):
+                tags[str(dto.get("uid"))] = str(dto["tags"]["sample"])
+        added = 0
+        add = self.source.add_paths
+        for path, uid in zip(paths, uids + [""] * (len(paths) - len(uids))):
+            chosen = row or tags.get(uid)
+            try:
+                added += int(add([path], chosen) or 0)
+            except TypeError:  # a source without rows
+                added += int(add([path]) or 0)
         sources = getattr(self.source, "sources", None)
         if isinstance(sources, dict):
             for path, uid in zip(paths, uids):
                 if uid:
-                    sources[str(path)] = str(uid)
+                    sources[str(path)] = uid
+        by_group: dict[str, list[Path]] = {}
+        for path, uid in zip(paths, uids):
+            if uid in parent:
+                by_group.setdefault(parent[uid][0], []).append(path)
+        set_group = getattr(self.source, "set_group", None)
+        if callable(set_group):
+            for gid, members in by_group.items():
+                name = next(n for u, (g, n) in parent.items() if g == gid)
+                set_group(members, gid, name)
+        self._tag_workspace(paths)
+        if row:
+            self.track("samples")  # dropped on a role row (the tour waits for it)
         if self.selected_index is None and self._paths():
             self.selected_index = 0
-        self.message = "" if added is None or added else "Nothing new to add (already in the list)."
-        return int(added or 0)
+        self.message = "" if added or row else "Nothing new to add (already in the list)."
+        if callable(getattr(self.source, "on_change", None)) and by_group:
+            self.source.on_change()
+        return int(added or (len(paths) if row else 0))
+
+    def _tag_workspace(self, paths) -> None:
+        """Say in the workspace what each dataset is here (a ``sample`` tag on the dataset): it
+        goes with the dataset into the project and comes back when it is handed in again."""
+        sources = getattr(self.source, "sources", None) or {}
+        assignments = getattr(self.source, "assignments", None) or {}
+        uids = [(sources.get(str(p)), assignments.get(str(p))) for p in paths]
+        if not any(uid for uid, _row in uids):
+            return
+        try:
+            from chisurf.core.plugin.workspace_input import _api
+
+            api = _api()
+            for uid, row in uids:
+                if uid and row:
+                    api.tag_dataset(uid, "sample", row)
+        except Exception:  # noqa: BLE001 - the assignment is kept with the step all the same
+            log.debug("tagging the workspace datasets failed", exc_info=True)
+
+    # -- calibration ---------------------------------------------------------------------------------------- #
+    def calibration_input(self) -> tuple[dict, dict, dict, str]:
+        """``(rows, setup, dyes, signature)`` of what the calibration is computed from: the
+        buffer and reference-dye files, the detectors and reading of the setup, the D values."""
+        setup = self.setup()
+        rows_of = getattr(self.source, "rows", None)
+        rows = {p: r for p, r in (rows_of() if callable(rows_of) else {}).items()
+                if r == "buffer" or r.startswith("reference:")}
+        dyes = self.reference_dyes(setup, rows)
+        signature = json.dumps(
+            # the channels and gates, not the G factors the calibration itself writes
+            [sorted(rows.items()),
+             {d: [i.get("chs"), i.get("micro_time_ranges")] for d, i in (setup.get("detectors") or {}).items()},
+             setup.get("tttr_reading"), sorted((k, sorted(v.items())) for k, v in dyes.items())],
+            sort_keys=True,
+            default=str,
+        )
+        return rows, setup, dyes, signature
+
+    def reference_dyes(self, setup: dict | None = None, rows: dict | None = None) -> dict[str, dict]:
+        """``{colour: dye}`` of every reference row with files: the user's choice, else the dye
+        the files' header or names give, else the colour's default (kept in the model, so the
+        table shows it)."""
+        from ..samples import colour_groups, dye_choice, infer_dye
+
+        setup = self.setup() if setup is None else setup
+        if rows is None:
+            rows_of = getattr(self.source, "rows", None)
+            rows = rows_of() if callable(rows_of) else {}
+        store = getattr(self.source, "dyes", None)
+        if not isinstance(store, dict):
+            return {}
+        colours = [g["colour"] for g in colour_groups(setup)]
+        out = {}
+        for colour in colours:
+            files = [p for p, r in rows.items() if r == f"reference:{colour}"]
+            current = store.get(colour) or {}
+            if not files and current.get("how") != "user":
+                continue
+            if current.get("how") != "user":
+                found = tuple(current.get("_for") or ())
+                if found != tuple(sorted(files)):
+                    name, how = infer_dye(files, colour, colours)
+                    current = {**dye_choice(current, colour), "dye": name, "how": how,
+                               "_for": sorted(files)}
+                    store[colour] = current
+            out[colour] = {k: v for k, v in dye_choice(current, colour).items()}
+        return out
+
+    def set_dye(self, colour: str, **changes) -> None:
+        """The user chose a reference row's dye, temperature or custom D: kept, never inferred over."""
+        from ..samples import dye_choice
+
+        store = getattr(self.source, "dyes", None)
+        if not isinstance(store, dict):
+            return
+        current = dye_choice(store.get(colour), colour)
+        current.update(changes)
+        current["how"] = "user"
+        store[colour] = current
+        changed = getattr(self.source, "_changed", None)
+        if callable(changed):
+            changed()
+
+    def poll_calibration(self) -> None:
+        """Collect a finished calibration, and start one when its input changed (called every
+        frame, by the step and by a hub while another step is on screen)."""
+        done = self.job.take()
+        if done is not None:
+            signature, result = done
+            self._calibrated_for = signature
+            if hasattr(self.source, "calibration"):
+                self.source.calibration = result
+            if callable(self.on_calibrated):
+                try:
+                    self.on_calibrated(result)
+                except Exception:  # noqa: BLE001 - the result is shown here all the same
+                    log.exception("handing the calibration on failed")
+            if not self.advanced:
+                self.apply_all_g()  # Simple: applied as computed (Advanced: the user's button)
+        if self.job.busy:
+            return
+        rows, setup, dyes, signature = self.calibration_input()
+        if signature == self._calibrated_for:
+            return
+        if not rows or not setup.get("detectors"):
+            self._calibrated_for = signature
+            if hasattr(self.source, "calibration") and self.source.calibration:
+                self.source.calibration = {}
+                if callable(self.on_calibrated):
+                    self.on_calibrated({})
+            return
+        self.job.start(rows, setup, dyes, signature, on_done=self._wake)
+
+    def _wake(self) -> None:
+        self.request_frame()
+        if callable(self.on_wake):
+            self.on_wake()
+
+    def computed_g(self) -> dict[str, float]:
+        """``{detector: G}`` of every colour's reference dye in the last calibration."""
+        calibration = getattr(self.source, "calibration", {}) or {}
+        return {
+            det: float(value["g"])
+            for entry in (calibration.get("colours") or {}).values()
+            for det, value in (entry.get("g_factor") or {}).items()
+        }
+
+    def apply_all_g(self) -> int:
+        """Write every computed G factor that differs from the setup's into it."""
+        values = {d: g for d, g in self.computed_g().items()
+                  if self.setup_g(d) is None or abs(self.setup_g(d) - g) > 5e-4}
+        if not values or not callable(self.on_apply_g):
+            return 0
+        self.on_apply_g(values)
+        return len(values)
+
+    def setup_g(self, det: str) -> float | None:
+        info = (self.setup().get("detectors") or {}).get(det) or {}
+        value = info.get("g_factor")
+        return float(value) if value is not None else None
 
     # -- windows -------------------------------------------------------------------------------------------- #
     def _draw_files(self, box=None) -> None:
         paths = self._paths()
         self._clamp_selection()
-        selected = self.selected_index is not None and 0 <= self.selected_index < len(paths)
+        selected = self.selected_entry is not None
         self.input.workspace_input_on_used = self.track
         self.input_form.rects.clear()
         draw_form(self.input_spec, self.input, self.input_form)
@@ -472,25 +1258,26 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         if "workspace_input_rows" in self.input_form.rects:  # the guide's name for adding data
             self.item_rects["add_files"] = tuple(self.input_form.rects["workspace_input_rows"])
             self.item_rects["toolAction_add"] = self.item_rects["add_files"]
+        im.separator()
         pressed = button_row(
             [
                 {
                     "label": "Remove",
                     "key": "remove",
                     "enabled": selected,
-                    "tip": "Remove the selected file from the list."
+                    "tip": "Remove the selected file, group or row's files from the step."
                     if selected
-                    else "Select a file in the table first.",
+                    else "Select an entry in the table first.",
                 },
                 *(
                     []
-                    if not self.advanced  # Simple: Remove does it, one file at a time
+                    if not self.advanced  # Simple: Remove does it, one entry at a time
                     else [
                         {
                             "label": "Clear",
                             "key": "clear",
                             "enabled": bool(paths),
-                            "tip": "Remove every file from the list." if paths else "No files to remove.",
+                            "tip": "Remove every file from the step." if paths else "No files to remove.",
                         }
                     ]
                 ),
@@ -506,20 +1293,21 @@ class BurstDataSelectionApp(TourTarget, ImApp):
             ],
             remember=self.remember,
         )
-        if pressed == "remove" and selected and self.selected_index is not None:
-            self.source.remove_index(int(self.selected_index))
-            self._clamp_selection()
+        if pressed == "remove" and selected:
+            self.remove_entry(self.selected_entry)
         elif pressed == "clear":
             self.source.clear()
             self.selected_index = None
+            self.selected_entry = None
         elif pressed == "guide":
             self.start_guide()
         elif pressed == "help":
             self.show_help()
+        im.same_line()
         im.align_text_to_frame_padding()
         im.text(tr("Filter"))
         im.same_line()
-        im.set_next_item_width(min(260.0, max(120.0, im.get_content_region_avail()[0] - 10.0)))
+        im.set_next_item_width(min(200.0, max(100.0, im.get_content_region_avail()[0] - 10.0)))
         _changed, self.filter_text = im.filter_field(
             "##data_filter",
             self.filter_text,
@@ -529,23 +1317,65 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         self.remember("filter")
         if self.message:
             im.text_wrapped(self.message)
+        im.text_disabled(tr("Drag workspace data onto a row below to say what it is."))
+        self.remember("drag_hint")
         draw_sections(self.spec["sections"], self, self.form)
         if "data_table" in self.form.rects:
             self.item_rects["files"] = tuple(self.form.rects["data_table"])
-        if not paths:
+            self.item_rects["samples"] = self.item_rects["files"]
+        # where a file dropped on the window goes: the row under the pointer
+        mx, my = im.get_io().mouse_pos
+        self._hover_row = self.row_at(mx, my)
+        self._draw_sample_summary()
+
+    def _draw_sample_summary(self) -> None:
+        from ..samples import sample_summary
+
+        warning = self.fallback_warning()
+        if warning:
+            from emtk.im_core import Col
+
+            im.push_style_color(Col.TEXT, WARNING_COLOUR)
+            im.text_wrapped("⚠ " + warning)
+            im.pop_style_color()
+            self.remember("fallback_warning")
+
+        rows = getattr(self.source, "rows", None)
+        values = list(rows().values()) if callable(rows) else ["measurement"] * len(self._paths())
+        if values:
+            im.text_disabled(sample_summary(v for v in values if v != "unassigned"))
+            self.remember("sample_summary")
+            if "unassigned" in values:
+                im.same_line()
+                im.text_disabled(" · " + tr("{n} unassigned").format(n=values.count("unassigned")))
+        else:
             im.text_disabled(
                 tr(
-                    "No files yet: drop photon files (.ptu, .spc, .ht3, …) here, "
-                    "or pick them in the Input section above."
+                    "No data yet: drop photon files (.ptu, .spc, .ht3, …) on a row, or drag "
+                    "workspace data from the table above onto a row."
                 )
             )
+        if not self.setup().get("detectors"):
+            im.text_disabled(tr(NO_SETUP_HINT))
 
     def _draw_details(self, box=None) -> None:
-        paths = self._paths()
-        if self.selected_index is None or not 0 <= self.selected_index < len(paths):
-            im.text_wrapped(tr("No file selected. Click a file in the table to see its details."))
+        record = self.selected_entry
+        files = self._paths()
+        if record is None and self.selected_index is not None and 0 <= self.selected_index < len(files):
+            # nothing picked in the table yet: the first file (as the step showed it before)
+            record = {"path": str(files[self.selected_index]), "index": self.selected_index}
+        paths = self._entry_paths(record)
+        if record is None:
+            im.text_wrapped(tr("Nothing selected. Click an entry of the table to see its details."))
             return
-        path = paths[self.selected_index]
+        if not record.get("path"):
+            im.text(str(record.get("name", "")))
+            im.text_wrapped(self.row_info(str(record.get("row", "")), paths) or "")
+            im.text(tr("{n} file(s), {size}").format(n=len(paths), size=_format_size(_total_size(paths))))
+            for path in paths[:12]:
+                im.bullet_text(path.name)
+            return
+        path = Path(record["path"])
         im.text(f"Name: {path.name}")
         im.text_wrapped(f"Path: {path}")
         try:
@@ -578,32 +1408,167 @@ class BurstDataSelectionApp(TourTarget, ImApp):
 
     def _draw_summary(self, box=None) -> None:
         paths = self._paths()
-        total = 0
-        for path in paths:
-            try:
-                total += path.stat().st_size
-            except OSError:
-                pass
+        measurements = getattr(self.source, "measurement_paths", None)
+        measured = measurements() if callable(measurements) else paths
         imports = self.source.mmfdb_payload().get("imports", {})
         registered = sum(1 for p in paths if _registered(imports.get(str(p))))
-        im.bullet_text(f"Files: {len(paths)}")
-        im.bullet_text(f"On disk: {_format_size(total)}")
+        im.bullet_text(f"Files: {len(paths)} ({len(measured)} to search)")
+        im.bullet_text(f"On disk: {_format_size(_total_size(paths))}")
         im.bullet_text(f"In MMFDB: {registered} of {len(paths)}")
         im.separator()
-        im.begin_disabled(not paths or not callable(self.on_proceed))
+        im.begin_disabled(not measured or not callable(self.on_proceed))
         if im.button(self.PROCEED_LABEL) and self.on_proceed is not None:
-            self.track("proceed")
-            self.on_proceed()
+            self.proceed()
         im.end_disabled()
-        im.set_item_tooltip(self.PROCEED_TIP if paths else "Add TTTR files first.")
+        im.set_item_tooltip(self.PROCEED_TIP if measured else "Assign a measurement first.")
         self.remember("proceed")
         self._draw_summary_extra()
+
+    def proceed(self) -> None:
+        """On to Burst Selection -- never blocked by a missing calibration file: the first time
+        without them, the step says once (not as a dialog) what is estimated instead."""
+        self.track("proceed")
+        warning = self.fallback_warning()
+        if warning and not self._noticed:
+            self._noticed = True
+            self.message = tr("Going on without them: {warning}").format(warning=warning)
+        if callable(self.on_proceed):
+            self.on_proceed()
+
+    #: The proceed notice about missing calibration files was given (once per step).
+    _noticed = False
 
     def _draw_summary_extra(self) -> None:
         """Below the proceed button: nothing here; a workflow adds its own controls (the ALEX Suite's demo data)."""
 
+    def _draw_calibration(self, box=None) -> None:
+        """What the buffer and the reference dyes gave: B per detector; per colour the G factors
+        (applied to step 0 with a button, never silently), the confocal volume and its D."""
+        from ..samples import CUSTOM_DYE, colour_groups, dye_choice, dye_diffusion
+
+        self.remember("calibration", box)
+        setup = self.setup()
+        calibration = getattr(self.source, "calibration", {}) or {}
+        if not setup.get("detectors"):
+            im.text_wrapped(tr(NO_SETUP_HINT))
+            return
+        if self.job.busy:
+            im.text_wrapped(self.job.progress)
+        rates = ((calibration.get("buffer") or {}).get("rates")) or {}
+        if rates:
+            im.separator_text(tr("Background (buffer)"))
+            im.text_wrapped(" · ".join(f"B_{d} = {r['B_kHz']:.2f} kHz" for d, r in rates.items()))
+        colours = calibration.get("colours") or {}
+        rows_of = getattr(self.source, "rows", None)
+        rows = rows_of() if callable(rows_of) else {}
+        dyes = self.reference_dyes(setup, rows)
+        for group in colour_groups(setup):
+            colour = group["colour"]
+            files = [p for p, r in rows.items() if r == f"reference:{colour}"]
+            im.separator_text(tr("Reference dye — {colour}").format(colour=tr(group["word"])))
+            choice = dyes.get(colour) or dye_choice((getattr(self.source, "dyes", {}) or {}).get(colour), colour)
+            im.text(f"{choice['dye']}  ·  {tr(choice['how'])}")
+            im.set_item_tooltip(tr("Choose the dye in the Dye cell of the row (the dye database)."))
+            im.set_next_item_width(90.0)
+            changed, value = im.input_float(f"°C##T{colour}", float(choice["temperature_c"]), 0.0, 0.0, "%.1f")
+            im.set_item_tooltip(
+                tr(
+                    "Temperature of the reference measurement: the database's D (25 °C, water) is "
+                    "corrected to it with the viscosity of water (Stokes-Einstein), as in the FCS "
+                    "calculator. About 2.6 % in D per °C."
+                )
+            )
+            self.remember(f"temperature_{colour}")
+            if changed and 0.0 < value < 100.0:
+                self.set_dye(colour, temperature_c=float(value))
+            if choice["dye"] == CUSTOM_DYE:
+                im.same_line()
+                im.set_next_item_width(90.0)
+                changed, value = im.input_float(f"D (µm²/s)##D{colour}", float(choice["custom_D"]), 0.0, 0.0, "%.0f")
+                im.set_item_tooltip(tr("Your own diffusion coefficient of the reference dye, at its temperature."))
+                self.remember(f"diffusion_{colour}")
+                if changed and value > 0:
+                    self.set_dye(colour, custom_D=float(value))
+            d, source = dye_diffusion(choice, colour)
+            im.text_wrapped(tr("D = {d:.0f} µm²/s — {source}").format(d=d, source=source) if d == d else source)
+            entry = colours.get(colour) or {}
+            if not files:
+                im.text_disabled(tr("Drop a reference-dye measurement on its row."))
+                continue
+            g = entry.get("g_factor") or {}
+            for det, value in g.items():
+                old = self.setup_g(det)
+                im.bullet_text(
+                    f"G ({det}) = {value['g']:.3f} ± {value['sem']:.3f}"
+                    + (f"   ({tr('setup')}: {old:.3f})" if old is not None else "")
+                )
+            if g:
+                differs = any(
+                    self.setup_g(d) is None or abs(self.setup_g(d) - v["g"]) > 5e-4 for d, v in g.items()
+                )
+                can = callable(self.on_apply_g)
+                key = f"apply_g_{colour}"
+                if button_row(
+                    [
+                        {
+                            "label": "Apply G to the setup",
+                            "key": key,
+                            "keys": ["apply_g"],
+                            "enabled": differs and can,
+                            "tip": (
+                                "Write these G factors into the G-Factor column of 0. Setup Selection."
+                                if can
+                                else "Open this step in Burst Analysis to write into its setup."
+                            )
+                            if differs
+                            else "The setup has these G factors.",
+                        }
+                    ],
+                    remember=self.remember,
+                ) == key:
+                    self.track("apply_g")
+                    self.on_apply_g({d: v["g"] for d, v in g.items()})
+            volume = entry.get("volume") or {}
+            if volume:
+                im.bullet_text(
+                    f"w0 = {volume['w0_um']:.3f} µm, z0 = {volume['z0_um']:.2f} µm, "
+                    f"V_eff = {volume['veff_fl']:.2f} fL"
+                )
+                im.text_wrapped(
+                    f"{volume['detector']}: N = {volume['N']:.2f}, c = {volume['concentration_nM']:.2f} nM, "
+                    f"τ_D = {volume['tau_d_ms'] * 1e3:.0f} µs, s = {volume['s']:.1f}, "
+                    f"D = {volume['D_um2_s']:.0f} µm²/s, χ²r = {volume['chi2r']:.2f}"
+                )
+                self._volume_plot(colour, volume)
+        for error in calibration.get("errors") or ():
+            im.text_wrapped(f"⚠ {error}")
+
+    def _volume_plot(self, colour: str, volume: dict) -> None:
+        """The reference dye's correlation and the fitted 3-D diffusion model."""
+        import numpy as np
+        from emtk import implot
+
+        tau = np.asarray(volume.get("tau_ms") or [], dtype=float)
+        g = np.asarray(volume.get("g") or [], dtype=float)
+        model = np.asarray(volume.get("model") or [], dtype=float)
+        lo, hi = volume.get("fit_range_ms") or [1e-3, 1e3]
+        keep = (tau >= lo) & (tau <= hi)
+        if np.count_nonzero(keep) < 2:
+            return
+        h = max(110.0, min(170.0, im.get_content_region_avail()[1] - 30.0))
+        if implot.begin_plot(f"##fcs{colour}", (-1, h)):
+            implot.setup_axes("τ (ms)", "G(τ)")
+            implot.setup_axis_scale(implot.AXIS_X1, implot.SCALE_LOG10)
+            implot.set_next_line_style((200, 205, 220, 255), 1.5)
+            implot.plot_line(tr("data"), tau[keep], g[keep])
+            implot.set_next_line_style((240, 160, 60, 255), 2.0)
+            implot.plot_line(tr("3-D diffusion"), tau[keep], model[keep])
+            implot.end_plot()
+        self.remember(f"fcs_plot_{colour}")
+
     # -- frame ---------------------------------------------------------------------------------------------- #
     def _render(self) -> None:
+        self.poll_calibration()
         w, h = im.get_main_viewport().size
         frame = (0.0, 0.0, float(w), float(h))
         self.docks.draw(frame)
@@ -625,9 +1590,30 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         restore = getattr(self.source, "restore_settings", None)
         if callable(restore):
             restore(state)
+        # the calibration shown was computed from what is restored: not again
+        self._calibrated_for = self.calibration_input()[3] if getattr(self.source, "calibration", None) else ""
 
     def close(self) -> None:
         pass
+
+
+def row_detectors(row: str, setup: dict) -> list[str]:
+    """The detectors of the colour of *row* (``irf:R`` -> ``["R|G", "R|R"]``)."""
+    from ..samples import colour_groups
+
+    colour = row.partition(":")[2]
+    return next((g["detectors"] for g in colour_groups(setup) if g["colour"] == colour), [])
+
+
+def _size(path: Path) -> int:
+    try:
+        return int(path.stat().st_size)
+    except OSError:
+        return 0
+
+
+def _total_size(paths) -> int:
+    return sum(_size(Path(p)) for p in paths)
 
 
 def make_app(**kwargs) -> BurstDataSelectionApp:
