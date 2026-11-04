@@ -29,6 +29,7 @@ from ..workflow_context import (
     burst_sources,
     folder_from_result,
     materialize_handoff,
+    searched_runs,
 )
 
 HERE = Path(__file__).resolve().parent
@@ -107,6 +108,14 @@ STEPS: list[dict[str, Any]] = [
         "plugin": "burst/burst_h2mm",
         "advanced": True,
         "description": "Cut each burst into segments: photon-by-photon HMM (H2MM) assigns every photon a state.",
+    },
+    {
+        "name": "4. More samples",
+        "icon": "➕",
+        "role": "more",
+        "help": str(HERE / "more_samples_help.md"),
+        "description": "Further measurements, processed exactly as the first data: the same setup, "
+        "calibration, burst search, Burst MLE settings and fit window, and the optional steps that ran.",
     },
     # The side tools are Advanced: Simple is the pipeline, pressed through with Next.
     {"name": "Side tools", "separator": True, "advanced": True},
@@ -228,6 +237,7 @@ class BurstAnalysisHubApp(ToolHubApp):
             "selection": self._make_selection,
             "mle": lambda: self._make_mle(split_by_state=False),
             "irf_bg": self._make_irf_bg,
+            "more": self._make_more,
         }
         panels = [
             {**p, "factory": factories[p["role"]]} if p.get("role") in factories else dict(p)
@@ -315,6 +325,35 @@ class BurstAnalysisHubApp(ToolHubApp):
         from chisurf.plugins.burst.burst_irf_bg.gui.app import create_app
 
         return create_app(mle_receiver=self.apply_irf_background_to_mle)
+
+    def _make_more(self):
+        from .more_samples_app import BurstMoreSamplesApp
+
+        app = BurstMoreSamplesApp(recipe_provider=self.capture_recipe, on_change=self._wake)
+        app.on_wake = self._wake
+        return app
+
+    def capture_recipe(self):
+        """The pipeline as the steps are set now, as one :class:`..more_samples.Recipe`: the
+        workflow's context, Burst Selection's and Burst MLE's settings, and the settings of each
+        optional step that ran (``None`` before Burst MLE has fitted)."""
+        from ..more_samples import Recipe
+
+        if not self.step_done("mle"):
+            return None
+        selection = getattr(self.children.get("selection"), "model", None)
+        session = getattr(getattr(self.children.get("mle"), "model", None), "session", None)
+        optional: dict[str, Any] = {}
+        if self._fused_folder is not None:
+            fusion = getattr(self.children.get("fusion"), "model", None)
+            settings = getattr(fusion, "settings", None)
+            if settings is not None:
+                optional["fusion"] = settings.to_dict()
+        for role, read in (("bva", "bva_settings"), ("two_cde", "settings"), ("h2mm", "settings_dict")):
+            model = getattr(self.children.get(role), "model", None)
+            if self.step_done(role) and callable(getattr(model, read, None)):
+                optional[role] = getattr(model, read)()
+        return Recipe.capture(self.context, selection, session, optional)
 
     def _used(self, child_tour):
         """A step's control was used: its own tour and the hub's (whose steps may wait for it) both hear of it."""
@@ -722,6 +761,11 @@ class BurstAnalysisHubApp(ToolHubApp):
 
     _to_segment_mle = _to_mle
 
+    def _to_more(self, child) -> None:
+        """The recipe as the steps are set now (each time the step opens or an earlier one changes)."""
+        if not getattr(child, "running", False):
+            child.refresh_recipe()
+
     @staticmethod
     def _patterns_to_mle(child, patterns: dict[str, Any]) -> int:
         """Per-detector IRF / background into an MLE step's session (what its fit reads), then refit."""
@@ -828,6 +872,8 @@ class BurstAnalysisHubApp(ToolHubApp):
             return self.step_done("selection")
         if role in NEEDS_FILES:
             return bool(self.context.raw_files)
+        if role == "more":
+            return self.step_done("mle")
         return True
 
     def disabled_reason(self, role: str) -> str:
@@ -835,6 +881,8 @@ class BurstAnalysisHubApp(ToolHubApp):
             return tr("Run 2. Burst Selection first: this step reads its bursts.")
         if role in NEEDS_FILES:
             return tr("Add the measurements in 1. Data Selection first.")
+        if role == "more":
+            return tr("Run 3. Burst MLE first: more samples are processed as the first data was.")
         return super().disabled_reason(role)
 
     def step_done(self, role: str) -> bool:
@@ -856,6 +904,8 @@ class BurstAnalysisHubApp(ToolHubApp):
             return bool(getattr(model, "burst_results", None))
         if role == "h2mm":
             return getattr(model, "result", None) is not None
+        if role == "more":
+            return bool(getattr(child, "done_count", lambda: 0)())
         return False
 
     def badge(self, role: str) -> str:
@@ -864,6 +914,8 @@ class BurstAnalysisHubApp(ToolHubApp):
         ctx = self.context
         if role == "data" and ctx.raw_files:
             return f"✓ ({len(ctx.raw_files)})"
+        if role == "more" and self.step_done("more"):
+            return f"✓ ({self.children['more'].done_count()})"
         if self.step_done(role):
             return "✓"
         if role in ("bva", "two_cde", "mle", "h2mm") and ctx.burst_folder:
@@ -986,10 +1038,30 @@ class BurstAnalysisHubApp(ToolHubApp):
             from emtk import im
 
             self.status = self._summary_shown = self.summary(float(im.get_main_viewport().size[0]))
+        # A step whose hand-over still ran when the context changed again (the G of a reference dye
+        # added after Burst MLE opened) takes what changed once it is free -- the step on screen
+        # too: its own frame polls its job, so the loop below never did, and the G stayed 1.
+        for role in [r for r in self._resync if r == self.selected]:
+            child = self.children.get(role)
+            if child is not None and not getattr(child, "pending", False):
+                self._resync.discard(role)
+                try:
+                    self._to_mle(child)
+                except Exception as exc:  # noqa: BLE001 - shown in the status line
+                    self.status = f"{role}: {type(exc).__name__}: {exc}"
         # A step that runs without being shown (BVA, 2CDE in Simple) is never drawn, so its own
         # frame never collects its result: the hub polls it until it is done.
         for role, child in list(self.children.items()):
             if role == self.selected:
+                continue
+            if role == "more":
+                # its samples finish (and enter the workspace) while another step is on screen
+                try:
+                    child.poll()
+                except Exception as exc:  # noqa: BLE001 - shown in the status line
+                    self.status = f"more: {type(exc).__name__}: {exc}"
+                if child.running:
+                    self.wants_frame = True
                 continue
             if role == "data":
                 # its calibration runs (and is collected) while another step is on screen
@@ -1029,19 +1101,6 @@ class BurstAnalysisHubApp(ToolHubApp):
             badge = self.badge(panel["role"])
             panel["name"] = f"{base} {badge}" if badge else base
         super().render()
-
-
-def searched_runs(result: Any, files) -> list[Path]:
-    """The container runs (``m.pto/<run>``) a burst search wrote, in the order of *files*."""
-    from chisurf.core.fio.analysis_path import is_container_path
-
-    by_file = (result or {}).get("output_paths_by_file") or {} if isinstance(result, dict) else {}
-    runs = []
-    for path in [str(f) for f in files] or list(by_file):
-        folder = (by_file.get(path) or by_file.get(str(Path(path).resolve())) or {}).get("output_folder")
-        if folder and is_container_path(Path(folder)) and Path(folder).parent.exists():
-            runs.append(Path(folder))
-    return runs
 
 
 def _search_run(model) -> str | None:
@@ -1087,8 +1146,10 @@ def receive_photons(app, payload: dict) -> None:
     paths = [read_address(str(f)) for f in files]
     data = app
     if hasattr(app, "children") and hasattr(app, "select"):
-        app.select("data")
-        data = app.children.get("data")
+        # step 4 open: the photons are further samples, processed with the first data's recipe
+        role = "more" if app.selected == "more" and app.children.get("more") is not None else "data"
+        app.select(role)
+        data = app.children.get(role)
     if data is None:
         raise RuntimeError("the burst analysis has no Data step to take photon streams")
     if not data.take_photons(paths, list(payload.get("datasets") or [])):

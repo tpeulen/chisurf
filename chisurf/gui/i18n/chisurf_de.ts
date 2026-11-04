@@ -77616,6 +77616,186 @@ Background (kHz): {bg}</source>
             <source> Strict background selection: {fraction:.0%} of the time.</source>
             <translation> Strenge Hintergrundauswahl: {fraction:.0%} der Zeit.</translation>
         </message>
+        <message>
+            <source>4. More samples</source>
+            <translation>4. Weitere Proben</translation>
+        </message>
+        <message>
+            <source>Add samples first: drag workspace data into the table.</source>
+            <translation>Zuerst Proben hinzufügen: Arbeitsbereichsdaten in die Tabelle ziehen.</translation>
+        </message>
+        <message>
+            <source>Drag measurements here ↓</source>
+            <translation>Messungen hierher ziehen ↓</translation>
+        </message>
+        <message>
+            <source>Drag workspace data into the table below, or drop files on the window while this step is open: each is processed exactly as the first data was.</source>
+            <translation>Arbeitsbereichsdaten in die Tabelle unten ziehen oder Dateien auf das Fenster ziehen, solange dieser Schritt offen ist: Jede wird genau wie die ersten Daten verarbeitet.</translation>
+        </message>
+        <message>
+            <source>Further measurements, processed exactly as the first data: the same setup, calibration, burst search, Burst MLE settings and fit window, and the optional steps that ran.</source>
+            <translation>Weitere Messungen, genau wie die ersten Daten verarbeitet: dasselbe Setup, dieselbe Kalibrierung, Burst-Suche, Burst-MLE-Einstellungen und dasselbe Fit-Fenster sowie die optionalen Schritte, die gelaufen sind.</translation>
+        </message>
+        <message>
+            <source>How many bursts the search found in this sample, with the first data's search settings.</source>
+            <translation>Wie viele Bursts die Suche in dieser Probe gefunden hat, mit den Sucheinstellungen der ersten Daten.</translation>
+        </message>
+        <message>
+            <source>Mean burst lifetime of the first detector (every detector in the row's tooltip), fitted with the first data's IRF, model and fit window.</source>
+            <translation>Mittlere Burst-Lebensdauer des ersten Detektors (jeder Detektor im Tooltip der Zeile), gefittet mit IRF, Modell und Fit-Fenster der ersten Daten.</translation>
+        </message>
+        <message>
+            <source>Mean proximity ratio of the bursts (empty for one colour).</source>
+            <translation>Mittleres Proximity Ratio der Bursts (leer bei einer Farbe).</translation>
+        </message>
+        <message>
+            <source>No recipe yet: run 3. Burst MLE first.</source>
+            <translation>Noch kein Rezept: zuerst 3. Burst MLE ausführen.</translation>
+        </message>
+        <message>
+            <source>No recipe yet: run 3. Burst MLE on the first data first.</source>
+            <translation>Noch kein Rezept: zuerst 3. Burst MLE auf den ersten Daten ausführen.</translation>
+        </message>
+        <message>
+            <source>Nothing new to add (already in the list).</source>
+            <translation>Nichts Neues hinzuzufügen (bereits in der Liste).</translation>
+        </message>
+        <message>
+            <source>Nothing to process: every sample is done (Advanced: Re-run one).</source>
+            <translation>Nichts zu verarbeiten: Jede Probe ist fertig (Erweitert: eine erneut ausführen).</translation>
+        </message>
+        <message>
+            <source>Part</source>
+            <translation>Teil</translation>
+        </message>
+        <message>
+            <source>Process the queued (and failed) samples with the recipe.</source>
+            <translation>Die wartenden (und fehlgeschlagenen) Proben mit dem Rezept verarbeiten.</translation>
+        </message>
+        <message>
+            <source>Process the selected sample again with the current recipe.</source>
+            <translation>Die ausgewählte Probe mit dem aktuellen Rezept erneut verarbeiten.</translation>
+        </message>
+        <message>
+            <source>Process this sample again with the current recipe.</source>
+            <translation>Diese Probe mit dem aktuellen Rezept erneut verarbeiten.</translation>
+        </message>
+        <message>
+            <source>Re-run</source>
+            <translation>Erneut ausführen</translation>
+        </message>
+        <message>
+            <source>Read-only: what every sample goes through, taken from the steps as they are set now. Change a step, and the recipe follows.</source>
+            <translation>Nur lesbar: was jede Probe durchläuft, aus den Schritten, wie sie jetzt eingestellt sind. Ändern Sie einen Schritt, folgt das Rezept.</translation>
+        </message>
+        <message>
+            <source>Recipe</source>
+            <translation>Rezept</translation>
+        </message>
+        <message>
+            <source>Run 3. Burst MLE first: more samples are processed as the first data was.</source>
+            <translation>Zuerst 3. Burst MLE ausführen: weitere Proben werden wie die ersten Daten verarbeitet.</translation>
+        </message>
+        <message>
+            <source>Run 3. Burst MLE on the first data first.</source>
+            <translation>Zuerst 3. Burst MLE auf den ersten Daten ausführen.</translation>
+        </message>
+        <message>
+            <source>Samples</source>
+            <translation>Proben</translation>
+        </message>
+        <message>
+            <source>Select a sample first.</source>
+            <translation>Zuerst eine Probe auswählen.</translation>
+        </message>
+        <message>
+            <source>Stop after the step each running sample is in.</source>
+            <translation>Nach dem Schritt anhalten, in dem sich jede laufende Probe befindet.</translation>
+        </message>
+        <message>
+            <source>Take every sample out of the list (their results stay).</source>
+            <translation>Alle Proben aus der Liste nehmen (ihre Ergebnisse bleiben).</translation>
+        </message>
+        <message>
+            <source>Take the selected sample out of the list (its results stay).</source>
+            <translation>Die ausgewählte Probe aus der Liste nehmen (ihre Ergebnisse bleiben).</translation>
+        </message>
+        <message>
+            <source>Take this sample out of the list (its results stay in its container).</source>
+            <translation>Diese Probe aus der Liste nehmen (ihre Ergebnisse bleiben in ihrem Container).</translation>
+        </message>
+        <message>
+            <source>The further measurements, each processed exactly as the first one: the same setup, calibration, burst search, Burst MLE settings and fit window, and the optional steps that ran. Drag workspace data here from the table above, or drop files on the window. A row's tooltip has the details: the run, the mean lifetime per detector, the recipe and the calibration report it was made with, or why it failed.</source>
+            <translation>Die weiteren Messungen, jede genau wie die erste verarbeitet: dasselbe Setup, dieselbe Kalibrierung, Burst-Suche, Burst-MLE-Einstellungen und dasselbe Fit-Fenster sowie die optionalen Schritte, die gelaufen sind. Arbeitsbereichsdaten aus der Tabelle oben hierher ziehen oder Dateien auf das Fenster ziehen. Der Tooltip einer Zeile enthält die Details: den Lauf, die mittlere Lebensdauer je Detektor, das Rezept und den Kalibrierbericht, mit denen sie entstand, oder warum sie fehlschlug.</translation>
+        </message>
+        <message>
+            <source>The key setting of that step; the row's tooltip has the rest.</source>
+            <translation>Die wichtigste Einstellung dieses Schritts; der Tooltip der Zeile enthält den Rest.</translation>
+        </message>
+        <message>
+            <source>The measurement (its file name); the path is in the row's tooltip.</source>
+            <translation>Die Messung (ihr Dateiname); der Pfad steht im Tooltip der Zeile.</translation>
+        </message>
+        <message>
+            <source>What every sample goes through, captured from the steps as they are set now: one row per part, the details in its tooltip. Read-only: change a step, and the recipe follows.</source>
+            <translation>Was jede Probe durchläuft, aus den Schritten, wie sie jetzt eingestellt sind: eine Zeile je Teil, die Details im Tooltip. Nur lesbar: Ändern Sie einen Schritt, folgt das Rezept.</translation>
+        </message>
+        <message>
+            <source>Which step of the pipeline.</source>
+            <translation>Welcher Schritt der Pipeline.</translation>
+        </message>
+        <message>
+            <source>queued, running, done or failed; what it is doing, or why it failed, is in the row's tooltip.</source>
+            <translation>wartend, läuft, fertig oder fehlgeschlagen; was gerade geschieht oder warum es fehlschlug, steht im Tooltip der Zeile.</translation>
+        </message>
+        <message>
+            <source>{done}/{n} done</source>
+            <translation>{done}/{n} fertig</translation>
+        </message>
+        <message>
+            <source>{n} failed</source>
+            <translation>{n} fehlgeschlagen</translation>
+        </message>
+        <message>
+            <source>4 — the next samples, the same way</source>
+            <translation>4 — die nächsten Proben, auf dieselbe Weise</translation>
+        </message>
+        <message>
+            <source>Once the first measurement has its lifetimes, &lt;b&gt;4. More samples&lt;/b&gt; opens. Drop further measurements on it and press &lt;b&gt;Run&lt;/b&gt;: each goes through exactly the pipeline you just tuned — the same setup, calibration, burst search, Burst MLE fit window and IRF, and the optional steps that ran — and its results go into its own container, beside its photons.</source>
+            <translation>Sobald die erste Messung ihre Lebensdauern hat, öffnet sich &lt;b&gt;4. Weitere Proben&lt;/b&gt;. Ziehen Sie weitere Messungen darauf und drücken Sie &lt;b&gt;Ausführen&lt;/b&gt;: Jede durchläuft genau die Pipeline, die Sie gerade abgestimmt haben — dasselbe Setup, dieselbe Kalibrierung, Burst-Suche, dasselbe Burst-MLE-Fit-Fenster und dieselbe IRF sowie die optionalen Schritte, die gelaufen sind — und ihre Ergebnisse kommen in ihren eigenen Container, neben ihre Photonen.</translation>
+        </message>
+        <message>
+            <source>Select &lt;b&gt;4. More samples&lt;/b&gt; (it opens once Burst MLE has fitted).</source>
+            <translation>&lt;b&gt;4. Weitere Proben&lt;/b&gt; wählen (öffnet sich, sobald Burst MLE gefittet hat).</translation>
+        </message>
+        <message>
+            <source>A confocal measurement is a long timestamp stream that is mostly background, with occasional bright &lt;b&gt;bursts&lt;/b&gt; — one molecule crossing the focus. Everything you want from it is a number computed &lt;i&gt;per burst&lt;/i&gt;.&lt;br/&gt;&lt;br/&gt;The left list is that pipeline, in the order it has to happen. Nine steps, about two minutes. You press the rows; the tour only points at them.</source>
+            <translation>Eine konfokale Messung ist ein langer Zeitstempelstrom, der größtenteils Hintergrund ist, mit gelegentlichen hellen &lt;b&gt;Bursts&lt;/b&gt; — ein Molekül, das den Fokus durchquert. Alles, was Sie daraus wollen, ist eine Zahl, die &lt;i&gt;pro Burst&lt;/i&gt; berechnet wird.&lt;br/&gt;&lt;br/&gt;Die linke Liste ist diese Pipeline, in der Reihenfolge, in der sie ablaufen muss. Neun Schritte, etwa zwei Minuten. Sie drücken die Zeilen; die Tour zeigt nur auf sie.</translation>
+        </message>
+        <message>
+            <source>More of the same</source>
+            <translation>Mehr vom Gleichen</translation>
+        </message>
+        <message>
+            <source>The pipeline is tuned on the first measurement. Every measurement you add here goes through &lt;b&gt;exactly&lt;/b&gt; that pipeline: the same setup, calibration, burst search, Burst MLE fit window and IRF, and the optional steps that ran.</source>
+            <translation>Die Pipeline ist auf die erste Messung abgestimmt. Jede Messung, die Sie hier hinzufügen, durchläuft &lt;b&gt;genau&lt;/b&gt; diese Pipeline: dasselbe Setup, dieselbe Kalibrierung, Burst-Suche, dasselbe Burst-MLE-Fit-Fenster und dieselbe IRF sowie die optionalen Schritte, die gelaufen sind.</translation>
+        </message>
+        <message>
+            <source>Drop the samples</source>
+            <translation>Die Proben ablegen</translation>
+        </message>
+        <message>
+            <source>Drag measurements from the workspace table down into &lt;b&gt;Samples&lt;/b&gt;, or drop files on the window while this step is open. A group brings all its files.</source>
+            <translation>Ziehen Sie Messungen aus der Arbeitsbereichstabelle nach unten in &lt;b&gt;Proben&lt;/b&gt;, oder ziehen Sie Dateien auf das Fenster, solange dieser Schritt offen ist. Eine Gruppe bringt alle ihre Dateien mit.</translation>
+        </message>
+        <message>
+            <source>Drag a measurement into the &lt;b&gt;Samples&lt;/b&gt; table.</source>
+            <translation>Eine Messung in die Tabelle &lt;b&gt;Proben&lt;/b&gt; ziehen.</translation>
+        </message>
+        <message>
+            <source>&lt;b&gt;Run&lt;/b&gt; processes every queued sample. The progress card's &lt;b&gt;Stop&lt;/b&gt; stops after the current step; a sample that fails is marked &lt;i&gt;failed&lt;/i&gt; and the others go on. Hover a row for its details.</source>
+            <translation>&lt;b&gt;Ausführen&lt;/b&gt; verarbeitet jede wartende Probe. &lt;b&gt;Stop&lt;/b&gt; auf der Fortschrittskarte hält nach dem aktuellen Schritt an; eine fehlgeschlagene Probe wird als &lt;i&gt;failed&lt;/i&gt; markiert und die anderen laufen weiter. Fahren Sie über eine Zeile für ihre Details.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

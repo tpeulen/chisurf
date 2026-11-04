@@ -48,9 +48,17 @@ The order is not a suggestion. Each step consumes what the one before it wrote:
    also fits one per burst *and* H2MM state.
    - **3.1 Segmentation (H2MM)** (Advanced) — cuts each burst into segments and
      gives every photon a state.
+4. **More samples** — further measurements of the same kind, processed exactly
+   as the first one: the same setup, calibration files and G, burst search,
+   Burst MLE IRF, shifts, model and fit window, and the optional steps that ran.
+   Drop them on the step (drag from its workspace table, or drop files on the
+   window while it is open) and press **Run**; one short row per sample (bursts,
+   mean τ, mean E, status), the details in its tooltip. Each sample's runs go into
+   its own container with the calibration report and the recipe. It opens once
+   Burst MLE has fitted the first data. See its own **?** for the recipe.
 
 Steps only Advanced shows carry a sub-number of the step before them, so Simple
-counts 0–3 without a gap and a step has the same number in both modes.
+counts 0–4 without a gap and a step has the same number in both modes.
 
 **Simple shows what a step needs, nothing more.** You press **Next** (or **>>**)
 and the pipeline runs, so Simple has no button that Next already presses:
@@ -74,7 +82,8 @@ one blurred lifetime per burst and two sharp ones per state.
 
 A step opens once its input is there: Burst Selection when 1. Data Selection has
 files, and everything that reads bursts (MLE, BVA, 2CDE, Fusion, H2MM and the
-burst side tools) once Burst Selection has found them. Until then its row is grey
+burst side tools) once Burst Selection has found them, and 4. More samples once
+Burst MLE has fitted the first data. Until then its row is grey
 and its tooltip says what is missing.
 
 **Every search is its own analysis.** A search writes a run into the project's

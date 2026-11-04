@@ -110,9 +110,9 @@ def test_the_rail_is_simple_unless_advanced(hub):
 
     roles = [p["role"] for p in STEPS if not p.get("separator")]
     assert "segment_mle" not in roles
-    pipeline = roles[: roles.index("h2mm") + 1]
-    assert pipeline == ["setup", "data", "selection", "fusion", "bva", "two_cde", "mle", "h2mm"]
-    assert hub.shown_roles()[:4] == ["setup", "data", "selection", "mle"]
+    pipeline = roles[: roles.index("more") + 1]
+    assert pipeline == ["setup", "data", "selection", "fusion", "bva", "two_cde", "mle", "h2mm", "more"]
+    assert hub.shown_roles()[:5] == ["setup", "data", "selection", "mle", "more"]
     hub.set_advanced(True)
     assert hub.shown_roles()[: len(pipeline)] == pipeline
     hub.set_advanced(False)
@@ -442,7 +442,7 @@ def test_simple_steps_show_what_the_step_needs_only(hub, files):
     assert "Save results" not in seen["mle"] and "Opt" not in seen["mle"].split()
     assert "Calc G" not in seen["setup"] and "Add" not in seen["setup"].split()
     # the side tools are Advanced
-    assert hub.shown_roles() == ["setup", "data", "selection", "mle"]
+    assert hub.shown_roles() == ["setup", "data", "selection", "mle", "more"]
     rail = " ".join(drv.draw(1).strings)
     for tool in ("Browser", "Accurate FRET", "Kinetics", "Side tools"):
         assert tool not in rail, tool

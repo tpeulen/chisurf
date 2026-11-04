@@ -3,7 +3,7 @@
   "steps": [
     {
       "title": "What this window is",
-      "text": "A confocal measurement is a long timestamp stream that is mostly background, with occasional bright <b>bursts</b> — one molecule crossing the focus. Everything you want from it is a number computed <i>per burst</i>.<br/><br/>The left list is that pipeline, in the order it has to happen. Eight steps, about two minutes. You press the rows; the tour only points at them.",
+      "text": "A confocal measurement is a long timestamp stream that is mostly background, with occasional bright <b>bursts</b> — one molecule crossing the focus. Everything you want from it is a number computed <i>per burst</i>.<br/><br/>The left list is that pipeline, in the order it has to happen. Nine steps, about two minutes. You press the rows; the tour only points at them.",
       "target": {}
     },
     {
@@ -44,6 +44,16 @@
       },
       "await": {
         "hint": "Select <b>Burst MLE</b>."
+      }
+    },
+    {
+      "title": "4 — the next samples, the same way",
+      "text": "Once the first measurement has its lifetimes, <b>4. More samples</b> opens. Drop further measurements on it and press <b>Run</b>: each goes through exactly the pipeline you just tuned — the same setup, calibration, burst search, Burst MLE fit window and IRF, and the optional steps that ran — and its results go into its own container, beside its photons.",
+      "target": {
+        "panel": "More samples"
+      },
+      "await": {
+        "hint": "Select <b>4. More samples</b> (it opens once Burst MLE has fitted)."
       }
     },
     {

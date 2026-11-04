@@ -1,0 +1,22 @@
+{
+  "_comment": "Guided tour of step 4 of the burst workflow (More samples, gui/more_samples_app.py). The steps point at the real controls and wait for the user to use them. Read by chisurf.emtk.help_guide.EmTkGuidedTour.",
+  "steps": [
+    {
+      "title": "More of the same",
+      "text": "The pipeline is tuned on the first measurement. Every measurement you add here goes through <b>exactly</b> that pipeline: the same setup, calibration, burst search, Burst MLE fit window and IRF, and the optional steps that ran.",
+      "target": {}
+    },
+    {
+      "title": "Drop the samples",
+      "text": "Drag measurements from the workspace table down into <b>Samples</b>, or drop files on the window while this step is open. A group brings all its files.",
+      "target": {"name": "samples"},
+      "await": {"hint": "Drag a measurement into the <b>Samples</b> table."}
+    },
+    {
+      "title": "Run",
+      "text": "<b>Run</b> processes every queued sample. The progress card's <b>Stop</b> stops after the current step; a sample that fails is marked <i>failed</i> and the others go on. Hover a row for its details.",
+      "target": {"name": "run"},
+      "await": {"hint": "Press <b>Run</b>."}
+    }
+  ]
+}

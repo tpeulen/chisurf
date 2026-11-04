@@ -1,0 +1,104 @@
+{
+  "_comment": "Step 4 of the burst workflow (More samples), emtk app: the samples dropped on the step, one short row each, processed with the recipe the user tuned on the first data (BurstMoreSamplesApp.sample_rows), and in Advanced the recipe itself, one row per part (BurstMoreSamplesApp.recipe_rows). Details are in each row's tooltip.",
+  "sections": [
+    {
+      "type": "custom",
+      "key": "data_table",
+      "title": "Samples",
+      "description": "The further measurements, each processed exactly as the first one: the same setup, calibration, burst search, Burst MLE settings and fit window, and the optional steps that ran. Drag workspace data here from the table above, or drop files on the window. A row's tooltip has the details: the run, the mean lifetime per detector, the recipe and the calibration report it was made with, or why it failed.",
+      "options": {
+        "source": "sample_rows",
+        "row_key": "path",
+        "tooltip_key": "tip",
+        "selected_call": "select_sample",
+        "delete_call": "remove_sample",
+        "highlight_attr": "drop_target",
+        "selection": "single",
+        "editable": false,
+        "height": 200,
+        "fit_columns": true,
+        "min_column_width": 40,
+        "selection_note": false,
+        "context_menu": [
+          {
+            "label": "Re-run",
+            "call": "rerun_sample",
+            "advanced": true,
+            "description": "Process this sample again with the current recipe."
+          },
+          {
+            "label": "Remove",
+            "call": "remove_sample",
+            "description": "Take this sample out of the list (its results stay in its container)."
+          }
+        ],
+        "columns": [
+          {
+            "key": "name",
+            "title": "Sample",
+            "width": 160,
+            "tooltip": "The measurement (its file name); the path is in the row's tooltip."
+          },
+          {
+            "key": "bursts",
+            "title": "Bursts",
+            "width": 56,
+            "shade": false,
+            "tooltip": "How many bursts the search found in this sample, with the first data's search settings."
+          },
+          {
+            "key": "tau",
+            "title": "τ (ns)",
+            "width": 56,
+            "shade": false,
+            "tooltip": "Mean burst lifetime of the first detector (every detector in the row's tooltip), fitted with the first data's IRF, model and fit window."
+          },
+          {
+            "key": "E",
+            "title": "E",
+            "width": 48,
+            "shade": false,
+            "tooltip": "Mean proximity ratio of the bursts (empty for one colour)."
+          },
+          {
+            "key": "status",
+            "title": "Status",
+            "width": 64,
+            "tooltip": "queued, running, done or failed; what it is doing, or why it failed, is in the row's tooltip."
+          }
+        ]
+      }
+    },
+    {
+      "type": "custom",
+      "key": "data_table",
+      "title": "Recipe",
+      "advanced": true,
+      "description": "What every sample goes through, captured from the steps as they are set now: one row per part, the details in its tooltip. Read-only: change a step, and the recipe follows.",
+      "options": {
+        "source": "recipe_rows",
+        "row_key": "part",
+        "tooltip_key": "tip",
+        "selection": "single",
+        "editable": false,
+        "height": 160,
+        "fit_columns": true,
+        "selection_note": false,
+        "columns": [
+          {
+            "key": "part",
+            "title": "Part",
+            "width": 90,
+            "tooltip": "Which step of the pipeline."
+          },
+          {
+            "key": "value",
+            "title": "Setting",
+            "width": 160,
+            "tooltip": "The key setting of that step; the row's tooltip has the rest."
+          }
+        ]
+      }
+    }
+  ]
+}
