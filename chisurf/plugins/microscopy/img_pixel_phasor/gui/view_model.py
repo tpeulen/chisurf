@@ -113,6 +113,7 @@ class PhasorImgViewModel(ImagingMapViewModel):
             self._frequency_per_channel(),
             int(self.n_ph_min),
             tuple(irf_files),
+            win.get("micro_time_resolution_ps"),
         )
         if getattr(self, "_pf_key", None) == key and getattr(self, "_pf_cache", None) is not None:
             return self._pf_cache
@@ -128,6 +129,7 @@ class PhasorImgViewModel(ImagingMapViewModel):
                 self.filename,
                 list(win.get("chs", [0]) or [0]),
                 list(win.get("micro_time_ranges") or []),
+                win.get("micro_time_resolution_ps"),
             )
             tttr_irf = get_tttr(irf_files[0]) if irf_files else None
             result = phasor_frames(

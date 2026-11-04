@@ -230,12 +230,12 @@ class ImagingMapViewModel:
             return None
         chs = list(win.get("chs", [0]) or [0])
         mtr = list(win.get("micro_time_ranges") or [])
-        sig = (self.filename, self.display_window, tuple(chs), tuple(tuple(r) for r in mtr))
+        sig = (self.filename, self.display_window, tuple(chs), tuple(tuple(r) for r in mtr), win.get("micro_time_resolution_ps"))
 
         def build():
             from chisurf.core.fluorescence.imaging import cached_clsm, clsm_intensity_counts
 
-            clsm = cached_clsm(self.filename, chs, mtr)
+            clsm = cached_clsm(self.filename, chs, mtr, win.get("micro_time_resolution_ps"))
             return clsm_intensity_counts(clsm)
 
         return self._cached_stack("frame_stack", sig, build)
@@ -350,6 +350,7 @@ class ImagingMapViewModel:
                 tuple(d.get("ch_p", []) or []),
                 tuple(d.get("ch_s", []) or []),
                 tuple(tuple(r) for r in (d.get("micro_time_ranges") or [])),
+                d.get("micro_time_resolution_ps"),
                 tuple(d.get("irf") or []),
                 float(d.get("bg_vv") or 0.0),
                 float(d.get("bg_vh") or 0.0),

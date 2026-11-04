@@ -153,6 +153,11 @@ class ColocModel(WindowsPreflightMixin, EmtkModelMixin, ColocViewModel):
         from chisurf.core.fluorescence.excitation import merge_gates
 
         self.detectors = merge_gates(self.detectors, setup_gates(setup))
+        width = (setup.get("tttr_reading") or {}).get("micro_time_resolution")
+        if width:
+            for name in setup_gates(setup):
+                if name in self.detectors:
+                    self.detectors[name]["micro_time_resolution_ps"] = float(width)
         self._stack = None
         self._result = None
         self.status_line = "Detector gates from the data taken. Computing colocalization..."

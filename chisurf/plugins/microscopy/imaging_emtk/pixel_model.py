@@ -210,6 +210,11 @@ class PixelModelMixin(WindowsPreflightMixin, EmtkModelMixin, _Host):
         from chisurf.core.fluorescence.excitation import format_ranges, merge_gates
 
         self.detectors = merge_gates(self._windows(), setup_gates(setup))
+        width = (setup.get("tttr_reading") or {}).get("micro_time_resolution")
+        if width:
+            for name in setup_gates(setup):
+                if name in self.detectors:
+                    self.detectors[name]["micro_time_resolution_ps"] = float(width)
         gates = format_ranges(setup_gates({"detectors": self.detectors}))
         self.status_line = f"Detector gates from the data: {gates}. Computing {self.TOOL_NAME}..."
         self.notify("gates")  # the window shows the taken gates in its Detectors editor

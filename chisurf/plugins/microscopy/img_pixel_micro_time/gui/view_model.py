@@ -72,6 +72,7 @@ class MicroTimeViewModel(ImagingMapViewModel):
             self.display_window,
             tuple(chs),
             tuple(tuple(r) for r in mtr),
+            win.get("micro_time_resolution_ps"),
             int(self.n_ph_min),
         )
 
@@ -79,7 +80,7 @@ class MicroTimeViewModel(ImagingMapViewModel):
             from chisurf.core.fluorescence.imaging import cached_clsm, get_tttr
 
             tttr = get_tttr(self.filename)
-            clsm = cached_clsm(self.filename, chs, mtr)
+            clsm = cached_clsm(self.filename, chs, mtr, win.get("micro_time_resolution_ps"))
             micro_res = float(getattr(tttr.header, "micro_time_resolution", 0.0) or 0.0)
             res_ns = micro_res * 1e9 if micro_res > 0.0 else -1.0
             return np.nan_to_num(

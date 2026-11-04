@@ -202,12 +202,13 @@ def _stack_from_tttr(path: str, channels, windows) -> tuple[np.ndarray, list[str
     when *windows* (``{name: {"chs": [...], "micro_time_ranges": [...]}}``) is
     given — so a PIE/micro-time-gated window is a "colour" like any other.
     """
-    from .pixel_maps import build_clsm_windowed, get_tttr
+    from .pixel_maps import build_clsm_windowed, get_tttr, ranges_for_data
 
     tttr = get_tttr(str(path))
     if windows:
         specs = [
-            (name, list(det.get("chs", [0]) or [0]), list(det.get("micro_time_ranges") or []))
+            (name, list(det.get("chs", [0]) or [0]), ranges_for_data(
+                det.get("micro_time_ranges"), det.get("micro_time_resolution_ps"), tttr))
             for name, det in windows.items()
         ]
     else:

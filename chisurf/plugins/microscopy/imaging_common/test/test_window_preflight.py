@@ -44,6 +44,15 @@ def test_gates_that_hold_the_pulses_and_ungated_windows_say_nothing(scan):
     assert gate_line(scan, {"green": {"chs": [0], "micro_time_ranges": []}}) is None
 
 
+def test_gate_check_converts_setup_width_and_keeps_it_in_cache_key(scan):
+    fine = {"green": {"chs": [0], "micro_time_ranges": [[200, 400]],
+                      "micro_time_resolution_ps": 8}}
+    assert gate_line(scan, fine) is None
+    wrong_width = {name: {**det, "micro_time_resolution_ps": 32}
+                   for name, det in fine.items()}
+    assert gate_line(scan, wrong_width) is not None
+
+
 def test_a_donor_only_scan_and_an_image_file_say_nothing(tmp_path):
     from chisurf.plugins.microscopy.img_frc.demo import make_demo
 
@@ -117,6 +126,9 @@ def test_the_detectors_editor_shows_the_taken_gates(scan, module):
     if hasattr(model, "run_maps"):
         model.run_maps()
     assert model.use_detected_windows()
-    shown = app.editor.model.get_settings()["detectors"]["green"]["micro_time_ranges"]
+    from chisurf.core.fluorescence import detector_names as dn
+
+    # The editor shows the detectors under their names: the setup's "green" is G|G there.
+    shown = app.editor.model.get_settings()["detectors"][dn.DONOR]["micro_time_ranges"]
     assert any(lo <= DONOR_PEAK < hi for lo, hi in shown), shown
     app.close()

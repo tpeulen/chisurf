@@ -129,7 +129,7 @@ def get_tttr(filename: str) -> Any:
     return open_tttr(str(filename))
 
 
-def cached_clsm(filename: str, channels, micro_time_ranges=None) -> Any:
+def cached_clsm(filename: str, channels, micro_time_ranges=None, micro_time_resolution_ps=None) -> Any:
     """Return a cached windowed CLSM for ``(filename, channels, micro_time_ranges)``.
 
     Shared across the imaging tools (and warmed by the background prefill) so a
@@ -138,14 +138,16 @@ def cached_clsm(filename: str, channels, micro_time_ranges=None) -> Any:
     dict (only the GIL serialises the actual C++ fill).
     """
     chs = tuple(int(x) for x in (channels or [0]))
-    mtr = tuple(tuple(int(v) for v in r) for r in (micro_time_ranges or []))
+    tttr = get_tttr(filename)
+    mtr = tuple(tuple(int(v) for v in r) for r in ranges_for_data(
+        micro_time_ranges, micro_time_resolution_ps, tttr))
     key = (str(filename), chs, mtr)
     with _CACHE_LOCK:
         clsm = _CLSM_CACHE.get(key)
         if clsm is not None:
             _CLSM_CACHE.move_to_end(key)
             return clsm
-    clsm = build_clsm_windowed(get_tttr(filename), list(chs), list(mtr))
+    clsm = build_clsm_windowed(tttr, list(chs), list(mtr))
     with _CACHE_LOCK:
         _CLSM_CACHE[key] = clsm
         recent = list(dict.fromkeys(k[0] for k in reversed(_CLSM_CACHE)))[:_CLSM_FILES]
@@ -174,12 +176,13 @@ def prefill_windows(filename: str, windows: dict) -> None:
         if ch_s:
             channel_sets.append(ch_s)
         for chs in channel_sets:
-            key = (tuple(chs), tuple(tuple(r) for r in mtr))
+            width = det.get("micro_time_resolution_ps")
+            key = (tuple(chs), tuple(tuple(r) for r in mtr), width)
             if key in seen:
                 continue
             seen.add(key)
             try:
-                cached_clsm(filename, list(chs), list(mtr))
+                cached_clsm(filename, list(chs), list(mtr), width)
             except Exception:
                 _logger.debug("prefill of %r failed", chs, exc_info=True)
 
@@ -288,8 +291,8 @@ def _window_worker(payload):
     the movie docks never rebuild a CLSM on the UI/pipeline thread. Run in a
     worker process (:func:`compute_windows`) because the CLSM fill holds the GIL.
     """
-    filename, chs, ch_p, ch_s, mtr, kind, params, irf_files, bg = payload
-    clsm = cached_clsm(filename, chs, mtr)
+    filename, chs, ch_p, ch_s, mtr, kind, params, irf_files, bg, width = payload
+    clsm = cached_clsm(filename, chs, mtr, width)
     if kind == "nb":
         stack = clsm_intensity_counts(clsm)
         nb = nb_pipeline(stack, params)
@@ -354,10 +357,10 @@ def _window_worker(payload):
         }
     if kind == "intensity":
         base_chs = ch_p or chs
-        base = cached_clsm(filename, base_chs, mtr)
+        base = cached_clsm(filename, base_chs, mtr, width)
         n_par = clsm_intensity_counts(base).sum(axis=0)
         if ch_s and ch_s != base_chs:
-            n_perp = clsm_intensity_counts(cached_clsm(filename, ch_s, mtr)).sum(axis=0)
+            n_perp = clsm_intensity_counts(cached_clsm(filename, ch_s, mtr, width)).sum(axis=0)
         else:
             n_perp = np.zeros_like(n_par)
         durations, n_pixel = total_line_durations(base)
@@ -402,6 +405,7 @@ def compute_windows(filename, windows, kind, params=None, progress=None, use_pro
             params,
             list(det.get("irf") or []),
             float(det.get("bg") or 0.0),
+            det.get("micro_time_resolution_ps"),
         )
         if pool is not None:
             try:
@@ -415,6 +419,16 @@ def compute_windows(filename, windows, kind, params=None, progress=None, use_pro
     if callable(progress):
         progress(1.0, "Done")
     return results
+
+
+def ranges_for_data(ranges, width_ps, tttr):
+    """Convert half-open setup gates to the source TTTR channel width."""
+    if not width_ps or not ranges:
+        return list(ranges or [])
+    from tttrlib import micro_time_windows, micro_time_windows_at
+
+    rec = micro_time_windows(gates={"gate": ranges}, micro_time_resolution_ps=width_ps)
+    return micro_time_windows_at(rec, float(tttr.header.micro_time_resolution))["gates"].get("gate", [])
 
 
 def build_clsm_windowed(tttr: Any, channels, micro_time_ranges=None) -> Any:
@@ -477,8 +491,10 @@ def windows_from_payload(payload: dict) -> dict[str, dict]:
     from tttrlib import (
         setup_detectors,
         setup_gates,
+        setup_micro_time_resolution,
     )
 
+    width = setup_micro_time_resolution(payload)
     dets = {str(k): v for k, v in ((payload or {}).get("detectors") or {}).items()}
     gates = setup_gates(payload)
     return {
@@ -487,6 +503,7 @@ def windows_from_payload(payload: dict) -> dict[str, dict]:
             "ch_p": [int(c) for c in dets[name].get("ch_p") or []],
             "ch_s": [int(c) for c in dets[name].get("ch_s") or []],
             "micro_time_ranges": [tuple(g) for g in gates.get(name, [])],
+            **({"micro_time_resolution_ps": width * 1e12} if width else {}),
         }
         for name, chs in setup_detectors(payload).items()
     }

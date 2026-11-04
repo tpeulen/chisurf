@@ -60,7 +60,7 @@ def test_mean_micro_time_replaces_below_threshold_sentinels(monkeypatch):
         lambda _path: SimpleNamespace(header=SimpleNamespace(micro_time_resolution=1e-9)),
     )
     result = pixel_maps._window_worker(
-        ("sample.ptu", [0], [], [], [], "mean_micro_time", {"n_ph_min": 2}, [], None)
+        ("sample.ptu", [0], [], [], [], "mean_micro_time", {"n_ph_min": 2}, [], None, None)
     )
     np.testing.assert_array_equal(result["mean_micro_time"], [[2.5, 0.0]])
     np.testing.assert_array_equal(result["mt_frames"][:, 0, 1], [0.0, 0.0])
@@ -518,3 +518,17 @@ def test_add_maps_still_creates_a_missing_file():
         path = os.path.join(d, "new.h5")
         assert add_maps_to_hdf5(path, {"N": np.zeros((2, 2))}) == ["N"]
         assert "N" in column_names(read_imaging_table(path))
+
+
+def test_imaging_gates_carry_width_and_convert_for_each_source():
+    from types import SimpleNamespace
+    from chisurf.core.fluorescence.imaging.pixel_maps import windows_from_payload, ranges_for_data
+
+    setup = {"tttr_reading": {"micro_time_resolution": 8.0},
+             "detectors": {"green": {"chs": [0], "micro_time_ranges": [[8, 20]]}}}
+    window = windows_from_payload(setup)["green"]
+    assert window["micro_time_resolution_ps"] == pytest.approx(8.0)
+    fine = SimpleNamespace(header=SimpleNamespace(micro_time_resolution=8e-12))
+    coarse = SimpleNamespace(header=SimpleNamespace(micro_time_resolution=16e-12))
+    assert ranges_for_data(window["micro_time_ranges"], window["micro_time_resolution_ps"], fine) == [[8, 20]]
+    assert ranges_for_data(window["micro_time_ranges"], window["micro_time_resolution_ps"], coarse) == [[4, 10]]
