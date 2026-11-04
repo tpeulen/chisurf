@@ -32,8 +32,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| bur_files | `bur_files` | path_list |  |  | TTTR files or burst folders to analyse. |
-| TTTR folder | `data_dir` | directory |  |  | Folder the raw TTTR files named in the burst table resolve against. Left empty, the burst table's own folder is used. |
 | Container | `file_type` | choice |  | choices: `file_type_options` | TTTR container type of the raw files, or Auto to detect it. |
 | Donor channels | `donor_channels` | str |  |  | Routing channels counted as donor photons, comma separated. This is colour 0. |
 | Acceptor channels | `acceptor_channels` | str |  |  | Routing channels counted as acceptor photons, comma separated. This is colour 1. Photons in neither list — acceptor-excitation photons, for instance — are dropped. |

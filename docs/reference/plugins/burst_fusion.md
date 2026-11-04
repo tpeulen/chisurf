@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: Burst Fusion
-description: Fuse bursts the same molecule produced, using the recurrence same-molecule probability, into a new burst folder.
+description: Fuse bursts the same molecule produced, using the recurrence same-molecule probability, into a new burst run of the same measurement.
 resource: chisurf/plugins/burst/burst_fusion/
 tags: [reference, plugins, burst-fusion, spectroscopy, single-molecule]
 anchor: plugin-burst_fusion
@@ -11,7 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-burst_fusion)=
 # Burst Fusion
 
-Fuse bursts the same molecule produced, using the recurrence same-molecule probability, into a new burst folder.
+Fuse bursts the same molecule produced, using the recurrence same-molecule probability, into a new burst run of the same measurement.
 
 ## Identity
 
@@ -32,7 +32,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Folder | `folder` | directory |  |  | The burst-analysis folder to fuse — the output of burst selection. Nothing in it is modified; the fused bursts go to a new folder beside it. |
+| Burst run | `folder` | str |  |  | The burst run being fused, as picked in the Input section above (a run of the photon dataset's analysis container). Nothing in it is modified; the fused bursts are written as a new run of the same container, named after the source run and the threshold. |
 | P(same) ≥ | `threshold` | float |  | 0.0 … 1.0 (step 0.05) | Two consecutive bursts are fused while the probability that they are the same molecule is at least this. 1 fuses nothing; low values eventually merge different molecules. |
 | Max gap | `max_gap_ms` | float |  | 0.0 … 10000.0 (step 1.0) | Ceiling on the gap fusion may bridge, whatever the probability says (0 removes it). A fused burst is one interval on disk, so bridging a gap puts its background photons inside the burst. |
 | Max fragments | `max_group` | int |  | 0 … 1000 (step 1) | Largest number of original bursts one fused burst may contain (0 = no limit). Caps runaway chains in dense data. |
@@ -52,8 +52,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Method | Long-running | Summary |
 | --- | --- | --- |
-| `burst_fusion.jobs.analyze` | yes | Estimate the same-molecule probability of a burst folder and report what a threshold would fuse. |
-| `burst_fusion.jobs.fuse` | yes | Write the fused bursts as a new burst-analysis folder. |
+| `burst_fusion.jobs.analyze` | yes | Estimate the same-molecule probability of a burst run (or legacy folder) and report what a threshold would fuse. |
+| `burst_fusion.jobs.fuse` | yes | Write the fused bursts as a new run of the same container (a legacy folder: a new folder). |
 | `burst_fusion.workflow.prepare` | no | Resolve the burst folder and detector definition from a burst workflow context. |
 | `burst_fusion.contract.describe` | no | Return the burst-fusion workflow contract (methods, payloads, side effects). |
 

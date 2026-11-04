@@ -32,16 +32,16 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| setup_name | `setup_name` | setup_selector |  |  | Detector setup whose named windows (green, red, yellow, …) say which detection channels this measurement has. Picking one helps the channel columns below map themselves even when the table uses site-specific names, and it names the detectors when the optical model supplies the prior. |
+| setup_name | `setup_name` | setup_selector |  |  | Detector setup whose named detectors (G\|G, R\|G, R\|R, …) say which detection channels this measurement has. Picking one helps the channel columns below map themselves even when the table uses site-specific names, and it names the detectors when the optical model supplies the prior. |
 | Burst table | `filename` | file |  |  | Per-burst table to calibrate: any delimited text file (.csv/.tsv/.txt/.bur) or an .npz archive, with one row per burst and one column per signal. Files can also be dropped on the window. Use the toolbar's ndX button instead to calibrate exactly the bursts currently open there. |
 
 ### Channels
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| I_DD (donor) | `column_i_dd` | choice |  | choices: `column_names` | Donor signal under donor excitation — the 'green' channel. Auto-detected from the column names; counts and count rates both work as long as every channel uses the same unit. Type to filter the list. |
+| I_DD (donor) | `column_i_dd` | choice |  | choices: `column_names` | Donor signal under donor excitation — the donor detector G\|G. Auto-detected from the column names; counts and count rates both work as long as every channel uses the same unit. Type to filter the list. |
 | I_DA (FRET) | `column_i_da` | choice |  | choices: `column_names` | Acceptor signal under donor excitation — the 'red' FRET channel. It still contains donor leakage and directly excited acceptor; removing those is what alpha and delta do. Type to filter the list. |
-| I_AA (acceptor) | `column_i_aa` | choice |  | choices: `column_names` | Acceptor signal under acceptor excitation (ALEX/PIE) — the 'yellow' channel. Optional, but without it there is no stoichiometry: donor-only and acceptor-only bursts can then not be found automatically and every burst is assumed to be doubly labelled. Type to filter the list. |
+| I_AA (acceptor) | `column_i_aa` | choice |  | choices: `column_names` | Acceptor signal under acceptor excitation (ALEX/PIE) — the R\|R channel. Optional, but without it there is no stoichiometry: donor-only and acceptor-only bursts can then not be found automatically and every burst is assumed to be doubly labelled. Type to filter the list. |
 | Donor lifetime | `column_tau_f` | choice |  | choices: `column_names` | Per-burst fluorescence-averaged donor lifetime in presence of the acceptor (ns). Optional, and powerful: it puts every burst on the E-tau plot, lets the static FRET line determine gamma from a single population, and turns the off-line offset into a dynamics test. Type to filter the list. |
 
 ### Dyes (database)
@@ -66,9 +66,9 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Bg I_DD | `background_dd` | float |  |  | Background of the donor channel, in the units of the columns. Uncorrected background biases low-efficiency populations most. |
-| Bg I_DA | `background_da` | float |  |  | Background of the FRET channel. |
-| Bg I_AA | `background_aa` | float |  |  | Background of the acceptor-excitation channel. |
+| B_G\|G (kHz) | `background_dd` | float |  |  | Background rate of the donor detector G\|G (I_DD), kHz. Uncorrected background biases low-efficiency populations most. |
+| B_R\|G (kHz) | `background_da` | float |  |  | Background rate of the FRET detector R\|G (I_DA), kHz. |
+| B_R\|R (kHz) | `background_aa` | float |  |  | Background rate of the acceptor-excitation detector R\|R (I_AA), kHz. |
 
 ### Optics prior (light path)
 
@@ -78,8 +78,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Light path | `lightpath_name` | choice |  | choices: `lightpath_names` | A light path saved by the light-path simulator. Its excitation matrix (which laser excites which dye) and emission matrix (which fraction of each dye's emission reaches each detector) are turned into Gaussian priors for gamma, alpha and delta. Leave empty to calibrate from the data alone. Type to filter the list. |
 | Phi_D | `quantum_yield_donor` | float |  | 0.0 … 1.0 (step 0.01) | Donor fluorescence quantum yield. Enters the predicted gamma = (g_R·Phi_A)/(g_G·Phi_D). |
 | Phi_A | `quantum_yield_acceptor` | float |  | 0.0 … 1.0 (step 0.01) | Acceptor fluorescence quantum yield. |
-| g_G | `detection_green` | float |  | 0.0 … 10.0 (step 0.01) | Detection efficiency of the donor (green) channel, beyond what the light path already models. |
-| g_R | `detection_red` | float |  | 0.0 … 10.0 (step 0.01) | Detection efficiency of the acceptor (red) channel. |
+| g_G | `detection_green` | float |  | 0.0 … 10.0 (step 0.01) | Detection efficiency of the donor (G\|G) channel, beyond what the light path already models. |
+| g_R | `detection_red` | float |  | 0.0 … 10.0 (step 0.01) | Detection efficiency of the acceptor (R\|G) channel. |
 
 ### Procedure
 

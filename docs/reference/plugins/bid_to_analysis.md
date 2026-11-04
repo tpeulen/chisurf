@@ -36,3 +36,4 @@ This plugin's window is an EMTK app without declarative parameter sections: its 
 
 - Plugin package: `chisurf/plugins/burst/bid_to_analysis/`
 - Manifest: {src}`chisurf/plugins/burst/bid_to_analysis/manifest.json`
+- UI spec: {src}`chisurf/plugins/burst/bid_to_analysis/gui/windows.view.json`

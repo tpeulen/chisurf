@@ -76,7 +76,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | All photons | `show_all_photons` | bool |  |  | Draw the layers computed from every photon in the visible window. |
 | Selected photons | `show_selected_photons` | bool |  |  | Draw the layers computed from the photons the search kept. |
-| Window start | `window_start_s` | float |  | 0.0 … 100000.0 | Start of the visible window in the active file. The plots and the preview are computed for this slice only. |
+| Window start (s) | `window_start_s` | float |  | 0.0 … 100000.0 | Start of the visible window in the active file. The plots and the preview are computed for this slice only. |
 | Window length | `window_length_s` | float |  | 0.0 … 100000.0 | Length of the visible window; 0 shows the whole file. |
 | MCS bin width | `trace_bin_ms` | float |  | 0.05 … 9999.0 | Bin width of the count-rate trace. |
 

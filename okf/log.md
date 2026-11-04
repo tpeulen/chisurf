@@ -36,6 +36,7 @@
 - 2026-11-04: Burst workflow (`burst_analysis.api.workflow`): `Setup` carries named PIE `windows` and `micro_time_resolution_ps`; `select_bursts` sends them as the windows record (recorded with the run), and BVA, H2MM, IRF/background and the pre-flight apply the gates in each measurement's channels; `two_cde` resolves its streams through 2CDE's `settings_from_setup` (acceptor-excitation gate cut to the delayed window).
 - 2026-11-04: H2MM records a run only in each measurement's .pto (per-burst states, dwells, per-photon states, per-state decays; `write_result_tables(files=False)` by default) and exports CSV only on request (Export tables, CLI `--output`); the photon-table HDF5/CSV toggles and `write_hdf5` are gone. Stream gates are converted per measurement from the setup's width (`H2mmSettings.micro_time_resolution_ps`). Docs (guides 19, 34, h2mm) and [burst plugins](plugins/burst.md) updated.
 - 2026-11-04: `anisotropy.rt.rt_curves`: the comment now states the convention the code computes (g multiplies VH in numerator and denominator, Ströhl et al. DOI 10.1088/2050-6120/aa872e Eq. 1; l1/l2 applied to the corrected signals) instead of the outdated reciprocal-G explanation.
+- 2026-11-04: Plugin reference regenerated for the burst plugins (accurate_fret, bid_to_analysis, burst_bva, burst_fusion, burst_gs, burst_h2mm, burst_selection, fret_check), the new Excitation Windows page, the plugin index (129 plugins) and the parameter tables.
 
 ## 2026-11-03
 

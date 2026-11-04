@@ -46,3 +46,4 @@ This plugin's window is an EMTK app without declarative parameter sections: its 
 - Plugin package: `chisurf/plugins/burst/burst_bva/`
 - Manifest: {src}`chisurf/plugins/burst/burst_bva/manifest.json`
 - UI spec: {src}`chisurf/plugins/burst/burst_bva/gui/window.view.json`
+- UI spec: {src}`chisurf/plugins/burst/burst_bva/gui/windows_check.view.json`

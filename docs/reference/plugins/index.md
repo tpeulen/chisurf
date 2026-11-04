@@ -10,7 +10,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 
 Every discoverable ChiSurf plugin, grouped by its menu category. Each page gives the plugin's identity, its editable parameters, and its JSON-RPC surface.
 
-Of the **128 plugins**, **91** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the controls of the others are described in each plugin's guide, and every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
+Of the **129 plugins**, **91** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the controls of the others are described in each plugin's guide, and every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
 
 ```{toctree}
 :hidden:
@@ -19,7 +19,7 @@ Of the **128 plugins**, **91** build their interface from declarative AutoForm s
 *
 ```
 
-**128 plugins** across 26 categories.
+**129 plugins** across 26 categories.
 
 ## Core
 
@@ -40,9 +40,9 @@ Of the **128 plugins**, **91** build their interface from declarative AutoForm s
 | [Project data](project_data.md) | The data files a project links instead of copying: which are found, which are missing or changed, where a moved original is now (search a folder by name, confirm by checksum, or point at the file), and Make self-contained, which stores every linked file inside the project so it needs no other file -- before sharing or depositing it. |
 | [Split/Convert](tttr_splitter.md) | Split a TTTR file into files of a fixed photon count, convert it to another container format, or bin its micro-times; one file or a batch. |
 | [TTTR Inspector](tttr_header_edit.md) | Inspect any TTTR file tttrlib reads (PTU, HT3, SPC, Photon-HDF5): the photon table -- first events with routing channel, macro and micro time -- and the header tags as an editable table. Edited headers save into a new PTU file, the only container that keeps arbitrary tags, with the photons copied unchanged. |
-| [TTTR→Time-Window BIDs](tttr_time_windows.md) | Split TTTR files into fixed-duration time-window BID (.bst) files. |
+| [TTTR→Time-Window BIDs](tttr_time_windows.md) | Split photon streams of the workspace into fixed-duration time windows, stored as a burst run in each measurement's container (the run appears in the workspace under its stream). |
 | [Zenodo deposit](zenodo_deposit.md) | Review a deposition record item by item -- every measurement folder, calibration folder and metadata file, with where it came from and why it is flagged -- then upload it as a Zenodo draft and check the draft against the local package. Nothing is uploaded until every item is approved at its current content; publishing needs its own approval of the exact package. |
-| [⇄ .pto](tttr_to_pto.md) | Convert between a vendor photon file (.ptu, .spc, .ht3, ...) and ChiSurf's own .pto container, in either direction. Drop a vendor file to pack it into a .pto beside it; drop a .pto to unpack the vendor file(s) it embeds back out. Whichever direction, the dropped file is kept and the result is verified byte-for-byte before anything is ever deleted. Packing is also offered as a one-time nag wherever a plugin drops a vendor file to load it as the working measurement. |
+| [⇄ .pto](tttr_to_pto.md) | Convert between a vendor photon file (.ptu, .spc, .ht3, ...) and ChiSurf's own .pto container, in either direction. Pick photon streams of the Datasets workspace: a vendor file is packed into a .pto beside it, a stream of a .pto unpacks the vendor file(s) it embeds back out. The source is kept and the result verified byte-for-byte before anything is ever deleted; what is written enters the workspace as children of what it came from. Packing is also offered as a one-time nag wherever a plugin loads a vendor file as the working measurement. |
 
 ## Help
 
@@ -57,6 +57,7 @@ Of the **128 plugins**, **91** build their interface from declarative AutoForm s
 | Plugin | Summary |
 | --- | --- |
 | [Channel Definition](setup_channel_definition.md) *(hidden)* | Detector Channel and PIE-window definition wizard |
+| [Excitation Windows](excitation_windows.md) | Detect the PIE pulses (micro time) or µs-ALEX alternation (macro time) of a measurement, propose prompt/delayed windows, and check a setup's windows against the data. |
 | [FCS Definitions](fcs_channel_preset.md) *(hidden)* | Define which detector channels are correlated with which, per detector setup. |
 | [Menu Switch](menu_switch.md) | Switches the open ChiSurf main window between the traditional menu bar and the ribbon, without a restart. The choice is saved and restored at the next start. Menu Switch opens no window of its own. |
 | [Models](model_manager.md) *(hidden)* | List the registered fitting models and switch models off so they leave the model drop-down. |
@@ -86,7 +87,7 @@ Of the **128 plugins**, **91** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [Histogram-Microtime](microtime_histogram.md) | Create and inspect TTTR microtime histograms. |
+| [Histogram-Microtime](microtime_histogram.md) | Create and inspect TTTR microtime histograms of photon streams from the Datasets workspace, with a detector setup row, optionally restricted to burst runs. |
 | [IRF Estimation](irf_estimator.md) | Blind IRF estimation from fluorescence decay data using truncated exponential fitting and Richardson-Lucy deconvolution. |
 | [Lazy Lifetime Analysis](lltf.md) | Lazy Lifetime Analysis for TCSPC fluorescence decay data. |
 | [MaxEnt MEM](maxent_decay.md) | Maximum-entropy analysis of TCSPC decays (lifetime and FRET distance). |
@@ -149,11 +150,11 @@ Of the **128 plugins**, **91** build their interface from declarative AutoForm s
 | [Burst Analysis](burst_analysis.md) | Integrated burst workflow with burst selection, BVA, burst MLE, burst browser, and background estimation. |
 | [Burst Background Estimation](burst_background.md) *(hidden)* | Estimate detector background rates from TTTR burst data. |
 | [Burst Browser](burst_browser.md) *(hidden)* | Inspect burstwise analysis tables and plots. |
-| [Burst Fusion](burst_fusion.md) *(hidden)* | Fuse bursts the same molecule produced, using the recurrence same-molecule probability, into a new burst folder. |
+| [Burst Fusion](burst_fusion.md) *(hidden)* | Fuse bursts the same molecule produced, using the recurrence same-molecule probability, into a new burst run of the same measurement. |
 | [Burst IRF & Background](burst_irf_bg.md) *(hidden)* | Extract a per-detector IRF and background rate from the non-burst photons of a single-molecule measurement, and feed them to the burst MLE lifetime fit. |
 | [Burst MLE](burst_mle_analysis.md) *(hidden)* | Maximum likelihood lifetime analysis for single-molecule burst data. |
 | [Burst Selection](burst_selection.md) *(hidden)* | Burst selection and FRET analysis for single-molecule fluorescence data. |
-| [FRET check](fret_check.md) | The single-button measurement check: drop a TTTR file, get a verdict. Is the measurement usable (burst density, multi-molecule events, stability, background)? Which bursts are suspicious? Works with or without ALEX/PIE; cw two-colour is a full citizen. Simple mode is one drop-zone and the verdict; advanced mode exposes editable detection, burst search and corrections, and hands off to ndX and burst analysis. Ported from smfret-web (peulen.xyz/smfret), now at home in ChiSurf. |
+| [FRET check](fret_check.md) | The single-button measurement check: pick a photon stream, get a verdict. Is the measurement usable (burst density, multi-molecule events, stability, background)? Which bursts are suspicious? Works with or without ALEX/PIE; cw two-colour is a full citizen. Simple mode is the Input section and the verdict; advanced mode exposes editable detection, burst search and corrections, and hands off to ndX and burst analysis. Ported from smfret-web (peulen.xyz/smfret), now at home in ChiSurf. |
 | [H2MM](burst_h2mm.md) *(hidden)* | Photon-by-photon Hidden Markov Model (H2MM) analysis of single-molecule FRET burst data, with BIC/ICL state selection and Viterbi dwell/transition analysis. |
 | [Intensity trace](intensity_trace.md) | Bin a TTTR photon stream into intensity traces per detector, histogram the counts per bin, and find discrete states with a hidden Markov model, with dwell-time histograms of each state. |
 | [Photon-by-photon kinetics](burst_gs.md) *(hidden)* | Gopich-Szabo photon-by-photon maximum likelihood: continuous-time rate constants and per-state FRET efficiencies fitted directly to photon arrival times and colours, for two- and three-colour data, with a transition-time scan and an H2MM cross-check. |
@@ -239,7 +240,7 @@ Of the **128 plugins**, **91** build their interface from declarative AutoForm s
 | [Audifier](tttr_audifier.md) | Convert TTTR photon streams to audio, with a live micro-time / lifetime waterfall preview. |
 | [Count Rate Analysis](tttr_count_rate_analysis.md) | Count rates per detector channel across many TTTR files, with mean/std and a per-file plot. |
 | [Microtime Shifter](microtime_shifter.md) | Apply global and per-channel micro-time shifts to TTTR files. |
-| [Photon Table](photon_table.md) | Inspect the photons of a TTTR file in a table: routing channel, micro-time and macro-time, one row per photon, with navigation and a channel filter. |
+| [Photon Table](photon_table.md) | Inspect the photons of a photon stream of the Datasets workspace in a table: routing channel, micro-time and macro-time, one row per photon, with navigation and a channel filter. |
 
 ## Tools → System
 
@@ -261,7 +262,7 @@ Of the **128 plugins**, **91** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [Acquisition](acq.md) | Single-molecule fluorescence acquisition: stream photons from real TCSPC hardware or the built-in tttrlib Sim* photon simulator (confocal diffusion with FRET, anisotropy and photophysics). |
+| [Acquisition](acq.md) | Record single-molecule measurements with pulsed interleaved excitation and watch the E–S histogram build up live: bursts are searched, counted into DD/DA/AA and placed in E and S while the photons arrive, written to a PTU, and the run lands in the project (photons dataset with its burst run). Sources: the built-in tttrlib photon simulator (PIE smFRET with known E/S), replay of a workspace photon stream, and TCSPC hardware through the phacq library (native drivers for PicoQuant MultiHarp/PicoHarp 330/HydraHarp 500, Becker & Hickl SPC cards and the PicoQuant Sepia II laser; no vendor libraries). |
 | [Global View](globalview.md) | Interactive network graph for visualizing and managing parameter relationships across fits in global analysis. |
 | [ndX](ndxplorer.md) | Multidimensional fluorescence data analysis and visualization tool. Supports burst analysis, multiparameter fluorescence detection (MFD), FRET calculations, and interactive selection/filtering of burst events for both single-molecule and image spectroscopy data. |
 

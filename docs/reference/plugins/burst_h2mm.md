@@ -32,7 +32,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Burst folder | `data_folder` | directory |  |  | Folder with the burst (.bur) tables of a finished burst analysis, or a measurement .pto container; the photons they name are read from beside them (a container holds them). |
 | Donor detector | `donor` | choice |  | choices: `detector_names` | Detector of the donor photons (stream 0): apparent FRET E = A/(A+D). Define detectors in the Detector setup window. |
 | Acceptor detector | `acceptor` | choice |  | choices: `detector_names` | Detector of the acceptor photons (stream 1). Swapping donor and acceptor still converges and looks plausible: check the assignment. |
 | Aex detector | `aex` | choice |  | choices: `aex_options` | Optional third stream (usALEX / PIE): acceptor photons under acceptor excitation. Gives every state a stoichiometry. |
@@ -62,11 +61,9 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Photon table HDF5 | `photon_hdf5` | bool |  |  | Write h2mm_photons.h5: compact and fast to reload. |
-| Photon table CSV | `photon_csv` | bool |  |  | Write h2mm_photons.csv: what every other tool can open. |
 | Decoder | `decoder` | choice |  | choices: viterbi, jitter, ffbs | How one state is assigned per photon: Viterbi (most likely path), jitter (draw per photon) or ffbs (draw whole paths). |
 | Decoder seed | `decoder_seed` | int |  | 0 … 2147483646 | Seed of the sampling decoders. |
-| Write state photons | `write_state_tttr` | bool |  |  | Write the decoded assignment back beside each source measurement. |
+| Write state photons | `write_state_tttr` | bool |  |  | On Export tables: also write the photons with their decoded state, beside each source measurement. |
 | State photons as PTU | `state_tttr_ptu` | bool |  |  | A PTU whose routing channels encode (stream, state). |
 | State photons sidecar | `state_tttr_sidecar` | bool |  |  | A msgpack sidecar; the source file is left untouched. |
 
