@@ -9,6 +9,7 @@
 - 2026-11-04: fixed: local-mode ChiSurfAPI.group_datasets/ungroup_datasets now act on the API's own session (server dataset services) instead of the process lists; guard test/core/test_grouping.py.
 - 2026-11-04: busy overlay (blur + progress card of every slow tool, e.g. Burst Analysis): the status message wraps to the card's width (up to 6 lines, the last ending in …) instead of being cut to its first line at 60 characters; the card grows and the bar/Stop move under the text.
 - 2026-11-04: acquisition knowledge notes committed: okf/design/2026-10-30-acquisition-ux.md (task plan + design gates: writer priority, dock subscriptions, gap semantics) and okf/design/2026-10-30-owner-instructions.md (owner's acquisition instructions verbatim with where each landed, checkpoints to 2026-11-02), plus okf/references/craggslab-smfbox-smotter.md (NI-card ALEX/PIE recipe, Obis command set; linked from references/index.md). Frontmatter added; contents unchanged.
+- 2026-11-04: Legacy Export's 'Export burst folder' and the Metadata Editor's 'Save as…' buttons carry stable ImGui ids (###export, ###save): the test driver and guided tour find them by id whatever the (translated) label says.
 
 ## 2026-11-03
 

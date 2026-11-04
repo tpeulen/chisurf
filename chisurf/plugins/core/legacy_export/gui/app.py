@@ -262,7 +262,7 @@ class LegacyExportApp(ImApp):
         )
         im.set_item_tooltip(tr("Where the burst folder and the CSVs are written."))
         self.remember("out_folder")
-        pressed = im.button(tr("📤 Export burst folder"), role="primary")
+        pressed = im.button(tr("📤 Export burst folder") + "###export", role="primary")
         im.set_item_tooltip(tr("Unpack the container into the Seidel/Margarita burst folder (.bur/.bg4)."))
         if pressed:
             m.export_burst_folder()

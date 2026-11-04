@@ -153,7 +153,7 @@ class MetadataEditorApp(ImApp):
             self._used("open")
         self.remember("open")
         im.same_line()
-        pressed = im.button(tr("Save as…"))
+        pressed = im.button(tr("Save as…") + "###save")
         im.set_item_tooltip(tr("Write the metadata record to a file."))
         if pressed:
             self.choose_save()
