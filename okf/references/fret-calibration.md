@@ -334,8 +334,9 @@ Moved here unchanged: notes that are history, done work or standing rules rather
   window by the ndxplorer plugin. It also injects the accurate per-burst columns
   (`FRET efficiency (accurate)`, `Stoichiometry (accurate)`, `R_DA (accurate)`,
   `Off static FRET line`, `Population`) — **not redundant**: ndX's own efficiency
-  equation has *no direct-excitation term* (`Fr = Sr − Br − alpha·Sg`), so pushed
-  constants alone cannot make its native column accurate. `refresh_column_selectors`
+  equation (then `Fr = Sr − Br − alpha·Sg`; since 2026-11-04 photons:
+  `Fr = N(R|G) − Bg_R|G·Duration − alpha·Fg`, and `Fr(PIE)` carries `− beta·Fy(PIE)`)
+  differs from the species model, so the accurate columns are kept beside it. `refresh_column_selectors`
   makes injected columns appear in ndX's axis pickers (they were plottable only
   after a reload before). **Naming**: ndX's `beta` is δ and its `r` is `1/beta`
   (the `r` mapping was missing and is now written too). Covered by

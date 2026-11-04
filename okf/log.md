@@ -71,6 +71,7 @@
 - Burst MLE: R|G and R|R calibrated once on the red reference in the window that sees it (R|G's IRF placed by the PIE gate offset); the three time shifts (IRF shift VV, VH, Shift VV/VH) are Fit-parameter rows, fixed at the calibration, editable, refined when unfixed, reset to the calibration ([IRF extraction](../docs/concepts/irf_extraction.md), [burst](plugins/burst.md)).
 - Data Selection proposes the buffer, IRF and reference-dye files beside a new measurement into their rows (found, removable, not proposed again); the pipeline's Burst MLE reads only Data Selection's references; a file's dataset is recorded before it is added, so no second container under _ ([burst](plugins/burst.md)).
 - Burst Analysis: a G computed after Burst MLE opened reaches it (the deferred hand-over was drained only for steps not on screen); the calibration report is written as <run>/burst_calibration; guide 21 with the owner's numbers per detector ([burst](plugins/burst.md)).
+- 2026-11-04 — ndX background is Bg_<detector> (kHz) per detector of the setup, prefilled from the run Burst Analysis wrote (buffer > <run>/background strict selection > container background; source in the Parameters tooltip); every background correction is photons − Bg × the burst's Duration (ms); E/S/proximity ratio ratios of counts; old Bg/Br/By/B_*/n_bg/g_bg/s_bg gone, old settings folders take the shipped equations. Simulated truth E 0.30/S 0.50 recovered (0.300/0.500; old 0.32/0.53). ndX 904f63b, 4490dcd; mmfdb 74e12f3; resume: okf/plugins/ndxplorer.md.
 
 ## 2026-11-03
 

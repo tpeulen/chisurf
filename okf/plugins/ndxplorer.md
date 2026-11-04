@@ -200,15 +200,12 @@ reader both emit from it, which is what stops a stored artifact and the code
 that loads it drifting apart. Headers earlier versions wrote (`r0`) still
 restore: a file already on disk cannot be asked to follow a newer schema.
 
-**The background comes back with it.** A measurement usually has its background
-measured long before its factors are determined, and ndX's `B_G|G` / `B_R|G` / `B_R|R`
-are *rates*: `Fg(PIE) = Sg(PIE) − B_G|G` where `Sg(PIE)` is
-`S prompt G|G (kHz)`. So the container's per-detector rates go in as they
-stand — no duration, no conversion — and a measurement carrying only a
-background still restores something, which is the part the equations use most
-directly. They travel on the calibration object, because
-`calibration_to_ndx_constants` already maps `bg_dd`/`bg_da`/`bg_aa` onto
-`B_G|G`/`B_R|G`/`B_R|R`, so one push carries both.
+**The background comes back with it.** ndX's background constants are rates,
+`Bg_<detector>` (kHz) per detector of the setup, and a burst's background is the
+rate times its `Duration (ms)` (kHz × ms = photons): `Fg(PIE) = 'S prompt G|G
+(photons)' − Bg_G|G × 'Duration (ms)'`. They travel on the calibration object,
+because `calibration_to_ndx_constants` maps `bg_dd`/`bg_da`/`bg_aa` onto
+`Bg_G|G`/`Bg_R|G`/`Bg_R|R`, so one push carries both.
 
 **Two traps, both load-bearing.** Writing constants directly is not enough: the
 values must reach the parameter *table*, since ndX's recompute throttle resets
@@ -273,21 +270,63 @@ range while the axis is log, which is what `fit_z_selection_to_axis` does.
 
 ## A background is a rate; the calibration works in counts
 
-**Names and the fixed default (owner, 2026-11-03).** The background constants are named
-after their detectors, `B_G|G` / `B_R|G` / `B_R|R` (kHz), the same names the Accurate FRET
-step uses and the per-detector tables show as `B (kHz)`; the old `Bg`/`Br`/`By` have no
-alias. Burst Analysis estimates the background when the bursts arrive and stores it in
-the measurement's container, so a window opened on it starts with measured rates. The
-calibration's background choice defaults to **`fixed`**: those rates, subtracted per burst
-as rate × duration (`fixed_background` in `fret_backend.py`), never changed by the
-calibration. `fit` stays but proved unreliable on real data (it needs well-populated
-donor-only and acceptor-only populations); the old `constants` choice, which subtracted a
-kHz rate as a count, is gone, and `measurement` without a stored table falls back to
-`fixed`.
+**`Bg_<detector>`, prefilled from the run, rate × duration everywhere (owner,
+2026-11-04: "must be Bg_G|G, Bg_R|G, Bg_A|A etc. and prefilled from burst analysis
+pipeline! … it is about the count rate, must be all computed correct with count
+rates!").** Supersedes the 2026-11-03 `B_<detector>` names; no alias.
 
-The two meet at this bridge, and they were not converted. ndX computes
-`Fg = Sg - B_G|G` where `Sg` is a count **rate** in kHz, so its `B_G|G`/`B_R|G`/`B_R|R` are
-rates. `chisurf.core.fluorescence.fret.accurate` works on **per-burst counts**
+* **Names.** One constant per detector of the setup, `Bg_<detector>`
+  (`fret_background.background_constant`): `Bg_G|G`, `Bg_R|G`, `Bg_R|R`, or `Bg_A|A`
+  for an `A|A` detector. `Bg`/`Br`/`By`, `B_<det>`, the photon numbers `n_bg*` and the
+  background phasor `g_bg`/`s_bg` are gone (a flat background's phasor is 0).
+* **Equations (`settings/mfd.equations.yaml`).** Every background correction takes the
+  burst's photons, `Number of Photons (<det>)` (PIE: `S <window> <det> (photons)`;
+  ALEX: `F_*` with `Tau` s × 10³), minus `Bg_<det>` × `Duration (ms)`; E, S and the
+  proximity ratio are ratios of counts; leakage is `alpha × Fg` (the corrected donor);
+  `f_bg (<det>) = Bg × Duration / N` in the phasor. The duration is the **burst's**: a
+  detector's `Duration (<det>) (ms)` is the span of its photons (0 for one, −1 for none)
+  and under-counts the background of a burst with few acceptor photons (Fr +5 % on the
+  simulation). Same rule in `burst_durations_ms` (ndX calibration) and ChiSurf's
+  `accurate_fret.core.burst_durations_ms`; tttrlib's C++ calibration receives per-burst
+  counts already (rate × duration) and needs no change. Verified on simulated bursts,
+  `tests/test_background_rates.py`: E 0.300, S 0.500 (truth 0.30/0.50); the old
+  placeholders 0.32/0.53; old rate ratios with the true rates E 0.31.
+* **Alternatives in the engine.** A name may be defined twice (`core/equation_graph.py`):
+  the first whose inputs the table has is computed — `f_bg (<det>)` from the burst
+  duration, else 0 (a pixel table, which has none).
+* **Prefill (`analysis/fret_background.stored_background`).** Opening `m.pto/<run>`
+  (the reader records `provenance["run"]`), per detector: the buffer rate of the run's
+  calibration report (`<run>/burst_calibration`, `buffer.rates.<det>.B_kHz`; else the
+  container's `burst_calibration`), else **`<run>/background`** (table: `Detector`,
+  `Rate` kHz, `Source`, `Seconds`; written by ChiSurf's
+  `chisurf.core.fio.fluorescence.run_background.write_run_background`, derived from the
+  run's burst table), else the container's `background` (Background step, inter-photon
+  tail of all photons). Each row's tooltip (`model.constant_notes`) says which. A
+  detector with nothing stored gets 0 and says so.
+* **Old settings and containers.** `settings/defaults.py`: a user equations file written
+  on/before `REDEFINED` (2026-11-04) takes the shipped definition of every shipped
+  name (own equations and order stay); `RETIRED` constants are dropped from a constants
+  file written before their date. A saved calibration's retired names are ignored on
+  restore (`restorable`) — the only read-side concession, needed for the owner's
+  existing containers.
+
+Where to pick this up:
+
+1. **Burst MLE's background into `<run>/background`.** Today the Background step writes
+   the strict-selection rates (`burst_background/view_model._strict_selection`). Burst
+   MLE's own per-detector rate (`MleSession.background_info[det]["rate_khz"]`, source
+   buffer/strict/model) should be written with `write_run_background(..., sources=...)`
+   by the lane that owns `burst_mle_analysis/core/export.py` (it was being moved under the
+   run in parallel). ndX reads whatever `Source` it says.
+2. **The Background step runs once.** If it already holds a result, a later burst search
+   (a new run) gets no `<run>/background` until the step is re-run
+   (`BurstAnalysisHubApp._estimate_background` returns early). Measure: search twice in
+   the hub, list the container's objects.
+3. **Pixel tables** have no duration column, so their phasor background is 0; a pixel
+   dwell-time column would give them `Bg × dwell`.
+
+The two meet at this bridge, and they were not converted. Before 2026-11-04 ndX computed
+`Fg = Sg - B_G|G` with `Sg` a count **rate** in kHz (now photons − rate × duration). `chisurf.core.fluorescence.fret.accurate` works on **per-burst counts**
 and its `bg_dd`/`bg_da`/`bg_aa` are counts (`f_dd = i_dd - bg_dd`). The push
 mapped one onto the other by name.
 

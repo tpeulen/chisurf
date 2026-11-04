@@ -613,9 +613,9 @@ Data items describing a column in a burst-analysis artifact (.bur, .bg4, .br4, .
 | Item | Type | Description |
 |---|---|---|
 | `_mmfdb_burst_column.count_rate_khz` | float | Total burst count rate, N / Duration, in kHz. |
-| `_mmfdb_burst_column.duration_green_ms` | float | Macro-time span of the green-detector photons within the burst. t_last(green) - t_first(green). Sentinel -1.0 when the burst has no green photons. This is the Tg in the ndx equation Tg-Tr(ms) = Duration(green) - Duration(red). It is a macro-time (burst) duration, NOT a TCSPC micro-time difference. |
+| `_mmfdb_burst_column.duration_green_ms` | float | Macro-time span of the green-detector photons within the burst. t_last(G\|G) - t_first(G\|G). Sentinel -1.0 when the burst has no green photons. This is the Tg in the ndx equation Tg-Tr(ms) = Duration(G\|G) - Duration(R\|G). It is a macro-time (burst) duration, NOT a TCSPC micro-time difference. |
 | `_mmfdb_burst_column.duration_ms` | float | Macro-time span of the entire burst, t_last - t_first, in milliseconds. |
-| `_mmfdb_burst_column.duration_red_ms` | float | Macro-time span of the red-detector photons within the burst. t_last(red) - t_first(red). Sentinel -1.0 when the burst has no red photons. This is the Tr in Tg-Tr(ms). |
+| `_mmfdb_burst_column.duration_red_ms` | float | Macro-time span of the red-detector photons within the burst. t_last(R\|G) - t_first(R\|G). Sentinel -1.0 when the burst has no red photons. This is the Tr in Tg-Tr(ms). |
 | `_mmfdb_burst_column.f_aexc_aem` | int | Acceptor-excitation acceptor-emission integrated counts (ALEX). |
 | `_mmfdb_burst_column.f_aexc_dem` | int | Acceptor-excitation donor-emission integrated counts (ALEX). |
 | `_mmfdb_burst_column.f_dexc_aem` | int | Donor-excitation acceptor-emission integrated counts (ALEX). |
@@ -635,6 +635,7 @@ Data items describing a column in a burst-analysis artifact (.bur, .bg4, .br4, .
 | `_mmfdb_burst_column.n_photons` | int | Total photon count in the burst across all detectors. |
 | `_mmfdb_burst_column.n_photons_green` | int | Photon count in the burst on the green-detector routing channels. |
 | `_mmfdb_burst_column.n_photons_red` | int | Photon count in the burst on the red-detector routing channels. |
+| `_mmfdb_burst_column.n_photons_yellow` | int | Photon count in the burst of the R\|R detector (red emission under red excitation: the delayed window of PIE, or ALEX). |
 | `_mmfdb_burst_column.phasor_g` | float | Phasor coordinate g (real part, cosine transform) of a pixel's or a burst's decay. |
 | `_mmfdb_burst_column.phasor_g_green` | float | Phasor coordinate g (real part, cosine transform) of the green channel of a pixel's or a burst's decay. |
 | `_mmfdb_burst_column.phasor_g_red` | float | Phasor coordinate g (real part, cosine transform) of the red channel of a pixel's or a burst's decay. |
@@ -653,14 +654,17 @@ Data items describing a column in a burst-analysis artifact (.bur, .bg4, .br4, .
 | `_mmfdb_burst_column.rho_green` | float | Rotational correlation time rho from the Fit2x fit. |
 | `_mmfdb_burst_column.rho_red` | float | Rotational correlation time rho of the red-channel Fit2x fit. |
 | `_mmfdb_burst_column.s_delayed_yellow` | float | Red-detector rate in delayed micro-time window. Input to ndx Sy(PIE). |
+| `_mmfdb_burst_column.s_delayed_yellow_photons` | int | Photons of the R\|R detector in the delayed (acceptor-excitation) window of the burst. Input to ndx Fy(PIE). |
 | `_mmfdb_burst_column.s_prompt_green` | float | Green-detector rate in prompt micro-time window. Input to ndx Sg(PIE). |
+| `_mmfdb_burst_column.s_prompt_green_photons` | int | Photons of the G\|G detector in the prompt (donor-excitation) window of the burst. Input to ndx Fg(PIE). |
 | `_mmfdb_burst_column.s_prompt_red` | float | Red-detector rate in prompt micro-time window. Input to ndx Sr(PIE). |
+| `_mmfdb_burst_column.s_prompt_red_photons` | int | Photons of the R\|G detector in the prompt (donor-excitation) window of the burst. Input to ndx Fr(PIE). |
 | `_mmfdb_burst_column.tau` | float | Burst mean lifetime used as time base for ALEX rate equations. |
-| `_mmfdb_burst_column.tau_green` | float | Fluorescence-weighted donor (green) lifetime from burst-wise Fit2x MLE. Primary lifetime input to ndx Var_tauD(A)), E_tau, and the FRET-line equations. |
-| `_mmfdb_burst_column.tau_red` | float | Fluorescence-weighted acceptor (red) lifetime from burst-wise Fit2x MLE on the red detection channels: the red counterpart of Tau (green). |
+| `_mmfdb_burst_column.tau_green` | float | Fluorescence-weighted donor (G\|G) lifetime from burst-wise Fit2x MLE. Primary lifetime input to ndx Var_tauD(A)), E_tau, and the FRET-line equations. |
+| `_mmfdb_burst_column.tau_red` | float | Fluorescence-weighted acceptor (R\|G) lifetime from burst-wise Fit2x MLE on the red detection channels: the red counterpart of Tau (G\|G). |
 | `_mmfdb_burst_column.td_mean` | float | Mean diffusion time from FCS/td4 companion analysis. |
 | `_mmfdb_burst_column.two_istar_green` | float | Corrected intensity 2I* from the Fit2x fit -- the quality-of-fit likelihood ratio metric. |
-| `_mmfdb_burst_column.two_istar_red` | float | Corrected intensity 2I* of the red-channel Fit2x fit -- the quality-of-fit likelihood ratio metric of Tau (red). |
+| `_mmfdb_burst_column.two_istar_red` | float | Corrected intensity 2I* of the red-channel Fit2x fit -- the quality-of-fit likelihood ratio metric of Tau (R\|G). |
 
 ## `_mmfdb_column`
 
@@ -679,9 +683,9 @@ Scalar calibration constants used by the ndx equation engine (gG/gR, alpha, beta
 
 | Item | Type | Description |
 |---|---|---|
-| `_mmfdb_constant.Bg` | float | Green-channel background count rate. |
-| `_mmfdb_constant.Br` | float | Red-channel background count rate. |
-| `_mmfdb_constant.By` | float | Yellow (acceptor-excitation acceptor-emission) background. |
+| `_mmfdb_constant.Bg_GG` | float | Background count rate of the donor detector G\|G (green emission, green excitation), in kHz. A burst collects it for its duration: Bg x Duration (ms) photons. One constant per detector of the setup, named Bg_<detector>; filled from the background the burst pipeline stored with the run (buffer measurement, else the strict selection of background photons around the bursts). |
+| `_mmfdb_constant.Bg_RG` | float | Background count rate of the acceptor detector R\|G (red emission, green excitation), in kHz. A burst collects it for its duration: Bg x Duration (ms) photons. One constant per detector of the setup, named Bg_<detector>; filled from the background the burst pipeline stored with the run (buffer measurement, else the strict selection of background photons around the bursts). |
+| `_mmfdb_constant.Bg_RR` | float | Background count rate of the acceptor detector R\|R (red emission, red excitation; PIE/ALEX), in kHz. A burst collects it for its duration: Bg x Duration (ms) photons. One constant per detector of the setup, named Bg_<detector>; filled from the background the burst pipeline stored with the run (buffer measurement, else the strict selection of background photons around the bursts). |
 | `_mmfdb_constant.KB` | float | Boltzmann constant. |
 | `_mmfdb_constant.PhiA` | float | Acceptor fluorescence quantum yield. |
 | `_mmfdb_constant.PhiD` | float | Donor fluorescence quantum yield. |
@@ -692,18 +696,13 @@ Scalar calibration constants used by the ndx equation engine (gG/gR, alpha, beta
 | `_mmfdb_constant.f_rep` | float | Modulation (laser repetition) frequency the phasor coordinates are computed at. |
 | `_mmfdb_constant.forster_radius` | float | Forster radius for the donor-acceptor pair. |
 | `_mmfdb_constant.gG_gR` | float | Green-to-red detection-efficiency ratio (gamma-factor ratio). |
-| `_mmfdb_constant.g_bg` | float | Phasor g of the background decay as measured (before the IRF correction). Uncorrelated background spread evenly over the period is at (0, 0). |
 | `_mmfdb_constant.g_irf` | float | Phasor g of the instrument response (reference) of a pixel's or a burst's decay, at f_rep and harmonic; the measured phasor is divided by (g_irf + i s_irf). (1, 0) is an ideal instrument (no correction). |
 | `_mmfdb_constant.g_irf_green` | float | Phasor g of the instrument response (reference) of the green detection channel, at f_rep and harmonic; the measured phasor is divided by (g_irf + i s_irf). (1, 0) is an ideal instrument (no correction). |
 | `_mmfdb_constant.g_irf_red` | float | Phasor g of the instrument response (reference) of the red detection channel, at f_rep and harmonic; the measured phasor is divided by (g_irf + i s_irf). (1, 0) is an ideal instrument (no correction). |
 | `_mmfdb_constant.harmonic` | float | Harmonic n of the phasor coordinates; the angular frequency is omega = 2*pi*f_rep*n. |
 | `_mmfdb_constant.kappa2` | float | Dipole-orientation factor (default 2/3 for dynamic averaging). |
-| `_mmfdb_constant.n_bg` | float | Background photons expected in one row (pixel or burst) of a pixel's or a burst's decay; the background fraction is n_bg / Number of Photons. 0 is no background correction. |
-| `_mmfdb_constant.n_bg_green` | float | Background photons expected in one row (pixel or burst) of the green detection channel; the background fraction is n_bg / Number of Photons (green). 0 is no background correction. |
-| `_mmfdb_constant.n_bg_red` | float | Background photons expected in one row (pixel or burst) of the red detection channel; the background fraction is n_bg / Number of Photons (red). 0 is no background correction. |
 | `_mmfdb_constant.omega_r_um` | float | Radial beam waist (1/e^2) of the confocal volume. |
 | `_mmfdb_constant.r` | float | Stoichiometry scaling factor (1/beta_Hellenkamp). |
-| `_mmfdb_constant.s_bg` | float | Phasor s of the background decay as measured (before the IRF correction). Uncorrelated background spread evenly over the period is at (0, 0). |
 | `_mmfdb_constant.s_irf` | float | Phasor s of the instrument response (reference) of a pixel's or a burst's decay, at f_rep and harmonic; together with g_irf it must not be (0, 0). |
 | `_mmfdb_constant.s_irf_green` | float | Phasor s of the instrument response (reference) of the green detection channel, at f_rep and harmonic; together with g_irf it must not be (0, 0). |
 | `_mmfdb_constant.s_irf_red` | float | Phasor s of the instrument response (reference) of the red detection channel, at f_rep and harmonic; together with g_irf it must not be (0, 0). |
@@ -733,35 +732,34 @@ Output columns computed by the ndx equation engine from input columns and consta
 | `_mmfdb_derived_column.e_aa_pie` | float | ratioA(PIE) / r. Acceptor-side FRET efficiency. |
 | `_mmfdb_derived_column.e_alex` | float | (1 + Fd/Fa(ALEX) * PhiA/PhiD)^(-1). |
 | `_mmfdb_derived_column.e_pie` | float | (1 + Fd/Fa(PIE) * PhiA/PhiD)^(-1). PIE FRET efficiency. |
-| `_mmfdb_derived_column.e_tau` | float | 1 - Tau(green) / tauD0. Lifetime-based FRET efficiency. |
-| `_mmfdb_derived_column.f_bg` | float | n_bg / Number of Photons. Fraction of the photons of a pixel's or a burst's decay that are background. |
-| `_mmfdb_derived_column.f_bg_green` | float | n_bg (green) / Number of Photons (green). Fraction of the photons of the green detection channel that are background. |
-| `_mmfdb_derived_column.f_bg_red` | float | n_bg (red) / Number of Photons (red). Fraction of the photons of the red detection channel that are background. |
+| `_mmfdb_derived_column.e_tau` | float | 1 - Tau(G\|G) / tauD0. Lifetime-based FRET efficiency. |
+| `_mmfdb_derived_column.f_bg_green` | float | Bg_G\|G x Duration (ms) / Number of Photons (G\|G): the share of the G\|G detector's photons of a burst that are background (0 for a table without a burst duration, a pixel table). |
+| `_mmfdb_derived_column.f_bg_red` | float | Bg_R\|G x Duration (ms) / Number of Photons (R\|G): the share of the R\|G detector's photons of a burst that are background (0 for a table without a burst duration, a pixel table). |
 | `_mmfdb_derived_column.fd_fa` | float | (Fg/Fr) / (gG/gR). Donor-to-acceptor intensity ratio. |
 | `_mmfdb_derived_column.fd_fa_alex` | float | (Fg/Fr(ALEX)) / (gG/gR). ALEX donor-to-acceptor ratio. |
 | `_mmfdb_derived_column.fd_fa_pie` | float | (Fg/Fr(PIE)) / (gG/gR). PIE donor-to-acceptor ratio. |
-| `_mmfdb_derived_column.fg` | float | Sg - Bg. Background-corrected green signal. |
-| `_mmfdb_derived_column.fg_alex` | float | Sg(ALEX) - Bg. |
+| `_mmfdb_derived_column.fg` | float | Number of Photons (G\|G) - Bg_G\|G x Duration (ms). The donor photons of a burst with its background (rate x the burst duration) taken off. |
+| `_mmfdb_derived_column.fg_alex` | float | F_Dexc_Dem - Bg_G\|G x Tau (s) x 1e3. |
 | `_mmfdb_derived_column.fg_fr` | float | Fg / Fr. |
 | `_mmfdb_derived_column.fg_fr_alex` | float | Fg(ALEX) / Fr(ALEX). |
 | `_mmfdb_derived_column.fg_fr_pie` | float | Fg(PIE) / Fr(PIE). |
-| `_mmfdb_derived_column.fg_pie` | float | Sg(PIE) - Bg. |
-| `_mmfdb_derived_column.fr` | float | Sr - Br - alpha*Sg. Corrected red signal. |
-| `_mmfdb_derived_column.fr_alex` | float | Sr(ALEX) - Br - alpha*Sg(ALEX). |
-| `_mmfdb_derived_column.fr_pie` | float | Sr(PIE) - Br - alpha*Sg(PIE). |
+| `_mmfdb_derived_column.fg_pie` | float | S prompt G\|G (photons) - Bg_G\|G x Duration (ms). |
+| `_mmfdb_derived_column.fr` | float | Number of Photons (R\|G) - Bg_R\|G x Duration (ms) - alpha*Fg. The acceptor photons of a burst under donor excitation, background and donor leakage taken off. |
+| `_mmfdb_derived_column.fr_alex` | float | F_Dexc_Aem - Bg_R\|G x Tau (s) x 1e3 - alpha*Fg(ALEX) - beta*Fy(ALEX). |
+| `_mmfdb_derived_column.fr_pie` | float | S prompt R\|G (photons) - Bg_R\|G x Duration (ms) - alpha*Fg(PIE) - beta*Fy(PIE). |
 | `_mmfdb_derived_column.fret_efficiency` | float | (1 + Fd/Fa * PhiA/PhiD)^(-1). Intensity-based FRET efficiency. |
-| `_mmfdb_derived_column.fy_alex` | float | Sy(ALEX) - By. |
-| `_mmfdb_derived_column.fy_pie` | float | Sy(PIE) - By. |
+| `_mmfdb_derived_column.fy_alex` | float | F_Aexc_Aem - Bg_R\|R x Tau (s) x 1e3. |
+| `_mmfdb_derived_column.fy_pie` | float | S delayed R\|R (photons) - Bg_R\|R x Duration (ms). |
 | `_mmfdb_derived_column.inv_sensitivity` | float | 1 / (1 - E * (1 - gG/gR * PhiD/PhiA)). |
 | `_mmfdb_derived_column.kfret` | float | (1/tauD0)*(3/2)*kappa^2*(R0/RDA)^6. FRET rate constant. |
 | `_mmfdb_derived_column.one_minus_e_e` | float | (1 - E) * E. Static reference parabola in moment plot. |
 | `_mmfdb_derived_column.one_minus_e_e_tau` | float | (1 - E) * E_tau. Moment-difference representation. |
-| `_mmfdb_derived_column.phasor_g_corr` | float | Real part of ((g + i s) - f_bg (g_bg + i s_bg)) / ((1 - f_bg) (g_irf + i s_irf)). Phasor g of a pixel's or a burst's decay, background removed and referenced to the instrument response. |
-| `_mmfdb_derived_column.phasor_g_corr_green` | float | Real part of ((g (green) + i s (green)) - f_bg (green) (g_bg + i s_bg)) / ((1 - f_bg (green)) (g_irf (green) + i s_irf (green))). Phasor g of the green detection channel, background removed and referenced to the instrument response. |
-| `_mmfdb_derived_column.phasor_g_corr_red` | float | Real part of ((g (red) + i s (red)) - f_bg (red) (g_bg + i s_bg)) / ((1 - f_bg (red)) (g_irf (red) + i s_irf (red))). Phasor g of the red detection channel, background removed and referenced to the instrument response. |
-| `_mmfdb_derived_column.phasor_s_corr` | float | Imaginary part of ((g + i s) - f_bg (g_bg + i s_bg)) / ((1 - f_bg) (g_irf + i s_irf)). Phasor s of a pixel's or a burst's decay, background removed and referenced to the instrument response. |
-| `_mmfdb_derived_column.phasor_s_corr_green` | float | Imaginary part of ((g (green) + i s (green)) - f_bg (green) (g_bg + i s_bg)) / ((1 - f_bg (green)) (g_irf (green) + i s_irf (green))). Phasor s of the green detection channel, background removed and referenced to the instrument response. |
-| `_mmfdb_derived_column.phasor_s_corr_red` | float | Imaginary part of ((g (red) + i s (red)) - f_bg (red) (g_bg + i s_bg)) / ((1 - f_bg (red)) (g_irf (red) + i s_irf (red))). Phasor s of the red detection channel, background removed and referenced to the instrument response. |
+| `_mmfdb_derived_column.phasor_g_corr` | float | Real part of (g + i s) / (g_irf + i s_irf). Phasor g of a pixel's or a burst's decay referenced to the instrument response. |
+| `_mmfdb_derived_column.phasor_g_corr_green` | float | Real part of (g (G\|G) + i s (G\|G)) / ((1 - f_bg (G\|G)) (g_irf (G\|G) + i s_irf (G\|G))). Phasor g of the green detection channel, its flat background (Bg x Duration, phasor 0) removed and referenced to the instrument response. |
+| `_mmfdb_derived_column.phasor_g_corr_red` | float | Real part of (g (R\|G) + i s (R\|G)) / ((1 - f_bg (R\|G)) (g_irf (R\|G) + i s_irf (R\|G))). Phasor g of the red detection channel, its flat background (Bg x Duration, phasor 0) removed and referenced to the instrument response. |
+| `_mmfdb_derived_column.phasor_s_corr` | float | Imaginary part of (g + i s) / (g_irf + i s_irf). Phasor s of a pixel's or a burst's decay referenced to the instrument response. |
+| `_mmfdb_derived_column.phasor_s_corr_green` | float | Imaginary part of (g (G\|G) + i s (G\|G)) / ((1 - f_bg (G\|G)) (g_irf (G\|G) + i s_irf (G\|G))). Phasor s of the green detection channel, its flat background (Bg x Duration, phasor 0) removed and referenced to the instrument response. |
+| `_mmfdb_derived_column.phasor_s_corr_red` | float | Imaginary part of (g (R\|G) + i s (R\|G)) / ((1 - f_bg (R\|G)) (g_irf (R\|G) + i s_irf (R\|G))). Phasor s of the red detection channel, its flat background (Bg x Duration, phasor 0) removed and referenced to the instrument response. |
 | `_mmfdb_derived_column.pr_alex` | float | Sr(ALEX) / (Sr(ALEX) + Sg(ALEX)). |
 | `_mmfdb_derived_column.pr_pie` | float | Sr(PIE) / (Sr(PIE) + Sg(PIE)). PIE proximity ratio. |
 | `_mmfdb_derived_column.proximity_ratio_derived` | float | Sr / (Sg + Sr). Corrected proximity ratio from ndx equations. |
@@ -775,34 +773,34 @@ Output columns computed by the ndx equation engine from input columns and consta
 | `_mmfdb_derived_column.sapp_alex_s` | float | Signal-based apparent stoichiometry from ALEX channels. |
 | `_mmfdb_derived_column.sapp_pie_f` | float | Flux-based apparent stoichiometry from PIE channels. |
 | `_mmfdb_derived_column.sapp_pie_s` | float | Signal-based apparent stoichiometry from PIE channels. |
-| `_mmfdb_derived_column.sg` | float | Alias for Green Count Rate (KHz). ndx equation. |
+| `_mmfdb_derived_column.sg` | float | Alias for G\|G Count Rate (KHz). ndx equation. |
 | `_mmfdb_derived_column.sg_alex` | float | F_Dexc_Dem / Tau / 1e3. ALEX donor-excitation donor-emission rate. |
-| `_mmfdb_derived_column.sg_pie` | float | Alias for S prompt green (kHz). PIE donor-excitation green signal. |
+| `_mmfdb_derived_column.sg_pie` | float | Alias for S prompt G\|G (kHz). PIE donor-excitation green signal. |
 | `_mmfdb_derived_column.sg_sr` | float | Sg / Sr. |
 | `_mmfdb_derived_column.sg_sr_alex` | float | Sg(ALEX) / Sr(ALEX). |
 | `_mmfdb_derived_column.sg_sr_pie` | float | Sg(PIE) / Sr(PIE). |
 | `_mmfdb_derived_column.sigma_e` | float | \|Var(E)\|^(1/2). Standard deviation of E. |
-| `_mmfdb_derived_column.sr` | float | Alias for Red Count Rate (KHz). ndx equation. |
+| `_mmfdb_derived_column.sr` | float | Alias for R\|G Count Rate (KHz). ndx equation. |
 | `_mmfdb_derived_column.sr_alex` | float | F_Dexc_Aem / Tau / 1e3. |
-| `_mmfdb_derived_column.sr_pie` | float | Alias for S prompt red (kHz). PIE donor-excitation red signal. |
+| `_mmfdb_derived_column.sr_pie` | float | Alias for S prompt R\|G (kHz). PIE donor-excitation red signal. |
 | `_mmfdb_derived_column.stoich_alex` | float | Full ALEX stoichiometry from corrected fluxes. |
 | `_mmfdb_derived_column.stoich_pie` | float | Full PIE stoichiometry ratio from corrected PIE fluxes. |
 | `_mmfdb_derived_column.sx_alex` | float | F_Aexc_Dem / Tau / 1e3. |
 | `_mmfdb_derived_column.sy_alex` | float | F_Aexc_Aem / Tau / 1e3. |
-| `_mmfdb_derived_column.sy_pie` | float | Alias for S delayed yellow (kHz). PIE acceptor-excitation signal. |
+| `_mmfdb_derived_column.sy_pie` | float | Alias for S delayed R\|R (kHz). PIE acceptor-excitation signal. |
 | `_mmfdb_derived_column.tauDA_x` | float | (1 - E) * tauD(0). Species-weighted donor lifetime. |
 | `_mmfdb_derived_column.tau_m` | float | sqrt(1/(g corr^2 + s corr^2) - 1) / omega. Apparent modulation lifetime. |
-| `_mmfdb_derived_column.tau_m_green` | float | sqrt(1/(g corr (green)^2 + s corr (green)^2) - 1) / omega. Apparent modulation lifetime. |
-| `_mmfdb_derived_column.tau_m_red` | float | sqrt(1/(g corr (red)^2 + s corr (red)^2) - 1) / omega. Apparent modulation lifetime. |
+| `_mmfdb_derived_column.tau_m_green` | float | sqrt(1/(g corr (G\|G)^2 + s corr (G\|G)^2) - 1) / omega. Apparent modulation lifetime. |
+| `_mmfdb_derived_column.tau_m_red` | float | sqrt(1/(g corr (R\|G)^2 + s corr (R\|G)^2) - 1) / omega. Apparent modulation lifetime. |
 | `_mmfdb_derived_column.tau_phi` | float | s corr / (omega*g corr), omega = 2*pi*f_rep*harmonic. Apparent phase lifetime. |
-| `_mmfdb_derived_column.tau_phi_green` | float | s corr (green) / (omega*g corr (green)), omega = 2*pi*f_rep*harmonic. Apparent phase lifetime. |
-| `_mmfdb_derived_column.tau_phi_red` | float | s corr (red) / (omega*g corr (red)), omega = 2*pi*f_rep*harmonic. Apparent phase lifetime. |
+| `_mmfdb_derived_column.tau_phi_green` | float | s corr (G\|G) / (omega*g corr (G\|G)), omega = 2*pi*f_rep*harmonic. Apparent phase lifetime. |
+| `_mmfdb_derived_column.tau_phi_red` | float | s corr (R\|G) / (omega*g corr (R\|G)), omega = 2*pi*f_rep*harmonic. Apparent phase lifetime. |
 | `_mmfdb_derived_column.td_` | float | Alias for td_mean. |
-| `_mmfdb_derived_column.tg_tr_ms` | float | Duration(green) - Duration(red). Burst macro-time duration difference between green and red detectors. NOT a micro-time difference. |
-| `_mmfdb_derived_column.total_rate` | float | Green Count Rate + Red Count Rate. |
+| `_mmfdb_derived_column.tg_tr_ms` | float | Duration(G\|G) - Duration(R\|G). Burst macro-time duration difference between green and red detectors. NOT a micro-time difference. |
+| `_mmfdb_derived_column.total_rate` | float | G\|G Count Rate + R\|G Count Rate. |
 | `_mmfdb_derived_column.total_rate_alex` | float | Sg(ALEX) + Sr(ALEX). |
 | `_mmfdb_derived_column.var_e` | float | Var_tauD(A)) / tauD0^2. FRET-efficiency variance. |
-| `_mmfdb_derived_column.var_tauDA` | float | Tau(green) * <tauD(A)>x - <tauD(A)>x^2. Lifetime variance. |
+| `_mmfdb_derived_column.var_tauDA` | float | Tau(G\|G) * <tauD(A)>x - <tauD(A)>x^2. Lifetime variance. |
 
 ## `_mmfdb_edge`
 
@@ -1333,6 +1331,7 @@ PIE (Pulsed Interleaved Excitation) or micro-time window definition within a rea
 |---|---|---|
 | `_mmfdb_setup_pie_window.end` | int | End micro-time bin (inclusive). |
 | `_mmfdb_setup_pie_window.id` | int |  |
+| `_mmfdb_setup_pie_window.micro_time_resolution` | float | Channel width the window start/end (and the detector gates stored with them) are in, picoseconds. Windows and gates travel with it wherever they are stored (a reading manifest, a burst run, a workflow manifest: the record {windows, gates, micro_time_resolution_ps}); null means the width was not recorded and the channels are applied raw. |
 | `_mmfdb_setup_pie_window.name` | line |  |
 | `_mmfdb_setup_pie_window.setup_id` | code |  |
 | `_mmfdb_setup_pie_window.start` | int | Start micro-time bin (inclusive). |
@@ -1411,6 +1410,22 @@ Many-to-many membership linking existing samples / artifacts into a study. membe
 | `_mmfdb_study_member.member_type` | code |  |
 | `_mmfdb_study_member.role` | code |  |
 | `_mmfdb_study_member.study_id` | code | References mmfdb_study.study_id (a logical reference; the dictionary-generated study_id is not emitted as a PRIMARY KEY, so no hard FK — the repository manages study membership integrity, as for mmfdb_operation.protocol_id). |
+
+## `_mmfdb_two_cde_stream`
+
+One photon stream a 2CDE burst feature (FRET-2CDE or ALEX-2CDE, Tomov et al. 2012) was computed from: its role, routing channels, PIE micro-time ranges and/or microsecond-ALEX alternation phases. Recorded with every 2CDE result so a result computed without excitation windows can be recognised and recomputed.
+
+| Item | Type | Description |
+|---|---|---|
+| `_mmfdb_two_cde_stream.alternation_period` | float | Microsecond-ALEX alternation period, macro-time ticks (null: no alternation gating). |
+| `_mmfdb_two_cde_stream.channels` | text | JSON array of routing channels. |
+| `_mmfdb_two_cde_stream.excitation_separated` | int | 1 when the streams were separated by excitation (PIE windows or ALEX phases); 0 for a result computed without excitation windows, which must be recomputed for ALEX-2CDE. |
+| `_mmfdb_two_cde_stream.id` | int | Row id. |
+| `_mmfdb_two_cde_stream.macro_phase_ranges` | text | JSON array of half-open [start, stop) phases of the microsecond-ALEX alternation period, macro-time ticks. |
+| `_mmfdb_two_cde_stream.micro_time_ranges` | text | JSON array of half-open [start, stop) micro-time channel ranges (PIE windows / gates); empty: ungated. |
+| `_mmfdb_two_cde_stream.micro_time_resolution` | float | Channel width of micro_time_ranges, picoseconds (null: raw channels). |
+| `_mmfdb_two_cde_stream.role` | line | Stream role: donor, acceptor (FRET-2CDE, donor excitation only), donor_excitation, acceptor_excitation (ALEX-2CDE). |
+| `_mmfdb_two_cde_stream.variant` | line | FRET_2CDE or ALEX_2CDE. |
 
 ## `_mmfdb_units`
 

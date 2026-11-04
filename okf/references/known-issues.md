@@ -4,6 +4,18 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## ndX and mmfdb tests red before the Bg_<detector> change (found 2026-11-04)
+
+status: open — not caused by it (red on ndX HEAD bd109c7 run from a `git archive` copy):
+ndX `tests/test_app/test_overlays.py::test_a_static_line_is_drawn_over_the_map_and_follows_its_parameters`,
+`::test_save_csv_writes_the_visible_curves`, `tests/test_fret_population_options.py::test_cal1_keeps_its_numbers_in_every_mode`
+(off/auto/on), `tests/test_project_burst_runs.py::test_the_runs_of_an_embedded_container_are_stores_of_the_project`,
+`tests/test_works_without_chisurf.py::test_overlay_curves_and_the_curve_fit` (the child process
+finds a `chisurf` that "is not a package"); mmfdb
+`tests/test_rpc_surface_manifest.py::test_manifest_declares_exactly_the_registered_surface`
+(12 `project_browser.*` handlers missing from the manifest). Measure: run each on HEAD with
+`PYTHONPATH=<archive>`; link `tests/` into the archive or the app tests error for want of data.
+
 ## `from_setup` reads `tttr_reading.micro_time_resolution` as ns; the setup editor writes ps (found 2026-10-29)
 
 status: **resolved 2026-10-29** — tttrlib e44ba1f23 (`from_setup` reads ps, with

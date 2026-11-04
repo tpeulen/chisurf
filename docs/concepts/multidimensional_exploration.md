@@ -99,10 +99,12 @@ efficiency ratios, quantum yields, the Förster radius, the donor-only lifetime:
 $$
 E \;=\; \frac{F_A/(\gamma\,F_D)}{1 + F_A/(\gamma\,F_D)},
 \qquad
-F_D = S_{GG} - \mathrm{Bg}_{GG}, \quad F_A = S_{GR} - \mathrm{Bg}_{GR} - \dots
+F_D = N_{G|G} - \mathrm{Bg}_{G|G}\,T, \quad F_A = N_{R|G} - \mathrm{Bg}_{R|G}\,T - \dots
 $$
 
-where $S_{\bullet}$ are the raw signals and $\mathrm{Bg}$, $\gamma$, $g_G/g_R$,
+where $N_{\bullet}$ are the burst's photon counts per detector, $T$ its
+duration, and the background rates $\mathrm{Bg}_{<detector>}$ (kHz, one per
+detector of the setup, so $\mathrm{Bg}\,T$ is photons), $\gamma$, $g_G/g_R$,
 $\Phi_A/\Phi_D$, $R_0$, $\tau_{D(0)}$ are the constants. Change a constant and
 every dependent column recomputes, live. The calibration *is* the physics that
 turns counts into efficiencies, and keeping it as an explicit, editable equation

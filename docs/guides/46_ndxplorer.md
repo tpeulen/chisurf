@@ -244,6 +244,51 @@ An image table on g/s with three overlays from the list: Universal circle
 y(t), t range or t values, and its f / harmonic linked to f_rep / harmonic.
 ```
 
+#### The background: `Bg_<detector>`, a rate times the burst's duration
+
+A background is a **rate** per detector of the setup, `Bg_G|G`, `Bg_R|G`,
+`Bg_R|R` (`Bg_A|A` for a detector called `A|A`), in **kHz**. A burst collects it
+for as long as the burst lasts, so its background photons in a detector are
+`Bg_<detector>` × `Duration (ms)` (kHz × ms = photons) — the burst's duration,
+the window every detector's photons of the burst were counted in (a detector's
+own `Duration (<det>) (ms)` is the span between its first and last photon: 0 for
+one photon, −1 for none, not a time a background accumulates over). Every
+equation that corrects for background takes it off the burst's **photon
+counts**, and E, S and the proximity ratio are ratios of counts:
+
+$$F_D = N_{G|G} - \mathrm{Bg}_{G|G}\,T,\quad
+F_A = N_{R|G} - \mathrm{Bg}_{R|G}\,T - \alpha F_D - \beta F_{AA},\quad
+F_{AA} = N_{R|R} - \mathrm{Bg}_{R|R}\,T$$
+
+(`Fg`, `Fr`, `Fy(PIE)` and their PIE/ALEX forms; the ALEX forms take the
+burst's `Tau` in seconds, × 10³). Ratios of the per-detector **count rates**
+are not ratios of counts: each rate is divided by its own detector's photon
+span. On simulated bursts with a known background (E = 0.30, S = 0.50,
+`test_background_rates.py`) the shipped equations give E 0.300 / S 0.500; the
+earlier rate-minus-placeholder form (`Bg` 1.2, `Br` 0.6 kHz) gave E 0.32 /
+S 0.53, and even with the true rates the rate ratios gave E 0.31.
+
+**Where the values come from.** When ndX opens a run Burst Analysis wrote
+(`m000.pto/<run>`), the `Bg_<detector>` values are the run's own background,
+per detector, in this order: a **buffer** measurement's rate (Data
+Selection's Buffer row, in the run's calibration report), else the run's
+**strict selection** of background photons around its bursts
+(`<run>/background`, written by the Background step), else the measurement's
+inter-photon estimate of all photons. The tooltip of each row in the
+Parameters tab says which, and how much time it was measured over. A detector
+of the bursts with no stored background gets `Bg_<detector>` = 0 and says so.
+
+```{figure} figures/ndxplorer_background_parameters.png
+The Parameters tab on DNA13bp_3 (RVZMT150, no buffer measurement): `Bg_G|G`
+1.945, `Bg_R|G` 0.670, `Bg_R|R` 0.391 kHz from the strict selection around the
+run's bursts, the tooltip naming the run and the 2410 s of background it kept.
+```
+
+A settings folder written before these definitions (`~/.ndxplorer` from an
+older ndX) takes the shipped definitions of ndX's equations on load, and its
+retired constants (`Bg`, `Br`, `By`, `B_<detector>`, `n_bg`, `g_bg`, `s_bg`)
+are dropped; the user's own equations and values stay.
+
 #### Referencing the phasor to the instrument and removing background
 
 A phasor computed from raw micro times carries the instrument: the IRF's
@@ -252,34 +297,31 @@ position rotates it and the background shrinks it, so an image's pixels sit
 columns with equations in the form of tttrlib's `DecayPhasor`: the background photons of the row are taken out, then
 the phasor is divided by the IRF phasor,
 
-$$z_{corr} = \frac{z - f_{bg}\, z_{bg}}{(1 - f_{bg})\, z_{irf}},\qquad
-z = g + i s,\; z_{irf} = g_{irf} + i s_{irf},\; f_{bg} = n_{bg}/N .$$
+$$z_{corr} = \frac{z}{(1 - f_{bg})\, z_{irf}},\qquad
+z = g + i s,\; z_{irf} = g_{irf} + i s_{irf},\;
+f_{bg} = \mathrm{Bg}_{det}\,T / N_{det} .$$
 
-The columns are `f_bg`, `g corr`, `s corr` (plain, `(G|G)`, `(R|G)`), and
-`tau_phi` / `tau_m` read `g corr` / `s corr`. The constants (Parameters tab,
-defaults meaning *no correction*): `g_irf`, `s_irf` per channel (1, 0),
-`n_bg` per channel — background photons per pixel or burst (0) — and `g_bg`,
-`s_bg`, the background's own phasor (0, 0: uncorrelated background spread over
-the period). The background fraction is photon-count based, as tttrlib
-subtracts a background histogram from the counts; a burst table can make it
-rate based by editing the `f_bg (G|G)` equation to
-`'B_G|G' * 'Duration (ms)' / 'Number of Photons (G|G)'`.
+A flat background (dark counts, the uncorrelated background a buffer shows) has
+the phasor 0, so only its share $f_{bg}$ of the photons enters. The columns are
+`g corr`, `s corr` (referenced to the IRF only: no detector, no background
+rate) and `f_bg`, `g corr`, `s corr` per detector (`(G|G)`, `(R|G)`);
+`tau_phi` / `tau_m` read `g corr` / `s corr`. A table without a burst
+duration (a pixel table) has `f_bg (<det>)` = 0. The constants (Parameters
+tab, defaults meaning *no correction*): `g_irf`, `s_irf` per channel (1, 0) and
+the `Bg_<detector>` above.
 
-**FRET > Phasor reference from IRF…** fills the constants from measurements
-with tttrlib: an IRF (scatter or mirror; or a dye of known **reference
+**FRET > Phasor reference from IRF…** fills `g_irf`, `s_irf` per colour with
+tttrlib from an IRF (scatter or mirror; or a dye of known **reference
 lifetime**, whose place on the circle is divided out,
-$z_{irf} = z_{ref}(1 - i\omega\tau_{ref})$) gives `g_irf`, `s_irf` per colour
-at `f_rep` × `harmonic`, its flat background (dark counts) removed first; the
-measurement the pixel table was made from gives `n_bg`: its flat background
-fraction times the table's photons over its pixels × frames. Compute shows the
-values, Apply writes them. A channel without an IRF (an `R|G` detector the
-mirror did not reach) is refused rather than turned into a phasor of noise.
+$z_{irf} = z_{ref}(1 - i\omega\tau_{ref})$) at `f_rep` × `harmonic`, its flat
+background (dark counts) removed first. Compute shows the values, Apply writes
+them. A channel without an IRF (an `R|G` detector the mirror did not reach) is
+refused rather than turned into a phasor of noise.
 
 ```{figure} figures/ndxplorer_phasor_reference_dialog.png
 FRET > Phasor reference from IRF… on the image test table (made from
 `pq_ht3_clsm.ht3`, 32 MHz), with its mirror measurement `crn_clv_mirror.ht3` as
-IRF: green g_irf = 0.981, s_irf = 0.181 (3.6 % dark counts removed), 4.6 %
-background in the measurement, n_bg = 0.2 photons per pixel and frame.
+IRF: green g_irf = 0.981, s_irf = 0.181 (3.6 % dark counts removed).
 ```
 
 ```{figure} figures/ndxplorer_phasor_uncorrected.png
@@ -392,7 +434,7 @@ res = fit_equation_to_marginal(
     initial={"a1": counts.max(), "m1": 0.05, "s1": 0.03,
              "a2": counts.max() * 0.6, "m2": 0.45, "s2": 0.06},
     x=x, counts=counts.astype(float),
-    constant_names=["Bg"],   # any constant in the equation is fixed by default
+    constant_names=["Bg_G|G"],   # any constant in the equation is fixed by default
 )
 print(res.ok, res.chi2r, res.params["m2"])   # -> FRET peak position
 ```
