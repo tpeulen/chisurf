@@ -8,6 +8,7 @@
 - 2026-11-04: several files dropped at once become one Datasets group named after their folder (fit_docks._group_dropped after the import adds them); a drop on a tool still feeds the members. Local-mode ChiSurfAPI.group_datasets ignores the API's own state (reads cs.imported_datasets) - noted, the shell uses server mode.
 - 2026-11-04: fixed: local-mode ChiSurfAPI.group_datasets/ungroup_datasets now act on the API's own session (server dataset services) instead of the process lists; guard test/core/test_grouping.py.
 - 2026-11-04: busy overlay (blur + progress card of every slow tool, e.g. Burst Analysis): the status message wraps to the card's width (up to 6 lines, the last ending in …) instead of being cut to its first line at 60 characters; the card grows and the bar/Stop move under the text.
+- 2026-11-04: acquisition knowledge notes committed: okf/design/2026-10-30-acquisition-ux.md (task plan + design gates: writer priority, dock subscriptions, gap semantics) and okf/design/2026-10-30-owner-instructions.md (owner's acquisition instructions verbatim with where each landed, checkpoints to 2026-11-02), plus okf/references/craggslab-smfbox-smotter.md (NI-card ALEX/PIE recipe, Obis command set; linked from references/index.md). Frontmatter added; contents unchanged.
 
 ## 2026-11-03
 
