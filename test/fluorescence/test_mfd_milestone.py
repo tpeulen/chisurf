@@ -52,8 +52,8 @@ ANALYSIS = (
 #: decay of molecules too dim to cross the burst threshold, so its first moment
 #: sat late, and the only parameter degenerate with it — the donor lifetime —
 #: absorbed the difference and came out about half of anything a dye on DNA has.
-#: Fitting a Gaussian to the prompt instead (:func:`~chisurf.core.fluorescence.
-#: burst.irf_bg.gaussian_prompt`) sheds that tail, and re-deriving the optimum
+#: Fitting a Gaussian to the prompt instead (the IRF Estimation tool's
+#: :func:`~chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction.irf_from_prompt`) sheds that tail, and re-deriving the optimum
 #: moves ``tau_d0`` to 2.757 ns while leaving the other three within a percent —
 #: which is what a genuine degeneracy looks like when it is broken.
 FITTED = {

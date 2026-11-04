@@ -31,6 +31,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Time/Channel (ns) | `dt` | float |  | 0.001 … 10.0 (step 0.01) | Time per channel in nanoseconds, set from the data. Correct it when the file carries none: the time axis, lifetime and rate are rescaled, the IRF per channel is unchanged. |
+| Source | `source` | choice |  | choices: `source_choices` | What the loaded decay is, and so how the IRF is taken from it. Blind: a fluorescence decay; its tail is fitted with a truncated exponential and deconvolved (Richardson-Lucy). Reference dye: a dye of one known lifetime (Rh110, Alexa647); its polarised exponential is deconvolved, the lifetime fitted to its tail, the rotation read from VV and VH. Scatter: water or Ludox; the prompt is the IRF after the floor (and a buffer). Non-burst (the photons outside the bursts): a Gaussian fitted to the scatter prompt's rising edge, leaving the fluorescent tail behind. Burst MLE takes its IRF from the same extraction. |
+| VV \| VH halves | `vv_vh` | bool |  |  | The data holds two halves, VV then VH, each extracted on its own; a reference dye's rotation is read from them. Off: one curve (deconvolved with the plain exponential). |
+| Lifetime (ns) | `reference_tau_ns` | float |  | 0.0 … 50.0 (step 0.01) | The reference dye's lifetime. 0: fitted to the tail of VV + 2 VH (the listed lifetime when that fails or is more than a factor two off). |
+| Listed (ns) | `listed_tau_ns` | float |  | 0.0 … 50.0 (step 0.1) | The dye's lifetime as listed (reference_dyes.yaml: Rh110 4.0 ns, Alexa647 1.0 ns): the check on the fitted one. |
+| ρ (ns) | `reference_rho_ns` | float |  | 0.0 … 20.0 (step 0.01) | The dye's rotational correlation time. 0: read from the data (the time at which the IRFs of VV and VH have one shape). Needs VV \| VH halves. |
+| IRF model | `irf_model` | choice |  | choices: `irf_model_choices` | The pulse fitted to the prompt of the photons outside the bursts. Gaussian or Skewed Gaussian leave the fluorescent tail behind; Measured keeps the floor-free prompt as measured. |
 | SG Window Length | `window_length` | int |  | 5 … 500 (step 2) | Savitzky-Golay filter window length (channels) used to find the decay maximum; the estimator makes it odd. |
 | SG Poly Order | `polyorder` | int |  | 1 … 10 (step 1) | Polynomial order of the Savitzky-Golay filter. |
 | RL Iterations | `rl_iterations` | int |  | 5 … 2000 (step 10) | Richardson-Lucy deconvolution iterations. More iterations sharpen the IRF and amplify noise: where you stop is the regularisation. Auto-update uses 50. |
@@ -54,7 +60,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
-- **Theory** — [TCSPC: fluorescence-lifetime fitting](/concepts/tcspc_lifetime.md)
+- **Theory** — [Extracting the instrument response](/concepts/irf_extraction.md), [TCSPC: fluorescence-lifetime fitting](/concepts/tcspc_lifetime.md)
 - **Workflow** — [IRF estimation](/guides/irf_estimation.md)
 
 ## Source

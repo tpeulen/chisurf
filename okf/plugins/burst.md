@@ -69,8 +69,9 @@ per-file `choices` selector (emtk 0.1.42) is unused here now but kept in emtk.
 **Next, in order (2026-11-02, after the detector-name round):**
 0. **Burst MLE IRF: what is left** (2026-11-03). Done: gamma is fitted by default; the IRF comes
    per detector from a scatter (buffer- then floor-corrected), else a reference dye
-   (`core/fio/reference_dyes.yaml`; IRF[i] = D[i] - exp(-dt/tau) D[i-1], tau fitted to the dye's
-   tail on VV+2VH), else a skewed Gaussian on the non-burst photons, else (fewer than 500 non-burst
+   (`core/fio/reference_dyes.yaml`; since 2026-11-04 deconvolved by the IRF Estimation tool,
+   `irf_estimator/core/extraction.py`, see okf/plugins/fluorescence-decay.md -- the exact
+   difference D[i] - exp(-dt/tau) D[i-1] is gone), else a skewed Gaussian on the non-burst photons, else (fewer than 500 non-burst
    photons in the gate) the blind estimate from the burst decay (`MleSession.blind_irf`, the IRF
    Estimation tool's engine, trimmed by a skewed Gaussian) (`MleSession.irf_pattern`, `irf_source`).
    Forced on DNA13bp_3 G|G the blind estimate gave 2I* 80, tau 2.85 ns -- lower than Rh110's 87

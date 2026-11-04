@@ -1,6 +1,7 @@
 # Reference dyes a lab measures beside its samples: a single, known fluorescence lifetime, so the
 # instrument response can be recovered from their decay when no scatter (water, Ludox) was measured
-# (chisurf.core.fluorescence.tcspc.irf.irf_from_reference_decay). A file is matched by its name.
+# (the IRF Estimation tool: chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction.
+# irf_from_reference). A file is matched by its name.
 # pattern: regular expression on the file stem (case-insensitive)
 # tau_ns: lifetime in water at room temperature
 - name: Rh110

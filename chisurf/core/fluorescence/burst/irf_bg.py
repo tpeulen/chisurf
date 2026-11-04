@@ -50,129 +50,7 @@ __all__ = [
     "non_burst_mask",
     "extract_irf_background",
     "extract_mle_irf_background",
-    "gaussian_prompt",
 ]
-
-
-def gaussian_prompt(prompt: np.ndarray, shape: float = 0.0) -> np.ndarray:
-    """Fit a (skew-)Gaussian to a measured scatter prompt.
-
-    A baseline-subtracted non-burst micro-time histogram is *not* an IRF: its
-    prompt rides on a slow fluorescent tail, because the non-burst periods still
-    hold dim and passing molecules, and a flat baseline subtraction removes the
-    dark counts while leaving that decay in place. Convolving a lifetime model
-    with such a "IRF" biases the recovered lifetime roughly two-fold short — a
-    genuine ~2.2 ns decay came out ~1.1 ns on real BH smFRET data — and moves the
-    prompt's own first moment several nanoseconds late.
-
-    A Gaussian cannot represent a slow tail, which is exactly why it is the right
-    shape here: least-squares fitting one over a window around the peak locks onto
-    the sharp scatter prompt and leaves the fluorescent artifact behind, while
-    still following the measured position and width. Falls back to the analytic
-    peak/FWHM pulse if the fit fails.
-
-    Parameters
-    ----------
-    prompt : numpy.ndarray
-        Baseline-subtracted non-burst micro-time histogram.
-    shape : float
-        Skewness. ``0`` is a symmetric Gaussian; positive values add the right
-        tail a real detector response has.
-
-    Returns
-    -------
-    numpy.ndarray
-        The fitted pulse, scaled to the prompt's total counts.
-    """
-    from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
-
-    prompt = np.asarray(prompt, dtype=np.float64)
-    if float(prompt.max()) <= 0.0:
-        return prompt
-
-    pk = int(prompt.argmax())
-    peak_val = float(prompt[pk])
-    if peak_val <= 0.0:
-        return prompt
-
-    # Width from the *rising* edge only, mirrored. The falling side of a non-burst
-    # histogram is the fluorescence decay, not the instrument, so a two-sided
-    # half-max reads the decay's width and opens a fit window wide enough for the
-    # tail to drag the Gaussian late again (2.5 ns against a true 1.0). The rise is
-    # instrument-limited either way, and for a clean scatter prompt the two sides
-    # agree, so this changes nothing where the old estimate was already right.
-    #
-    # The walk tolerates a short dip below half rather than stopping at the first
-    # one. On a sparse non-burst stream — a few counts per bin — a single Poisson
-    # dip inside the rise otherwise ends the walk immediately, the window collapses
-    # to its floor, and the fit locks onto one noisy bin. Smoothing would fix that
-    # too, and must not be used: the prompt is the sharpest feature in the
-    # histogram, so any kernel wide enough to bridge the dip also broadens the
-    # width being measured and pulls the window back into the decay.
-    half = 0.5 * peak_val
-    lo, run = pk, 0
-    while lo > 0 and run < 2:
-        lo -= 1
-        run = 0 if prompt[lo] >= half else run + 1
-    fwhm = max(1.0, 2.0 * float(pk - lo - run))
-    sigma0 = fwhm / 2.3548
-    x = np.arange(prompt.size, dtype=np.float64)
-
-    # Fit the leading edge, not a symmetric window. Everything to the right of the
-    # peak is prompt *plus* decay, and a window wide enough to hold the prompt's
-    # own right flank also holds enough decay to drag the Gaussian late (0.6 ns on
-    # a well-resolved 0.24 ns prompt). The rise is instrument-only — the decay is
-    # flat across it — so it fixes the centre and the width on its own, and one
-    # half-width past the peak is kept so the fit is not extrapolating the top.
-    hw = max(1, pk - lo)
-    sl = slice(max(0, pk - 3 * hw), min(prompt.size, pk + hw + 1))
-    xw, yw = x[sl], prompt[sl]
-    weights = np.sqrt(np.maximum(yw, 1.0))  # Poisson counting weights
-
-    def _gauss(xx, amp, mu, sig):
-        return amp * np.exp(-0.5 * ((xx - mu) / sig) ** 2)
-
-    def _skew_gauss(xx, amp, mu, sig, alpha):
-        from chisurf.core.math.special import erf
-
-        z = (xx - mu) / sig
-        return amp * np.exp(-0.5 * z * z) * (1.0 + erf(alpha * z / np.sqrt(2.0)))
-
-    g = None
-    try:
-        from chisurf.core.math.numerics import curve_fit
-
-        if shape != 0.0:
-            popt, _ = curve_fit(
-                _skew_gauss,
-                xw,
-                yw,
-                p0=[peak_val, float(pk), sigma0, shape],
-                sigma=weights,
-                absolute_sigma=False,
-                maxfev=5000,
-            )
-            g = _skew_gauss(x, 1.0, popt[1], abs(popt[2]), popt[3])
-        else:
-            popt, _ = curve_fit(
-                _gauss,
-                xw,
-                yw,
-                p0=[peak_val, float(pk), sigma0],
-                sigma=weights,
-                absolute_sigma=False,
-                maxfev=5000,
-            )
-            g = _gauss(x, 1.0, popt[1], abs(popt[2]))
-    except Exception:
-        g = None
-    if g is None or not np.all(np.isfinite(g)) or float(np.sum(g)) <= 0.0:
-        # Fall back to the analytic pulse at the measured peak / FWHM.
-        g = synthetic_irf(x, center_ns=float(pk), fwhm_ns=fwhm, shape=shape, norm=True)
-
-    # Normalise to the prompt's counts so downstream scaling is unchanged.
-    s = float(g.sum())
-    return g * (float(prompt.sum()) / s) if s > 0 else g
 
 
 def _micro_time_channels_per_period(tttr: tttrlib.TTTR) -> int:
@@ -448,11 +326,11 @@ def extract_mle_irf_background(
       the prompt locks onto the sharp scatter peak and leaves the fluorescent
       artifact behind, while still following the measured prompt position/width. ``irf_model="experimental"`` (alias ``"raw"``) keeps
       the baseline-subtracted non-burst histogram (the measured scatter prompt) —
-      use it when a genuinely clean scatter prompt is available. The Gaussian
-      pulse is built with the shared :func:`~chisurf.core.fluorescence.tcspc.irf.synthetic_irf`,
-      so ``irf_shape`` adds skewness (a right tail, as a real detector response
-      has) rather than a pure symmetric Gaussian; ``irf_model="skewed"`` selects
-      a sensible default skew.
+      use it when a genuinely clean scatter prompt is available. ``irf_shape``
+      adds skewness (a right tail, as a real detector response has);
+      ``irf_model="skewed"`` selects a sensible default skew. The shaping is the
+      IRF Estimation tool's (:func:`~chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction.irf_from_prompt`);
+      this function only selects, gates and histograms the photons.
 
     Parameters
     ----------
@@ -502,12 +380,12 @@ def extract_mle_irf_background(
 
     period = channels_per_period(tttr)
     q = float(np.clip(baseline_quantile, 0.0, 1.0))
+    from chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction import irf_from_prompt
+
     model = str(irf_model).lower()
-    experimental = model in ("experimental", "raw")
-    shape = float(irf_shape)
-    if model in ("skewed", "skewed_gaussian") and shape == 0.0:
-        # A mild right-skew, the characteristic shape of a real detector response.
-        shape = 1.5
+    # a skewness given overrides the model's (the skewed model's default: 1.5, a mild right
+    # tail, the characteristic shape of a real detector response)
+    shape = float(irf_shape) if float(irf_shape) != 0.0 else None
 
     def _half(channels: list[int], gates=None) -> tuple[np.ndarray, np.ndarray]:
         """Return (irf, bg) micro-time patterns for one polarization sub-channel set.
@@ -532,7 +410,8 @@ def extract_mle_irf_background(
         if hist.sum() > 0:
             baseline = float(np.quantile(hist[inside], q)) if inside.any() else 0.0
             prompt = np.where(inside, np.clip(hist - baseline, 0.0, None), 0.0)
-            irf = prompt if experimental else gaussian_prompt(prompt, shape)
+            # the IRF's shape is the IRF tool's (one implementation for every consumer)
+            irf = irf_from_prompt([prompt], model=model, shape=shape).halves[0] * prompt.sum()
         else:
             irf = np.zeros_like(hist)
         return irf, bg

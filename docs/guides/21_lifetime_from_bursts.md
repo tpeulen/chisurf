@@ -233,11 +233,16 @@ In the pipeline the IRF of each detector is taken, in this order, from:
    the best IRF.
 2. **A reference dye of known lifetime** (Rh110, Rh6G, Fluorescein, Alexa488,
    Alexa647, Cy5; names and lifetimes in `chisurf/core/fio/reference_dyes.yaml`).
-   Its decay is the IRF convolved with one exponential, which is inverted
-   exactly: on bins of width Δt, IRF[i] = D[i] − exp(−Δt/τ)·D[i−1] after the
-   floor is removed. Of several dyes, each detector takes the one with the most
-   photons in its gate: Rh110 for the green detectors, Alexa647 for the red
-   detectors of a PIE set-up.
+   Each polarisation of its decay is the IRF convolved with the dye's rotating
+   exponential, (1 + 2r(t))·exp(−t/τ) in VV and (1 − r(t))·exp(−t/τ) in VH; the IRF is recovered by Richardson–Lucy
+   deconvolution of that kernel, τ fitted to the tail of VV + 2VH and the
+   rotation read from VV and VH ([extracting the instrument
+   response](../concepts/irf_extraction.md)). The exact difference used before,
+   IRF[i] = D[i] − exp(−Δt/τ)·D[i−1], gave the noisy, broad hump of a single
+   polarisation's rotation; on a simulated Rh110 its VV IRF was 0.12 ns early
+   and a 2.5 ns sample came out 2.63 ns (now 2.50 ns). Of several dyes, each
+   detector takes the one with the most photons in its gate: Rh110 for the
+   green detectors, Alexa647 for the red detectors of a PIE set-up.
 3. **The photons outside the bursts**, fitted with a skewed Gaussian. Those
    photons are mostly fluorescence of dim molecules, not scatter, so only their
    prompt is used.
@@ -245,6 +250,31 @@ In the pipeline the IRF of each detector is taken, in this order, from:
    outside the bursts in the detector's gate: the blind estimate of
    [IRF Estimation](irf_estimation.md) (a truncated exponential fit and
    Richardson-Lucy deconvolution), trimmed to its prompt by a skewed Gaussian.
+
+Every one of these is extracted by the **IRF Estimation** tool, the one
+implementation in ChiSurf (`irf_estimator/core/extraction.py`); Burst MLE only
+histograms the files with its reader settings, channels and binning. **IRF tool**
+in the **IRF** tab opens that tool with what the current detector's IRF was
+extracted from -- the same histograms, gate and source -- so it shows the same
+IRF with its lifetime, rotation and counts, and its settings can be tried there.
+
+```{figure} figures/21_burst_mle_irf_deconvolved.png
+:name: fig-21-burst-mle-irf-deconvolved
+:width: 100%
+
+The **IRF** tab on DNA13bp_3 (RVZMT150, 80 ps bins) with Rh110_thick_1.ptu as the
+green reference dye: τ 4.02 ns from its tail, rotation 0.17 ns from VV and VH,
+deconvolved. Thin: VV and VH as extracted; thick: as fitted (background levels
+0.02 taken off).
+```
+
+```{figure} figures/21_burst_mle_irf_difference.png
+:name: fig-21-burst-mle-irf-difference
+:width: 100%
+
+The same IRF by the exact difference used before: a noisy hump, cut off where
+the difference sank into its noise.
+```
 
 A detector that a reference file shows nothing (a green dye in the red
 detectors after the red pulse) falls back to the next source. The **IRF** tab

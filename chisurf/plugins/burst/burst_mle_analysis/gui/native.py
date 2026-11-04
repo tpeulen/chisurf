@@ -678,6 +678,25 @@ class MleNativeApp(TourTarget, ImApp):
         )
         im.begin_disabled(running)
         self._draw_input("irf_measurement")
+        extracted = session.irf_inputs.get(session.current_detector)
+        if button_row(
+            [
+                {
+                    "label": str(tr("IRF tool")),
+                    "key": "irf_tool",
+                    "enabled": extracted is not None,
+                    "tip": str(
+                        tr(
+                            "Open what this IRF was extracted from in IRF Estimation: the same "
+                            "extraction (reference dye, scatter, photons outside the bursts), its "
+                            "lifetime, rotation and photons, to inspect and tune."
+                        )
+                    ),
+                }
+            ],
+            remember=self.remember,
+        ) == "irf_tool":
+            self.open_in_irf_tool()
         if measured and button_row(
             [
                 {
@@ -695,6 +714,24 @@ class MleNativeApp(TourTarget, ImApp):
         draw_sections(self._irf_fields(), self.model, self.form)
         im.end_disabled()
         self._irf_plot()
+
+    def open_in_irf_tool(self) -> bool:
+        """Hand the current detector's IRF source (:attr:`engine.MleSession.irf_inputs`) to the IRF
+        Estimation tool, which extracts the same IRF and shows how (one implementation for both)."""
+        from chisurf.core.plugin import handoff
+
+        session = self.model.session
+        det = session.current_detector
+        source = session.irf_inputs.get(det)
+        if source is None:
+            self.model.status_text = str(tr("This IRF was not extracted from a measurement."))
+            return False
+        if not handoff.available("irf_estimator", "irf_source"):
+            self.model.status_text = str(tr("Open Burst MLE inside ChiSurf to open the IRF tool."))
+            return False
+        payload = dict(source, detector=det, origin="Burst MLE")
+        handoff.hand_off("irf_estimator", "irf_source", {"irf_source": payload})
+        return True
 
     def _irf_fields(self) -> list:
         """The IRF's shape when it is estimated (IRF model) and its cleanup: in Simple mode shift,

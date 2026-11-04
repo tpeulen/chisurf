@@ -1,7 +1,7 @@
 ---
 type: Guide
 title: IRF estimation
-description: Blind estimation of the instrument response function (IRF) from a measured fluorescence decay, without a separate IRF measurement.
+description: The one IRF extraction tool -- from a fluorescence decay (blind), a reference dye, a scatter or the photons outside the bursts; Burst MLE and Burst IRF & Background take their IRF from it.
 tags: [guides, tcspc, decay]
 ---
 
@@ -37,6 +37,55 @@ several detector channels at once (they share one decay rate). `run()` computes
 the whole estimate in tttrlib's compiled engine (`tttrlib.blind_irf_estimate`);
 the step-by-step methods below run the same pipeline in Python and keep its
 intermediates.
+
+## Sources: one extraction for every tool
+
+The tool extracts an IRF from what it is given. **Source** in the parameters
+says what the loaded data is; the extraction is the module
+`chisurf/plugins/fluorescence_decay/irf_estimator/core/extraction.py`, which
+Burst MLE, Burst IRF & Background and the MFD burst fit call too -- no tool
+extracts an IRF of its own ([theory](../concepts/irf_extraction.md)):
+
+| Source | What the data is | How the IRF is taken |
+|---|---|---|
+| Blind | a fluorescence decay | truncated exponential + Richardson–Lucy (below) |
+| Reference dye | a dye of one known lifetime (Rh110, Alexa647) | its polarised exponential deconvolved (Richardson–Lucy); τ from the tail of VV + 2VH, ρ from VV and VH |
+| Scatter | water, Ludox | the prompt above the floor (and a buffer) |
+| Non-burst | the photons outside the bursts | a (skewed) Gaussian fitted to the prompt's rising edge |
+
+**VV | VH halves** says the data holds two polarisations one after the other
+(the rotation of a reference dye is read from them). For a reference dye,
+**Lifetime** 0 fits τ to the tail (the **Listed** one when that fails), **ρ** 0
+reads the rotation from the data. Burst MLE's **IRF tool** button opens this
+window with what its current detector's IRF was extracted from, and the
+estimate starts at once: the IRF it shows is the one Burst MLE fits with.
+
+```{figure} figures/irf_estimation_reference_from_mle.png
+:name: fig-irf-estimation-reference-from-mle
+:width: 100%
+
+Opened from Burst MLE (DNA13bp_3, G|G): the Rh110_thick_1.ptu reference, VV
+then VH, and the IRF extracted from each (green, scaled to its half's peak):
+τ 4.02 ns from the tail, ρ 0.17 ns from the data -- the IRF Burst MLE fits with.
+```
+
+Script use (the arrays are counts on the same bins):
+
+```python
+from chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction import (
+    best_irf, irf_from_reference, irf_from_scatter,
+)
+
+dye = irf_from_reference(vv, vh, dt_ns=0.08, listed_tau_ns=4.0, name="Rh110.ptu", dye="Rh110")
+water = irf_from_scatter([vv_h2o, vh_h2o], buffer=[vv_buf, vh_buf])
+irf = best_irf([dye, water], min_counts=500)   # a scatter wins
+print(irf.text, irf.info)                      # irf.irf: VV | VH, each summing to one
+```
+
+**Measured** against a known IRF (simulated Rh110, 80 ps bins): the exact
+difference IRF[i] = D[i] − exp(−Δt/τ)·D[i−1] used before was 0.16 (TV) off the
+IRF and moved a 2.5 ns sample to 2.63 ns; the deconvolution is 0.03 off and
+gives 2.50 ns. Details in the [concept](../concepts/irf_extraction.md).
 
 ## Algorithm Pipeline
 

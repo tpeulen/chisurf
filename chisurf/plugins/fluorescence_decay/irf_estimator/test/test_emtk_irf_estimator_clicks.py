@@ -681,6 +681,7 @@ def test_the_guide_points_at_real_controls_and_waits():
         steps = app.tour.steps
         keys_ = {app.tour._target_key(s.get("target")) for s in steps} - {""}
         assert keys_ == {
+            "source",
             "load_example",
             "Load Decay",
             "irf_background",
@@ -688,7 +689,10 @@ def test_the_guide_points_at_real_controls_and_waits():
             "Estimate IRF",
         }
         assert keys_ <= set(app.item_rects)
-        app.tour.start(1)  # the example step waits for its own button
+        example = next(
+            i for i, s in enumerate(steps) if s.get("target", {}).get("name") == "load_example"
+        )
+        app.tour.start(example)  # the example step waits for its own button
         assert app.tour.awaiting
         _click(app, "load_example")
         assert not app.tour.awaiting

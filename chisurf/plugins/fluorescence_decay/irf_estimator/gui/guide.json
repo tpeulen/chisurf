@@ -3,8 +3,15 @@
   "steps": [
     {
       "title": "An IRF you did not measure",
-      "text": "What you recorded is your molecule's decay <b>convolved</b> with the instrument's response to an infinitely short flash. Late in the record the response has long since ended, so the tail is the <i>pure</i> decay — fit it there and you know the decay without ever having seen the IRF. What connects the two is then recoverable by deconvolution.<br/><br/>That is what this does. It is a <b>fallback</b>, not a substitute for measuring the IRF, and the last step says why in detail.<br/><br/>Five steps.",
+      "text": "What you recorded is your molecule's decay <b>convolved</b> with the instrument's response to an infinitely short flash. Late in the record the response has long since ended, so the tail is the <i>pure</i> decay — fit it there and you know the decay without ever having seen the IRF. What connects the two is then recoverable by deconvolution.<br/><br/>That is what this does. It is a <b>fallback</b>, not a substitute for measuring the IRF, and the last step says why in detail.<br/><br/>Six steps.",
       "target": {}
+    },
+    {
+      "title": "Say what the decay is",
+      "text": "<b>Source</b> picks how the IRF is taken from the data. <b>Blind</b> (the rest of this tour) estimates it from a fluorescence decay. If you measured more than the sample, use that instead: a <b>Reference dye</b> of one known lifetime (Rh110, Alexa647) gives the IRF by deconvolving its polarised exponential, a <b>Scatter</b> (water, Ludox) <i>is</i> the IRF, and <b>Non-burst</b> takes the scatter prompt between the molecules of a single-molecule run.<br/><br/>Burst MLE takes its IRF from this same extraction; its <b>IRF tool</b> button opens this window with what its IRF came from.",
+      "target": {
+        "name": "source"
+      }
     },
     {
       "title": "Start with a decay whose IRF is known",

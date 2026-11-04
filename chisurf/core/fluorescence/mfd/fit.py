@@ -143,10 +143,8 @@ def estimate_responses(
         all — an all-zero response would silently make every pattern the decay
         itself, which is a real IRF-free fit masquerading as an IRF-corrected one.
     """
-    from chisurf.core.fluorescence.burst.irf_bg import (
-        extract_irf_background,
-        gaussian_prompt,
-    )
+    from chisurf.core.fluorescence.burst.irf_bg import extract_irf_background
+    from chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction import irf_from_prompt
 
     tttrs = preparation.summary.get("_tttrs")
     if not tttrs:
@@ -202,9 +200,9 @@ def estimate_responses(
         # shape: fitting one to the prompt keeps the measured position and width
         # and leaves the fluorescence behind. Same estimator the burst-MLE
         # lifetime fit uses, where it removed a ~2x bias on real BH data.
-        baseline = float(np.quantile(raw, 0.2))
-        prompt = np.clip(raw - baseline, 0.0, None)
-        irf = gaussian_prompt(prompt) if prompt.sum() > 0 else prompt
+        # (the IRF Estimation tool's non-burst extraction: floor, then the Gaussian's fit)
+        found = irf_from_prompt([raw], model="gaussian", baseline_quantile=0.2)
+        irf = found.halves[0] * found.counts[0]  # in counts, as the prompt
         if irf.sum() <= 0:
             raise ValueError(
                 f"the {name} channel's non-burst micro times are flat: there is no "

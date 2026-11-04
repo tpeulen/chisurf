@@ -5,7 +5,8 @@ and baseline parameters, and the per-detector IRF/background results computed fr
 the **non-burst** photons via
 :func:`chisurf.core.fluorescence.burst.extract_irf_background` (display) and
 :func:`chisurf.core.fluorescence.burst.extract_mle_irf_background` (the vv_vh-
-stacked patterns the burst MLE consumes). Non-burst photons of several files are
+stacked patterns the burst MLE consumes, their IRF shaped by the IRF Estimation tool's
+``irf_from_prompt``; the IRF plotted is that one). Non-burst photons of several files are
 pooled per detector. The channel definition comes from the detector editor via an injected
 ``channels_provider`` callable, keeping this model free of any GUI toolkit and headlessly
 testable. The emtk app (``gui.app``) owns the drawing.
@@ -121,8 +122,6 @@ class IrfBackgroundViewModel:
             extract_mle_irf_background,
             non_burst_mask,
         )
-        from chisurf.core.fluorescence.tcspc.irf import detect_rising_edge
-
         channels = self._channels()
         time_window_s = float(self.time_window_ms) / 1000.0
         q = float(np.clip(self.baseline_quantile, 0.0, 1.0))
@@ -178,16 +177,21 @@ class IrfBackgroundViewModel:
                 mslot["irf"] = mslot["irf"] + pat["irf"]
                 mslot["bg"] = mslot["bg"] + pat["bg"]
 
-        # Finalise the pooled display IRF (floor-subtract + normalise) and prompt.
-        for slot in display.values():
-            raw = slot["irf_raw"]
-            if raw.sum() > 0:
-                irf = np.clip(raw - float(np.quantile(raw, q)), 0.0, None)
-                total = irf.sum()
-                slot["irf"] = irf / total if total > 0 else irf
-                slot["prompt_ns"] = float(slot["time_ns"][detect_rising_edge(raw, smooth=5)])
+        # The IRF shown is the one sent to the MLE: the IRF Estimation tool's extraction from the
+        # pooled non-burst prompt (VV + VH), on the binned axis; the prompt is its peak.
+        binning = max(1, int(self.micro_time_binning))
+        for name, slot in display.items():
+            pattern = mle.get(name)
+            if pattern is not None and np.sum(pattern["irf"]) > 0:
+                half = pattern["irf"].size // 2
+                irf = pattern["irf"][:half] + pattern["irf"][half:]
+                irf = irf / irf.sum()
+                step = float(slot["time_ns"][1] - slot["time_ns"][0]) if slot["time_ns"].size > 1 else 1.0
+                slot["time_ns"] = np.arange(half) * step * binning
+                slot["irf"] = irf
+                slot["prompt_ns"] = float(slot["time_ns"][int(np.argmax(irf))])
             else:
-                slot["irf"] = np.zeros_like(raw)
+                slot["irf"] = np.zeros_like(slot["irf_raw"])
                 slot["prompt_ns"] = 0.0
             slot["background_khz"] = slot["bg_sum"] / slot["bg_n"] if slot["bg_n"] else 0.0
 

@@ -1058,6 +1058,10 @@ class MleSession:
     #: Where each detector's IRF came from, in words ("scatter H2O_1.ptu", "Rh110_1.ptu (Rh110,
     #: 4.0 ns)", "photons outside the bursts (skewed Gaussian)").
     irf_source: dict[str, str] = field(default_factory=dict)
+    #: What each measured IRF was extracted from (the histograms the IRF Estimation tool was
+    #: given: ``kind``, ``vv``, ``vh``, ``dt_ns``, ``window``, ...), so the tool can show and
+    #: tune the same extraction.
+    irf_inputs: dict[str, dict] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.tttrs = LazyTTTRs(self.tttr_paths, self.file_type, self.definition)
@@ -1471,12 +1475,21 @@ class MleSession:
             if det:
                 if not self.irf_files.get(det):
                     irf = np.asarray(pat["irf"], dtype=float)
+                    bg = np.asarray(pat["bg"], dtype=float)
+                    half = bg.size // 2
                     if self._background_prompt_photons(tttr, det, ~in_burst) >= MIN_IRF_COUNTS:
                         self.irf_np[det] = irf
                         self.irf_source[det] = f"photons outside the bursts ({label})"
+                        self.irf_inputs[det] = {
+                            "kind": "non_burst", "vv": bg[:half], "vh": bg[half:],
+                            "model": self.settings.irf_model, "baseline_quantile": 0.2,
+                            "window": self._gate_window(det, half),
+                            "name": "photons outside the bursts",
+                        }
                     else:  # too few to show a prompt: the last resort, the decay itself
                         self.irf_np[det] = self.blind_irf(det)
                         self.irf_source[det] = "the burst decay (blind estimate, skewed Gaussian)"
+                        self.irf_inputs.pop(det, None)
                 # the background is the photons outside the bursts, whatever the IRF came from
                 self.bg_np[det] = np.asarray(pat["bg"], dtype=float)
                 n += 1
@@ -1524,41 +1537,30 @@ class MleSession:
     def blind_irf(self, det: str) -> np.ndarray:
         """The IRF of *det* estimated from the burst decay alone, the last resort.
 
-        Blind estimation (truncated exponential fit + Richardson-Lucy deconvolution, as the IRF
-        Estimation tool does it: :class:`~chisurf.core.fluorescence.tcspc.IRFEstimator`) on each
-        polarisation of the detector's burst photons in its gate. What a multi-exponential sample
-        leaves of its decay in that estimate is shed by fitting a skewed Gaussian to its prompt.
-        Each polarisation sums to one; zeros when the decay is empty.
+        The burst photons of the detector, VV and VH in its gate, go to the IRF Estimation tool's
+        blind extraction (:func:`~chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction.irf_from_decay`:
+        truncated exponential + Richardson-Lucy, trimmed by a skewed Gaussian). Each polarisation
+        sums to one; zeros when the decay is empty.
         """
-        from chisurf.core.fluorescence.burst.irf_bg import gaussian_prompt
-        from chisurf.core.fluorescence.tcspc import IRFEstimator
+        from chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction import irf_from_decay
 
         info = self.detectors[det]
-        tttr = self.current_tttr()
         binning = max(1, int(self.settings.micro_time_binning))
-        photons = tttr[self.burst_index_array()]
+        photons = self.current_tttr()[self.burst_index_array()]
         row = vv_vh_histogram(
             photons, info.get("chs", []), (0, 0), binning, normalize_counts=0, apply_vh_shift=False
         )
         half = row.size // 2
-        gates = [r for r in (info.get("micro_time_ranges") or []) if r and len(r) >= 2]
-        inside = np.ones(half, dtype=bool)
-        if gates:
-            inside[:] = False
-            for lo, hi in gates:
-                inside[int(lo) // binning : int(np.ceil(int(hi) / binning))] = True
-        parts = []
-        for decay in (row[:half], row[half:]):
-            decay = np.where(inside, decay, 0.0)
-            if decay.sum() <= 0:
-                parts.append(np.zeros(half))
-                continue
-            lo, hi = int(np.flatnonzero(inside)[0]), int(np.flatnonzero(inside)[-1]) + 1
-            estimate = np.zeros(half)
-            estimate[lo:hi] = np.clip(IRFEstimator(decay[lo:hi].reshape(-1, 1), dt=1.0).run()[:, 0], 0.0, None)
-            pulse = gaussian_prompt(estimate, 1.5)
-            parts.append(pulse / pulse.sum() if pulse.sum() > 0 else pulse)
-        return np.hstack(parts)
+        return irf_from_decay([row[:half], row[half:]], window=self._gate_window(det, half)).irf
+
+    def _gate_window(self, det: str, n_bins: int | None = None) -> tuple[int, int] | None:
+        """The ``[start, stop)`` bins of *det*'s gate at the current binning (``None``: no gate)."""
+        binning = max(1, int(self.settings.micro_time_binning))
+        gates = [r for r in (self.detectors[det].get("micro_time_ranges") or []) if r and len(r) >= 2]
+        if not gates:
+            return None
+        lo, hi = int(gates[0][0]) // binning, int(np.ceil(int(gates[0][1]) / binning))
+        return (lo, min(hi, n_bins) if n_bins else hi)
 
     # -- measured IRF / background files --------------------------------------------------------------------- #
     def _open_pattern_tttr(self, path: Path) -> Any:
@@ -1624,24 +1626,24 @@ class MleSession:
         """The IRF of *det* from reference measurements, and where it came from; ``None`` when none
         of them shows the detector's response.
 
-        A scatter measurement (water, Ludox) is the IRF itself; it is corrected for the background
-        (a measured buffer of this detector, scaled to the scatter's time, then the flat floor).
-        Without one, the decay of a reference dye (``reference_dyes.yaml``: Rh110, Alexa647, ...)
-        gives the IRF by inverting the convolution with its exponential, whose lifetime is fitted to
-        the dye's tail (the listed one when that fails); of
-        several dyes the one with the most photons in the detector's gate is used (Rh110 for the
-        green detectors, Alexa647 for the red ones of a PIE set-up). Each polarisation sums to one.
+        The measurements are histogrammed here (the burst files' reader settings, the
+        detector's channels, the current binning) and handed to the IRF Estimation tool, which
+        extracts the IRF (:mod:`~chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction`):
+        a scatter (water, Ludox) is the IRF itself after its background (a measured buffer of
+        this detector, scaled to the scatter's time, then the flat floor); the decay of a
+        reference dye (``reference_dyes.yaml``: Rh110, Alexa647, ...) gives it by deconvolving
+        the dye's polarised exponential, its lifetime fitted to the dye's tail and its rotation
+        to its two polarisations. A scatter wins; of several dyes the one with the most photons
+        in the detector's gate (Rh110 for the green detectors, Alexa647 for the red ones of a PIE
+        set-up). Each polarisation sums to one.
         """
         from chisurf.core.fio.reference_files import reference_dye
-        from chisurf.core.fluorescence.tcspc.irf import (
-            irf_from_reference_decay,
-            reference_tail_lifetime,
-            scatter_irf,
+        from chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction import (
+            best_irf,
+            irf_from_reference,
+            irf_from_scatter,
         )
 
-        binning = max(1, int(self.settings.micro_time_binning))
-        gates = [r for r in (self.detectors[det].get("micro_time_ranges") or []) if r and len(r) >= 2]
-        window = (int(gates[0][0]) // binning, int(gates[0][1]) // binning) if gates else None
         scatter = [p for p in paths if reference_dye(p) is None]
         groups: dict[str, list[Path]] = {}
         for p in paths:
@@ -1652,50 +1654,51 @@ class MleSession:
         if self.bg_files.get(det) and det in self.buffer_np:
             buffer = np.asarray(self.buffer_np[det], dtype=float)  # counts per second, VV | VH
 
-        candidates: list[tuple[float, np.ndarray, str]] = []
+        found = []
+        sources: dict[str, dict] = {}
         if scatter:
             vv = vh = 0.0
             seconds = 0.0
             for p in scatter:
-                a, b, t, _dt = self._reference_counts(det, p)
+                a, b, t, dt = self._reference_counts(det, p)
                 vv, vh, seconds = vv + a, vh + b, seconds + t
             half = np.size(vv)
-            bvv = bvh = None
+            window = self._gate_window(det, half)
+            scaled = None
             if buffer is not None and buffer.size == 2 * half:
-                bvv, bvh = buffer[:half] * seconds, buffer[half:] * seconds
-            parts = [
-                scatter_irf(vv, buffer=bvv, window=window),
-                scatter_irf(vh, buffer=bvh, window=window),
-            ]
-            corrected = "buffer-corrected" if bvv is not None else "floor-corrected"
-            text = f"scatter {', '.join(p.name for p in scatter)} ({corrected})"
-            candidates.append((np.inf, parts, text))  # a scatter wins over every dye
+                scaled = [buffer[:half] * seconds, buffer[half:] * seconds]
+            names = ", ".join(p.name for p in scatter)
+            found.append(irf_from_scatter([vv, vh], buffer=scaled, window=window, name=names))
+            sources[found[-1].text] = {
+                "kind": "scatter", "vv": vv, "vh": vh, "dt_ns": dt, "window": window, "name": names,
+                "buffer": scaled,
+            }
         for name, group in groups.items():
-            listed = reference_dye(group[0])["tau_ns"]
             vv = vh = 0.0
             dt = 0.0
             for p in group:
                 a, b, _t, dt = self._reference_counts(det, p)
                 vv, vh = vv + a, vh + b
-            # the dye's own lifetime, from its tail (magic angle); the listed one if that fails or
-            # is far off (a tail that is mostly floor)
-            tau = reference_tail_lifetime(vv + 2.0 * vh, dt, window=window)
-            if tau is None or not 0.5 * listed < tau < 2.0 * listed:
-                tau, how = listed, "listed"
-            else:
-                how = "from its tail"
-            parts = [
-                irf_from_reference_decay(vv, tau, dt, window=window),
-                irf_from_reference_decay(vh, tau, dt, window=window),
-            ]
-            area = float(min(parts[0].sum(), parts[1].sum()))
-            text = f"{', '.join(p.name for p in group)} ({name}, {tau:.2f} ns {how}, reconvolved)"
-            candidates.append((area, parts, text))
-        usable = [c for c in candidates if min(c[1][0].sum(), c[1][1].sum()) >= MIN_IRF_COUNTS]
-        if not usable:
+            window = self._gate_window(det, np.size(vv))
+            names = ", ".join(p.name for p in group)
+            listed = reference_dye(group[0])["tau_ns"]
+            one = len(self.detectors[det].get("chs", [])) < 2  # one channel: no rotation to see
+            found.append(
+                irf_from_reference(
+                    vv, None if one else vh, dt, listed_tau_ns=listed, window=window, name=names, dye=name
+                )
+            )
+            sources[found[-1].text] = {
+                "kind": "reference", "vv": vv, "vh": vh, "dt_ns": dt, "window": window,
+                "name": names, "dye": name, "listed_tau_ns": listed,
+            }
+        best = best_irf(found, MIN_IRF_COUNTS)
+        if best is None:
             return None
-        _area, parts, text = max(usable, key=lambda c: c[0])
-        return np.hstack([part / part.sum() for part in parts]), text
+        #: what the IRF was extracted from, per detector: the IRF Estimation tool shows and
+        #: tunes the same extraction from it (``Open in IRF Estimation``)
+        self.irf_inputs[det] = sources[best.text]
+        return best.irf, best.text
 
     def _pattern(self, kind: str, det: str, paths: list[Path]) -> tuple[np.ndarray, str] | None:
         if kind == "irf":
@@ -1736,6 +1739,7 @@ class MleSession:
                 np_dict.pop(d, None)
                 if kind == "irf":
                     self.irf_source.pop(d, None)
+                    self.irf_inputs.pop(d, None)
         self.outcome = None
         return dets
 

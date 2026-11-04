@@ -56,6 +56,14 @@
         "many": false,
         "key": "decay"
       }
+    },
+    {
+      "name": "irf_source",
+      "summary": "Extract the IRF another tool took (Burst MLE: a reference dye, a scatter, the photons outside the bursts) from the same histograms, to show and tune it.",
+      "receive": "chisurf.plugins.fluorescence_decay.irf_estimator.gui.app:receive_irf_source",
+      "required": [
+        "irf_source"
+      ]
     }
   ],
   "entrypoints": {

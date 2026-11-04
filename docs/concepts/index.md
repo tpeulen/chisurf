@@ -29,6 +29,7 @@ distance_distributions
 energy_migration
 acceptor_density
 tcspc_lifetime
+irf_extraction
 microtime_histogram
 anisotropy
 fcs_correlation

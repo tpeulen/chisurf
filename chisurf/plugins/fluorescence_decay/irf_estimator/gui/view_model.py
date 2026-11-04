@@ -1,4 +1,11 @@
-"""IRF estimation workflow and plot data, independent of any GUI toolkit."""
+"""IRF extraction workflow and plot data, independent of any GUI toolkit.
+
+The tool extracts an IRF from what it is given -- a fluorescence decay (blind), a reference dye of
+known lifetime, a scatter, or the photons outside the bursts -- with
+:mod:`..core.extraction`, the implementation Burst MLE and Burst IRF & Background call too. A
+tool that took its IRF from here hands its histograms over (:meth:`IRFViewModel.receive_source`),
+so this window shows and tunes the same extraction.
+"""
 
 from __future__ import annotations
 
@@ -7,8 +14,17 @@ from typing import Any
 
 import numpy as np
 
-from ..api.models import IRFEstimationSettings
+from ..api.models import IRFEstimationResult, IRFEstimationSettings
 from ..core.estimation import estimate_irf
+
+#: Where the IRF is taken from, as the Source field offers them.
+SOURCES = [
+    ("blind", "Blind"),
+    ("reference", "Reference dye"),
+    ("scatter", "Scatter"),
+    ("non_burst", "Non-burst"),
+]
+PROMPT_MODELS = [("gaussian", "Gaussian"), ("skewed", "Skewed"), ("experimental", "Measured")]
 
 
 class IRFViewModel:
@@ -29,6 +45,34 @@ class IRFViewModel:
         self.current_dataset = None
         self.source_text = "No data loaded"
         self.status = "Ready"
+        #: What the decay is (:data:`SOURCES`): the extraction that runs on it.
+        self.source = "blind"
+        #: The data holds two halves, VV then VH (a reference dye's rotation is read from them).
+        self.vv_vh = False
+        #: Reference dye: its lifetime (0: fitted to its tail) and the listed one the fit is
+        #: checked against; its rotational correlation time (0: from the two polarisations).
+        self.reference_tau_ns = 0.0
+        self.listed_tau_ns = 4.0
+        self.reference_rho_ns = 0.0
+        self.dye = ""
+        #: The measurement(s) the received source is of (its source line names them).
+        self.source_name = ""
+        #: Photons outside the bursts: the pulse fitted to the prompt.
+        self.irf_model = "gaussian"
+        #: ``[start, stop)`` bins of the detector's gate in each half (``None``: all of it).
+        self.gate = None
+        #: A scatter's buffer, counts on the same bins at the scatter's time (``None``: the floor).
+        self.buffer = None
+        #: The extraction of the last estimate (:class:`..core.extraction.IrfResult`).
+        self.extraction = None
+
+    def source_choices(self):
+        """(value, label) pairs of the Source field."""
+        return list(SOURCES)
+
+    def irf_model_choices(self):
+        """(value, label) pairs of the IRF model field."""
+        return list(PROMPT_MODELS)
 
     @property
     def decay_data(self):
@@ -67,6 +111,17 @@ class IRFViewModel:
     def result_rows(self):
         """``(label, text)`` of the results panel, ``N/A`` before an estimate."""
         r = self.result
+        x = self.extraction
+        if self.source != "blind":
+            info = x.info if x is not None else {}
+            kind = dict(SOURCES)[self.source] + (f", {self.dye}" if self.dye else "")
+            rows = [("Source", "N/A" if x is None else f"{kind}: {self.source_name or self.source_text}")]
+            if self.source == "reference":
+                rows.append(("Dye lifetime", "N/A" if x is None else f"{info['tau_ns']:.3f} ns ({info['tau_how']})"))
+                rho = info.get("rho_ns")
+                rows.append(("Rotation (ρ)", "N/A" if x is None else ("none" if rho is None else f"{rho:.3f} ns")))
+            rows.append(("IRF counts", "N/A" if x is None else " | ".join(f"{c:.0f}" for c in x.counts)))
+            return rows
         return [
             ("Lifetime (\u03c4)", "N/A" if r is None else f"{r.lifetime_ns:.4f} ns"),
             ("Decay Rate (k)", "N/A" if r is None else f"{r.decay_rate_ns:.6f} ns\u207b\u00b9"),
@@ -101,6 +156,7 @@ class IRFViewModel:
             raise ValueError("Bin width must be positive.")
         self.decay_data_original = values.copy()
         self.channel_axis = axis.copy()
+        self.source_name = ""
         self.result = None
         self.range_bounds = [0.0, float(len(values) - 1)]
         self.status = f"Loaded {len(values)} channels."
@@ -148,12 +204,97 @@ class IRFViewModel:
     def estimate(self, quick=False):
         if self.decay_data_original is None:
             raise ValueError("Load a decay before estimating an IRF.")
-        # The canonical core applies manual background once; pass the measured data.
-        self.result = estimate_irf(
-            self.decay_data_original.copy(), self.dt, self.settings(quick), self.channel_axis.copy()
-        )
+        self.take(self.compute(quick))
         self.status = "IRF estimation completed."
         return self.result
+
+    def take(self, result):
+        """Keep *result* of :meth:`compute` as the estimate shown, saved and transferred."""
+        self.result = result
+        self.extraction = getattr(result, "extraction", None)
+
+    def halves(self):
+        """The loaded data as its polarisations: VV and VH, or the one curve."""
+        data = np.asarray(self.decay_data_original, dtype=float)
+        if self.vv_vh and data.size >= 2 and data.size % 2 == 0:
+            return [data[: data.size // 2], data[data.size // 2 :]]
+        return [data]
+
+    def compute(self, quick=False):
+        """The IRF of the loaded data by :attr:`source` (thread-safe: reads, never writes, the model).
+
+        ``blind`` is the tool's original estimate (truncated exponential + Richardson-Lucy with
+        the parameters above); the others are :mod:`..core.extraction`, the IRF every consumer
+        takes. Returns an :class:`~..api.models.IRFEstimationResult` (the IRF, both halves when
+        the data has two) carrying the extraction as ``extraction``.
+        """
+        if self.source == "blind":
+            # The canonical core applies manual background once; pass the measured data.
+            return estimate_irf(
+                self.decay_data_original.copy(), self.dt, self.settings(quick), self.channel_axis.copy()
+            )
+        from ..core import extraction as X
+
+        parts = self.halves()
+        name = self.source_name or self.source_text or "the loaded data"
+        if self.source == "reference":
+            found = X.irf_from_reference(
+                parts[0], parts[1] if len(parts) > 1 else None, self.dt,
+                tau_ns=float(self.reference_tau_ns) or None,
+                listed_tau_ns=float(self.listed_tau_ns) or None,
+                rho_ns=float(self.reference_rho_ns) or None,
+                window=self.gate, name=name, dye=self.dye,
+            )
+        elif self.source == "scatter":
+            found = X.irf_from_scatter(parts, buffer=self.buffer, window=self.gate, name=name)
+        elif self.source == "non_burst":
+            found = X.irf_from_prompt(
+                parts, model=self.irf_model, window=self.gate, baseline_quantile=0.2, name=name
+            )
+        else:
+            raise ValueError(f"Unknown IRF source {self.source!r}.")
+        tau = float(found.info.get("tau_ns") or 0.0)
+        result = IRFEstimationResult(
+            irf=np.hstack(found.halves).tolist(),
+            params={"A": 0.0, "C": 0.0, "k": 0.0, "k_per_ns": 1.0 / tau if tau else 0.0},
+            time_axis=(np.arange(len(found.irf)) * self.dt).tolist(),
+            dt=self.dt,
+            lifetime_ns=tau,
+            decay_rate_ns=1.0 / tau if tau else 0.0,
+            amplitude=0.0,
+            offset=0.0,
+        )
+        result.extraction = found
+        return result
+
+    def receive_source(self, payload: dict) -> None:
+        """Take what another tool extracted its IRF from (Burst MLE's ``irf_inputs``): the same
+        histograms, bin width, gate and source, so :meth:`estimate` gives the same IRF.
+
+        ``kind`` (``reference`` / ``scatter`` / ``non_burst``), ``vv``, ``vh``, ``dt_ns``,
+        ``window``; ``name``, ``dye``, ``listed_tau_ns``, ``model``, ``buffer`` where they apply.
+        """
+        vv = np.asarray(payload["vv"], dtype=float)
+        vh = np.asarray(payload.get("vh", vv), dtype=float)
+        dt = float(payload.get("dt_ns") or 1.0)
+        self.load_data(np.hstack([vv, vh]), dt=dt, source=str(payload.get("name") or ""))
+        self.vv_vh = True
+        self.source = str(payload.get("kind") or "reference")
+        window = payload.get("window")
+        self.gate = tuple(int(v) for v in window) if window is not None else None
+        self.buffer = [np.asarray(b, dtype=float) for b in payload["buffer"]] if payload.get("buffer") else None
+        self.dye = str(payload.get("dye") or "")
+        self.source_name = str(payload.get("name") or "")
+        self.listed_tau_ns = float(payload.get("listed_tau_ns") or self.listed_tau_ns)
+        self.reference_tau_ns = float(payload.get("tau_ns") or 0.0)
+        self.reference_rho_ns = float(payload.get("rho_ns") or 0.0)
+        self.irf_model = str(payload.get("model") or self.irf_model)
+        self.manual_background = 0.0
+        self.current_file_path = None
+        origin = str(payload.get("origin") or "Burst MLE")
+        detector = payload.get("detector")
+        self.source_text = f"{origin}{' ' + str(detector) if detector else ''}: {payload.get('name') or self.source}"
+        self.status = f"Loaded the {dict(SOURCES)[self.source].lower()} of {origin}."
 
     def plot_series(self):
         if self.decay_data_original is None:
@@ -170,6 +311,20 @@ class IRFViewModel:
             )
         if self.result is not None:
             irf = np.asarray(self.result.irf)
+            if self.source != "blind":
+                # each half scaled to its data's peak, both on the loaded axis
+                parts, out = self.halves(), []
+                for data, part in zip(parts, np.split(irf, len(parts))):
+                    out.append(part * (float(data.max()) / float(part.max())) if part.max() > 0 else part)
+                scaled = np.hstack(out)
+                result.append(
+                    {
+                        "name": "Extracted IRF (scaled)",
+                        "x": self.channel_axis,
+                        "y": np.where(scaled >= 1.0, scaled, np.nan),
+                    }
+                )
+                return result
             maximum = float(irf.max())
             if maximum > 0:
                 scaled = irf * float(self.decay_data.max()) / maximum

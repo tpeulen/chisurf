@@ -355,8 +355,8 @@ class BurstIrfBackgroundGui:
                 col = _hex_to_rgba(s.get("color", ACCENT_BLUE))
                 name = s.get("name", "IRF")
                 implot.set_next_line_style(col, float(s.get("width", 2.0)))
-                # Only plot positive values for log scale
-                pos_mask = y > 0
+                # four decades under the peak on the log axis: a fitted pulse's tails reach 1e-300
+                pos_mask = y > (float(y.max()) * 1e-4 if y.size else 0.0)
                 if np.any(pos_mask):
                     implot.plot_line(name, x[pos_mask], y[pos_mask])
 

@@ -77406,6 +77406,90 @@ Background (kHz): {bg}</source>
             <source>(data - model) / sigma in the fit window of each half, sigma = sqrt(model) (the Poisson noise the model expects; sqrt(data) where the model is zero). Scattered about zero within +-2 for a good fit; χ²ᵣ = sum of squares / (bins - free parameters), about 1.</source>
             <translation>(données - modèle) / sigma dans la fenêtre d'ajustement de chaque moitié, sigma = sqrt(modèle) (le bruit de Poisson attendu par le modèle ; sqrt(données) où le modèle est nul). Dispersés autour de zéro à ±2 près pour un bon ajustement ; χ²ᵣ = somme des carrés / (canaux - paramètres libres), environ 1.</translation>
         </message>
+        <message>
+            <source>What the loaded decay is, and so how the IRF is taken from it. Blind: a fluorescence decay; its tail is fitted with a truncated exponential and deconvolved (Richardson-Lucy). Reference dye: a dye of one known lifetime (Rh110, Alexa647); its polarised exponential is deconvolved, the lifetime fitted to its tail, the rotation read from VV and VH. Scatter: water or Ludox; the prompt is the IRF after the floor (and a buffer). Non-burst (the photons outside the bursts): a Gaussian fitted to the scatter prompt's rising edge, leaving the fluorescent tail behind. Burst MLE takes its IRF from the same extraction.</source>
+            <translation>Ce qu'est le déclin chargé, et donc comment l'IRF en est tirée. Aveugle : un déclin de fluorescence ; sa queue est ajustée par une exponentielle tronquée et déconvoluée (Richardson-Lucy). Colorant de référence : un colorant à une durée de vie connue (Rh110, Alexa647) ; son exponentielle polarisée est déconvoluée, la durée de vie ajustée sur sa queue, la rotation lue dans VV et VH. Diffusion : eau ou Ludox ; le prompt au-dessus du fond (et d'un tampon) est l'IRF. Hors burst (les photons hors des bursts) : une gaussienne ajustée au front montant du prompt de diffusion laisse la queue de fluorescence de côté. Burst MLE prend son IRF de la même extraction.</translation>
+        </message>
+        <message>
+            <source>VV | VH halves</source>
+            <translation>Moitiés VV | VH</translation>
+        </message>
+        <message>
+            <source>The data holds two halves, VV then VH, each extracted on its own; a reference dye's rotation is read from them. Off: one curve (deconvolved with the plain exponential).</source>
+            <translation>Les données contiennent deux moitiés, VV puis VH, chacune extraite à part ; la rotation d'un colorant de référence y est lue. Désactivé : une seule courbe (déconvoluée par l'exponentielle simple).</translation>
+        </message>
+        <message>
+            <source>The reference dye's lifetime. 0: fitted to the tail of VV + 2 VH (the listed lifetime when that fails or is more than a factor two off).</source>
+            <translation>La durée de vie du colorant de référence. 0 : ajustée sur la queue de VV + 2 VH (la durée de vie listée si cela échoue ou s'écarte de plus d'un facteur deux).</translation>
+        </message>
+        <message>
+            <source>Listed (ns)</source>
+            <translation>Listée (ns)</translation>
+        </message>
+        <message>
+            <source>The dye's lifetime as listed (reference_dyes.yaml: Rh110 4.0 ns, Alexa647 1.0 ns): the check on the fitted one.</source>
+            <translation>La durée de vie listée du colorant (reference_dyes.yaml : Rh110 4,0 ns, Alexa647 1,0 ns) : le contrôle de celle ajustée.</translation>
+        </message>
+        <message>
+            <source>The dye's rotational correlation time. 0: read from the data (the time at which the IRFs of VV and VH have one shape). Needs VV | VH halves.</source>
+            <translation>Le temps de corrélation rotationnelle du colorant. 0 : lu dans les données (le temps où les IRF de VV et VH ont une même forme). Nécessite les moitiés VV | VH.</translation>
+        </message>
+        <message>
+            <source>The pulse fitted to the prompt of the photons outside the bursts. Gaussian or Skewed Gaussian leave the fluorescent tail behind; Measured keeps the floor-free prompt as measured.</source>
+            <translation>L'impulsion ajustée au prompt des photons hors des bursts. Gaussienne ou gaussienne asymétrique laissent la queue de fluorescence de côté ; Mesuré garde le prompt sans fond tel que mesuré.</translation>
+        </message>
+        <message>
+            <source>Where the IRF comes from, and the settings of its extraction.</source>
+            <translation>D'où vient l'IRF, et les réglages de son extraction.</translation>
+        </message>
+        <message>
+            <source>Blind</source>
+            <translation>Aveugle</translation>
+        </message>
+        <message>
+            <source>Skewed</source>
+            <translation>Asymétrique</translation>
+        </message>
+        <message>
+            <source>Dye lifetime</source>
+            <translation>Durée de vie du colorant</translation>
+        </message>
+        <message>
+            <source>Rotation (ρ)</source>
+            <translation>Rotation (ρ)</translation>
+        </message>
+        <message>
+            <source>IRF counts</source>
+            <translation>Comptes de l'IRF</translation>
+        </message>
+        <message>
+            <source>IRF tool</source>
+            <translation>Outil IRF</translation>
+        </message>
+        <message>
+            <source>Open what this IRF was extracted from in IRF Estimation: the same extraction (reference dye, scatter, photons outside the bursts), its lifetime, rotation and photons, to inspect and tune.</source>
+            <translation>Ouvre dans Estimation de l'IRF ce dont cette IRF a été extraite : la même extraction (colorant de référence, diffusion, photons hors des bursts), sa durée de vie, sa rotation et ses photons, pour l'examiner et la régler.</translation>
+        </message>
+        <message>
+            <source>This IRF was not extracted from a measurement.</source>
+            <translation>Cette IRF n'a pas été extraite d'une mesure.</translation>
+        </message>
+        <message>
+            <source>Open Burst MLE inside ChiSurf to open the IRF tool.</source>
+            <translation>Ouvrez Burst MLE dans ChiSurf pour ouvrir l'outil IRF.</translation>
+        </message>
+        <message>
+            <source>Say what the decay is</source>
+            <translation>Dites ce qu'est le déclin</translation>
+        </message>
+        <message>
+            <source>&lt;b&gt;Source&lt;/b&gt; picks how the IRF is taken from the data. &lt;b&gt;Blind&lt;/b&gt; (the rest of this tour) estimates it from a fluorescence decay. If you measured more than the sample, use that instead: a &lt;b&gt;Reference dye&lt;/b&gt; of one known lifetime (Rh110, Alexa647) gives the IRF by deconvolving its polarised exponential, a &lt;b&gt;Scatter&lt;/b&gt; (water, Ludox) &lt;i&gt;is&lt;/i&gt; the IRF, and &lt;b&gt;Non-burst&lt;/b&gt; takes the scatter prompt between the molecules of a single-molecule run.&lt;br/&gt;&lt;br/&gt;Burst MLE takes its IRF from this same extraction; its &lt;b&gt;IRF tool&lt;/b&gt; button opens this window with what its IRF came from.</source>
+            <translation>&lt;b&gt;Source&lt;/b&gt; choisit comment l'IRF est tirée des données. &lt;b&gt;Aveugle&lt;/b&gt; (le reste de cette visite) l'estime à partir d'un déclin de fluorescence. Si vous avez mesuré plus que l'échantillon, utilisez-le : un &lt;b&gt;colorant de référence&lt;/b&gt; à une durée de vie connue (Rh110, Alexa647) donne l'IRF en déconvoluant son exponentielle polarisée, une &lt;b&gt;diffusion&lt;/b&gt; (eau, Ludox) &lt;i&gt;est&lt;/i&gt; l'IRF, et &lt;b&gt;Hors burst&lt;/b&gt; prend le prompt de diffusion entre les molécules d'une mesure de molécule unique.&lt;br/&gt;&lt;br/&gt;Burst MLE prend son IRF de la même extraction ; son bouton &lt;b&gt;Outil IRF&lt;/b&gt; ouvre cette fenêtre avec ce dont son IRF provient.</translation>
+        </message>
+        <message>
+            <source>What you recorded is your molecule's decay &lt;b&gt;convolved&lt;/b&gt; with the instrument's response to an infinitely short flash. Late in the record the response has long since ended, so the tail is the &lt;i&gt;pure&lt;/i&gt; decay — fit it there and you know the decay without ever having seen the IRF. What connects the two is then recoverable by deconvolution.&lt;br/&gt;&lt;br/&gt;That is what this does. It is a &lt;b&gt;fallback&lt;/b&gt;, not a substitute for measuring the IRF, and the last step says why in detail.&lt;br/&gt;&lt;br/&gt;Six steps.</source>
+            <translation>Ce que vous avez enregistré est le déclin de votre molécule &lt;b&gt;convolué&lt;/b&gt; avec la réponse de l'instrument à un flash infiniment bref. Tard dans l'enregistrement, la réponse est depuis longtemps éteinte, donc la queue est le déclin &lt;i&gt;pur&lt;/i&gt; — ajustez-la là et vous connaissez le déclin sans avoir jamais vu la FRI. Ce qui relie les deux est alors récupérable par déconvolution.&lt;br/&gt;&lt;br/&gt;C'est ce que fait cet outil. C'est une &lt;b&gt;solution de repli&lt;/b&gt;, non un substitut à la mesure de la FRI, et la dernière étape explique en détail pourquoi.&lt;br/&gt;&lt;br/&gt;Six étapes.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

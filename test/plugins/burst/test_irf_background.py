@@ -148,5 +148,5 @@ def test_workflow_irf_background_step(tmp_path):
     assert set(result.background_khz) == {"green", "red"}
     table = result.table
     assert list(table["Detector"]) == ["green", "red"]
-    assert (table["Background (kHz)"] >= 0.0).all()
+    assert (table["B (kHz)"] >= 0.0).all()  # the per-detector background column (B_<detector>)
     assert result.irf("green").sum() == pytest.approx(1.0, abs=1e-6)

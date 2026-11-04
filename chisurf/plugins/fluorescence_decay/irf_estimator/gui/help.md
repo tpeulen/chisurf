@@ -1,8 +1,25 @@
-# Blind IRF estimation
+# IRF extraction
 
-Recovers an instrument response from a fluorescence decay when you do not have a
-measured one — by fitting the part of the decay the IRF has already stopped
-affecting, then deconvolving what is left.
+The one place ChiSurf extracts an instrument response: from a fluorescence decay
+(blind), a reference dye of known lifetime, a scatter, or the photons outside the
+bursts. Burst MLE and Burst IRF & Background take their IRF from the same code;
+Burst MLE's **IRF tool** button opens this window with what its IRF came from.
+
+## Source
+
+* **Blind** — a fluorescence decay: fit the part the IRF has stopped affecting,
+  then deconvolve what is left (below).
+* **Reference dye** — a dye with one lifetime (Rh110, Alexa647): each polarisation
+  is the IRF convolved with (1 + 2r) e^(−t/τ) (VV) or (1 − r) e^(−t/τ) (VH); the
+  IRF is recovered by Richardson–Lucy with that kernel. **Lifetime** 0 fits τ to
+  the tail of VV + 2 VH (**Listed** when that fails); **ρ** 0 reads the rotation
+  from VV and VH (it needs **VV | VH halves**). The exact difference used before
+  took the rotation for part of the IRF.
+* **Scatter** — water or Ludox: the prompt above the floor is the IRF.
+* **Non-burst** — the photons between the molecules: a Gaussian or skewed Gaussian
+  fitted to the prompt's rising edge leaves the fluorescent tail behind.
+
+The rest of this help is about the blind estimate.
 
 **It is a fallback, not a substitute for measuring the IRF.** Read the limits
 section before a number from here goes anywhere near a result.
@@ -70,6 +87,8 @@ one that invents one.
 
 ## Further reading
 
+- [Extracting the instrument response](docs/concepts/irf_extraction.md) — every
+  source, the reference-dye deconvolution and its measured error.
 - {cite}`gomezsanchez2024` — the blind IRF identification this tool implements:
   the IRF recovered from the measured decays, without a scatter measurement.
 - [TCSPC and fluorescence lifetimes](docs/concepts/tcspc_lifetime.md) — the

@@ -1,4 +1,9 @@
-"""Native blind IRF estimation: toolbar, parameters, plot and results.
+"""Native IRF extraction: toolbar, parameters, plot and results.
+
+The IRF comes from what the decay is (Source): a fluorescence decay (blind), a reference dye, a
+scatter, or the photons outside the bursts -- the extraction Burst MLE and Burst IRF & Background
+call too (:mod:`..core.extraction`). Burst MLE opens it here with what its IRF came from
+(:func:`receive_irf_source`).
 
 The decay comes from the Datasets workspace: the Input section (the manifest's
 ``accepts[].from_workspace``) hands it to :func:`receive_decay`; nothing asks for an input file.
@@ -38,6 +43,7 @@ PENS = {
     "Measured Decay": ((0, 110, 255, 255), None),
     "BG Corrected": ((0, 220, 220, 255), (6.0, 4.0)),
     "Estimated IRF (scaled)": ((0, 220, 0, 255), None),
+    "Extracted IRF (scaled)": ((0, 220, 0, 255), None),
     "IRF \u2297 Exp (Forward Model)": ((255, 165, 0, 255), (6.0, 4.0)),
 }
 #: guide.json names the toolbar actions by caption and the parameter fields by their tour
@@ -58,6 +64,12 @@ ESTIMATION_INPUTS = {
     "use_range_selection",
     "first_channel",
     "last_channel",
+    "source",
+    "vv_vh",
+    "reference_tau_ns",
+    "listed_tau_ns",
+    "reference_rho_ns",
+    "irf_model",
 }
 
 
@@ -268,13 +280,16 @@ class IRFEstimatorApp(ImApp):
         if self.future is not None:
             self.rerun = self.rerun or bool(quick)
             return False
-        self.future = _EXECUTOR.submit(
-            estimate_irf,
-            m.decay_data_original.copy(),
-            m.dt,
-            m.settings(quick),
-            m.channel_axis.copy(),
-        )
+        if m.source == "blind":  # the tool's original estimate, with its parameters
+            self.future = _EXECUTOR.submit(
+                estimate_irf,
+                m.decay_data_original.copy(),
+                m.dt,
+                m.settings(quick),
+                m.channel_axis.copy(),
+            )
+        else:  # the extraction Burst MLE and Burst IRF & Background call
+            self.future = _EXECUTOR.submit(m.compute, quick)
         self.error = ""
         m.status = "Estimating IRF..."
         return True
@@ -295,7 +310,8 @@ class IRFEstimatorApp(ImApp):
                 self.model.status = "IRF estimation failed"
             else:
                 dt = self.model.dt
-                result_dt, self.model.result = result.dt, result
+                result_dt = result.dt
+                self.model.take(result)
                 if result_dt != dt:  # the bin width changed while it ran
                     self.model.set_bin_width(dt)
                 self.model.status = "IRF estimation completed"
@@ -424,6 +440,23 @@ class IRFEstimatorApp(ImApp):
 
 def make_app():
     return IRFEstimatorApp()
+
+
+def receive_irf_source(app: IRFEstimatorApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``irf_source``): what another tool took its IRF
+    from (Burst MLE's reference dye, scatter or non-burst photons), extracted here the same way.
+
+    ``irf_source`` is the dict :meth:`.view_model.IRFViewModel.receive_source` reads; the
+    estimate starts at once, so the window shows the IRF the other tool fits with.
+    """
+    source = payload.get("irf_source")
+    if not isinstance(source, dict):
+        return
+    if app.guard(lambda: app.model.receive_source(source)) is None and app.error:
+        return
+    app.decay_address = ""
+    app.source_uid = ""
+    app.start_estimate()
 
 
 def receive_decay(app: IRFEstimatorApp, payload: dict) -> None:

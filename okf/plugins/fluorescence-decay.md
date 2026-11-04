@@ -9,6 +9,29 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
+**One IRF extraction tool (2026-11-04).** Owner: "IRF extraction not good. Use the logic of the IRF
+extraction tool. Do not duplicate: a single IRF extraction tool/plugin that is used." `irf_estimator`
+is that tool: `core/extraction.py` holds every IRF source -- scatter (`irf_from_scatter`), reference
+dye (`irf_from_reference`: Richardson-Lucy with the polarised kernel (1+2r)e^-t/tau | (1-r)e^-t/tau,
+tau from the tail of VV+2VH, rho from the two polarisations (`reference_rotation`), triangle-binned
+kernel, stop at chi2r <= 1 or stagnation, significance gate, area = floor-free counts x (1-e^-dt/tau)),
+non-burst prompt (`irf_from_prompt`, `gaussian_prompt` moved here), blind (`irf_from_decay`) and
+`best_irf`. Deleted duplicates: `tcspc/irf.py` scatter/reference/tail functions, `burst/irf_bg.gaussian_prompt`,
+the MLE engine's own reconvolution and blind code. Callers: Burst MLE (`irf_pattern`, `blind_irf`,
+non-burst via `extract_mle_irf_background`, which only selects/histograms), Burst IRF & Background
+(display = the MLE pattern), `mfd/fit.py`. The window: **Source** (Blind / Reference dye / Scatter /
+Non-burst), VV | VH halves, lifetime / listed / rho; hand-off `irf_source` (`receive_irf_source`),
+reached from Burst MLE's **IRF tool** button with `MleSession.irf_inputs`. Measured (scratch
+prototype `20261104_05_before_after.py` pattern, docs/concepts/irf_extraction.md): simulated Rh110,
+realistic IRF, 80 ps: TV 0.16 -> 0.03, a 2.5 ns sample 2.63 -> 2.50 ns (VV); Burst Analysis demo
+(narrow Gaussian, 64 ps): VH 0.26 -> 0.07, VV 0.05 -> 0.10 (the exact difference's best case).
+DNA13bp_3 G|G with Rh110: smooth IRF, 2I* 20.93 -> 20.91, chi2r 29.1 -> 27.9. Open: (a) a narrow
+(~3-bin) IRF still comes out ~30 ps late/wide from a reference -- the stopped deconvolution; a
+Tikhonov/positivity solver or more iterations with a sharper stop could close it; (b) the blind
+mode of the window still runs the tttrlib engine with its own parameters, not `irf_from_decay`'s
+trim; (c) the round trip back (a tuned IRF from the window into Burst MLE) is not wired -- Transfer
+registers a dataset, Burst MLE's Measured IRF takes photon streams only.
+
 1. Measure: **the Anisotropy Wizard's example** — Load example → Load / reload data → Create fits → Fit, untouched:
    χ²ᵣ 0.99, τ 3.997 ns, ρ 1.999 ns, r0 0.381 (truth 4 / 2 / 0.38). Each fit uses its IRF only over the pulse's
    channels (*IRF start/stop*, `core/irf.py` `response_window`). Trap: the model clips the background-subtracted
@@ -38,7 +61,7 @@ The `fluorescence_decay/` group analyses Time-Correlated Single Photon Counting 
 
 | Plugin dir | Display name | What it does |
 |---|---|---|
-| `irf_estimator` | IRF Estimation | Blind IRF estimation from decay data via truncated-exponential fitting and Richardson-Lucy deconvolution. |
+| `irf_estimator` | IRF Estimation | The one IRF extraction: blind (truncated exponential + Richardson-Lucy), reference dye, scatter, non-burst photons (`core/extraction.py`); Burst MLE, Burst IRF & Background and the MFD fit call it. |
 | `maxent_decay` | MaxEnt MEM | Maximum-entropy analysis of TCSPC decays for lifetime and FRET-distance distributions. |
 | `lltf` | Lazy Lifetime Analysis | Fast/low-setup lifetime estimation for TCSPC decay data; in VV/VH mode a joint fit of a polarized pair (lifetimes, rotational correlation times, r0; `csc lltf fit-vvvh`). |
 | `tr_anisotropy` | Anisotropy-Wizard | Guided setup of a linked VV/VH global time-resolved anisotropy fit: loads polarised decays, background-corrects IRFs, sets instrument corrections and defines lifetime/rotation spectra. |

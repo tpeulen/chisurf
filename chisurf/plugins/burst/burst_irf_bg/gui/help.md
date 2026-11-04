@@ -33,7 +33,10 @@ result biases the recovered lifetime roughly **two-fold short** — a genuine
 2.2 ns decay came back as ~1.1 ns on real smFRET data, and the prompt's own first
 moment moved several nanoseconds late.
 
-The fix is to fit a **Gaussian** to the prompt. A Gaussian *cannot* represent a
+The fix is to fit a **Gaussian** to the prompt. The fit is the IRF Estimation
+tool's (its *Non-burst* source; [extracting the instrument
+response](docs/concepts/irf_extraction.md)): this tool selects and histograms the
+non-burst photons, the IRF shown and sent to Burst MLE is that tool's extraction. A Gaussian *cannot* represent a
 slow tail, and that is exactly why it is the right shape: least squares locks
 onto the sharp scatter prompt and leaves the fluorescent artefact behind, while
 still following the measured position and width.
