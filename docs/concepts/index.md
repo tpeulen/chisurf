@@ -32,6 +32,7 @@ tcspc_lifetime
 microtime_histogram
 anisotropy
 fcs_correlation
+reference_dye_calibration
 ```
 
 ## Fitting and inference

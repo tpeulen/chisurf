@@ -9,6 +9,34 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
+**Data Selection roles and calibration (2026-11-04).** Done: *1. Data Selection* is two tables --
+the workspace's photon streams on top (a group as one row), and under them one row per **role**
+made from the setup (`samples.row_keys`: Measurement, Buffer, then `irf:<colour>` and
+`reference:<colour>` per emission colour, `samples.colour_groups`). Workspace rows are dragged onto a
+role (drop target via emtk `highlight_attr`, emtk 0.1.43), right-click › Add to / Move to; a file drop
+lands on the row under the pointer; names guess the role (`guess_sample_type`, dye names through the
+dye database's aliases, mmfdb 878bc29). Only Measurement goes to Burst Selection
+(`BurstWorkflowContext.raw_files`); the assignment is `context.samples` and the step's settings, the
+workspace dataset gets a `sample` tag (`ChiSurfAPI.tag_dataset`, `dataset.tag` RPC). Calibrations
+(`samples.calibrate`, a thread, busy overlay via the step's `job`): buffer `B_<det>` kHz; per colour
+the reference dye's G (tail ratio, `calculate_g_factor_core`, shared by detectors on the same
+channels) and confocal volume (VV x VH cross-correlation in 10 parts, SEM-weighted 3-D Gauss fit,
+D from `dyes.get_dye` corrected by `diffusion_at_temperature`). G is written to the setup only by
+*Apply G* (Advanced) or automatically in Simple; volumes go to `setup["confocal_volume"][colour]` and
+`context.calibration`. Burst MLE gets `context.references()` per detector (IRF before dye, a colour
+without IRF reads all IRF files; buffer for every detector); its source line names the IRF
+measurement and the buffer's `B_<det>`; the fit background is still the non-burst photons.
+`context.estimated()` records what was estimated (also in the container provenance). Measured on
+the simulated session (`burst_analysis/demo.py`, known answer): G 1.150 (1.15), red 0.930 (0.92),
+B 1.402 kHz (1.40), green w0 +5 %, z0 -6 %, V_eff +4 % with the true D; tests `test_samples.py`,
+`test_data_selection_samples.py`. Open: (a) the header-tag dye inference reads PTU/HT3 header
+comments only -- `.pto` provenance and a linked MMFDB sample record are not read yet; (b) the
+structure parameter s is the weak part of the volume (~20 %); no triplet term, the fit starts at
+2 µs -- check on real Rh110 data (RVZMT150) whether a triplet term is needed; (c) a file dropped
+on the window is routed by the row under the pointer at the time the link finishes (`_hover_row`),
+not at the drop itself -- a pointer moved away during a slow link lands it by its name; (d) the old
+per-file `choices` selector (emtk 0.1.42) is unused here now but kept in emtk.
+
 **Next, in order (2026-11-02, after the detector-name round):**
 0. **Burst MLE IRF: what is left** (2026-11-03). Done: gamma is fitted by default; the IRF comes
    per detector from a scatter (buffer- then floor-corrected), else a reference dye
@@ -24,9 +52,8 @@ timestamp: '2026-07-05T00:00:00Z'
    the far tail (model/data 0.64): FRET + donor-only mix, a two-lifetime preview would show it;
    (b) R|R fits ~3 ns and the sample's raw red tail is 3.4-4 ns in every red channel -- check the
    acceptor dye / red background before blaming the IRF; (c) `reference_tail_lifetime` assumes a flat
-   floor, so a period under ~5 tau lifts it (a 16 ns period gave 3.4 ns for 4 ns); (d) the buffer
-   correction of a scatter uses the buffer's counts/s pattern, which sums several buffer files
-   instead of averaging them.
+   floor, so a period under ~5 tau lifts it (a 16 ns period gave 3.4 ns for 4 ns); (d) done
+   2026-11-04: several buffer files are averaged (`pattern_histogram`, counts/s), no longer summed.
 0a. **Burst MLE window, binning, background, threshold; hub rail; edits during a job** (2026-11-03).
    Done: the fit window the user sets is fitted as set, also past the detector's gate (`window_bins`;
    unset = `-1, -1` = the gate, and the fields show the edges it falls back to). Before, a window

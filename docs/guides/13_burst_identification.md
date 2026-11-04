@@ -30,6 +30,63 @@ max-tree and Bayesian Blocks — trade sensitivity against false positives.
 
 ## In ChiSurf
 
+### What the workflow works on (1. Data Selection)
+
+A session has more files than the sample: the **buffer**, an **IRF** (water, scatter) and a
+**reference dye** per colour (Rh110, Alexa 647). *1. Data Selection* lists the Datasets
+workspace on top and, under it, one row per role, made from the detector setup of step 0:
+**Measurement** and **Buffer**, then an **IRF** and a **Reference dye** row for every emission
+colour (a two-colour PIE setup: green, red). Drag a workspace row — a group of files dropped
+together is one row — onto the role it is; the role row under the pointer lights up. Drag an
+entry to another row, or right-click it › *Move to*, to change it; right-click a workspace row ›
+*Add to* does the same without dragging. A file dropped on the window lands on the row under the
+pointer; *Use selected* and other hand-overs guess from the name (`buffer`, `H2O`/`irf`,
+`Rh110`/`A647`, …) and otherwise take Measurement.
+
+Only the Measurement row goes to Burst Selection. The others calibrate, off the UI thread:
+
+- **Buffer**: the background rate of every detector, `B_<detector>` in kHz.
+- **IRF**: Burst MLE's measured IRF of that colour's detectors (corrected with the buffer).
+- **Reference dye**: the G factor of the colour's detectors (tail ratio VV/VH) and the confocal
+  volume (w0, z0, V_eff) from the dye's correlation and its diffusion coefficient. The **Dye**
+  cell picks the dye from the dye database — found in the file's header or name, else the
+  colour's usual dye; the Calibration window takes the temperature D is corrected to, or your
+  own D.
+
+```{figure} figures/13_data_selection_roles.png
+:name: fig-data-selection-roles
+:width: 100%
+
+Advanced mode, two-colour PIE setup: a workspace group of three dsDNA measurements, the buffer,
+a water IRF for green and Rh110 / Alexa 647 for green and red (simulated, `burst_analysis/demo.py`).
+The table shows each role's key number; the Calibration window the buffer's rates, the dye and
+where its D comes from, G against the setup's with *Apply G to the setup*, the volume and the
+fitted correlation.
+```
+
+```{figure} figures/13_data_selection_roles_simple.png
+:name: fig-data-selection-roles-simple
+:width: 100%
+
+The same in Simple mode: the roles, the dye of each reference row and one plain status each.
+The G factors are written to the setup as they are computed and the volumes stored.
+```
+
+No row but Measurement is needed. Without a buffer the background is estimated from the photons
+outside the bursts, without an IRF from the non-burst photons, without a reference dye G is the
+setup's — the step says so in one warning line and the workflow records what was estimated.
+Theory: {ref}`concept-reference-dye-calibration`.
+
+Python, headless:
+
+```python
+from chisurf.plugins.burst.burst_analysis import samples
+rows = {"buffer.ptu": "buffer", "Rh110_ref.ptu": "reference:G"}
+result = samples.calibrate(rows, setup)          # setup: the step-0 definition
+result["buffer"]["rates"]["G|G"]["B_kHz"]
+result["colours"]["G"]["g_factor"]["G|G"]["g"], result["colours"]["G"]["volume"]["veff_fl"]
+```
+
 ### Open the tool
 
 The Burst Selection panel is step 2 of the Burst Analysis workflow and also opens

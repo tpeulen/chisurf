@@ -8817,3 +8817,7 @@ caches switched off, so they predate it.
   (1), `burst_irf_bg/test/test_emtk_irf_bg_clicks.py` (1): order-dependent, a burst run left by an
   earlier test is listed; pass per directory. `burst_selection/tests/test_real_data.py`: an
   `alex_phase` key from the uncommitted ALEX work.
+- `alex_suite/tests/test_step_apps.py::test_titration_takes_burst_runs_from_the_workspace` fails
+  when `alex_suite/tests` runs as a directory (passes as a file; reproduced on a clean HEAD worktree
+  2026-11-04): burst runs left in the workspace by earlier ALEX tests are listed instead of
+  `runBursts#1`. Same family as the order-dependent run-picker failures above.

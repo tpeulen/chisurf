@@ -24,6 +24,18 @@ multi-parameter fluorescence detection.
 Because a burst has few photons, the fit is done by **Poisson maximum
 likelihood** rather than least squares.
 
+## Measured IRF and buffer from Data Selection
+
+Files assigned to an **IRF** row of *1. Data Selection* (per colour) become Burst MLE's measured
+IRF of that colour's detectors (`irf_files`); a colour without its own IRF reads the other IRF
+files on its channels, and a detector they show nothing keeps the estimate below. Files in the
+**Buffer** row are the buffer (`bg_files`): they correct a scatter IRF for its background and give
+an independent background rate, `B_<detector>`, named in the IRF source line ("G|G: IRF from the
+IRF measurement water_irf.ptu (buffer-corrected); background from the photons outside the
+bursts (buffer buffer.ptu: B_G|G = 1.40 kHz)"). The background of the fit is still the photons
+outside the bursts. Without files in these rows the IRF and background are estimated as below
+and the line says so. See {ref}`concept-reference-dye-calibration`.
+
 ## Extracting patterns from non-burst photons
 
 **Spectroscopy ▸ Single-Molecule ▸ Burst IRF & Background** (also a step of the
