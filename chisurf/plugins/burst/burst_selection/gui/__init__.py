@@ -2,7 +2,6 @@
 
 from .adapter import (
     UI_COLUMNS,
-    analyze_file_for_wizard,
     bur_file_path,
     burst_rows_for_display,
     combine_ui_dataframes,
@@ -16,7 +15,6 @@ from .adapter import (
 
 __all__ = [
     "UI_COLUMNS",
-    "analyze_file_for_wizard",
     "burst_rows_for_display",
     "bur_file_path",
     "combine_ui_dataframes",

@@ -18,6 +18,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+import tttrlib
 
 from chisurf.core.datastore import column_names, numeric_column, store_from_rows
 from chisurf.plugins.burst.burst_selection.api.features import proximity_ratio
@@ -119,7 +120,7 @@ def test_bigs_setup_burst_search_and_distribution() -> None:
             spc,
             settings=settings,
             detectors=BIGS_SETUP["detectors"],
-            windows=BIGS_SETUP["windows"],
+            windows=tttrlib.setup_micro_time_windows(BIGS_SETUP),
         )
 
         rows = list(res.dataframes.values())[0]

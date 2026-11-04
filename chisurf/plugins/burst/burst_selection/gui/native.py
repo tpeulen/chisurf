@@ -507,7 +507,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             # does not repeat them at all -- step 1 chose them).
             if getattr(m, "advanced", True):
                 im.text(f"Files: all {len(m.files)} from 1. Data Selection")
-                im.set_item_tooltip("Add or remove files in step 1 (Data Selection); this step searches all of them.")
+                im.set_item_tooltip(tr("Add or remove files in step 1 (Data Selection); this step searches all of them."))
         else:
             im.begin_disabled(busy)
             self.input.workspace_input_on_used = self.track

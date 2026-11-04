@@ -220,10 +220,13 @@ class AnalysisRequest:
     filetype : str, optional
         Explicit tttrlib file type. ``None`` lets tttrlib infer the type.
     windows : dict
-        PIE/microtime window definitions, for example
-        ``{"prompt": (0, 2048)}``.
+        The windows record (``tttrlib.micro_time_windows``): the PIE windows, the detector gates
+        and the channel width they are in, e.g. ``{"windows": {"prompt": [0, 2048]}, "gates":
+        {}, "micro_time_resolution_ps": 50.0}``. Each measurement applies them in its own
+        channels.
     detectors : dict
-        Detector setup definitions used for burst summary columns.
+        Detector setup definitions used for burst summary columns (their routing channels; the
+        gates are the record's).
     settings : AnalysisSettings
         Analysis and output settings.
     output_dir : str, optional
@@ -247,7 +250,7 @@ class AnalysisRequest:
 
     files: list[str]
     filetype: str | None = None
-    windows: dict[str, tuple[int, int]] = field(default_factory=dict)
+    windows: dict[str, Any] = field(default_factory=lambda: {"windows": {}, "gates": {}, "micro_time_resolution_ps": None})
     detectors: dict[str, dict[str, Any]] = field(default_factory=dict)
     settings: AnalysisSettings = field(default_factory=AnalysisSettings)
     output_dir: str | None = None

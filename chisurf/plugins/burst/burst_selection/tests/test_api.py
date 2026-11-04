@@ -121,7 +121,7 @@ def test_analysis_request_payload_roundtrip_normalizes_json_inputs() -> None:
     request = analysis_request_from_payload(
         {
             "files": ["m000.spc"],
-            "windows": {"prompt": [0, 2048]},
+            "windows": {"windows": {"prompt": [0, 2048]}, "gates": {}, "micro_time_resolution_ps": 32},
             "settings": {
                 "photon_filter": {
                     "channels": [0, 1],
@@ -136,7 +136,7 @@ def test_analysis_request_payload_roundtrip_normalizes_json_inputs() -> None:
     )
 
     assert request.files == ["m000.spc"]
-    assert request.windows == {"prompt": (0, 2048)}
+    assert request.windows == {"windows": {"prompt": [0, 2048]}, "gates": {}, "micro_time_resolution_ps": 32}
     assert request.settings.photon_filter.microtime_ranges == []
     assert request.settings.photon_filter.used_filter == BurstFilterMode.BURST
     assert request.settings.output_formats == ["bur", "hdf5"]
@@ -144,7 +144,7 @@ def test_analysis_request_payload_roundtrip_normalizes_json_inputs() -> None:
     assert request.selected_setup == "Test"
 
     payload = analysis_request_to_payload(request)
-    assert payload["windows"] == {"prompt": [0, 2048]}
+    assert payload["windows"] == {"windows": {"prompt": [0, 2048]}, "gates": {}, "micro_time_resolution_ps": 32}
     assert payload["settings"]["photon_filter"]["used_filter"] == "burst"
     assert payload["mmfdb"]["enabled"] is False
 

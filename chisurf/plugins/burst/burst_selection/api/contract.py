@@ -10,11 +10,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from tttrlib import as_micro_time_windows
+
 from .models import AnalysisRequest, AnalysisResult, AnalysisSettings, MMFDBContext
 from .serialization import settings_from_dict, to_jsonable
 
 PLUGIN_ID = "burst_selection"
-CONTRACT_VERSION = "1.0.0"
+CONTRACT_VERSION = "2.0.0"
 
 METHOD_ANALYZE_FILES = "burst_selection.jobs.analyze_files"
 METHOD_INSPECT_BUR = "burst_selection.results.inspect_bur"
@@ -29,33 +31,6 @@ CANONICAL_METHODS = (
     METHOD_LOAD_DIAGNOSTICS,
     METHOD_DESCRIBE_CONTRACT,
 )
-
-
-def normalize_windows(windows: dict[str, Any] | None) -> dict[str, tuple[int, int]]:
-    """Return PIE windows as ``{name: (start, stop)}``.
-
-    Parameters
-    ----------
-    windows : dict, optional
-        JSON-compatible window mapping. Values may be two-item lists or tuples.
-
-    Returns
-    -------
-    dict
-        Normalized window mapping.
-
-    Raises
-    ------
-    ValueError
-        If a window value is not a two-item sequence.
-
-    """
-    normalized: dict[str, tuple[int, int]] = {}
-    for name, bounds in (windows or {}).items():
-        if not isinstance(bounds, (list, tuple)) or len(bounds) != 2:
-            raise ValueError(f"window {name!r} must be a two-item range")
-        normalized[str(name)] = (int(bounds[0]), int(bounds[1]))
-    return normalized
 
 
 def analysis_request_from_payload(payload: dict[str, Any]) -> AnalysisRequest:
@@ -82,7 +57,8 @@ def analysis_request_from_payload(payload: dict[str, Any]) -> AnalysisRequest:
     return AnalysisRequest(
         files=[str(path) for path in payload.get("files", [])],
         filetype=payload.get("filetype"),
-        windows=normalize_windows(payload.get("windows")),
+        # windows travel with their channel width; bare {name: [start, stop]} is refused
+        windows=as_micro_time_windows(payload.get("windows") or None),
         detectors=payload.get("detectors") or {},
         settings=settings,
         output_dir=payload.get("output_dir"),
@@ -175,11 +151,20 @@ def contract_descriptor() -> dict[str, Any]:
                     "filetype": {"type": ["string", "null"]},
                     "windows": {
                         "type": "object",
-                        "additionalProperties": {
-                            "type": "array",
-                            "items": {"type": "integer"},
-                            "minItems": 2,
-                            "maxItems": 2,
+                        "description": "tttrlib.micro_time_windows record",
+                        "required": ["windows", "micro_time_resolution_ps"],
+                        "properties": {
+                            "windows": {
+                                "type": "object",
+                                "additionalProperties": {
+                                    "type": "array",
+                                    "items": {"type": "integer"},
+                                    "minItems": 2,
+                                    "maxItems": 2,
+                                },
+                            },
+                            "gates": {"type": "object"},
+                            "micro_time_resolution_ps": {"type": ["number", "null"]},
                         },
                     },
                     "detectors": {"type": "object"},

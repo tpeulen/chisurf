@@ -33,7 +33,6 @@ from ..api.models import (
     PhotonFilterSettings,
     TttrlibSearchSettings,
 )
-from ..api.selection import analyze_file
 
 UI_COLUMNS = [
     "File Idx",
@@ -581,23 +580,6 @@ def combine_ui_dataframes(frames: Iterable):
     if not frames:
         return None
     return concat_stores(frames)
-
-
-def analyze_file_for_wizard(
-    path: str | Path,
-    wizard: Any,
-    output_dir: str | Path | None = None,
-) -> Any:
-    """Run the shared Burst Selection API for one file using wizard settings."""
-    settings = analysis_settings_from_wizard(wizard)
-    return analyze_file(
-        path,
-        settings=settings,
-        filetype=None,
-        windows=wizard.burst_finder.windows,
-        detectors=wizard.burst_finder.detectors,
-        output_dir=output_dir,
-    )
 
 
 def gmm_settings_from_wizard(wizard: Any) -> dict[str, Any]:

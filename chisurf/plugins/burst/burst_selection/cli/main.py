@@ -189,12 +189,18 @@ def analyze(
         output_formats=list(output_formats),
     )
 
+    detector_values = load_json_file(detectors_json)
+    window_values = load_json_file(windows_json)
+    if not window_values:
+        from chisurf.core.fluorescence.burst.streams import gates_record
+        window_values = gates_record(detector_values, None)
+
     if use_mmfdb:
         _analyze_with_mmfdb(
             files=list(files),
             filetype=filetype,
-            windows=load_json_file(windows_json),
-            detectors=load_json_file(detectors_json),
+            windows=window_values,
+            detectors=detector_values,
             settings=settings,
             db_path=db_path,
             token=token,
@@ -222,8 +228,8 @@ def analyze(
         {
             "files": list(files),
             "filetype": filetype,
-            "windows": load_json_file(windows_json),
-            "detectors": load_json_file(detectors_json),
+            "windows": window_values,
+            "detectors": detector_values,
             "settings": settings,
             "output_dir": output_dir,
             "legacy_output": legacy,

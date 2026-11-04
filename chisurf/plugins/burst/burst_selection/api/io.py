@@ -165,10 +165,7 @@ def write_container(
         out_dir=out_dir,
         raw_data=raw_data,
     )
-    from chisurf.core.project.analysis import container_changed
-
-    container_changed(written)  # the new run shows in Datasets at once
-    return written
+    return written  # write_burst_artifact told the workspace (container-changed)
 
 
 def get_unique_folder_path(base_path: Path) -> Path:

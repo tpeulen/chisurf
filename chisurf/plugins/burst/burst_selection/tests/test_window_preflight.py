@@ -24,13 +24,13 @@ def demo(tmp_path_factory):
 
 
 def test_wrong_windows_are_reported_in_the_result(demo):
-    result = analyze_file(demo, windows={"prompt": (0, 2048), "delayed": (2048, 4095)},
+    result = analyze_file(demo, windows={"windows": {"prompt": (0, 2048), "delayed": (2048, 4095)}, "gates": {}, "micro_time_resolution_ps": 32},
                           detectors=DETECTORS)
     assert any("PIE windows do not match" in w for w in result.warnings), result.warnings
 
 
 def test_matching_windows_say_nothing(demo):
-    result = analyze_file(demo, windows={"prompt": (50, 1613), "delayed": (1613, 3125)},
+    result = analyze_file(demo, windows={"windows": {"prompt": (50, 1613), "delayed": (1613, 3125)}, "gates": {}, "micro_time_resolution_ps": 32},
                           detectors=DETECTORS)
     assert not result.warnings
 

@@ -18,6 +18,7 @@ import chisurf
 import chisurf.core.fluorescence.burst.kalman as kalman_mod
 from chisurf.core.datastore import rows_from_table, store_from_rows
 from chisurf.core.fio.fluorescence.burst import generate_burst_dataframe, write_mti_summary
+from chisurf.core.fio.fluorescence.burst_container import new_run_name
 from chisurf.core.fio.fluorescence.burst_manifest import (
     describe_tttr_source,
     write_analysis_manifest,
@@ -49,6 +50,22 @@ from .models import (
     PhotonFilterSettings,
 )
 from .serialization import to_jsonable
+
+
+def _recorded_alex(tttr) -> dict:
+    """Return explicitly recorded phase windows, in seconds, without inferring them."""
+    try:
+        tags = json.loads(tttr.header.json).get("tags", [])
+        value = next(t["value"] for t in tags if t.get("name") == "ChiSurf_AcquisitionSettings")
+        experiment = json.loads(value).get("experiment", {})
+        windows = experiment.get("alex_windows_s")
+        period = experiment.get("alex_period_us")
+        if experiment.get("preset") == "alex" and period and windows:
+            return {"period_s": float(period) * 1e-6, "windows_s": windows,
+                    "macro_time_resolution_s": float(tttr.header.macro_time_resolution)}
+    except (AttributeError, KeyError, StopIteration, TypeError, ValueError):
+        pass
+    return {}
 
 #: Which filter ran -> its `_mmfdb_operation.algorithm` term.
 #:
@@ -592,7 +609,7 @@ def analyze_file(
     *,
     settings: AnalysisSettings | None = None,
     filetype: str | None = None,
-    windows: dict[str, tuple[int, int]] | None = None,
+    windows: dict[str, Any] | None = None,
     detectors: dict[str, dict[str, Any]] | None = None,
     output_dir: str | Path | None = None,
     mti_output_dir: str | Path | None = None,
@@ -609,9 +626,11 @@ def analyze_file(
     filetype : str, optional
         TTTR file type.
     windows : dict, optional
-        PIE windows.
+        The windows record (``tttrlib.micro_time_windows``: PIE windows, detector gates and the
+        channel width they are in). They are checked as given -- a binning is named -- and
+        applied in the measurement's own channels.
     detectors : dict, optional
-        Detector definitions.
+        Detector definitions (routing channels; the gates are the record's).
     output_dir : str or Path, optional
         Directory for ``.bur`` output.
     mti_output_dir : str or Path, optional
@@ -637,9 +656,18 @@ def analyze_file(
         )
     # The shared pre-flight of every PIE analysis: do the windows hold the excitation pulses
     # this measurement shows? Reported, never corrected here -- the user decides.
-    from chisurf.core.fluorescence.excitation import windows_message, windows_preflight
+    from tttrlib import as_micro_time_windows
 
-    window_warning = windows_message(windows_preflight(tttr, windows, detectors=detectors))
+    from chisurf.core.fluorescence.excitation import (
+        applied_windows,
+        windows_message,
+        windows_preflight,
+    )
+
+    record = as_micro_time_windows(windows or None)
+    window_warning = windows_message(windows_preflight(tttr, record, detectors=detectors or {}))
+    # what is applied: the windows and gates in this measurement's channels
+    applied = applied_windows(record, detectors, tttr)
     selected = apply_photon_filters(
         tttr,
         analysis_settings.photon_filter,
@@ -665,6 +693,7 @@ def analyze_file(
         if macro_time_resolution is None
         else float(macro_time_resolution)
     )
+    alex = _recorded_alex(tttr)
     df = summarize_bursts(
         start_stop,
         # The *measurement's* name, which for a container is the instrument
@@ -677,8 +706,8 @@ def analyze_file(
         # make about the folder it replaces.
         _measurement_name(path),
         tttr,
-        windows=windows or {},
-        detectors=detectors or {},
+        windows=applied["windows"],
+        detectors=applied["detectors"],
         macro_time_resolution=output_resolution,
     )
 
@@ -706,6 +735,8 @@ def analyze_file(
             # that later wants those photons has to reopen the file — and with
             # nothing written down it has to guess the container type, which is
             # how ".spc" came to be opened as a type tttrlib does not have.
+            from chisurf.core.fluorescence.excitation import STORED_WINDOWS_KEY
+
             try:
                 write_analysis_manifest(
                     Path(mti_output_dir),
@@ -714,9 +745,10 @@ def analyze_file(
                             path,
                             tttr,
                             settings={
-                                "windows": dict(windows or {}),
+                                STORED_WINDOWS_KEY: record,
                                 "detectors": dict(detectors or {}),
                                 "macro_time_resolution": output_resolution,
+                                "alex_phase": alex,
                             },
                         )
                     ],
@@ -726,7 +758,7 @@ def analyze_file(
             except Exception:
                 logging.exception("could not write the burst reading manifest")
 
-    return AnalysisResult(
+    result = AnalysisResult(
         files=[str(path)],
         dataframes={str(path): rows_from_table(df)},
         metadata={
@@ -734,11 +766,167 @@ def analyze_file(
             "n_selected": int(np.count_nonzero(selected)),
             "n_bursts": int(len(start_stop)),
             "macro_time_resolution": output_resolution,
+            "alex_phase": alex,
         },
         output_paths=output_paths,
         output_paths_by_file={normalized_path: dict(output_paths)},
         warnings=[f"{Path(path).name}: {window_warning}"] if window_warning else [],
     )
+    # The table itself, for the caller that stores it (:func:`_search_file`): rebuilding it from
+    # the rows cost 0.6 s per file. In-process only -- never part of what is returned or sent.
+    result._table = df
+    return result
+
+
+
+#: Upper bound on the processes a batch search uses; ``CHISURF_BURST_WORKERS=1`` searches the files
+#: one after the other.
+MAX_SEARCH_WORKERS = 8
+#: Files smaller than this on average are searched one after the other (a 300 MB file takes 2 s).
+MIN_PARALLEL_BYTES = 32 * 1024 * 1024
+
+
+def _search_workers(request: AnalysisRequest, legacy_output_folder: Path | None) -> int:
+    """How many processes search *request*'s files: one per file, never more than the cores.
+
+    A batch writing the legacy folder stays sequential (its ``Info`` sidecars are appended
+    file by file), and so does one where two files would land in the same container.
+    """
+    import os
+
+    files = list(request.files)
+    if len(files) < 2 or legacy_output_folder is not None:
+        return 1
+    try:
+        size = sum(Path(f).stat().st_size for f in files)
+    except OSError:
+        return 1
+    if size < MIN_PARALLEL_BYTES * len(files):
+        return 1  # starting a worker (~1 s) costs more than searching a small file
+    from chisurf.core.fio.fluorescence.burst_container import container_for
+
+    targets = {
+        str(container_for(f, request.container_dirs.get(str(f)) or request.output_dir))
+        for f in files
+    }
+    if len(targets) != len(files):
+        return 1
+    cap = os.environ.get("CHISURF_BURST_WORKERS")
+    limit = int(cap) if cap and cap.isdigit() else MAX_SEARCH_WORKERS
+    return max(1, min(len(files), limit, (os.cpu_count() or 2) - 1))
+
+
+def _first_resolution(request: AnalysisRequest) -> float | None:
+    """The first file's macro-time resolution, which a batch reports every duration in."""
+    try:
+        return float(load_tttr(request.files[0], filetype=request.filetype).header.macro_time_resolution)
+    except Exception:  # noqa: BLE001 - each file then reports in its own
+        return None
+
+
+def _search_file(
+    path,
+    request: AnalysisRequest,
+    bur_output_dir,
+    legacy_output_folder: Path | None,
+    macro_time_resolution: float | None,
+) -> tuple[AnalysisResult, dict[str, str]]:
+    """Search one file of *request* and store its bursts; the result and where they went."""
+    store = "pto" in request.settings.output_formats
+    out_dir = request.container_dirs.get(str(path)) or request.output_dir
+    # A project's analysis container links the photons; the project decides whether the photon
+    # dataset itself is linked or embedded.
+    raw_data = "sidecar" if str(path) in request.container_dirs else "embed"
+    # A new container hashes (or embeds) the whole photon file -- 1.5 s for 300 MB, outside the
+    # GIL -- so it is made while the search runs rather than after it.
+    preparing = _prepare_container(path, out_dir, raw_data) if store else None
+    try:
+        result = analyze_file(
+            path,
+            settings=request.settings,
+            filetype=request.filetype,
+            windows=request.windows,
+            detectors=request.detectors,
+            output_dir=bur_output_dir,
+            mti_output_dir=legacy_output_folder if legacy_output_folder is not None else None,
+            macro_time_resolution=macro_time_resolution,
+        )
+    finally:
+        if preparing is not None:
+            preparing.join()
+    table = result.__dict__.pop("_table", None)
+    stored: dict[str, str] = {}
+    if store:
+        parameters = {**to_jsonable(request.settings),
+                      "micro_time_windows": request.windows,
+                      "detectors": request.detectors,
+                      "alex_phase": result.metadata.get("alex_phase", {})}
+        # A search with other settings is a new analysis ("... (2)"), never hidden under
+        # the run of the same name; the same settings again replace that run.
+        run = new_run_name(path, legacy_output_folder_name(request.settings), parameters, out_dir)
+        container = write_container(
+            path,
+            # the search's own table: rebuilding it from the rows cost 0.6 s per file
+            table if table is not None else store_from_rows(result.dataframes.get(str(path), [])),
+            parameters=parameters,
+            algorithm=_selection_algorithm(request.settings),
+            out_dir=out_dir,
+            raw_data=raw_data,
+            # Named the way the folder layout names its directory, so a container holding
+            # several analyses of one measurement is addressed exactly as a folder of them
+            # is: `m000.pto/countrate_All 0.1500#60`.
+            run=run,
+        )
+        stored["pto"] = container
+        # The path a downstream step is pointed at. It reads like a folder because that is
+        # the point; `burst_tree` resolves it.
+        stored["output_folder"] = f"{container}/{run}" if run else container
+    return result, stored
+
+
+def _prepare_container(path, out_dir, raw_data: str):
+    """Create *path*'s container in a thread, if it does not exist yet; the thread (or ``None``)."""
+    import threading
+
+    from chisurf.core.fio.fluorescence.burst_container import container_for, open_measurement
+    from chisurf.core.fio.pto import is_measurement
+
+    if is_measurement(container_for(path, out_dir)):
+        return None
+
+    def create() -> None:
+        try:
+            with open_measurement(path, out_dir, raw_data=raw_data):
+                pass
+        except Exception:  # noqa: BLE001 - the write after the search makes it, and says why
+            logging.exception("could not prepare the container of %s", path)
+
+    thread = threading.Thread(target=create, name="burst-container", daemon=True)
+    thread.start()
+    return thread
+
+
+def _search_in_parallel(request, workers, bur_output_dir, resolution, progress_callback):
+    """``{path: (result, stored)}`` of every file, searched in *workers* processes.
+
+    Spawned, not forked: the GUI process holds threads and a GL context a fork would copy
+    half of.
+    """
+    import multiprocessing
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+
+    done: dict[str, tuple[AnalysisResult, dict[str, str]]] = {}
+    context = multiprocessing.get_context("spawn")
+    with ProcessPoolExecutor(max_workers=workers, mp_context=context) as pool:
+        futures = {
+            pool.submit(_search_file, path, request, bur_output_dir, None, resolution): str(path)
+            for path in request.files
+        }
+        for future in as_completed(futures):
+            done[futures[future]] = future.result()
+            if progress_callback is not None:
+                progress_callback(len(done), len(futures), futures[future])
+    return done
 
 
 def analyze_request(
@@ -807,52 +995,37 @@ def analyze_request(
     total_files = len(request.files)
     warnings: list[str] = []
 
-    for file_index, path in enumerate(request.files):
-        result = analyze_file(
-            path,
-            settings=request.settings,
-            filetype=request.filetype,
-            windows=request.windows,
-            detectors=request.detectors,
-            output_dir=bur_output_dir,
-            mti_output_dir=legacy_output_folder if legacy_output_folder is not None else None,
-            macro_time_resolution=batch_macro_time_resolution,
-        )
-        if batch_macro_time_resolution is None and "macro_time_resolution" in result.metadata:
-            batch_macro_time_resolution = float(result.metadata["macro_time_resolution"])
+    def merge(path, result: AnalysisResult, stored: dict[str, str]) -> None:
         frames.update(result.dataframes)
         output_paths.update(result.output_paths)
         output_paths_by_file.update(result.output_paths_by_file)
-        if "pto" in request.settings.output_formats:
-            run = legacy_output_folder_name(request.settings)
-            container = write_container(
-                path,
-                store_from_rows(result.dataframes.get(str(path), [])),
-                parameters=to_jsonable(request.settings),
-                algorithm=_selection_algorithm(request.settings),
-                out_dir=request.container_dirs.get(str(path)) or request.output_dir,
-                # A project's analysis container links the photons; the project decides whether
-                # the photon dataset itself is linked or embedded.
-                raw_data="sidecar" if str(path) in request.container_dirs else "embed",
-                # Named the way the folder layout names its directory, so a
-                # container holding several analyses of one measurement is
-                # addressed exactly as a folder of them is:
-                # `m000.pto/countrate_All 0.1500#60`.
-                run=run,
-            )
-            output_paths.setdefault("pto", container)
-            output_paths_by_file.setdefault(str(path), {})["pto"] = container
-            # The path a downstream step is pointed at. It reads like a folder
-            # because that is the point; `burst_tree` resolves it.
-            analysis_path = f"{container}/{run}" if run else container
-            output_paths.setdefault("output_folder", analysis_path)
-            output_paths_by_file.setdefault(str(path), {})["output_folder"] = analysis_path
+        for key, value in stored.items():
+            output_paths.setdefault(key, value)
+            output_paths_by_file.setdefault(str(path), {})[key] = value
         warnings.extend(result.warnings or [])
-        metadata["n_bursts"] += int(result.metadata.get("n_bursts", 0))
-        metadata["n_selected"] += int(result.metadata.get("n_selected", 0))
-        metadata["n_photons"] += int(result.metadata.get("n_photons", 0))
-        if progress_callback is not None:
-            progress_callback(file_index + 1, total_files, str(path))
+        for key in ("n_bursts", "n_selected", "n_photons"):
+            metadata[key] += int(result.metadata.get(key, 0))
+
+    workers = _search_workers(request, legacy_output_folder)
+    if workers > 1:
+        # Every file is searched and stored on its own: one process per file, the
+        # results merged in file order so the outcome is the sequential one.
+        batch_macro_time_resolution = _first_resolution(request)
+        done = _search_in_parallel(
+            request, workers, bur_output_dir, batch_macro_time_resolution, progress_callback
+        )
+        for path in request.files:
+            merge(path, *done[str(path)])
+    else:
+        for file_index, path in enumerate(request.files):
+            result, stored = _search_file(
+                path, request, bur_output_dir, legacy_output_folder, batch_macro_time_resolution
+            )
+            if batch_macro_time_resolution is None and "macro_time_resolution" in result.metadata:
+                batch_macro_time_resolution = float(result.metadata["macro_time_resolution"])
+            merge(path, result, stored)
+            if progress_callback is not None:
+                progress_callback(file_index + 1, total_files, str(path))
 
     if legacy_output_folder is not None:
         _write_legacy_output_info(request, legacy_output_folder)

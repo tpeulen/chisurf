@@ -4,6 +4,7 @@
 registry) and the display settings as plain attributes, builds :class:`~..api.models.AnalysisSettings` from them and
 runs the backend call (``BurstSelectionClient.analyze_files``). What the diagnostic plots draw is computed here too,
 as arrays, and the emtk app only draws them.
+
 ``burst_detection.time_window`` is the macro-time cut in seconds, the CUSUM / Kalman / BOCPD fields carry their
 defaults, and the parameters recorded with a run are this run's (``dT_min``, ``use_gap_fill``). The registry search
 reads none of them.
@@ -12,6 +13,8 @@ Nothing here imports Qt, emtk or ``chisurf.gui``.
 """
 
 from __future__ import annotations
+
+import time
 
 import copy
 import json
@@ -199,6 +202,7 @@ def _cell_text(value: Any) -> str:
 
 #: The schema a saved settings file carries (a setup of the Datasets workspace).
 SETTINGS_SCHEMA = "chisurf.tool/burst_selection/1"
+
 
 class SearchParameters:
     """The selected search's parameters as attributes, so a spec form can bind them (``attr`` = parameter name).
@@ -470,7 +474,10 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
             self.notify("files")
 
     def remove_file_row(self, row: dict) -> None:
-        """``data_table`` delete hook."""
+        """``data_table`` delete hook (not in the pipeline: there the files are Data Selection's)."""
+        if getattr(self, "files_from_pipeline", False):
+            self.status_text = "In the pipeline the files are step 1's: remove them in 1. Data Selection."
+            return
         path = Path(str(row.get("path", "")))
         if path in self.files:
             self.remove_index(self.files.index(path))
@@ -748,13 +755,20 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
 
     def container_dirs(self) -> dict[str, str]:
         """Per file, the folder of its photon dataset's analysis container in the project."""
-        from chisurf.core.project.analysis import container_dir
+        from chisurf.core.project.analysis import container_dir, session_dir
 
         sources = getattr(self, "sources", {}) or {}
-        return {
+        # Asked every frame by the run picker: computed again only when files, datasets or project change.
+        key = (tuple(map(str, self.files)), tuple(sorted(sources.items())), str(session_dir()))
+        cached = getattr(self, "_container_dirs", None)
+        if cached is not None and cached[0] == key:
+            return dict(cached[1])
+        dirs = {
             str(path): str(container_dir(sources.get(str(Path(path).resolve()), "")))
             for path in self.files
         }
+        self._container_dirs = (key, dirs)
+        return dict(dirs)
 
     def output_text(self) -> str:
         return "Results go to: the project (each measurement's runs, beside its photons)"
@@ -815,7 +829,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         """Keyword arguments of ``BurstSelectionClient.analyze_files`` (without the files and MMFDB context)."""
         return dict(
             settings=asdict(self.analysis_settings()),
-            windows=copy.deepcopy(self.windows),
+            windows=self.windows_record(),
             detectors=copy.deepcopy(self.detectors),
             filetype=self.file_type,
             # Each run goes into its photon dataset's analysis container, which the project
@@ -870,6 +884,10 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
 
     def sample_options(self) -> list[tuple[str, str]]:
         """MMFDB samples (``[(id, label)]``), first entry "derive from the files"."""
+        # Shown every frame: the database is asked at most every few seconds.
+        cached = getattr(self, "_sample_options", None)
+        if cached is not None and time.monotonic() - cached[0] < 5.0:
+            return list(cached[1])
         options = [("", "From the raw files")]
         try:
             db = self._mmfdb_db()
@@ -882,6 +900,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
                         options.append((sid, str(sample.get("name") or sid)))
         except Exception:  # noqa: BLE001 - no database: only the default entry
             pass
+        self._sample_options = (time.monotonic(), list(options))
         return options
 
     def mmfdb_context(self) -> dict[str, Any] | None:
@@ -944,6 +963,8 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         if db.get_setup(setup_id) is not None:
             return setup_id
         reading = {"file_type": self.file_type}
+        if self.window_resolution_s:  # the windows' channel width is part of the setup
+            reading["micro_time_resolution"] = self.window_resolution_s * 1e12
         data = {"windows": self.windows, "detectors": self.detectors, "tttr_reading": reading}
         db.save_setup(
             setup_id=setup_id,
@@ -1266,14 +1287,17 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         start_stop = diag.get("start_stop")
         if start_stop is None or len(start_stop) == 0:
             return
+        from chisurf.core.fluorescence.excitation import setup_in_data
+
         from ..api.selection import summarize_bursts
 
+        applied = setup_in_data(self.preflight_setup(), diag["tttr"])  # the data's channels
         frame = summarize_bursts(
             start_stop,
             str(diag["path"]),
             diag["tttr"],
-            windows=self.windows,
-            detectors=self.detectors,
+            windows=applied.get("windows") or {},
+            detectors=applied.get("detectors") or {},
         )
         self.display_frame = diag_mod.display_frame([frame], [self.active_index])
         self.preview = True
@@ -1296,6 +1320,13 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
             if self.window_resolution_s else {}
         )
         return {"windows": self.windows, "detectors": self.detectors, "tttr_reading": reading}
+
+    def windows_record(self) -> dict:
+        """The windows and gates with the channel width they are in (``tttrlib.micro_time_windows``):
+        what the request carries."""
+        from tttrlib import setup_micro_time_windows
+
+        return setup_micro_time_windows(self.preflight_setup())
 
     def take_preflight_setup(self, setup: dict) -> None:
         """The user took the detected windows (and gates) for the search; the saved setup is
