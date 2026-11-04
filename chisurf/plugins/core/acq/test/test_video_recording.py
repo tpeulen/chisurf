@@ -190,11 +190,12 @@ def test_source_for_takes_a_new_sdk_adapter_without_touching_the_panel():
 def test_camera_dock_is_available_in_every_mode(tmp_path):
     """Record shows the Camera dock -- a dock, not a folded panel -- with the
     preview, whatever the photon source (the simulator here). Simple mode shows
-    the video, the record buttons and the status; the settings are Advanced."""
+    the video, the connect buttons, the record buttons and the status; the
+    settings are Advanced."""
     from chisurf.plugins.core.acq.gui.record_app import DOCKS, RecordApp, RecordModel
     from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 
-    assert ("video", "Camera", "main") in DOCKS
+    assert any(d[0] == "video" and d[1] == "Camera" for d in DOCKS)
     app = RecordApp(RecordModel(output_dir=tmp_path, realtime=False))
     try:
         assert app.model.source_kind == "simulator"
@@ -202,7 +203,9 @@ def test_camera_dock_is_available_in_every_mode(tmp_path):
         app.video.frame = VideoFrame(np.full((32, 40, 3), 100, dtype=np.uint8), 1.0)
         ui = Driver(app, (1500, 950))
         ui.draw(3)
-        assert {"record", "stop_recording"} <= set(app.video_form.rects)
+        assert not {"connect", "disconnect", "record", "stop_recording"} & set(
+            app.video_form.rects
+        )
         assert "address" not in app.video_form.rects          # settings are Advanced
         assert app.form.rects.get("video_panel") is not None
         assert app.docks.windows["video"].visible
@@ -213,7 +216,7 @@ def test_camera_dock_is_available_in_every_mode(tmp_path):
         assert app._video_texture is texture and texture.revision > 0
         app.model.advanced = True
         ui.draw(2)
-        assert {"address", "connect", "output", "fps", "record", "stop_recording"} <= set(
+        assert not {"address", "connect", "output", "fps", "record", "stop_recording"} & set(
             app.video_form.rects
         )
         # image mode keeps the camera

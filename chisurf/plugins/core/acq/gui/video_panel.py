@@ -12,6 +12,7 @@ from pathlib import Path
 from chisurf.plugins.core.acq.live.video import (
     OpenCVRecorder,
     TiffRecorder,
+    opencv_available,
     source_for,
 )
 
@@ -41,8 +42,10 @@ class VideoPanel:
         self.output = "capture.tif"
         self.fps = 30.0
         self.display_gain = 1.0
+        self._recording_error = ""
         self.status = "Video disconnected."
         self.frame = None
+        self.preview_visible = True
         self._source = None
         self._thread = None
         self._finalizer = None
@@ -56,6 +59,16 @@ class VideoPanel:
         self._photon_path = ""
         self._connected = False
         self.discovered = "No discovery performed."
+
+    @property
+    def status(self):
+        # Disconnect and capture shutdown happen on different threads. Keep
+        # finalization errors visible until the next recording attempt.
+        return self._recording_error or self._status
+
+    @status.setter
+    def status(self, value):
+        self._status = value
 
     def discover(self):
         """List OS-reported video devices without opening any of them."""
@@ -92,7 +105,7 @@ class VideoPanel:
         try:
             self._source = source_for(address)
         except ValueError as exc:
-            self.status = f"Video: {exc}"
+            self.status = f"Camera unavailable: {exc}"
             return
         self._stop.clear()
         self.status = "Connecting video…"
@@ -114,39 +127,63 @@ class VideoPanel:
             self.status = "Video connected."
             next_frame = time.monotonic()
             while not self._stop.is_set():
+                if not self.preview_visible and self._recorder is None:
+                    self._stop.wait(0.1)
+                    continue
                 interval = getattr(self._source, "frame_interval_s", 0.0)
                 if interval and self._stop.wait(max(0.0, next_frame - time.monotonic())):
                     break
                 frame = self._source.read()
                 if frame is None:
-                    self.status = "Video source ended or stopped delivering frames."
+                    self.status = "Camera unavailable: source stopped delivering frames."
                     break
                 if interval:
                     next_frame = max(next_frame + interval, time.monotonic())
                 with self._lock:
                     self.frame = frame
                     if self._recorder is not None:
-                        emitted = self._recorder.write(frame)
-                        if emitted and self._timestamps is None:
-                            self._open_timestamps()
-                        if emitted:
-                            current_photon_path = self.photon_context()
-                            if current_photon_path != self._photon_path:
-                                self._csv.writerow((f"photon_run_at_frame_{self._count}",
-                                                    current_photon_path))
-                                self._photon_path = current_photon_path
-                            for timestamp in emitted:
-                                self._csv.writerow((self._count, f"{timestamp:.9f}"))
-                                self._count += 1
+                        try:
+                            emitted = self._recorder.write(frame)
+                            if emitted and self._timestamps is None:
+                                self._open_timestamps()
+                        except Exception as exc:
+                            # end the recording, keep the live preview: a writer
+                            # that cannot continue (an old tttrlib wheel, a full
+                            # disk) must not kill the capture it interrupts
+                            self._end_recording()
+                            self.status = (f"Video recording failed ({exc}); "
+                                           "the preview stays on.")
+                        else:
+                            if emitted:
+                                current_photon_path = self.photon_context()
+                                if current_photon_path != self._photon_path:
+                                    self._csv.writerow((f"photon_run_at_frame_{self._count}",
+                                                        current_photon_path))
+                                    self._photon_path = current_photon_path
+                                for timestamp in emitted:
+                                    self._csv.writerow((self._count, f"{timestamp:.9f}"))
+                                    self._count += 1
         except Exception as exc:
-            self.status = f"Video: {exc}"
+            self.status = f"Camera unavailable: {exc}"
         finally:
             self._connected = False
+            cleanup_errors = []
             with self._lock:
-                self._end_recording()
-            self._source.close()
-            if self._stop.is_set():
+                try:
+                    self._end_recording()
+                except Exception as exc:
+                    self._recording_error = f"Video recording finalization failed: {exc}"
+                    cleanup_errors.append(f"recording finalization: {exc}")
+                # Never leave a stale image looking like a live camera after
+                # capture ends, including errors and end-of-stream.
                 self.frame = None
+            try:
+                self._source.close()
+            except Exception as exc:
+                cleanup_errors.append(f"camera close: {exc}")
+            if cleanup_errors:
+                self.status = "Camera unavailable: " + "; ".join(cleanup_errors)
+            elif self._stop.is_set():
                 self.status = "Video disconnected."
 
     def record(self):
@@ -159,6 +196,7 @@ class VideoPanel:
         try:
             if self._recorder is not None:
                 return
+            self._recording_error = ""
             path = Path(self.output).expanduser()
             sidecar = path.with_name(path.name + ".timestamps.csv")
             try:
@@ -166,6 +204,10 @@ class VideoPanel:
                     raise FileExistsError(path)
                 if sidecar.exists():
                     raise FileExistsError(sidecar)
+                if path.suffix.lower() not in TIFF_SUFFIXES and not opencv_available():
+                    raise RuntimeError("video files need the optional OpenCV "
+                                       "package; a name ending in .tif records "
+                                       "every frame without it")
                 recorder = recorder_for(path, float(self.fps))
             except Exception as exc:
                 self.status = f"Video recording: {exc}"
@@ -186,23 +228,36 @@ class VideoPanel:
         writer.writerow(("clock_anchor_unix_seconds", f"{time.time():.9f}"))
         writer.writerow(("clock_anchor_monotonic_seconds", f"{time.monotonic():.9f}"))
         writer.writerow(("associated_photon_ptu", self._photon_path))
+        stamps.flush()
         self._timestamps, self._csv = stamps, writer
         self.status = f"Recording video to {path}."
 
     def _end_recording(self):
         if self._recorder is not None:
-            self._recorder.close()
-            if self._timestamps is not None:
-                self._timestamps.close()
-            self._recorder = self._timestamps = self._csv = None
+            recorder, stamps = self._recorder, self._timestamps
+            try:
+                recorder.close()
+            finally:
+                if stamps is not None:
+                    try:
+                        stamps.flush()
+                    except Exception:
+                        pass
+                    stamps.close()
+                self._recorder = self._timestamps = self._csv = None
 
     def stop_recording(self):
         if self._recorder is not None and (self._finalizer is None or not self._finalizer.is_alive()):
             self.status = "Stopping video recording…"
             def finish():
                 with self._lock:
-                    self._end_recording()
-                    self.status = f"Video recording stopped ({self._count} frames)."
+                    try:
+                        self._end_recording()
+                    except Exception as exc:
+                        self._recording_error = f"Video recording finalization failed: {exc}"
+                        self.status = self._recording_error
+                    else:
+                        self.status = f"Video recording stopped ({self._count} frames)."
 
             self._finalizer = threading.Thread(target=finish, daemon=True, name="video-finalize")
             self._finalizer.start()

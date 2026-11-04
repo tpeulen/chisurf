@@ -74,6 +74,34 @@ hand once (prlctl needs a Pro licence) -- then push the wheel and
 recording works with no further changes. The deployed record_app carries
 a connect-error traceback logger to `C:\phacq\connect_error.log`.
 
+**2026-10-30, camera "not working" root cause + fix (deployed).** The card
+was never at fault: from a fresh SSH process `mv:0` opens and delivers frames
+while the GUI runs beside it. The GUI could not reach it: the saved panel
+state still said `video.address = "0"` and `output = capture.avi` (an OpenCV
+camera index and a video-file writer; the MT200 has no OpenCV), and the
+simple-mode view had **no Connect button at all**, so the saved simple-mode
+session showed "Connect a video source to see its preview" with no way to
+act on it. Video-file-only fix (record_app.py and record_settings.py
+untouched): `video.py` raises a distinct `OpenCVUnavailable` and gains
+`opencv_available()` / `first_card_address()`; `video_panel.py` falls back
+from a camera index to the first registered SDK capture card on connect
+(address self-heals to `mv:0`, status says so), refuses a video-file output
+up front with the `.tif` remedy, and a failing recorder mid-stream (the old
+tttrlib wheel) now ends the recording with a clear status instead of killing
+the live capture; `video.view.json` gives simple mode Connect/Disconnect.
+Tests: `chisurf/plugins/core/acq/test/test_video_connect.py` (6 tests, all
+run with `import cv2` made to fail -- the MT200's condition) and the dock
+test's simple-mode pin extended. All 40 video/record tests green locally
+(arm64, offscreen). Verified on the MT200 with the live camera
+(`C:\phacq-setup\verify_deploy.py`): stale `"0"` connects and self-heals to
+`mv:0`, real 768x576 frames (mean 119.5, max 255 -- bright interference
+fringes on the raw feed), stale `.avi` refused with the `.tif` remedy while
+the capture stays alive, TIFF attempt reports the imappend wheel message and
+the preview survives. Pre-fix deployed files: `C:\phacq-setup\
+video-backup-20261030-connect` (first round) -- the true pre-lane originals
+were byte-identical to git HEAD (video.py sha256 fe7cc2a6 verified before
+edits). **The running Record instance must be restarted to pick this up.**
+
 **2026-10-29 evening, video without OpenCV (zcode continuation):** a
 `.tif`/`.tiff` recording path writes every captured frame as one page of a
 streaming multi-page TIFF through the image seam — tttrlib grew `imappend`

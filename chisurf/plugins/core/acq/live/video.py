@@ -64,12 +64,39 @@ class VideoSource(Protocol):
     def close(self) -> None: ...
 
 
+class OpenCVUnavailable(RuntimeError):
+    """The optional OpenCV package is not installed.
+
+    Camera indices, video files and stream URLs need it; an SDK capture card
+    adapter and the multi-page TIFF recorder do not.
+    """
+
+
 def _opencv():
     try:
         import cv2
     except ImportError as exc:
-        raise RuntimeError("Video capture requires the optional OpenCV Python package.") from exc
+        raise OpenCVUnavailable(
+            "Video capture requires the optional OpenCV Python package.") from exc
     return cv2
+
+
+def opencv_available() -> bool:
+    """Whether the optional OpenCV package imports: camera indices and
+    video-file recordings need it, SDK capture cards and TIFF do not."""
+    try:
+        _opencv()
+    except RuntimeError:
+        return False
+    return True
+
+
+def first_card_address() -> str | None:
+    """The first registered SDK capture card's address (``mv:0`` for the
+    Matrix Vision adapter), or ``None`` when no card adapter is registered."""
+    for prefix in SDK_ADAPTERS:
+        return f"{prefix}:0"
+    return None
 
 
 class MatrixVisionSource:

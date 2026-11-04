@@ -418,6 +418,29 @@ so a measurement can be repeated from the file. The simulator, run on its own
 (CLI below or `acq.simulation.run`), writes `mNNN.spc` files plus
 `simulation_config.json` and `simulation_info.txt` into its output folder.
 
+## Video preview and recording
+
+In the Acquisition panel, open **Video** and enter a camera index, video file
+path, or supported stream URL. **Connect** opens that source and shows its live
+frames. Video capture uses the optional OpenCV Python package; it must be present
+in the same environment as ChiSurf. A capture card must also be detected by the
+operating system. Discover lists OS-reported devices without opening them, but
+their names do not determine their OpenCV indices. Selecting a source does not
+open it until Connect is pressed.
+
+Choose a new AVI file and a playback frame rate, then press **Record**. Stop
+recording finalizes the AVI without closing the preview. The adjacent
+`.timestamps.csv` file contains a host monotonic timestamp for every recorded
+frame and wall-clock/monotonic anchors. Frames are dropped or repeated as needed
+for the AVI's constant playback rate; the timestamps describe their original
+capture times. Video recording is independent of the photon run and its files are
+not automatically included in the project. The sidecar records the active photon
+PTU path and changes of photon run during video recording. A driver stuck inside
+a read cannot reconnect until the read returns, though recording can be finalized.
+A gap over 30 seconds stops recording with an error. Closing Record waits up to
+two seconds for finalization; a longer delay can leave the video incomplete.
+Existing video or timestamp files are never overwritten.
+
 ## Without a GUI
 
 The pipeline is Qt-free and is the same object the GUI feeds. Push raw device
