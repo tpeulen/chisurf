@@ -99,6 +99,24 @@ container path per burst row (2.6 s of 5.5 k bursts, GIL-bound) -> once per meas
 `plugins/core/batch_analysis` is NOT on this scheduler: its runner restores one template fit object
 in the session, fits, records, per item through the action dispatcher -- serial by construction;
 parallel needs a fit object per item (separate redesign).
+**Calibration once per batch** (owner: "parallel can reduce work, as the calibration must be
+reused"): `prepare_calibration` -> `Calibration` (setup, detector settings, recipe IRF, shift
+calibration, buffer histograms read once, recipe payload and ids), `publish_calibration` puts it in
+one shared-memory block, tasks carry the handle, `calibration_of` reads it once per worker. Audit
+(scratch `audit.py`/`saved.py`: cProfile of one sample in the batch, the old module beside the new):
+gone per sample -- dye lookups via `references` (15 `get_dye`), `MleViewModel.set_setup` (preview
+refit + decay build + `recalibrate_shifts`, 0.14-0.31 s), the outside photons' IRF estimate
+(`irf_from_prompt`), the buffer read, recipe hashing: ~0.2 s (demo) / 0.45 s (2 M) of window CPU per
+sample. Wall-clock before/after is inside the noise (other agents' load; and see the next point).
+Left per sample, sample-dependent: search (incl. its gate check of the file), outside photons + strict
+selection, BVA/2CDE/H2MM, fits, writing the report/recipe into its container. Not shared: Fit2x
+objects (2.3 ms per detector and chunk; their background is the sample's). Guard: spy test in
+`test_more_samples.py` (3 samples make no calibration call more than 1).
+**Found, not fixed (core/project):** every container write calls `project.analysis.container_changed`
+-> `sync_runs` -> `derived_datasets`, which rebuilds a `LinkedDataset` for every node of every
+analysis container and hashes its container (`links.file_digest`): 27 digests per write after a few
+samples, 43 later -- the cost grows with the batch (quadratic over a batch of N), 0.1-0.3 s per write
+here; a digest cache by (path, size, mtime) or listing only the changed container would remove it.
 Open: (a) step 4 has no per-sample plot -- the run is in the workspace, ndX opens it; (b) with
 few samples in flight the window's process does the MLE preparation and export (GIL; ~1.7 s per
 2 M-photon sample): a pool task that prepares and returns the batch configs would remove it, needs
