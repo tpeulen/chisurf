@@ -215,20 +215,28 @@ def analysis_graph(container: Any) -> list[dict]:
     return list(nodes.values())
 
 
-def derived_datasets() -> list:
+def derived_datasets(only: Any = None, known: Any = None) -> list:
     """The analysis rows of the workspace, parents before children: every burst run of every
     analysis container, a child of its photon dataset (whose uid names the container's folder) or
     of the run it was computed from, and every analysis of a run (BVA, 2CDE, lifetimes, ...) a
-    child of the analysis it was computed from."""
+    child of the analysis it was computed from.
+
+    *only* (container paths) restricts it to those containers; rows whose address is in *known*
+    (the addresses the workspace lists already) are not made again -- making a row links (hashes)
+    its container."""
     from chisurf.core.data import LinkedDataset
     from chisurf.core.experiments.linked import reader_for_kind
 
     reader = reader_for_kind("bursts")
     if reader is None:
         return []
+    wanted = None if only is None else {_resolved(p) for p in only}
+    known = set(known or ())
     out = []
     for uid, paths in containers().items():
         for path in paths:
+            if wanted is not None and _resolved(path) not in wanted:
+                continue
             try:
                 graph = analysis_graph(path)
             except Exception:  # noqa: BLE001 - an unreadable container shows no runs
@@ -236,6 +244,8 @@ def derived_datasets() -> list:
                 continue
             address = {node["key"]: node["address"] for node in graph}
             for node in graph:
+                if str(node["address"]) in known:
+                    continue
                 if node["kind"] == "bursts":
                     dataset = reader.make_dataset(node["address"], result_of="" if uid == "_" else uid)
                     dataset.data_reader = reader
@@ -265,13 +275,20 @@ def on_container_changed(callback) -> None:
         _LISTENERS.append(callback)
 
 
+def _resolved(path: Any) -> str:
+    try:
+        return str(Path(path).resolve())
+    except (OSError, TypeError):
+        return str(path)
+
+
 def container_changed(path: Any = None) -> None:
     """The one notification every container writer sends after it wrote (a burst search, a
     fusion, a companion table, an import, a recording's live run): the runs the analysis
     containers hold that the workspace does not list yet become rows now -- a child of their
     photon dataset -- and the listeners are told. A writer never calls a view itself."""
     try:
-        sync_runs()
+        sync_runs(path)
     except Exception:  # noqa: BLE001 - the write stands; the rows come with the next restore
         _log.exception("listing the new runs of %s failed", path)
     for callback in list(_LISTENERS):
@@ -281,9 +298,13 @@ def container_changed(path: Any = None) -> None:
             _log.exception("a container listener failed")
 
 
-def sync_runs() -> list:
+def sync_runs(changed: Any = None) -> list:
     """Add every analysis of the analysis containers (:func:`derived_datasets`) that the workspace
     does not list yet, each the child of the row it was computed from.
+
+    *changed* (a container, or an address in one) limits it to that container: a write changes
+    only its own container, and the others are listed already. Only rows the workspace does not
+    list yet are made (making one links -- hashes -- its container).
 
     Returns
     -------
@@ -302,8 +323,14 @@ def sync_runs() -> list:
         }
 
     listed = listed_uids()
+    only = None
+    if changed is not None:
+        from chisurf.core.fio.address import container_of
+
+        only = [container_of(str(changed))]
     added = []
-    for row in derived_datasets():  # parents first: a source is listed before its results
+    # parents first: a source is listed before its results
+    for row in derived_datasets(only=only, known=set(listed)):
         address = str(getattr(row, "address", ""))
         if not address or address in listed:
             continue

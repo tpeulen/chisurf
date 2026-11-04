@@ -250,7 +250,17 @@ behind the API/CLI.
   operation term, `operation_label`) is one `table` row at `…/m.pto/<run>/<first table>`. Each node's
   parents are the nodes owning its tables' `derived_from` parents, and a companion always belongs to
   its own run. `derived_datasets` emits the rows parents first, already linked to their source row,
-  so a reopened project nests the same way. `sync_runs` re-links them to the session's uids. The
+  so a reopened project nests the same way. `sync_runs` re-links them to the session's uids.
+  **A write refreshes only its own container** (2026-11-04): `container_changed(path)` ->
+  `sync_runs(path)` -> `derived_datasets(only=[container], known=listed addresses)`, so a row the
+  workspace lists already is not made again (making one links -- hashes -- its container). Before,
+  every write rebuilt a row for every node of every analysis container and hashed each container:
+  27 -> 43 hashes per write over a More-samples batch, quadratic in the batch (6 samples: 476
+  hashes, 3.25 s of the window's CPU; after: 12 hashes, 1.7 s). `links.file_digest` remembers
+  digests by (resolved path, size, mtime_ns), process-wide, LRU 4096; a file that changed is a new
+  key and is read again; `verify` / `resolve(check_hash=True)`, `relink` and the remote cache check
+  read the file regardless (`fresh=True`), so the integrity check also catches a change that kept
+  size and mtime. `derived_datasets()` with no arguments (a restored project) lists everything. The
   "companion tables as view-only children" gap of item 6 is closed by this. A parent unfolds
   when a new result of it arrives (`DatasetsModel.expanded`, the table's `expanded_attr`).
   Burst Selection records the photon dataset's uid for every file, even when the hand-off brings files

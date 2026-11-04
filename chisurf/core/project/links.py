@@ -23,8 +23,10 @@ demand; a mismatch is reported, never silently replaced.
 
 from __future__ import annotations
 
+import collections
 import hashlib
 import os
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -91,11 +93,51 @@ def ptolib_links() -> bool:
     )
 
 
-def file_digest(path: str | os.PathLike, progress=None) -> tuple[int, str]:
+#: Digests already computed, by ``(resolved path, size, mtime_ns)``: a file that has not changed
+#: is never read again (a batch writing one container after another listed every container's
+#: runs after each write and hashed each container again -- quadratic over the batch). A change of
+#: size or modification time is a new key, so a changed file is read again; the on-demand checks
+#: (:func:`verify`, :func:`relink`) read the file regardless (``fresh=True``).
+_DIGESTS: collections.OrderedDict = collections.OrderedDict()
+_DIGESTS_MAX = 4096
+_DIGESTS_LOCK = threading.Lock()
+
+
+def _digest_key(path: str | os.PathLike) -> tuple[str, int, int]:
+    stat = os.stat(path)
+    return str(Path(path).resolve()), int(stat.st_size), int(stat.st_mtime_ns)
+
+
+def file_digest(
+    path: str | os.PathLike, progress=None, *, fresh: bool = False
+) -> tuple[int, str]:
     """Return ``(size_bytes, sha256 hex)`` of *path*, streamed in 1 MiB chunks.
 
-    *progress*, when given, is called with the bytes read so far after each chunk. Without it,
-    ptolib's ``sha256_file`` does the reading where the installed tttrlib has it.
+    Remembered process-wide by path, size and modification time (at most 4096 files), so an
+    unchanged file is hashed once; *fresh* reads the file even so (an integrity check).
+    *progress*, when given, is called with the bytes read so far after each chunk.
+    """
+    key = _digest_key(path)
+    if not fresh:
+        with _DIGESTS_LOCK:
+            found = _DIGESTS.get(key)
+            if found is not None:
+                _DIGESTS.move_to_end(key)
+                return found
+    result = _hash_file(path, progress)
+    if _digest_key(path) == key:  # not written to while it was read
+        with _DIGESTS_LOCK:
+            _DIGESTS[key] = result
+            _DIGESTS.move_to_end(key)
+            while len(_DIGESTS) > _DIGESTS_MAX:
+                _DIGESTS.popitem(last=False)
+    return result
+
+
+def _hash_file(path: str | os.PathLike, progress=None) -> tuple[int, str]:
+    """Read *path* and return ``(size_bytes, sha256 hex)`` (what :func:`file_digest` remembers).
+
+    Without *progress*, ptolib's ``sha256_file`` does the reading where the installed tttrlib has it.
     """
     if progress is None and ptolib_links():
         sha256 = str(_tttrlib().sha256_file(str(path)))
@@ -259,7 +301,7 @@ def resolve(
                 f"{candidate.name} is {size} bytes, the linked file was {link.get('size')} bytes",
             )
         if check_hash:
-            _, sha256 = file_digest(candidate)
+            _, sha256 = file_digest(candidate, fresh=True)
             if sha256 != link.get("sha256"):
                 return Resolution(
                     "hash changed",
@@ -283,7 +325,7 @@ def resolve(
                     candidate,
                     f"{beside.name} changed size since it was linked",
                 )
-            if check_hash and file_digest(beside)[1] != companion.get("sha256"):
+            if check_hash and file_digest(beside, fresh=True)[1] != companion.get("sha256"):
                 return Resolution(
                     "hash changed", None, candidate, f"{beside.name} changed since it was linked"
                 )
@@ -399,7 +441,7 @@ def relink(link: dict[str, Any], path: str | os.PathLike, *, force: bool = False
     path = Path(path).resolve()
     if not path.is_file():
         raise LinkError(f"{path} is not a file")
-    size, sha256 = file_digest(path)
+    size, sha256 = file_digest(path, fresh=True)
     same = size == int(link.get("size", -1)) and sha256 == link.get("sha256")
     if not same and not force:
         what = "size" if size != int(link.get("size", -1)) else "content (sha256)"

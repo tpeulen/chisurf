@@ -426,17 +426,14 @@ def calibration_of(handle) -> Calibration:
     if found is not None:
         return found
     import pickle
-    from multiprocessing import resource_tracker, shared_memory
+    from multiprocessing import shared_memory
 
+    # the pool's workers share the batch's resource tracker: the block stays the batch's to unlink
     block = shared_memory.SharedMemory(name=name)
     try:
         calibration = pickle.loads(bytes(block.buf[:size]))
     finally:
         block.close()
-        try:  # the batch owns the block; a worker that read it must not unlink it on exit
-            resource_tracker.unregister(block._name, "shared_memory")  # noqa: SLF001
-        except Exception:  # noqa: BLE001 - nothing registered
-            pass
     _SHARED.clear()  # one batch at a time per worker
     _SHARED[key] = calibration
     return calibration

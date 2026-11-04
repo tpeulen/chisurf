@@ -112,11 +112,12 @@ Left per sample, sample-dependent: search (incl. its gate check of the file), ou
 selection, BVA/2CDE/H2MM, fits, writing the report/recipe into its container. Not shared: Fit2x
 objects (2.3 ms per detector and chunk; their background is the sample's). Guard: spy test in
 `test_more_samples.py` (3 samples make no calibration call more than 1).
-**Found, not fixed (core/project):** every container write calls `project.analysis.container_changed`
+**Fixed 2026-11-04 (see okf/specs/data-workspace.md "The workspace view"):** every container write called `project.analysis.container_changed`
 -> `sync_runs` -> `derived_datasets`, which rebuilds a `LinkedDataset` for every node of every
 analysis container and hashes its container (`links.file_digest`): 27 digests per write after a few
 samples, 43 later -- the cost grows with the batch (quadratic over a batch of N), 0.1-0.3 s per write
-here; a digest cache by (path, size, mtime) or listing only the changed container would remove it.
+here. Now the refresh lists only the changed container and only rows not listed yet, and digests are
+cached by (path, size, mtime_ns): a 6-sample batch hashes 12 files instead of 476.
 Open: (a) step 4 has no per-sample plot -- the run is in the workspace, ndX opens it; (b) with
 few samples in flight the window's process does the MLE preparation and export (GIL; ~1.7 s per
 2 M-photon sample): a pool task that prepares and returns the batch configs would remove it, needs

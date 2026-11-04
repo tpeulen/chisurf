@@ -143,7 +143,7 @@ def resolve_remote(link: dict[str, Any], *, check_hash: bool = False):
                 cached,
                 f"the cached copy of {uri} is {size} bytes, the link recorded {link.get('size')}",
             )
-        if check_hash and file_digest(cached)[1] != link.get("sha256"):
+        if check_hash and file_digest(cached, fresh=True)[1] != link.get("sha256"):
             return Resolution("hash changed", None, cached, f"the cached copy of {uri} differs")
         return Resolution("ok", str(cached), cached)
     last = _STATE.get(uri)
