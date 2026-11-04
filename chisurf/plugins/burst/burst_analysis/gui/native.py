@@ -306,6 +306,8 @@ class BurstAnalysisHubApp(ToolHubApp):
 
         app = create_app()
         app.pipeline = True  # the bursts come from Burst Selection: no Input of its own
+        # the IRF's time shifts, calibrated when the IRF is prepared, go into the report
+        app.on_calibrated = lambda: self._update_report(write=True)
         app.model.split_by_state = bool(split_by_state)
         return app
 
@@ -528,9 +530,12 @@ class BurstAnalysisHubApp(ToolHubApp):
         hand = set(getattr(data, "hand_edited_g", lambda: [])())
         applied = {d: ("edited by hand" if d in hand else g) for d, g in applied.items()}
         try:
+            mle = self.children.get("mle")
+            shifts = dict(getattr(getattr(getattr(mle, "model", None), "session", None),
+                                  "shift_calibration", {}) or {})
             self.context.calibration_report = build_report(
                 self.context.calibration, self.context.rows(), self.context.channel_settings,
-                estimated=self.context.estimated(), applied_g=applied,
+                estimated=self.context.estimated(), applied_g=applied, irf_shift=shifts,
             )
         except Exception:  # noqa: BLE001 - the calibration is shown all the same
             logging.getLogger(__name__).exception("calibration report")

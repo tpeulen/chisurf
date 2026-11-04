@@ -77352,6 +77352,206 @@ Background (kHz): {bg}</source>
             <source>What you recorded is your molecule's decay &lt;b&gt;convolved&lt;/b&gt; with the instrument's response to an infinitely short flash. Late in the record the response has long since ended, so the tail is the &lt;i&gt;pure&lt;/i&gt; decay — fit it there and you know the decay without ever having seen the IRF. What connects the two is then recoverable by deconvolution.&lt;br/&gt;&lt;br/&gt;That is what this does. It is a &lt;b&gt;fallback&lt;/b&gt;, not a substitute for measuring the IRF, and the last step says why in detail.&lt;br/&gt;&lt;br/&gt;Six steps.</source>
             <translation>Was Sie aufgezeichnet haben, ist der Zerfall Ihres Moleküls, &lt;b&gt;gefaltet&lt;/b&gt; mit der Antwort des Instruments auf einen unendlich kurzen Lichtblitz. Am Ende der Aufzeichnung ist die Antwort längst abgeklungen, daher ist der Ausläufer der &lt;i&gt;reine&lt;/i&gt; Zerfall. Passen Sie ihn dort an, und Sie kennen den Zerfall, ohne die IRF je gesehen zu haben. Was beide verbindet, lässt sich anschließend durch Entfaltung rekonstruieren.&lt;br/&gt;&lt;br/&gt;Genau das tut dies. Es ist ein &lt;b&gt;Ersatzverfahren&lt;/b&gt;, kein Ersatz für die Messung der IRF, und der letzte Schritt erklärt ausführlich, warum.&lt;br/&gt;&lt;br/&gt;Sechs Schritte.</translation>
         </message>
+        <message>
+            <source>IRF measurement</source>
+            <translation>IRF-Messung</translation>
+        </message>
+        <message>
+            <source>Outside the bursts</source>
+            <translation>Außerhalb der Bursts</translation>
+        </message>
+        <message>
+            <source>Estimate from the data</source>
+            <translation>Aus den Daten schätzen</translation>
+        </message>
+        <message>
+            <source>IRF tool (tuned)</source>
+            <translation>IRF-Werkzeug (angepasst)</translation>
+        </message>
+        <message>
+            <source>The best there is, in this order: the reference dye (measured in the same conditions as the sample, so it comes first), the IRF measurement (water, Ludox), the photons outside the bursts, an estimate from the data.</source>
+            <translation>Das Beste, was es gibt, in dieser Reihenfolge: der Referenzfarbstoff (unter denselben Bedingungen wie die Probe gemessen, daher zuerst), die IRF-Messung (Wasser, Ludox), die Photonen außerhalb der Bursts, eine Schätzung aus den Daten.</translation>
+        </message>
+        <message>
+            <source>The IRF measurement of Data Selection (water, Ludox): scattered light, the IRF itself after its background (and the buffer) is taken off.</source>
+            <translation>Die IRF-Messung der Datenauswahl (Wasser, Ludox): Streulicht, die IRF selbst, nachdem ihr Untergrund (und der Puffer) abgezogen ist.</translation>
+        </message>
+        <message>
+            <source>The reference dye of Data Selection (Rh110, Alexa647): its decay is the IRF times the dye's known decay; the IRF tool takes the dye's decay out (deconvolution).</source>
+            <translation>Der Referenzfarbstoff der Datenauswahl (Rh110, Alexa647): seine Abklingkurve ist die IRF mal der bekannten Abklingkurve des Farbstoffs; das IRF-Werkzeug nimmt die Abklingkurve des Farbstoffs heraus (Entfaltung).</translation>
+        </message>
+        <message>
+            <source>The scattered light between the molecules of this measurement: a pulse fitted to its rising edge (the fluorescence of dim molecules is left behind).</source>
+            <translation>Das Streulicht zwischen den Molekülen dieser Messung: ein an seine ansteigende Flanke angepasster Puls (die Fluoreszenz schwacher Moleküle bleibt zurück).</translation>
+        </message>
+        <message>
+            <source>Estimated from the burst decay itself (blind): the last resort, when nothing was measured.</source>
+            <translation>Aus der Burst-Abklingkurve selbst geschätzt (blind): der letzte Ausweg, wenn nichts gemessen wurde.</translation>
+        </message>
+        <message>
+            <source>The IRF computed in the IRF tool.</source>
+            <translation>Die im IRF-Werkzeug berechnete IRF.</translation>
+        </message>
+        <message>
+            <source>No IRF measurement (water, Ludox) of this detector in Data Selection.</source>
+            <translation>Keine IRF-Messung (Wasser, Ludox) dieses Detektors in der Datenauswahl.</translation>
+        </message>
+        <message>
+            <source>No reference dye of known lifetime seen by this detector in Data Selection.</source>
+            <translation>Kein Referenzfarbstoff bekannter Lebensdauer, den dieser Detektor sieht, in der Datenauswahl.</translation>
+        </message>
+        <message>
+            <source>No photons outside the bursts in this detector's gate.</source>
+            <translation>Keine Photonen außerhalb der Bursts im Fenster dieses Detektors.</translation>
+        </message>
+        <message>
+            <source>No bursts loaded.</source>
+            <translation>Keine Bursts geladen.</translation>
+        </message>
+        <message>
+            <source>Discard the IRF tuned in the IRF tool?</source>
+            <translation>Die im IRF-Werkzeug angepasste IRF verwerfen?</translation>
+        </message>
+        <message>
+            <source>Discard</source>
+            <translation>Verwerfen</translation>
+        </message>
+        <message>
+            <source>Keep</source>
+            <translation>Behalten</translation>
+        </message>
+        <message>
+            <source>Use the source just picked; the tuned IRF is forgotten.</source>
+            <translation>Die eben gewählte Quelle verwenden; die angepasste IRF wird vergessen.</translation>
+        </message>
+        <message>
+            <source>Keep the IRF tuned in the IRF tool.</source>
+            <translation>Die im IRF-Werkzeug angepasste IRF behalten.</translation>
+        </message>
+        <message>
+            <source>No IRF yet</source>
+            <translation>Noch keine IRF</translation>
+        </message>
+        <message>
+            <source>Estimated from the data</source>
+            <translation>Aus den Daten geschätzt</translation>
+        </message>
+        <message>
+            <source>Press Next: the IRF is made from the data.</source>
+            <translation>Weiter drücken: die IRF wird aus den Daten gemacht.</translation>
+        </message>
+        <message>
+            <source>The IRF tool's IRF has another length than this decay (binning?).</source>
+            <translation>Die IRF des IRF-Werkzeugs hat eine andere Länge als diese Abklingkurve (Binning?).</translation>
+        </message>
+        <message>
+            <source>Open the IRF in the IRF tool: how it was made, from what, and every setting of it. What you compute there comes back here and is fitted.</source>
+            <translation>Die IRF im IRF-Werkzeug öffnen: wie sie gemacht wurde, woraus, und jede ihrer Einstellungen. Was Sie dort berechnen, kommt hierher zurück und wird angepasst.</translation>
+        </message>
+        <message>
+            <source>The IRF as extracted (thin) and as the fit convolves with it (thick: its background level taken off), VV and VH. Its settings are in the IRF tool.</source>
+            <translation>Die IRF wie extrahiert (dünn) und wie die Anpassung mit ihr faltet (dick: ihr Untergrundniveau abgezogen), VV und VH. Ihre Einstellungen sind im IRF-Werkzeug.</translation>
+        </message>
+        <message>
+            <source>Drag the green lines to set the fit window (in either half); the decay is fitted again when a line is let go. Orange: where the IRF is.</source>
+            <translation>Ziehen Sie die grünen Linien, um das Fitfenster zu setzen (in jeder Hälfte); die Abklingkurve wird erneut angepasst, wenn eine Linie losgelassen wird. Orange: wo die IRF ist.</translation>
+        </message>
+        <message>
+            <source>The IRF is drawn here once the bursts are in.</source>
+            <translation>Die IRF wird hier gezeichnet, sobald die Bursts da sind.</translation>
+        </message>
+        <message>
+            <source>IRF from</source>
+            <translation>IRF aus</translation>
+        </message>
+        <message>
+            <source>Where the IRF comes from. Everything else about it is the IRF tool's.</source>
+            <translation>Woher die IRF kommt. Alles andere an ihr gehört zum IRF-Werkzeug.</translation>
+        </message>
+        <message>
+            <source>Where the IRF of this detector comes from. Auto is right for a typical run: the reference dye, else the IRF measurement, else the photons outside the bursts, else an estimate from the data. A choice whose measurement is missing is greyed.</source>
+            <translation>Woher die IRF dieses Detektors kommt. Auto ist für eine typische Messung richtig: der Referenzfarbstoff, sonst die IRF-Messung, sonst die Photonen außerhalb der Bursts, sonst eine Schätzung aus den Daten. Eine Wahl, deren Messung fehlt, ist ausgegraut.</translation>
+        </message>
+        <message>
+            <source>Fit options</source>
+            <translation>Fit-Optionen</translation>
+        </message>
+        <message>
+            <source>How the fit is scored and how far Opt searches.</source>
+            <translation>Wie die Anpassung bewertet wird und wie weit Opt sucht.</translation>
+        </message>
+        <message>
+            <source>Simple or Advanced, help and guided tour.</source>
+            <translation>Einfach oder Erweitert, Hilfe und geführte Tour.</translation>
+        </message>
+        <message>
+            <source>Show every setting of the extraction: the time per channel, the halves, the dye's lifetime and rotation, the pulse model, the blind estimate's filter, iterations, background and range. Simple: the source and the estimate are enough for a typical run.</source>
+            <translation>Jede Einstellung der Extraktion zeigen: Zeit pro Kanal, die Hälften, Lebensdauer und Rotation des Farbstoffs, das Pulsmodell, Filter, Iterationen, Untergrund und Bereich der blinden Schätzung. Einfach: Quelle und Schätzung genügen für eine typische Messung.</translation>
+        </message>
+        <message>
+            <source>Every setting of the extraction (Advanced).</source>
+            <translation>Jede Einstellung der Extraktion (Erweitert).</translation>
+        </message>
+        <message>
+            <source>Where the IRF comes from</source>
+            <translation>Woher die IRF kommt</translation>
+        </message>
+        <message>
+            <source>The &lt;b&gt;IRF&lt;/b&gt; tab has one choice, &lt;b&gt;IRF from&lt;/b&gt;. Leave it on &lt;b&gt;Auto&lt;/b&gt;: it takes the reference dye of Data Selection, else the IRF measurement, else the photons outside the bursts, else an estimate from the data. A source that was not measured is greyed.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;IRF tool&lt;/b&gt; opens the IRF in the IRF Estimation tool; what you estimate there comes back here and is fitted.</source>
+            <translation>Der Reiter &lt;b&gt;IRF&lt;/b&gt; hat eine Wahl, &lt;b&gt;IRF aus&lt;/b&gt;. Lassen Sie sie auf &lt;b&gt;Auto&lt;/b&gt;: sie nimmt den Referenzfarbstoff der Datenauswahl, sonst die IRF-Messung, sonst die Photonen außerhalb der Bursts, sonst eine Schätzung aus den Daten. Eine nicht gemessene Quelle ist ausgegraut.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;IRF-Werkzeug&lt;/b&gt; öffnet die IRF im Werkzeug IRF-Schätzung; was Sie dort schätzen, kommt hierher zurück und wird angepasst.</translation>
+        </message>
+        <message>
+            <source>shift calibrated ({what})</source>
+            <translation>Verschiebung kalibriert ({what})</translation>
+        </message>
+        <message>
+            <source>single-molecule measurement</source>
+            <translation>Einzelmolekülmessung</translation>
+        </message>
+        <message>
+            <source>bulk measurement</source>
+            <translation>Ensemblemessung</translation>
+        </message>
+        <message>
+            <source>IRF time shift</source>
+            <translation>Zeitverschiebung der IRF</translation>
+        </message>
+        <message>
+            <source>Lifetime from</source>
+            <translation>Lebensdauer aus</translation>
+        </message>
+        <message>
+            <source>bins, set in the IRF tool</source>
+            <translation>Kanäle, im IRF-Werkzeug gesetzt</translation>
+        </message>
+        <message>
+            <source>Shift VV (bins)</source>
+            <translation>Verschiebung VV (Kanäle)</translation>
+        </message>
+        <message>
+            <source>Shift VH (bins)</source>
+            <translation>Verschiebung VH (Kanäle)</translation>
+        </message>
+        <message>
+            <source>Time shift</source>
+            <translation>Zeitverschiebung</translation>
+        </message>
+        <message>
+            <source>The IRF's time shift in VV against the reference dye, as Burst MLE calibrated it (the dye's decay fitted with the IRF, its lifetime fixed). Changed here, it goes back with the IRF and replaces the calibrated one.</source>
+            <translation>Die Zeitverschiebung der IRF in VV gegen den Referenzfarbstoff, wie Burst MLE sie kalibriert hat (die Abklingkurve des Farbstoffs mit der IRF angepasst, seine Lebensdauer fest). Hier geändert, geht sie mit der IRF zurück und ersetzt die kalibrierte.</translation>
+        </message>
+        <message>
+            <source>The IRF's time shift in VH against the reference dye, as Burst MLE calibrated it. Changed here, it goes back with the IRF.</source>
+            <translation>Die Zeitverschiebung der IRF in VH gegen den Referenzfarbstoff, wie Burst MLE sie kalibriert hat. Hier geändert, geht sie mit der IRF zurück.</translation>
+        </message>
+        <message>
+            <source>A reference dye measured at single-molecule conditions is preferred: SPAD timing moves with the count rate, so it has the bursts' timing offset; a bulk measurement at a high rate is shifted.</source>
+            <translation>Ein unter Einzelmolekülbedingungen gemessener Referenzfarbstoff wird bevorzugt: das Timing einer SPAD verschiebt sich mit der Zählrate, so hat er den Zeitversatz der Bursts; eine Ensemblemessung bei hoher Rate ist verschoben.</translation>
+        </message>
+        <message>
+            <source>reference</source>
+            <translation>Referenz</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

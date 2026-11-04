@@ -86,6 +86,11 @@
           "description": "The detector (colour) whose decay is shown and fitted. Define detectors in the Detector setup tab."
         },
         {
+          "type": "info",
+          "source": "calibration_text",
+          "description": "The detector's G factor and leakages l1, l2 (set in the Detector setup tab) and the rate of its background: the photons outside the bursts over the time outside them, in kHz."
+        },
+        {
           "type": "value",
           "attr": "current_file",
           "label": "Current file",
@@ -129,13 +134,6 @@
       "collapsed": false,
       "description": "Measured IRF files instead of the estimate from the non-burst photons, and buffer files that correct a scatter IRF for its background. The background of the fit is always the photons outside the bursts (the reverse burst selection), whatever the IRF came from.",
       "sections": [
-        {
-          "type": "choice",
-          "attr": "irf_model",
-          "label": "IRF model",
-          "options_source": "irf_model_choices",
-          "description": "Shape of the IRF estimated from the non-burst photons, the last resort when there is neither a scatter (water, Ludox) nor a reference-dye (Rh110, Alexa647) measurement beside the data. Skewed Gaussian (default): a skew-normal fitted to the prompt, following the detector's slow edge without the fluorescent tail. Gaussian: symmetric. Experimental: the raw baseline-subtracted histogram, which still holds fluorescence. A measured IRF file replaces the estimate."
-        },
         {
           "type": "toggle",
           "attr": "irf_one_for_all",
@@ -217,103 +215,19 @@
       ]
     },
     {
-      "description": "Instrument-response settings: VH shift, sub-bin shifts, IRF range and thresholds for the 2I* fit.",
+      "description": "Where the IRF comes from. Everything else about it is the IRF tool's.",
       "type": "panel",
-      "title": "IRF",
+      "title": "IRF from",
       "collapsed": true,
       "sections": [
         {
-          "type": "info",
-          "source": "calibration_text",
-          "description": "The detector's G factor and leakages l1, l2 (set in the Detector setup tab) and the rate of its background: the photons outside the bursts over the time outside them, in kHz."
-        },
-        {
-          "type": "value",
-          "attr": "shift",
-          "label": "VH shift [bin]",
-          "kind": "int",
-          "description": "Integer shift of the perpendicular decay, IRF and background relative to the parallel one.",
-          "minimum": -9999,
-          "maximum": 9999
-        },
-        {
-          "type": "value",
-          "attr": "shift_sp",
-          "label": "VV sub-bin shift [bin]",
-          "kind": "float",
-          "description": "Fractional shift of the parallel IRF (interpolated).",
-          "decimals": 3,
-          "minimum": -100.0,
-          "maximum": 100.0
-        },
-        {
-          "type": "value",
-          "attr": "shift_ss",
-          "label": "VH sub-bin shift [bin]",
-          "kind": "float",
-          "description": "Fractional shift of the perpendicular IRF (interpolated).",
-          "decimals": 3,
-          "minimum": -100.0,
-          "maximum": 100.0
-        },
-        {
-          "type": "value",
-          "attr": "irf_start",
-          "label": "IRF start [bin]",
-          "kind": "int",
-          "description": "First IRF bin kept; earlier bins are zeroed. -1 keeps all.",
-          "minimum": -1,
-          "maximum": 999999
-        },
-        {
-          "type": "value",
-          "attr": "irf_stop",
-          "label": "IRF stop [bin]",
-          "kind": "int",
-          "description": "Last IRF bin kept; later bins are zeroed. -1 keeps all.",
-          "minimum": -1,
-          "maximum": 999999
-        },
-        {
-          "type": "value",
-          "attr": "irf_threshold_vv",
-          "label": "VV background level",
-          "kind": "float",
-          "description": "The level, as a fraction of the parallel IRF's peak, at and below which it counts as background: it is taken off every bin of the IRF and what falls below zero is zero.",
-          "decimals": 3,
-          "minimum": 0.0,
-          "maximum": 1.0
-        },
-        {
-          "type": "value",
-          "attr": "irf_threshold_vh",
-          "label": "VH background level",
-          "kind": "float",
-          "description": "The level, as a fraction of the perpendicular IRF's peak, at and below which it counts as background: it is taken off every bin of the IRF and what falls below zero is zero.",
-          "decimals": 3,
-          "minimum": 0.0,
-          "maximum": 1.0
-        },
-        {
-          "type": "toggle",
-          "attr": "p2s_twoIstar",
-          "label": "2I*: P+2S",
-          "description": "Use the P+2S form of the 2I* statistic."
-        },
-        {
-          "type": "toggle",
-          "attr": "BIFL_scatter",
-          "label": "BIFL scatter",
-          "description": "Treat the scattered light as burst-integrated fluorescence lifetime scatter (soft)."
-        },
-        {
-          "type": "value",
-          "attr": "opt_iterations",
-          "label": "Opt iterations",
-          "kind": "int",
-          "minimum": 5,
-          "maximum": 999,
-          "description": "Number of fits the Opt button may spend searching the VH shift, sub-bin shifts, IRF window and IRF thresholds for the lowest 2I*."
+          "type": "choice",
+          "attr": "irf_from",
+          "style": "radio_list",
+          "options_source": "irf_from_choices",
+          "enabled_source": "irf_from_enabled",
+          "descriptions_source": "irf_from_notes",
+          "description": "Where the IRF of this detector comes from. Auto is right for a typical run: the reference dye, else the IRF measurement, else the photons outside the bursts, else an estimate from the data. A choice whose measurement is missing is greyed."
         }
       ]
     },
@@ -367,7 +281,10 @@
       "type": "panel",
       "title": "H2MM states",
       "collapsed": false,
-      "hidden_when": {"attr": "advanced", "equals": false},
+      "hidden_when": {
+        "attr": "advanced",
+        "equals": false
+      },
       "description": "Split the fit by the per-photon states of an H2MM run of the same burst folder.",
       "sections": [
         {
@@ -391,6 +308,36 @@
           "description": "The pooled lifetime of each state and detector from the last Fit bursts (also written to Info/state_lifetimes.csv)."
         }
       ]
+    },
+    {
+      "type": "panel",
+      "title": "Fit options",
+      "collapsed": true,
+      "description": "How the fit is scored and how far Opt searches.",
+      "sections": [
+        {
+          "type": "toggle",
+          "attr": "p2s_twoIstar",
+          "label": "2I*: P+2S",
+          "description": "Use the P+2S form of the 2I* statistic."
+        },
+        {
+          "type": "toggle",
+          "attr": "BIFL_scatter",
+          "label": "BIFL scatter",
+          "description": "Treat the scattered light as burst-integrated fluorescence lifetime scatter (soft)."
+        },
+        {
+          "type": "value",
+          "attr": "opt_iterations",
+          "label": "Opt iterations",
+          "kind": "int",
+          "minimum": 5,
+          "maximum": 999,
+          "description": "Number of fits the Opt button may spend searching the VH shift, sub-bin shifts, IRF window and IRF thresholds for the lowest 2I*."
+        }
+      ],
+      "collapsible": true
     },
     {
       "description": "Burst shown in the result plot.",

@@ -51,10 +51,19 @@ def default_bounds(session: Any) -> dict[str, tuple[float, float, str]]:
         else (max(1, stop_cur - 10), min(n_bins - 1, stop_cur + 10))
     )
     shift = int(s.shift)
+    # IRF time shifts calibrated against a reference dye (MleSession.calibrate_shift) are
+    # refined within half a bin; uncalibrated they are searched as before
+    calibrated = session.shift_calibration.get(session.current_detector) if hasattr(
+        session, "shift_calibration"
+    ) else None
+    if calibrated:
+        sp, ss = float(s.shift_sp), float(s.shift_ss)
+        sub = {"shift_sp": (sp - 0.5, sp + 0.5, "float"), "shift_ss": (ss - 0.5, ss + 0.5, "float")}
+    else:
+        sub = {"shift_sp": (-0.9, 0.9, "float"), "shift_ss": (-5.0, 5.0, "float")}
     return {
         "shift": (shift - 5, shift + 5, "int"),
-        "shift_sp": (-0.9, 0.9, "float"),
-        "shift_ss": (-5.0, 5.0, "float"),
+        **sub,
         "irf_start": (*start, "int"),
         "irf_stop": (*stop, "int"),
         # background levels taken off every IRF bin: an IRF whose floor is a twentieth of its peak

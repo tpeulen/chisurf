@@ -51,6 +51,13 @@
       }
     },
     {
+      "title": "Where the IRF comes from",
+      "text": "The <b>IRF</b> tab has one choice, <b>IRF from</b>. Leave it on <b>Auto</b>: it takes the reference dye of Data Selection, else the IRF measurement, else the photons outside the bursts, else an estimate from the data. A source that was not measured is greyed.<br/><br/><b>IRF tool</b> opens the IRF in the IRF Estimation tool; what you estimate there comes back here and is fitted.",
+      "target": {
+        "name": "irf_from"
+      }
+    },
+    {
       "title": "A measured IRF and background",
       "text": "A <b>measured</b> IRF (scatter or a short-lifetime reference) and a sample-free background are better than the estimate. Open the <b>IRF/BG files</b> tab: the <b>Measured IRF</b> and <b>Measured background</b> sections list the photon streams in the workspace — select the measurement and press <b>Use selected</b>. With <b>one for all</b> the files serve every detector. <b>IRF model</b> chooses the shape Auto IRF/background estimates.",
       "target": {

@@ -19,6 +19,9 @@ Burst MLE's **IRF tool** button opens this window with what its IRF came from.
 * **Non-burst** — the photons between the molecules: a Gaussian or skewed Gaussian
   fitted to the prompt's rising edge leaves the fluorescent tail behind.
 
+The window opens **Simple** (the source and **Estimate IRF**); **Advanced** shows every setting. Opened from
+Burst MLE's **IRF tool**, each estimate you make goes back to Burst MLE and is fitted there.
+
 The rest of this help is about the blind estimate.
 
 **It is a fallback, not a substitute for measuring the IRF.** Read the limits

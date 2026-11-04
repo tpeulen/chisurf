@@ -117,6 +117,9 @@ class MleViewModel(RunPickerMixin):
         #: ``True`` while the IRF and background are the ones estimated from non-burst photons (so a binning change
         #: re-estimates them at the new binning).
         self.auto_patterns = False
+        #: A source picked while the IRF tool's tuned IRF is in use: waits for the user to say
+        #: whether the tuned one is discarded (:meth:`confirm_irf_from`).
+        self.irf_confirm = ""
         if not self.session.detectors:
             self.session.set_detectors(
                 {
@@ -569,6 +572,163 @@ class MleViewModel(RunPickerMixin):
             self.refit()
         self.notify("settings")
 
+    # -- where the IRF comes from ---------------------------------------------------------------- #
+    #: Plain words for the selector's options; the details are in their tooltips.
+    IRF_NOTES = {
+        "auto": "The best there is, in this order: the reference dye (measured in the same "
+        "conditions as the sample, so it comes first), the IRF measurement (water, Ludox), the "
+        "photons outside the bursts, an estimate from the data.",
+        "measurement": "The IRF measurement of Data Selection (water, Ludox): scattered light, "
+        "the IRF itself after its background (and the buffer) is taken off.",
+        "reference": "The reference dye of Data Selection (Rh110, Alexa647): its decay is the IRF "
+        "times the dye's known decay; the IRF tool takes the dye's decay out (deconvolution).",
+        "outside": "The scattered light between the molecules of this measurement: a pulse "
+        "fitted to its rising edge (the fluorescence of dim molecules is left behind).",
+        "estimate": "Estimated from the burst decay itself (blind): the last resort, when "
+        "nothing was measured.",
+        "tuned": "The IRF computed in the IRF tool.",
+    }
+
+    def _det(self) -> str:
+        return self.session.current_detector
+
+    @property
+    def irf_from(self) -> str:
+        """Where the current detector's IRF comes from (a key of ``engine.IRF_CHOICES``, or ``tuned``)."""
+        return self.session.irf_choice.get(self._det(), "auto")
+
+    @irf_from.setter
+    def irf_from(self, value: str) -> None:
+        self._ensure_editable()
+        value = str(value)
+        if value == self.irf_from:
+            return
+        if self.irf_from == "tuned" and value != "tuned":
+            self.irf_confirm = value  # the tuned IRF goes only once the user says so
+            return
+        self._use_irf_from(value)
+
+    def confirm_irf_from(self, discard: bool) -> None:
+        """The answer to "discard the tuned IRF?": use the source picked, or keep the tuned one."""
+        value, self.irf_confirm = self.irf_confirm, ""
+        if discard and value:
+            self._use_irf_from(value)
+
+    def _use_irf_from(self, value: str) -> None:
+        det = self._det()
+        if value == "tuned":
+            self.session.irf_choice[det] = "tuned"
+            self.session.apply_irf_choice(det)
+        else:
+            self.session.choose_irf(det, value)
+        if self.session.current_tttr() is not None:
+            self.session.build_decay()
+            self.refit()
+        self.notify("patterns")
+
+    def take_tuned_irf(self, det: str, irf, text: str, inputs: dict | None = None) -> bool:
+        """The IRF the IRF tool computed for *det*: fitted from now on (the selector says "IRF
+        tool (tuned)"); ``False`` (said in the status) when it does not fit this decay."""
+        shifts = (inputs or {}).get("shifts")
+        if shifts is not None:  # shifts set in the IRF tool replace the calibrated ones
+            self.session.shift_override[det] = (float(shifts[0]), float(shifts[1]))
+        ok = self.session.take_tuned_irf(det, irf, text, inputs)
+        if not ok:
+            self.status_text = str(tr("The IRF tool's IRF has another length than this decay (binning?)."))
+            return False
+        self.irf_confirm = ""
+        if det == self._det() and self.session.current_tttr() is not None:
+            self.session.build_decay()
+            self.refit()
+        self.notify("patterns")
+        return True
+
+    def _irf_options(self) -> list[tuple[str, str, bool, str]]:
+        options = list(self.session.irf_options(self._det()))
+        if "tuned" in self.session.irf_candidates.get(self._det(), {}):
+            options.append(("tuned", "IRF tool (tuned)", True, ""))
+        return options
+
+    def irf_from_choices(self) -> list[tuple[str, str]]:
+        """(value, label) of the selector."""
+        return [(key, str(tr(label))) for key, label, _ok, _why in self._irf_options()]
+
+    def irf_from_enabled(self) -> list[bool]:
+        """Which options have their measurement (the others are greyed)."""
+        return [ok for _key, _label, ok, _why in self._irf_options()]
+
+    def irf_from_notes(self) -> list[str]:
+        """Each option's tooltip: what it is, or why it cannot be picked."""
+        return [
+            str(tr(self.IRF_NOTES[key])) if ok else str(tr(why))
+            for key, _label, ok, why in self._irf_options()
+        ]
+
+    def irf_status(self) -> str:
+        """What the IRF in use is, in a few words ("Rh110 · reference dye")."""
+        session, det = self.session, self._det()
+        text = session.irf_source.get(det, "")
+        if not text:
+            return str(tr("No IRF yet"))
+        inputs = session.irf_inputs.get(det) or {}
+        kind = inputs.get("kind")
+        if self.irf_from == "tuned":
+            text = str(tr("IRF tool (tuned)"))
+        elif kind == "reference":
+            text = f"{inputs.get('dye') or ''} · {tr('reference dye')}".strip(" ·")
+        elif kind == "scatter":
+            text = str(tr("IRF measurement"))
+        elif kind == "non_burst":
+            text = str(tr("Outside the bursts"))
+        else:
+            text = str(tr("Estimated from the data"))
+        shift = session.shift_calibration.get(det)
+        if shift:
+            what = shift.get("dye") or str(tr("IRF tool"))
+            text += " · " + str(tr("shift calibrated ({what})")).format(what=what)
+            if shift.get("warning"):
+                text += " ⚠"
+        return text
+
+    def irf_status_tooltip(self) -> str:
+        """Every detail of the IRF in use: files, lifetime, rotation, how it was made."""
+        det = self._det()
+        text = self.session.irf_source.get(det, "")
+        if not text:
+            return str(tr("Press Next: the IRF is made from the data."))
+        lines = [f"{det}: {text}"]
+        shift = self.session.shift_calibration.get(det)
+        if shift:
+            if shift.get("text"):
+                where = str(tr("single-molecule measurement")) if shift.get("single_molecule") else str(
+                    tr("bulk measurement")
+                )
+                lines.append(f"{tr('IRF time shift')}: {shift['text']}; {where}.")
+                lines.append(str(tr(
+                    "A reference dye measured at single-molecule conditions is preferred: SPAD timing "
+                    "moves with the count rate, so it has the bursts' timing offset; a bulk measurement "
+                    "at a high rate is shifted."
+                )))
+                rates = [
+                    f"{label} {value:.0f} kHz"
+                    for label, value in ((tr("reference"), shift.get("reference_rate_khz")),
+                                         (tr("bursts"), shift.get("burst_rate_khz")))
+                    if value
+                ]
+                if rates:
+                    lines.append(f"{tr('Count rate')}: " + ", ".join(rates))
+                if shift.get("warning"):
+                    lines.append("⚠ " + shift["warning"])
+                if shift.get("tau_known") and shift.get("tau_source", {}).get("sources"):
+                    cite = shift["tau_source"]["sources"][0].get("citation", "")
+                    lines.append(f"{tr('Lifetime from')}: {cite}")
+            else:
+                lines.append(
+                    f"{tr('IRF time shift')}: VV {shift['shift_vv']:+.2f}, VH {shift['shift_vh']:+.2f} "
+                    f"{tr('bins, set in the IRF tool')}."
+                )
+        return "\n".join(lines)
+
     def irf_model_choices(self) -> list[tuple[str, str]]:
         """(value, label) pairs of the IRF models."""
         return [(name, str(tr(label))) for name, label in engine.IRF_MODELS]
@@ -952,10 +1112,11 @@ class MleViewModel(RunPickerMixin):
         self.notify("fit")
 
     def prepare_patterns(self, analysed=(), references: dict | None = None) -> None:
-        """IRF and background without asking. The IRF of each detector comes, in this order, from
-        a scatter measurement (water, Ludox; corrected with the buffer), from a reference dye of
-        known lifetime (Rh110, Alexa647), and only then from the photons outside the bursts (a
-        skewed Gaussian fitted to their histogram). The fit's background is the photons outside
+        """IRF and background without asking. The IRF of each detector comes, in the IRF tool's
+        order (Auto), from a reference dye of known lifetime (Rh110, Alexa647; measured in the
+        same conditions as the sample), from a scatter measurement (water, Ludox; corrected with
+        the buffer), and only then from the photons outside the bursts (a skewed Gaussian fitted
+        to their histogram); the IRF selector takes any of them instead. The fit's background is the photons outside
         the bursts; a buffer measurement corrects a scatter IRF and gives an independent
         background rate (:meth:`irf_source_text`). What the pipeline does when the bursts arrive.
 
@@ -1001,8 +1162,9 @@ class MleViewModel(RunPickerMixin):
                         irf = per_det["irf"].get(det, [])
                         # a reference dye gives an IRF only when its lifetime is known (its name)
                         dyes = [p for p in per_det["reference"].get(det, []) if reference_dye(p)]
-                        # a measured scatter first; a reference dye of known lifetime without one
-                        paths = irf or dyes or fallback
+                        # both kinds: the IRF tool picks (a reference dye first, then the
+                        # scatter) and the IRF selector offers each; else every declared file
+                        paths = (irf + dyes) or fallback
                         if not paths:
                             continue
                         try:

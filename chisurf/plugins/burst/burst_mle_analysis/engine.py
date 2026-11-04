@@ -307,6 +307,21 @@ def process_irf(
     return np.hstack([sp, ss])
 
 
+def single_molecule(macro_s: np.ndarray, bin_s: float = 1e-3) -> bool:
+    """Whether a measurement is at single-molecule conditions: in 1 ms bins its count rate sits
+    near the background most of the time and bursts stand far above it (the median bin under a
+    fifth of the 99.5th percentile); a bulk solution is bright all the time (its median is about
+    its mean). What tells a reference dye measured like the sample (same count rates, same
+    pile-up) from a bulk one."""
+    macro_s = np.asarray(macro_s, dtype=float)
+    if macro_s.size < 1000:
+        return False
+    counts = np.bincount(((macro_s - macro_s[0]) / bin_s).astype(np.int64))
+    if counts.size < 100:
+        return False
+    return bool(np.median(counts) < 0.2 * np.percentile(counts, 99.5))
+
+
 def process_background(arr: np.ndarray | None, shift: int, like: np.ndarray) -> np.ndarray:
     """The background pattern with the VH half rolled by *shift* (zeros of the IRF's length when none is loaded)."""
     if arr is None:
@@ -583,6 +598,19 @@ def burst_histogram(
 MIN_IRF_COUNTS = 500
 
 #: The IRF models of the Auto IRF/background estimate: (value, label).
+#: Where Burst MLE takes a detector's IRF from: (key, the selector's label). Every one is the IRF
+#: Estimation tool's extraction (``irf_estimator/core/extraction.py``).
+IRF_CHOICES = [
+    ("auto", "Auto"),
+    ("measurement", "IRF measurement"),
+    ("reference", "Reference dye"),
+    ("outside", "Outside the bursts"),
+    ("estimate", "Estimate from the data"),
+]
+
+#: The IRF tool's source kinds (:data:`...extraction.AUTO_ORDER`) as Burst MLE's choices.
+_CHOICE_OF_SOURCE = {"reference": "reference", "scatter": "measurement", "non_burst": "outside", "blind": "estimate"}
+
 IRF_MODELS = [
     ("gaussian", "Gaussian"),
     ("skewed", "Skewed Gaussian"),
@@ -1062,6 +1090,22 @@ class MleSession:
     #: given: ``kind``, ``vv``, ``vh``, ``dt_ns``, ``window``, ...), so the tool can show and
     #: tune the same extraction.
     irf_inputs: dict[str, dict] = field(default_factory=dict)
+    #: Where each detector's IRF is taken from (:data:`IRF_CHOICES`): ``auto`` (the IRF tool's
+    #: order: a reference dye, else a measured IRF, else the photons outside the bursts, else an
+    #: estimate from the decay), or one of them; ``tuned`` once the IRF tool sent one back.
+    irf_choice: dict[str, str] = field(default_factory=dict)
+    #: What each source gave, per detector: ``{choice: (irf, text, inputs)}`` -- the IRF tool's
+    #: extractions, kept so a choice is switched without reading the files again.
+    irf_candidates: dict[str, dict] = field(default_factory=dict)
+    #: The reference-dye measurements each detector sees: ``[{"path", "dye", "vv", "vh", "dt_ns",
+    #: "window", "single_molecule", "tau_ns", "tau_source"}]`` -- what the IRF's time shifts are
+    #: calibrated against (:meth:`calibrate_shift`).
+    reference_records: dict[str, list] = field(default_factory=dict)
+    #: The IRF time shifts of each detector as calibrated (:meth:`calibrate_shift`): VV, VH in
+    #: bins, the dye, its lifetime and where it came from; also what the calibration report keeps.
+    shift_calibration: dict[str, dict] = field(default_factory=dict)
+    #: Shifts set in the IRF tool for a detector (``(vv, vh)`` bins): they replace the calibrated.
+    shift_override: dict[str, tuple] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.tttrs = LazyTTTRs(self.tttr_paths, self.file_type, self.definition)
@@ -1072,6 +1116,8 @@ class MleSession:
         self.state_lifetimes: list[dict] = []
         self.n_states = 0
         self.batch_settings_snapshot: dict[str, dict] = {}
+        self._single_molecule: dict[str, bool] = {}
+        self._count_rate_khz: dict[tuple, float] = {}
         self.batch_files_snapshot: dict[str, Path] = {}
 
     @property
@@ -1473,27 +1519,206 @@ class MleSession:
         label = dict(IRF_MODELS).get(self.settings.irf_model, self.settings.irf_model).lower()
         for det, pat in patterns.items():
             if det:
-                if not self.irf_files.get(det):
-                    irf = np.asarray(pat["irf"], dtype=float)
-                    bg = np.asarray(pat["bg"], dtype=float)
-                    half = bg.size // 2
-                    if self._background_prompt_photons(tttr, det, ~in_burst) >= MIN_IRF_COUNTS:
-                        self.irf_np[det] = irf
-                        self.irf_source[det] = f"photons outside the bursts ({label})"
-                        self.irf_inputs[det] = {
+                irf = np.asarray(pat["irf"], dtype=float)
+                bg = np.asarray(pat["bg"], dtype=float)
+                half = bg.size // 2
+                candidates = self.irf_candidates.setdefault(det, {})
+                photons = self._background_prompt_photons(tttr, det, ~in_burst)
+                if photons > 0 and irf.any():
+                    candidates["outside"] = (
+                        irf,
+                        f"photons outside the bursts ({label})",
+                        {
                             "kind": "non_burst", "vv": bg[:half], "vh": bg[half:],
                             "model": self.settings.irf_model, "baseline_quantile": 0.2,
                             "window": self._gate_window(det, half),
                             "name": "photons outside the bursts",
-                        }
-                    else:  # too few to show a prompt: the last resort, the decay itself
-                        self.irf_np[det] = self.blind_irf(det)
-                        self.irf_source[det] = "the burst decay (blind estimate, skewed Gaussian)"
-                        self.irf_inputs.pop(det, None)
+                            "dt_ns": float(tttr.header.micro_time_resolution) * 1e9
+                            * max(1, int(self.settings.micro_time_binning)),
+                        },
+                        photons,
+                    )
+                else:
+                    candidates.pop("outside", None)
+                candidates.pop("estimate", None)  # estimated when it is chosen (or the last resort)
                 # the background is the photons outside the bursts, whatever the IRF came from
-                self.bg_np[det] = np.asarray(pat["bg"], dtype=float)
+                self.bg_np[det] = bg
+                self.apply_irf_choice(det)
                 n += 1
         return n
+
+    def irf_options(self, det: str) -> list[tuple[str, str, bool, str]]:
+        """``(key, label, available, why not)`` of every IRF source of *det* (:data:`IRF_CHOICES`)."""
+        candidates = self.irf_candidates.get(det, {})
+        have_bursts = self.current_tttr() is not None and bool(self.burst_index_array().size)
+        reasons = {
+            "auto": (True, ""),
+            "measurement": (
+                "measurement" in candidates,
+                "No IRF measurement (water, Ludox) of this detector in Data Selection.",
+            ),
+            "reference": (
+                "reference" in candidates,
+                "No reference dye of known lifetime seen by this detector in Data Selection.",
+            ),
+            "outside": ("outside" in candidates, "No photons outside the bursts in this detector's gate."),
+            "estimate": (have_bursts, "No bursts loaded."),
+        }
+        return [(key, label, *reasons[key]) for key, label in IRF_CHOICES]
+
+    def apply_irf_choice(self, det: str) -> str:
+        """Take *det*'s IRF from its :attr:`irf_choice` (``auto`` when unset or unavailable); returns
+        the source used. Auto: the IRF tool's ``AUTO_ORDER`` -- a reference dye, else a measured
+        IRF, else the photons outside the bursts (at least :data:`MIN_IRF_COUNTS` in the gate), else the estimate from the decay."""
+        choice = self.irf_choice.get(det, "auto")
+        candidates = self.irf_candidates.get(det, {})
+        if choice == "tuned" and "tuned" in candidates:
+            order = ["tuned"]
+        elif choice in ("measurement", "reference", "outside", "estimate"):
+            order = [choice]
+        else:
+            order = []
+        # Auto follows the IRF tool's one order (reference dye, scatter, outside, estimate)
+        from chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction import AUTO_ORDER
+
+        outside = candidates.get("outside")
+        enough = outside is not None and outside[3] >= MIN_IRF_COUNTS
+        order += [
+            key for key in (_CHOICE_OF_SOURCE[kind] for kind in AUTO_ORDER)
+            if key != "outside" or enough
+        ]
+        for key in order:
+            if key == "estimate" and key not in candidates:
+                if self.current_tttr() is None or not self.burst_index_array().size:
+                    continue
+                candidates["estimate"] = self._blind_candidate(det)
+            got = candidates.get(key)
+            if got is None:
+                continue
+            self.irf_np[det] = np.asarray(got[0], dtype=float)
+            self.irf_source[det] = got[1]
+            if got[2] is not None:
+                self.irf_inputs[det] = got[2]
+            else:
+                self.irf_inputs.pop(det, None)
+            self.calibrate_shift(det)
+            self.outcome = None
+            return key
+        return ""
+
+    def burst_count_rate_khz(self, det: str) -> float | None:
+        """The mean count rate of *det* inside the bursts of the current file [kHz] (``None``:
+        no bursts): what a reference measurement's rate is compared with."""
+        tttr = self.current_tttr()
+        idx = self.burst_index_array()
+        times = self.time_in_bursts()
+        if tttr is None or not idx.size or times is None or times[0] <= 0:
+            return None
+        chs = self.detectors[det].get("chs", [])
+        photons = int(channel_mask(np.asarray(tttr.routing_channels)[idx], chs).sum())
+        return photons / times[0] / 1e3
+
+    def calibrate_shift(self, det: str) -> dict | None:
+        """Calibrate the time shift of *det*'s IRF, VV and VH, against a reference dye before any
+        fit (the IRF Estimation tool's :func:`calibrate_shifts`): the dye's decay fitted with the
+        IRF, the shifts free, its lifetime fixed to the dye database's (fitted where it has
+        none). A dye measured at single-molecule conditions (:func:`single_molecule`) is
+        preferred: SPAD timing moves with the count rate, so a reference at the bursts' rates
+        has their timing offset, a bulk one at a high rate is shifted (the count rates of both
+        are recorded; a bulk reference at more than three times the bursts' rate is warned of). The shifts are this
+        detector's ``shift_sp`` (VV) and ``shift_ss`` (VH), fixed in the fit; Opt refines them
+        within half a bin. Shifts set in the IRF tool (:attr:`shift_override`) win. ``None``
+        (shifts left as they are) without a reference dye."""
+        settings = self.settings_of(det)
+        override = self.shift_override.get(det)
+        if override is not None:
+            settings.shift_sp, settings.shift_ss = float(override[0]), float(override[1])
+            self.shift_calibration[det] = {
+                "shift_vv": float(override[0]), "shift_vh": float(override[1]),
+                "source": "set in the IRF tool", "dye": "", "single_molecule": False,
+            }
+            return self.shift_calibration[det]
+        records = [r for r in self.reference_records.get(det, []) if np.sum(r["vv"]) > 0]
+        irf = np.asarray(self.irf_np.get(det, []), dtype=float)
+        if not records or irf.size < 4:
+            self.shift_calibration.pop(det, None)
+            return None
+        sm = [r for r in records if r["single_molecule"]]
+        chosen = sm or records
+        by_dye: dict[str, list] = {}
+        for r in chosen:
+            by_dye.setdefault(r["dye"], []).append(r)
+        dye, group = max(by_dye.items(), key=lambda kv: sum(np.sum(r["vv"]) for r in kv[1]))
+        vv = np.sum([r["vv"] for r in group], axis=0)
+        vh = np.sum([r["vh"] for r in group], axis=0)
+        if vv.size * 2 != irf.size:
+            return None
+        from chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction import (
+            calibrate_shifts,
+            reference_rotation,
+            reference_tail_lifetime,
+        )
+
+        dt, window = group[0]["dt_ns"], group[0]["window"]
+        tau = group[0]["tau_ns"]
+        two = len(self.detectors[det].get("chs", [])) > 1
+        rho = None
+        if two:
+            guess = tau or reference_tail_lifetime(vv + 2.0 * vh, dt, window=window) or 4.0
+            rho = reference_rotation(vv, vh, dt, guess, window=window)
+        clean = process_irf(
+            irf, micro_time_range=self.micro_time_range, binning=settings.micro_time_binning,
+            irf_start=settings.irf_start, irf_stop=settings.irf_stop,
+            threshold_vv=settings.irf_threshold_vv, threshold_vh=settings.irf_threshold_vh,
+        )
+        half = clean.size // 2
+        names = ", ".join(Path(r["path"]).name for r in group)
+        found = calibrate_shifts(
+            [vv, vh] if two else [vv], [clean[:half], clean[half:]] if two else [clean[:half]],
+            dt, tau_ns=tau, rho_ns=rho, window=window, name=names,
+        )
+        settings.shift_sp, settings.shift_ss = found.shift_vv, found.shift_vh
+        rates = [r.get("rate_khz") for r in group if r.get("rate_khz") is not None]
+        reference_rate = float(np.mean(rates)) if rates else None
+        burst_rate = self.burst_count_rate_khz(det)
+        warning = ""
+        if not sm and reference_rate and burst_rate and reference_rate > 3.0 * burst_rate:
+            warning = (
+                f"only a bulk reference at {reference_rate:.0f} kHz, {reference_rate / burst_rate:.0f}x "
+                f"the bursts' {burst_rate:.0f} kHz: SPAD timing moves with the count rate, so the "
+                "shift may be off; measure the dye at single-molecule conditions"
+            )
+        self.shift_calibration[det] = {
+            "reference_rate_khz": reference_rate, "burst_rate_khz": burst_rate, "warning": warning,
+            "shift_vv": found.shift_vv, "shift_vh": found.shift_vh, "dye": dye, "files": names,
+            "single_molecule": bool(sm), "tau_ns": found.tau_ns, "tau_known": found.tau_known,
+            "tau_source": group[0]["tau_source"], "rho_ns": rho, "text": found.text,
+            "source": "single-molecule reference dye" if sm else "reference dye",
+        }
+        return self.shift_calibration[det]
+
+    def take_tuned_irf(self, det: str, irf: np.ndarray, text: str, inputs: dict | None = None) -> bool:
+        """The IRF the IRF tool computed for *det* (sent back from its window): used from now on
+        (:attr:`irf_choice` ``tuned``) until another source is chosen. ``False`` when it does not
+        fit this detector's decay (another binning)."""
+        irf = np.asarray(irf, dtype=float)
+        current = np.asarray(self.irf_np.get(det, []))
+        if current.size and irf.size != current.size:
+            return False
+        source = inputs or self.irf_inputs.get(det)
+        self.irf_candidates.setdefault(det, {})["tuned"] = (irf, f"IRF tool (tuned): {text}", source)
+        self.irf_choice[det] = "tuned"
+        self.apply_irf_choice(det)
+        return True
+
+    def choose_irf(self, det: str, choice: str) -> str:
+        """Take *det*'s IRF from *choice* (a key of :data:`IRF_CHOICES`); a tuned IRF is dropped."""
+        if choice not in dict(IRF_CHOICES):
+            raise ValueError(f"unknown IRF source {choice!r}")
+        self.irf_candidates.get(det, {}).pop("tuned", None)
+        self.shift_override.pop(det, None)  # the tool's shifts went with its IRF
+        self.irf_choice[det] = choice
+        return self.apply_irf_choice(det)
 
     def ensure_background(self) -> list[str]:
         """The background of every detector that has none yet, from the photons outside the bursts
@@ -1533,6 +1758,24 @@ class MleSession:
         if gates:
             sel &= micro_time_mask(np.asarray(tttr.micro_times), gates)
         return int(sel.sum())
+
+    def _blind_candidate(self, det: str) -> tuple:
+        """``(irf, text, inputs)`` of the blind estimate of *det* (:meth:`blind_irf`), its inputs
+        the burst decay the IRF tool estimates the same IRF from."""
+        info = self.detectors[det]
+        binning = max(1, int(self.settings.micro_time_binning))
+        tttr = self.current_tttr()
+        row = vv_vh_histogram(
+            tttr[self.burst_index_array()], info.get("chs", []), (0, 0), binning,
+            normalize_counts=0, apply_vh_shift=False,
+        )
+        half = row.size // 2
+        dt = float(tttr.header.micro_time_resolution) * 1e9 * binning
+        inputs = {
+            "kind": "blind", "vv": row[:half], "vh": row[half:], "dt_ns": dt,
+            "window": self._gate_window(det, half), "name": "the burst decay",
+        }
+        return self.blind_irf(det), "the burst decay (blind estimate, skewed Gaussian)", inputs
 
     def blind_irf(self, det: str) -> np.ndarray:
         """The IRF of *det* estimated from the burst decay alone, the last resort.
@@ -1618,8 +1861,12 @@ class MleSession:
             chs = "".join(map(str, info.get("chs", [])))
             write_vv_vh(f"{Path(path).with_suffix('').as_posix()}_{chs}.dat", vv=row[:half], vh=row[half:])
         header = tttr.header
-        seconds = float((tttr.macro_times[-1] - tttr.macro_times[0]) * header.macro_time_resolution)
+        macro = np.asarray(tttr.macro_times, dtype=np.float64) * float(header.macro_time_resolution)
+        seconds = float(macro[-1] - macro[0]) if macro.size else 0.0
         dt_ns = float(header.micro_time_resolution) * 1e9 * binning
+        self._single_molecule[str(path)] = single_molecule(macro)
+        # the detector's count rate in this measurement: SPAD timing moves with it
+        self._count_rate_khz[(str(path), det)] = float(row.sum()) / max(seconds, 1e-9) / 1e3
         return row[:half], row[half:], seconds, dt_ns
 
     def irf_pattern(self, det: str, paths: list[Path]) -> tuple[np.ndarray, str] | None:
@@ -1633,8 +1880,9 @@ class MleSession:
         this detector, scaled to the scatter's time, then the flat floor); the decay of a
         reference dye (``reference_dyes.yaml``: Rh110, Alexa647, ...) gives it by deconvolving
         the dye's polarised exponential, its lifetime fitted to the dye's tail and its rotation
-        to its two polarisations. A scatter wins; of several dyes the one with the most photons
-        in the detector's gate (Rh110 for the green detectors, Alexa647 for the red ones of a PIE
+        to its two polarisations. In the tool's order (``best_irf``, ``AUTO_ORDER``): a reference
+        dye first, measured in the same conditions as the sample, then a scatter; of several dyes
+        the one with the most photons in the detector's gate (Rh110 for the green detectors, Alexa647 for the red ones of a PIE
         set-up). Each polarisation sums to one.
         """
         from chisurf.core.fio.reference_files import reference_dye
@@ -1673,12 +1921,21 @@ class MleSession:
                 "kind": "scatter", "vv": vv, "vh": vh, "dt_ns": dt, "window": window, "name": names,
                 "buffer": scaled,
             }
+        records = []
         for name, group in groups.items():
             vv = vh = 0.0
             dt = 0.0
             for p in group:
                 a, b, _t, dt = self._reference_counts(det, p)
                 vv, vh = vv + a, vh + b
+                dye_entry = reference_dye(p)
+                records.append({
+                    "path": str(p), "dye": name, "vv": a, "vh": b, "dt_ns": dt,
+                    "window": self._gate_window(det, np.size(a)),
+                    "single_molecule": self._single_molecule.get(str(p), False),
+                    "rate_khz": self._count_rate_khz.get((str(p), det)),
+                    "tau_ns": dye_entry.get("tau_ns"), "tau_source": dye_entry.get("tau_source") or {},
+                })
             window = self._gate_window(det, np.size(vv))
             names = ", ".join(p.name for p in group)
             listed = reference_dye(group[0])["tau_ns"]
@@ -1692,6 +1949,14 @@ class MleSession:
                 "kind": "reference", "vv": vv, "vh": vh, "dt_ns": dt, "window": window,
                 "name": names, "dye": name, "listed_tau_ns": listed,
             }
+        self.reference_records[det] = records
+        candidates = self.irf_candidates.setdefault(det, {})
+        for kind, choice in (("scatter", "measurement"), ("reference", "reference")):
+            mine = best_irf([r for r in found if r.source == kind], MIN_IRF_COUNTS)
+            if mine is not None:
+                candidates[choice] = (mine.irf, mine.text, sources[mine.text])
+            else:
+                candidates.pop(choice, None)
         best = best_irf(found, MIN_IRF_COUNTS)
         if best is None:
             return None
@@ -1726,6 +1991,7 @@ class MleSession:
             np_dict[d] = got[0]
             if kind == "irf":
                 self.irf_source[d] = got[1]
+                self.apply_irf_choice(d)  # the measured IRF, unless another source was chosen
             done.append(d)
         self.outcome = None
         return done
@@ -1740,6 +2006,8 @@ class MleSession:
                 if kind == "irf":
                     self.irf_source.pop(d, None)
                     self.irf_inputs.pop(d, None)
+                    for key in ("measurement", "reference"):
+                        self.irf_candidates.get(d, {}).pop(key, None)
         self.outcome = None
         return dets
 
@@ -1756,6 +2024,7 @@ class MleSession:
                 np_dict[det] = got[0]
                 if kind == "irf":
                     self.irf_source[det] = got[1]
+                    self.apply_irf_choice(det)
 
     def _pattern_store(self, kind: str):
         if kind == "irf":

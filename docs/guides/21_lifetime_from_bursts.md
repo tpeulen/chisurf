@@ -26,9 +26,11 @@ likelihood** rather than least squares.
 
 ## Measured IRF and buffer from Data Selection
 
-Files assigned to an **IRF** row of *1. Data Selection* (per colour) become Burst MLE's measured
-IRF of that colour's detectors (`irf_files`); a colour without its own IRF reads the other IRF
-files on its channels, and a detector they show nothing keeps the estimate below. Files in the
+Files assigned to an **IRF** or **reference dye** row of *1. Data Selection* (per colour) are
+Burst MLE's IRF sources for that colour's detectors (`irf_files`); **IRF from** chooses among
+them (Auto: the reference dye first). A colour without its own files reads the other IRF files
+on its channels, and a detector they show nothing keeps the estimate below. In the pipeline
+there is no file list in Burst MLE: the files are Data Selection's. Files in the
 **Buffer** row are the buffer (`bg_files`): they correct a scatter IRF for its background and give
 an independent background rate, `B_<detector>`, named in the IRF source line ("G|G: IRF from the
 IRF measurement water_irf.ptu (buffer-corrected); background from the photons outside the
@@ -187,18 +189,47 @@ describe a donor-only + FRET mix.
 ```
 
 The **IRF** tab is there in Simple mode too, because the fit is only as good as
-the IRF it convolves with. Its first line says where the IRF comes from. By
-default it is estimated from the photons outside the bursts, with the shape set
-by **IRF model** (Gaussian, skewed, or the experimental histogram). To use a
-separate IRF measurement instead, pick it from the workspace under **Measured
-IRF** and press **Use selected**; **Use the estimate** switches back. The plot
-shows VV and VH over one period, zoomed onto the IRF: thin lines are the IRF as
-loaded, thick lines what the fit uses after the cleanup. The cleanup is
-**VH shift**, the clip (**IRF start** / **IRF stop**, also draggable in the plot)
-and the **VV** / **VH background levels**: the level, as a fraction of that
-polarisation's peak, at and below which the IRF counts as background. It is
-taken off every bin and what falls below zero is zero, so no floor stays under
-the prompt and its foot has no step.
+the IRF it convolves with. It holds one choice, **IRF from**, and for a typical
+run nothing needs to be set: **Auto** takes the best there is, in this order --
+the reference dye of Data Selection, the IRF measurement (water, Ludox), the
+photons outside the bursts, an estimate from the burst decay itself. The other
+choices take one of them; a choice whose measurement is missing is greyed, its
+tooltip says why. Under it one short line says what the IRF is ("Rh110 ·
+reference dye"; the files, lifetime and rotation in its tooltip), then the IRF
+(thin: as extracted; thick: as the fit uses it) and **IRF tool**.
+
+**IRF tool** opens the IRF in the IRF Estimation tool, which made it: the same
+data, how it was extracted, and every setting of it (under **Advanced** there).
+Whatever you estimate there comes back to Burst MLE for that detector and is
+fitted at once; **IRF from** then says **IRF tool (tuned)**. Picking another
+source afterwards asks once before the tuned IRF is discarded. The IRF's shape,
+VH shift, clip and background levels are the tool's: Burst MLE has no fields for
+them (it subtracts a background level of 0.02 of each polarisation's peak, and
+Opt can still search the shifts).
+
+With a reference dye in Data Selection the IRF's time shift is calibrated
+before any fit, VV and VH on their own: the dye's decay is fitted with the IRF,
+the shift free and the dye's lifetime fixed (from the dye database: Rh110
+4.0 ns, Alexa 647 1.0 ns; fitted when it has none). A dye measured at
+single-molecule conditions is preferred -- a SPAD's timing moves with the
+count rate, so only a reference at the bursts' rates has their timing offset --
+else the bulk one; a bulk reference at a much higher rate than the bursts is
+marked ⚠ (its rate and the bursts' in the tooltip and the report). The status line then says **shift calibrated
+(Rh110)**; the shifts, the dye, the files and the lifetime's source are in its
+tooltip and in the calibration report. There is nothing to set; the IRF tool
+shows the shifts under **Advanced** and takes your own.
+
+```{figure} figures/21_burst_mle_irf_auto.png
+:name: fig-21-burst-mle-irf-auto
+:width: 100%
+
+The **IRF** tab on DNA13bp_3 with Rh110_thick_1.ptu in Data Selection's
+reference-dye row: **IRF from** Auto took the reference dye (τ 4.02 ns from its
+tail, rotation 0.17 ns, deconvolved -- in the tooltip) and calibrated the IRF's
+time shift against it (VV +0.04, VH +0.06 bins, Rh110's 4.0 ns fixed). No IRF
+measurement was made, so that choice is greyed. Thin: the IRF as extracted;
+thick: as fitted.
+```
 
 Select **Fit model** before running the preview or batch:
 
@@ -224,15 +255,12 @@ this tool.
 
 #### Where the IRF comes from
 
-In the pipeline the IRF of each detector is taken, in this order, from:
+In the pipeline the IRF of each detector is taken, in this order (Auto), from:
 
-1. **A scatter measurement** (a file named `H2O`, `water`, `Ludox`, `scatter`,
-   `IRF` or `prompt`) in the data's folder or one folder up. The buffer
-   measurement (`buffer`, `blank`, `PBS`, ...), when there is one, is scaled to
-   the scatter's acquisition time and subtracted; then the flat floor. This is
-   the best IRF.
-2. **A reference dye of known lifetime** (Rh110, Rh6G, Fluorescein, Alexa488,
-   Alexa647, Cy5; names and lifetimes in `chisurf/core/fio/reference_dyes.yaml`).
+1. **A reference dye of known lifetime** (Rh110, Rh6G, Fluorescein, Alexa488,
+   Alexa647, Cy5; names and lifetimes in `chisurf/core/fio/reference_dyes.yaml`),
+   Data Selection's reference-dye row of the detector's colour. It comes first
+   (the owner's choice): it is measured in the same conditions as the sample.
    Each polarisation of its decay is the IRF convolved with the dye's rotating
    exponential, (1 + 2r(t))·exp(−t/τ) in VV and (1 − r(t))·exp(−t/τ) in VH; the IRF is recovered by Richardson–Lucy
    deconvolution of that kernel, τ fitted to the tail of VV + 2VH and the
@@ -242,7 +270,13 @@ In the pipeline the IRF of each detector is taken, in this order, from:
    polarisation's rotation; on a simulated Rh110 its VV IRF was 0.12 ns early
    and a 2.5 ns sample came out 2.63 ns (now 2.50 ns). Of several dyes, each
    detector takes the one with the most photons in its gate: Rh110 for the
-   green detectors, Alexa647 for the red detectors of a PIE set-up.
+   green detectors, Alexa647 for the red detectors of a PIE set-up. A colour
+   without a reference dye falls through to the next source for that colour only.
+2. **A scatter measurement** (Data Selection's IRF row, or a file named `H2O`,
+   `water`, `Ludox`, `scatter`, `IRF` or `prompt` beside the data). The buffer
+   measurement, when there is one, is scaled to the scatter's acquisition time
+   and subtracted; then the flat floor. **IRF from › IRF measurement** takes it
+   when a dye is there too.
 3. **The photons outside the bursts**, fitted with a skewed Gaussian. Those
    photons are mostly fluorescence of dim molecules, not scatter, so only their
    prompt is used.
@@ -258,22 +292,21 @@ in the **IRF** tab opens that tool with what the current detector's IRF was
 extracted from -- the same histograms, gate and source -- so it shows the same
 IRF with its lifetime, rotation and counts, and its settings can be tried there.
 
-```{figure} figures/21_burst_mle_irf_deconvolved.png
-:name: fig-21-burst-mle-irf-deconvolved
+```{figure} figures/21_burst_mle_irf_tuned.png
+:name: fig-21-burst-mle-irf-tuned
 :width: 100%
 
-The **IRF** tab on DNA13bp_3 (RVZMT150, 80 ps bins) with Rh110_thick_1.ptu as the
-green reference dye: τ 4.02 ns from its tail, rotation 0.17 ns from VV and VH,
-deconvolved. Thin: VV and VH as extracted; thick: as fitted (background levels
-0.02 taken off).
+After **IRF tool**: an IRF estimated there (here with another rotation of the
+dye, to show the round trip) came back; **IRF from** says **IRF tool (tuned)**
+and the decay was fitted with it.
 ```
 
 ```{figure} figures/21_burst_mle_irf_difference.png
 :name: fig-21-burst-mle-irf-difference
 :width: 100%
 
-The same IRF by the exact difference used before: a noisy hump, cut off where
-the difference sank into its noise.
+The same IRF by the exact difference used before (and the tab's former
+fields): a noisy hump, cut off where the difference sank into its noise.
 ```
 
 A detector that a reference file shows nothing (a green dye in the red

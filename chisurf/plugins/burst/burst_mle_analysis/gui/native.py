@@ -108,12 +108,12 @@ class MleNativeApp(TourTarget, ImApp):
             s
             for s in sections
             if s.get("title")
-            not in ("Burst", "Burst lifetimes", "IRF", "Measured IRF and background")
+            not in ("Burst", "Burst lifetimes", "IRF from", "Measured IRF and background")
         ]
         self.pattern_sections = [
             s for s in sections if s.get("title") == "Measured IRF and background"
         ]
-        self.irf_sections = [s for s in sections if s.get("title") == "IRF"]
+        self.irf_sections = [s for s in sections if s.get("title") == "IRF from"]
         for s in self.irf_sections:
             s["collapsed"] = False
         self.burst_sections = [s for s in sections if s.get("title") == "Burst"]
@@ -198,6 +198,8 @@ class MleNativeApp(TourTarget, ImApp):
             "background_measurement:workspace_input_rows",
         ):
             self.docks.focus("patterns")
+        elif name == "irf_from":
+            self.docks.focus("irf")
         elif name in ("load_example", "optimize", "window_start"):
             self.docks.focus("controls")
 
@@ -434,6 +436,10 @@ class MleNativeApp(TourTarget, ImApp):
         for key in ("detectors", "results", "patterns", "inspect"):
             if key not in self.docks.windows:
                 continue
+            if key == "patterns" and getattr(self, "pipeline", False):
+                # in the pipeline the IRF, reference-dye and buffer files are Data Selection's
+                self.docks.hide(key)
+                continue
             if advanced:
                 self.docks.show(key)
             else:
@@ -653,43 +659,44 @@ class MleNativeApp(TourTarget, ImApp):
                 self.item_rects[key] = tuple(self.form.rects[attr])
 
     def _irf(self, box=None) -> None:
-        """The IRF: where it comes from (estimated from the photons outside the bursts, or a
-        separate measurement picked from the workspace), how it is cleaned up (shift, clip,
-        threshold) and how it looks before and after -- in Simple mode as well: an IRF the fit
-        convolves with is never taken unseen."""
+        """Where the IRF comes from -- one selector -- what it is, in a word, and the IRF tool
+        that shows how it was made and takes the user's changes back. The IRF itself (its
+        extraction, its settings) is the IRF tool's."""
         self.remember("irf", box)
+        self._take_tuned()
         running = self.job.busy
-        measured = bool(self.model.irf_file_rows())
-        session = self.model.session
-        im.text_wrapped(
-            tr("IRF of {detector}: {source}.").format(
-                detector=self.model.current_detector or tr("the detector"),
-                source=session.irf_source.get(session.current_detector)
-                or tr("estimated from the photons outside the bursts"),
-            )
-        )
-        im.set_item_tooltip(
-            tr(
-                "The IRF comes from a scatter measurement (water, Ludox) beside the data, corrected "
-                "with the buffer; else from a reference dye of known lifetime (Rh110, Alexa647) by "
-                "inverting its exponential decay; else from a skewed Gaussian fitted to the photons "
-                "outside the bursts. Pick another measurement below."
-            )
-        )
+        m = self.model
         im.begin_disabled(running)
-        self._draw_input("irf_measurement")
-        extracted = session.irf_inputs.get(session.current_detector)
+        draw_sections(self.irf_sections, m, self.form)
+        if "irf_from" in self.form.rects:
+            self.item_rects["irf_from"] = tuple(self.form.rects["irf_from"])
+        if m.irf_confirm:
+            im.text_wrapped(tr("Discard the IRF tuned in the IRF tool?"))
+            pressed = button_row(
+                [
+                    {"label": str(tr("Discard")), "key": "irf_discard",
+                     "tip": str(tr("Use the source just picked; the tuned IRF is forgotten."))},
+                    {"label": str(tr("Keep")), "key": "irf_keep",
+                     "tip": str(tr("Keep the IRF tuned in the IRF tool."))},
+                ],
+                remember=self.remember,
+            )
+            if pressed == "irf_discard":
+                m.confirm_irf_from(True)
+            elif pressed == "irf_keep":
+                m.confirm_irf_from(False)
+        im.text(m.irf_status())
+        im.set_item_tooltip(m.irf_status_tooltip())
         if button_row(
             [
                 {
                     "label": str(tr("IRF tool")),
                     "key": "irf_tool",
-                    "enabled": extracted is not None,
+                    "enabled": m.session.irf_inputs.get(m.session.current_detector) is not None,
                     "tip": str(
                         tr(
-                            "Open what this IRF was extracted from in IRF Estimation: the same "
-                            "extraction (reference dye, scatter, photons outside the bursts), its "
-                            "lifetime, rotation and photons, to inspect and tune."
+                            "Open the IRF in the IRF tool: how it was made, from what, and every "
+                            "setting of it. What you compute there comes back here and is fitted."
                         )
                     ),
                 }
@@ -697,27 +704,13 @@ class MleNativeApp(TourTarget, ImApp):
             remember=self.remember,
         ) == "irf_tool":
             self.open_in_irf_tool()
-        if measured and button_row(
-            [
-                {
-                    "label": str(tr("Use the estimate")),
-                    "key": "irf_estimate",
-                    "tip": str(
-                        tr("Forget the measured IRF and estimate it from the photons outside the bursts.")
-                    ),
-                }
-            ],
-            remember=self.remember,
-        ) == "irf_estimate":
-            self.model.clear_irf_files()
-            self.auto_extract()
-        draw_sections(self._irf_fields(), self.model, self.form)
         im.end_disabled()
         self._irf_plot()
 
     def open_in_irf_tool(self) -> bool:
         """Hand the current detector's IRF source (:attr:`engine.MleSession.irf_inputs`) to the IRF
-        Estimation tool, which extracts the same IRF and shows how (one implementation for both)."""
+        Estimation tool, which extracts the same IRF and shows how (one implementation for both);
+        what the user computes there comes back (``reply``) and is fitted (:meth:`_take_tuned`)."""
         from chisurf.core.plugin import handoff
 
         session = self.model.session
@@ -729,30 +722,28 @@ class MleNativeApp(TourTarget, ImApp):
         if not handoff.available("irf_estimator", "irf_source"):
             self.model.status_text = str(tr("Open Burst MLE inside ChiSurf to open the IRF tool."))
             return False
-        payload = dict(source, detector=det, origin="Burst MLE")
+
+        def reply(irf, text, inputs=None, _det=det):
+            # the tool's draw thread: queued, taken on this window's next frame
+            self.__dict__.setdefault("_tuned_pending", {})[_det] = (irf, text, inputs)
+            self.request_frame()
+
+        payload = dict(source, detector=det, origin="Burst MLE", reply=reply)
+        shift = session.shift_calibration.get(det)
+        if shift:
+            payload["shifts"] = (shift["shift_vv"], shift["shift_vh"])
+            payload["shift_text"] = shift.get("text", "")
         handoff.hand_off("irf_estimator", "irf_source", {"irf_source": payload})
         return True
 
-    def _irf_fields(self) -> list:
-        """The IRF's shape when it is estimated (IRF model) and its cleanup: in Simple mode shift,
-        clip and threshold; all of them else."""
-        key = "_irf_simple" if self._simple() else "_irf_full"
-        if getattr(self, key, None) is None:
-            keep = {"shift", "irf_start", "irf_stop", "irf_threshold_vv", "irf_threshold_vh"}
-            model = [
-                x
-                for sec in self.pattern_sections
-                for x in sec.get("sections", [])
-                if x.get("attr") == "irf_model"
-            ]
-            sections = [
-                dict(sec, sections=model + [
-                    x for x in sec.get("sections", []) if key == "_irf_full" or x.get("attr") in keep
-                ])
-                for sec in self.irf_sections
-            ]
-            setattr(self, key, sections)
-        return getattr(self, key)
+    def _take_tuned(self) -> None:
+        """An IRF the IRF tool sent back: this detector's IRF from now on, and the fit runs again."""
+        pending = self.__dict__.get("_tuned_pending")
+        if not pending or self.job.busy:
+            return
+        self._tuned_pending = {}
+        for det, (irf, text, inputs) in pending.items():
+            self.model.take_tuned_irf(det, irf, text, inputs)
 
     def _irf_plot(self) -> None:
         """The IRF as loaded and as the fit sees it, VV and VH over the channels of one period,
@@ -761,7 +752,7 @@ class MleNativeApp(TourTarget, ImApp):
         raw = np.asarray(session.irf_np.get(session.current_detector, []), dtype=float)
         if raw.size < 2 or not raw.any():
             im.text_wrapped(
-                tr("No IRF yet: pick a measured IRF above, or press Next to estimate it from the data.")
+                tr("The IRF is drawn here once the bursts are in.")
             )
             return
         clean = np.asarray(session.irf(), dtype=float)
@@ -800,17 +791,11 @@ class MleNativeApp(TourTarget, ImApp):
                 seg = x[values > floor * 1e-2]
                 implot.set_next_line_style(colour, weight)
                 implot.plot_line(label, seg, values[seg])
-            self._drag_edges(
-                [("irf_start", lo - 0.5, IRF_FILL), ("irf_stop", hi - 0.5, IRF_FILL)],
-                half,
-                DRAG_IDS + 40,
-                halves=1,
-            )
             implot.end_plot()
         im.set_item_tooltip(
             tr(
-                "The IRF as measured or estimated (thin) and after the VH shift, the clip and the "
-                "background levels taken off (thick): what the fit convolves with. Drag the lines to clip it."
+                "The IRF as extracted (thin) and as the fit convolves with it (thick: its background "
+                "level taken off), VV and VH. Its settings are in the IRF tool."
             )
         )
 
@@ -937,8 +922,8 @@ class MleNativeApp(TourTarget, ImApp):
             implot.end_plot()
         im.set_item_tooltip(
             tr(
-                "Drag the green lines to set the fit window and the orange lines to set the IRF "
-                "range (in either half); the decay is fitted again when a line is let go."
+                "Drag the green lines to set the fit window (in either half); the decay is fitted "
+                "again when a line is let go. Orange: where the IRF is."
             )
         )
         self._residuals(curves)
@@ -980,16 +965,13 @@ class MleNativeApp(TourTarget, ImApp):
         )
 
     def _drag_ranges(self, curves, half: int) -> None:
-        """Lines on the edges of the fit window and of the IRF range, in both halves (the VH half
-        has the same window): dragging one sets Window start / stop or the IRF clip, which the
-        fields show; the fit runs again when the line is let go, not on every frame of a drag."""
+        """Lines on the edges of the fit window, in both halves (the VH half has the same window):
+        dragging one sets Window start / stop, which the fields show; the fit runs again when the
+        line is let go, not on every frame of a drag."""
         edges = []  # (setting, x of the edge in the VV half, colour)
         if curves.fit_windows:
             lo, hi = curves.fit_windows[0]
             edges += [("micro_time_start", lo - 0.5, FIT_FILL), ("micro_time_stop", hi - 0.5, FIT_FILL)]
-        if curves.irf_windows:
-            lo, hi = curves.irf_windows[0]
-            edges += [("irf_start", lo - 0.5, IRF_FILL), ("irf_stop", hi - 0.5, IRF_FILL)]
         self._drag_edges(edges, half, DRAG_IDS)
 
     def _drag_edges(self, edges, half: int, first_id: int, halves: int = 2) -> None:
@@ -1055,6 +1037,13 @@ class MleNativeApp(TourTarget, ImApp):
 
     def _render(self) -> None:
         changed = self.job.poll()
+        if changed and self.model.session.shift_calibration:
+            report = getattr(self, "on_calibrated", None)
+            if callable(report):
+                try:
+                    report()
+                except Exception:  # noqa: BLE001 - the fit goes on; the report says what it can
+                    pass
         self._fit_if_waiting()
         self._sync_editor_read_only()
         if not self.job.busy:

@@ -1,4 +1,5 @@
-"""Reference diffusion from configured MMFDB or a versioned portable snapshot.
+"""Reference diffusion (and, beside it, the fluorescence lifetime of a reference dye) from
+configured MMFDB or a versioned portable snapshot.
 
 The ChiSurf-owned JSON asset is an exact export of MMFDB's curated definitions,
 not an independently maintained scientific table. Its origin manifest pins the
@@ -145,7 +146,9 @@ def _load() -> tuple[dict[str, dict[str, Any]], dict[str, str]]:
     """Build display-name and alias maps while retaining actual source values."""
     portable = _entries_from_package()
     entries = _entries_from_database()
-    if entries is None:
+    if not entries:
+        # no database, or one whose reference set was never seeded (it is read without
+        # writes): the exact export of the same curated set -- an empty one gave no dye at all
         entries = portable
     dyes = {entry["name"]: validate_reference(entry) for entry in entries}
     aliases = {_normalized(name): name for name in dyes}
@@ -157,6 +160,14 @@ def _load() -> tuple[dict[str, dict[str, Any]], dict[str, str]]:
                 recorded = dyes[canonical].setdefault("aliases", [])
                 if alias not in recorded:
                     recorded.append(alias)
+    # A database seeded before the curated set carried lifetimes has D only: the lifetime (and
+    # its sources) of the same species comes from the exact export, the same curated set.
+    for entry in portable:
+        canonical = aliases.get(_normalized(entry["name"]))
+        if canonical is not None and "tau_ns" in entry and "tau_ns" not in dyes[canonical]:
+            for key in ("tau_ns", "tau_solvent", "tau_sources"):
+                if key in entry:
+                    dyes[canonical][key] = copy.deepcopy(entry[key])
     return dyes, aliases
 
 

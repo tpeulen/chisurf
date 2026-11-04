@@ -53,6 +53,27 @@ extracts an IRF of its own ([theory](../concepts/irf_extraction.md)):
 | Scatter | water, Ludox | the prompt above the floor (and a buffer) |
 | Non-burst | the photons outside the bursts | a (skewed) Gaussian fitted to the prompt's rising edge |
 
+The window opens **Simple**: the source, **Estimate IRF**, the plot and the
+results are all a typical run needs. **Advanced** (top right of the
+parameters) shows every setting of the extraction. When Burst MLE opened the
+window (**IRF tool**), every estimate you make here goes back to it for that
+detector and is fitted there ("IRF tool (tuned)"); the estimate made on
+opening is the one Burst MLE already has and is not sent back. An automatic
+choice takes a reference dye first, then a scatter (`AUTO_ORDER`).
+
+Burst MLE also calibrates the IRF's time shift against the reference dye
+(`calibrate_shifts`, the dye's lifetime fixed to the dye database's); opened
+from Burst MLE, **Advanced** shows **Shift VV / VH** and a value you change there
+goes back with the IRF and replaces the calibrated one.
+
+```{figure} figures/irf_estimation_advanced_from_mle.png
+:name: fig-irf-estimation-advanced-from-mle
+:width: 100%
+
+**Advanced**, opened from Burst MLE: the dye's lifetime and rotation (0: from
+the data) and the time shifts Burst MLE calibrated against the dye.
+```
+
 **VV | VH halves** says the data holds two polarisations one after the other
 (the rotation of a reference dye is read from them). For a reference dye,
 **Lifetime** 0 fits τ to the tail (the **Listed** one when that fails), **ρ** 0
@@ -78,7 +99,7 @@ from chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction import (
 
 dye = irf_from_reference(vv, vh, dt_ns=0.08, listed_tau_ns=4.0, name="Rh110.ptu", dye="Rh110")
 water = irf_from_scatter([vv_h2o, vh_h2o], buffer=[vv_buf, vh_buf])
-irf = best_irf([dye, water], min_counts=500)   # a scatter wins
+irf = best_irf([dye, water], min_counts=500)   # the reference dye first (AUTO_ORDER)
 print(irf.text, irf.info)                      # irf.irf: VV | VH, each summing to one
 ```
 

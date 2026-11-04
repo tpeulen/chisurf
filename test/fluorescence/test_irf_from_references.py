@@ -147,12 +147,15 @@ def test_the_gate_picks_the_pulse():
     assert int(np.argmax(got)) == int(np.argmax(irf))
 
 
-def test_a_scatter_wins_over_a_dye_and_too_few_photons_is_none():
+def test_a_dye_comes_before_a_scatter_and_too_few_photons_is_none():
+    """The owner's order (AUTO_ORDER): the reference dye, measured in the same conditions as the
+    sample, then the scatter -- which stays the choice when there is no dye."""
     irf = _irf()
     vv, vh = _decay_of(4.0)
     scatter = irf_from_scatter([irf * 1e4 + 5.0, irf * 1e4 + 5.0])
     dye = irf_from_reference(vv * 1e6 + 50.0, vh * 1e6 + 50.0, DT, tau_ns=4.0, rho_ns=0.2)
-    assert best_irf([dye, scatter], min_counts=500).source == "scatter"
+    assert best_irf([scatter, dye], min_counts=500) is dye
+    assert best_irf([scatter, None], min_counts=500) is scatter
     assert best_irf([dye, None], min_counts=500) is dye
     assert best_irf([irf_from_scatter([irf * 10.0, irf * 10.0])], min_counts=500) is None
 
@@ -192,3 +195,80 @@ def test_a_gate_without_a_decay_gives_no_irf():
     got = irf_from_reference(floor, floor.copy() + 1.0, DT, tau_ns=4.0, rho_ns=0.2)
     assert got.counts == (0.0, 0.0)
     assert best_irf([got], min_counts=500) is None
+
+
+def _shifted_reference(shift_bins: float, tau: float = 4.0, rho: float = 0.2, seed: int = 1):
+    """A Rh110-like reference measured with the IRF *shift_bins* later (photon-like binning)."""
+    t = (np.arange(N * OS) + 0.5) * DT / OS
+    fine = np.roll(_fine_irf(), int(round(shift_bins * OS)))
+    r = 0.38 * np.exp(-t / rho)
+    out = [
+        np.real(np.fft.ifft(np.fft.fft(fine) * np.fft.fft(pol * np.exp(-t / tau)))).reshape(N, OS).sum(1)
+        for pol in (1 + 2 * r, 1 - r)
+    ]
+    total = sum(o.sum() for o in out)
+    rng = np.random.default_rng(seed)
+    return [rng.poisson(o / total * 1.2e6 + 300.0).astype(float) for o in out]
+
+
+@pytest.mark.parametrize("injected", [0.0, 1.25, -2.5])
+def test_the_irf_time_shift_is_recovered_against_a_reference_dye(injected):
+    """The dye's decay fitted with the IRF, the shift free, its lifetime fixed: the shift the
+    dye's measurement had is recovered within a tenth of a bin."""
+    from chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction import calibrate_shifts
+
+    vv, vh = _shifted_reference(injected)
+    irf = _irf()
+    found = calibrate_shifts([vv, vh], [irf, irf], DT, tau_ns=4.0, rho_ns=0.2)
+    assert found.tau_known and found.tau_ns == 4.0
+    assert found.shift_vv == pytest.approx(injected, abs=0.1)
+    assert found.shift_vh == pytest.approx(injected, abs=0.1)
+
+
+def test_a_dye_without_a_known_lifetime_has_it_fitted_and_says_so():
+    from chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction import calibrate_shifts
+
+    vv, vh = _shifted_reference(1.25)
+    found = calibrate_shifts([vv, vh], [_irf(), _irf()], DT, tau_ns=None, rho_ns=0.2)
+    assert not found.tau_known and found.tau_ns == pytest.approx(4.0, rel=0.03)
+    assert "fitted" in found.text
+    assert found.shift_vv == pytest.approx(1.25, abs=0.15)
+
+
+def test_the_dye_lifetime_comes_from_the_dye_database():
+    from chisurf.core.fio.reference_files import dye_lifetime, reference_dye
+
+    tau, info = dye_lifetime("Rh110")
+    assert tau == 4.0 and info["sources"] and info["name"] == "Rhodamine 110"
+    assert reference_dye("Rh110_ref.ptu")["tau_ns"] == 4.0
+    assert reference_dye("A488_ref.ptu")["tau_ns"] is None  # not in the database: fitted
+
+
+def test_a_database_seeded_without_lifetimes_takes_them_from_the_curated_export(monkeypatch):
+    """A configured MMFDB seeded before the lifetimes were curated has D only; the lifetime of
+    the same species comes from the exact export of the same set."""
+    from chisurf.core.fluorescence import dyes
+
+    portable = dyes._entries_from_package()
+    no_tau = [{k: v for k, v in e.items() if not k.startswith("tau_")} for e in portable]
+    monkeypatch.setattr(dyes, "_entries_from_database", lambda: no_tau)
+    monkeypatch.setattr(dyes, "_CACHE", None)
+    try:
+        entry = dyes.get_dye("Rh110")
+        assert entry["tau_ns"] == 4.0 and entry["tau_sources"]
+    finally:
+        dyes._CACHE = None
+
+
+def test_a_database_without_a_seeded_reference_set_reads_the_export(monkeypatch):
+    """A configured MMFDB whose reference set was never seeded (read without writes) used to
+    leave no dye at all -- no D, no lifetime; the curated export stands in."""
+    from chisurf.core.fluorescence import dyes
+
+    monkeypatch.setattr(dyes, "_entries_from_database", lambda: [])
+    monkeypatch.setattr(dyes, "_CACHE", None)
+    try:
+        assert dyes.get_dye("Rh110")["tau_ns"] == 4.0
+        assert dyes.diffusion_coefficient_25C("Rh110") > 0
+    finally:
+        dyes._CACHE = None

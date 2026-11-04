@@ -58,6 +58,7 @@ def build_report(
     *,
     estimated: Mapping[str, str] | None = None,
     applied_g: Mapping[str, Any] | None = None,
+    irf_shift: Mapping[str, Mapping] | None = None,
 ) -> dict[str, Any]:
     """The complete calibration record of a session.
 
@@ -74,6 +75,12 @@ def build_report(
     applied_g : mapping, optional
         ``{detector: G written to the setup}``, or ``"edited by hand"`` where the user's own value
         was kept.
+    irf_shift : mapping, optional
+        ``{detector: Burst MLE's IRF time-shift calibration}`` (``MleSession.shift_calibration``):
+        the VV and VH shifts in bins, the dye and files they were calibrated against, whether at
+        single-molecule conditions (preferred: SPAD timing moves with the count rate), the count
+        rates of the reference and of the bursts, a warning for a bulk reference at a much higher
+        rate, the lifetime and its source.
     """
     from chisurf.core.fluorescence.dyes import get_dye
 
@@ -116,6 +123,15 @@ def build_report(
             "g_applied": {d: (applied_g or {}).get(d) for d in g},
             "volume_fit": fit,
         }
+    keep = ("shift_vv", "shift_vh", "dye", "files", "single_molecule", "tau_ns", "tau_known",
+            "rho_ns", "source", "text", "reference_rate_khz", "burst_rate_khz", "warning")
+    report["irf_shift"] = {
+        det: {
+            **{k: entry[k] for k in keep if k in entry},
+            "tau_citation": ((entry.get("tau_source") or {}).get("sources") or [{}])[0].get("citation", ""),
+        }
+        for det, entry in (irf_shift or {}).items()
+    }
     return json.loads(json.dumps(report, default=float))
 
 

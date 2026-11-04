@@ -17,8 +17,15 @@ placeholder.
   **Stop**, **Save results** and **Save/Load settings**; below them the burst-file table, the detector and fit window,
   the IRF settings and the editable *Fit parameters* table (start value, fixed flag, fitted value). A change refits the
   current decay. **Detector setup** is the shared detector editor.
-* **IRF/BG files** tab: the **Measured IRF** and **Measured background** sections take photon streams from the
-  workspace (measured patterns, per detector or *one for all*), **IRF model** of Auto IRF/background, **Save VV/VHs**. **Opt** (in the *Burst MLE* tab) searches the
+* **IRF** tab: one choice, **IRF from** -- **Auto** (the reference dye of Data Selection, else the IRF
+  measurement, else the photons outside the bursts, else an estimate from the data), or one of them; a
+  source whose measurement is missing is greyed. One line says what the IRF is (details in its tooltip),
+  then the IRF and **IRF tool**: it opens the IRF Estimation tool on the same data, and what you estimate
+  there comes back here ("IRF tool (tuned)") and is fitted. The IRF's settings are the tool's. With a
+  reference dye the IRF's time shift (VV, VH) is calibrated before the fit against it, its lifetime
+  fixed to the dye database's; a single-molecule dye measurement is preferred ("shift calibrated").
+* **IRF/BG files** tab (outside Burst Analysis only; in the pipeline the files are Data Selection's): the **Measured IRF** and **Measured background** sections take photon streams from the
+  workspace (measured patterns, per detector or *one for all*), **Save VV/VHs**. **Opt** (in the *Burst MLE* tab) searches the
   shifts, IRF window and thresholds for the lowest 2I*; **Save fit** stores a detector's fit settings on the selected
   detector setup. The fit model **Tail fit (multi-exp)** previews a multi-exponential tail fit (no IRF; not used by
   **Fit bursts**).

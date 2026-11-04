@@ -45,6 +45,19 @@ class IRFViewModel:
         self.current_dataset = None
         self.source_text = "No data loaded"
         self.status = "Ready"
+        #: Where the IRF goes back to (a tool that opened this window with its source, Burst
+        #: MLE): ``reply(irf, text, inputs)`` after each estimate the user makes here.
+        self.reply = None
+        #: The automatic estimate on receiving a source is not the user's: it is not sent back.
+        self.reply_armed = False
+        #: Simple: the source and the estimate; Advanced: every setting of the extraction.
+        self.advanced = False
+        #: The IRF's time shifts against the reference dye, VV and VH in bins (as the tool that
+        #: opened this window calibrated them); changed here, they go back with the IRF.
+        self.shift_vv = 0.0
+        self.shift_vh = 0.0
+        self.received_shifts = None
+        self.shift_text = ""
         #: What the decay is (:data:`SOURCES`): the extraction that runs on it.
         self.source = "blind"
         #: The data holds two halves, VV then VH (a reference dye's rotation is read from them).
@@ -65,6 +78,11 @@ class IRFViewModel:
         self.buffer = None
         #: The extraction of the last estimate (:class:`..core.extraction.IrfResult`).
         self.extraction = None
+
+    @property
+    def has_shifts(self) -> bool:
+        """Whether the tool that opened this window calibrated the IRF's time shifts."""
+        return self.received_shifts is not None
 
     def source_choices(self):
         """(value, label) pairs of the Source field."""
@@ -121,6 +139,8 @@ class IRFViewModel:
                 rho = info.get("rho_ns")
                 rows.append(("Rotation (ρ)", "N/A" if x is None else ("none" if rho is None else f"{rho:.3f} ns")))
             rows.append(("IRF counts", "N/A" if x is None else " | ".join(f"{c:.0f}" for c in x.counts)))
+            if self.received_shifts is not None:
+                rows.append(("Time shift", f"VV {self.shift_vv:+.2f} | VH {self.shift_vh:+.2f} bins"))
             return rows
         return [
             ("Lifetime (\u03c4)", "N/A" if r is None else f"{r.lifetime_ns:.4f} ns"),
@@ -209,9 +229,33 @@ class IRFViewModel:
         return self.result
 
     def take(self, result):
-        """Keep *result* of :meth:`compute` as the estimate shown, saved and transferred."""
+        """Keep *result* of :meth:`compute` as the estimate shown, saved and transferred; an
+        estimate the user made goes back to the tool that opened this window (:attr:`reply`)."""
         self.result = result
         self.extraction = getattr(result, "extraction", None)
+        if self.reply is not None and self.reply_armed:
+            self.send_back()
+        self.reply_armed = True
+
+    def send_back(self) -> bool:
+        """Give the current IRF to the tool that opened this window (``reply``)."""
+        if self.reply is None or self.result is None:
+            return False
+        x = self.extraction
+        text = x.text if x is not None else "blind estimate"
+        parts = self.halves()
+        inputs = {
+            "kind": self.source, "vv": parts[0], "vh": parts[-1], "dt_ns": self.dt,
+            "window": self.gate, "name": self.source_name, "dye": self.dye,
+            "listed_tau_ns": self.listed_tau_ns, "tau_ns": self.reference_tau_ns,
+            "rho_ns": self.reference_rho_ns, "model": self.irf_model, "buffer": self.buffer,
+        }
+        shifts = (float(self.shift_vv), float(self.shift_vh))
+        if self.received_shifts is not None and shifts != self.received_shifts:
+            inputs["shifts"] = shifts  # set here: they replace the calibrated ones
+        self.reply(np.asarray(self.result.irf, dtype=float), text, inputs)
+        self.status = "IRF sent back to Burst MLE."
+        return True
 
     def halves(self):
         """The loaded data as its polarisations: VV and VH, or the one curve."""
@@ -228,7 +272,7 @@ class IRFViewModel:
         takes. Returns an :class:`~..api.models.IRFEstimationResult` (the IRF, both halves when
         the data has two) carrying the extraction as ``extraction``.
         """
-        if self.source == "blind":
+        if self.source == "blind" and not self.vv_vh:
             # The canonical core applies manual background once; pass the measured data.
             return estimate_irf(
                 self.decay_data_original.copy(), self.dt, self.settings(quick), self.channel_axis.copy()
@@ -247,6 +291,8 @@ class IRFViewModel:
             )
         elif self.source == "scatter":
             found = X.irf_from_scatter(parts, buffer=self.buffer, window=self.gate, name=name)
+        elif self.source == "blind":  # VV | VH halves: the blind extraction every consumer calls
+            found = X.irf_from_decay(parts, window=self.gate, name=name)
         elif self.source == "non_burst":
             found = X.irf_from_prompt(
                 parts, model=self.irf_model, window=self.gate, baseline_quantile=0.2, name=name
@@ -279,7 +325,14 @@ class IRFViewModel:
         dt = float(payload.get("dt_ns") or 1.0)
         self.load_data(np.hstack([vv, vh]), dt=dt, source=str(payload.get("name") or ""))
         self.vv_vh = True
-        self.source = str(payload.get("kind") or "reference")
+        kind = str(payload.get("kind") or "reference")
+        self.source = kind if kind in dict(SOURCES) else "reference"
+        self.reply = payload.get("reply") if callable(payload.get("reply")) else None
+        self.reply_armed = False
+        shifts = payload.get("shifts")
+        self.received_shifts = (float(shifts[0]), float(shifts[1])) if shifts is not None else None
+        self.shift_vv, self.shift_vh = self.received_shifts or (0.0, 0.0)
+        self.shift_text = str(payload.get("shift_text") or "")
         window = payload.get("window")
         self.gate = tuple(int(v) for v in window) if window is not None else None
         self.buffer = [np.asarray(b, dtype=float) for b in payload["buffer"]] if payload.get("buffer") else None

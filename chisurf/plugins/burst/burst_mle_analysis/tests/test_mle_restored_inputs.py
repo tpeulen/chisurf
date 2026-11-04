@@ -117,9 +117,10 @@ def test_measured_irf_and_background_recover_the_planted_lifetime(inputs):
     assert 0.0 < outcome.two_istar < 1.5
 
 
-def test_a_reference_dye_gives_the_irf_and_a_scatter_beats_it(inputs, tmp_path):
-    """Without a scatter, the decay of a dye of known lifetime gives the IRF (here a Rh110 of
-    4 ns on the planted prompt); with a scatter beside it, the scatter is used."""
+def test_a_reference_dye_gives_the_irf_first_and_a_scatter_is_selectable(inputs, tmp_path):
+    """The decay of a dye of known lifetime gives the IRF (here a Rh110 of 4 ns on the planted
+    prompt); with a scatter beside it Auto still takes the dye (owner's choice: measured in the
+    same conditions as the sample), and "IRF measurement" takes the scatter."""
     rng = np.random.default_rng(11)
     tau_channels = 4.0e-9 / demo.MICRO_RESOLUTION_S
     micro = rng.normal(20.0, 2.0, 200000) + rng.exponential(tau_channels, 200000)
@@ -142,7 +143,10 @@ def test_a_reference_dye_gives_the_irf_and_a_scatter_beats_it(inputs, tmp_path):
     assert outcome.x[0] == pytest.approx(TRUE_TAU, rel=0.05)
 
     session.set_pattern_files("irf", "synthetic", [dye, inputs["irf"]])
+    assert session.irf_source["synthetic"].startswith("Rh110_ref.ptu")
+    assert session.choose_irf("synthetic", "measurement") == "measurement"
     assert session.irf_source["synthetic"].startswith("scatter measured_irf.ptu")
+    assert session.choose_irf("synthetic", "auto") == "reference"
 
 
 def test_one_for_all_sets_every_detector_and_per_detector_sets_one(inputs):
@@ -408,17 +412,33 @@ def test_the_one_for_all_and_save_vv_vhs_toggles_are_pressed(app, inputs):
         assert getattr(app.model, attr) is (not before), attr
 
 
-def test_the_irf_model_choice_is_picked_and_re_estimates_the_auto_irf(app, inputs):
+def test_the_irf_from_selector_picks_a_source_and_greys_the_missing_ones(app, inputs):
+    """The IRF tab is one selector: Auto by default; a source without its measurement is greyed
+    (a click does nothing) and its tooltip says why; another one is taken and fitted."""
     drv = open_demo(app, inputs)
     app.auto_extract()
     wait(drv)
-    gaussian = app.model.session.irf_np["synthetic"].copy()
-    drv.click_text("IRF/BG files")
-    drv.click_name("irf_model")
+    m = app.model
+    assert m.irf_from == "auto"
+    app.docks.focus("irf")
     drv.draw(3)
-    drv.click_text("Experimental")
-    assert app.model.irf_model == "experimental"
-    assert not np.array_equal(app.model.session.irf_np["synthetic"], gaussian)
+    options = dict(zip([k for k, _ in m.irf_from_choices()], m.irf_from_enabled()))
+    assert options["auto"] and options["outside"] and options["estimate"]
+    assert not options["reference"] and not options["measurement"]
+    notes = dict(zip([k for k, _ in m.irf_from_choices()], m.irf_from_notes()))
+    assert "No reference dye" in notes["reference"]
+    before = m.session.irf_np["synthetic"].copy()
+    drv.click_text("Reference dye")
+    drv.draw(2)
+    assert m.irf_from == "auto", "a greyed source cannot be picked"
+    drv.click_text("Estimate from the data")
+    drv.draw(2)
+    assert m.irf_from == "estimate" and m.session.irf_source["synthetic"].startswith("the burst decay")
+    assert not np.array_equal(m.session.irf_np["synthetic"], before)
+    assert m.fit_curves is not None
+    shown = " ".join(texts(drv.draw(2)))
+    for gone in ("IRF model", "VH shift", "IRF start", "IRF stop", "VV background level", "Use the estimate"):
+        assert gone not in shown, gone
 
 
 def test_the_tail_model_is_picked_in_the_selector(app, inputs):
@@ -479,7 +499,7 @@ def test_the_new_controls_are_drawn_at_the_small_size(app, inputs):
     assert "Opt" in shown and "Save fit" in shown
     drv.click_text("IRF/BG files")
     shown = " ".join(texts(drv.draw(2)))
-    for label in ("Measured IRF", "Measured background", "IRF model", "Save VV/VHs"):
+    for label in ("Measured IRF", "Measured background", "Save VV/VHs"):
         assert label in shown, label
 
 

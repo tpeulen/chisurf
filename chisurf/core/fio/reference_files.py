@@ -4,8 +4,9 @@ background come from.
 A lab measures the buffer (background), a scatterer (water, Ludox: the IRF) and reference dyes of
 known lifetime (Rh110, Alexa647) in the session of the sample; a lifetime fit should use them
 without the user hunting for them. They are found by name in the folders of the analysed files
-(and one level up), never the analysed files themselves. The reference dyes and their lifetimes
-are declared in ``reference_dyes.yaml``.
+(and one level up), never the analysed files themselves. The reference dyes (by file name) are
+declared in ``reference_dyes.yaml``; their lifetimes are the dye database's
+(:mod:`chisurf.core.fluorescence.dyes`, beside D).
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ __all__ = [
     "BACKGROUND_PATTERN",
     "IRF_PATTERN",
     "find_reference_measurements",
+    "dye_lifetime",
     "reference_dye",
     "reference_dyes",
 ]
@@ -31,21 +33,57 @@ BACKGROUND_PATTERN = re.compile(
 )
 
 
+def dye_lifetime(name: str) -> tuple[float | None, dict]:
+    """The fluorescence lifetime of the dye *name* from the dye database (beside its D), and the
+    entry's ``tau_solvent`` / ``tau_sources``; ``(None, {})`` when the database has none."""
+    from chisurf.core.fluorescence import dyes
+
+    try:
+        entry = dyes.get_dye(name) or {}
+    except Exception:  # noqa: BLE001 - a configured database that is absent: the curated export
+        entry = {}
+    if "tau_ns" not in entry:
+        try:
+            key = dyes._normalized(name)
+            entry = next(
+                (
+                    e for e in dyes._entries_from_package()
+                    if key in {dyes._normalized(n) for n in [e["name"], *e.get("aliases", [])]}
+                ),
+                entry,
+            )
+        except Exception:  # noqa: BLE001 - no export either: the lifetime is fitted
+            pass
+    tau = entry.get("tau_ns")
+    if tau is None:
+        return None, {}
+    return float(tau), {
+        "name": entry.get("name", name),
+        "solvent": entry.get("tau_solvent", ""),
+        "sources": list(entry.get("tau_sources") or []),
+    }
+
+
 @lru_cache(maxsize=1)
 def reference_dyes() -> tuple[dict, ...]:
-    """The reference dyes of ``reference_dyes.yaml``: ``name``, ``pattern`` (compiled), ``tau_ns``."""
+    """The reference dyes of ``reference_dyes.yaml``: ``name``, ``pattern`` (compiled), and
+    ``tau_ns`` from the dye database (:func:`dye_lifetime`; ``None`` when it has none)."""
     import yaml
 
     with open(Path(__file__).with_name("reference_dyes.yaml"), encoding="utf-8") as fh:
         rows = yaml.safe_load(fh) or []
-    return tuple(
-        {
-            "name": str(r["name"]),
-            "pattern": re.compile(rf"(?<![a-z0-9])(?:{r['pattern']})(?![a-z])", re.I),
-            "tau_ns": float(r["tau_ns"]),
-        }
-        for r in rows
-    )
+    out = []
+    for r in rows:
+        tau, info = dye_lifetime(str(r["name"]))
+        out.append(
+            {
+                "name": str(r["name"]),
+                "pattern": re.compile(rf"(?<![a-z0-9])(?:{r['pattern']})(?![a-z])", re.I),
+                "tau_ns": tau,
+                "tau_source": info,
+            }
+        )
+    return tuple(out)
 
 
 def reference_dye(path: str | Path) -> dict | None:

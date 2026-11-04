@@ -104,6 +104,7 @@ def test_real_estimate_and_export_survive_every_dock_and_narrow_view(tmp_path, m
     repo = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
     source = repo / "test/data/tcspc/Jordi_FRETsens/Donor/D0_14_TAC1024_DexDem.dat"
     app = make_app()
+    app.model.advanced = True  # every setting of the extraction (the window opens Simple)
     try:
         from chisurf.plugins.fluorescence_decay.irf_estimator.gui.app import receive_decay
 

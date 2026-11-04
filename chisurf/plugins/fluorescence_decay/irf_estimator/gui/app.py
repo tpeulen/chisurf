@@ -139,6 +139,17 @@ class _Form:
     def request_help(self):
         self._app.help_window.show()
 
+    def toggle_advanced(self):
+        """Simple (the source and the estimate) or Advanced (every setting of the extraction)."""
+        m = self._app.model
+        m.advanced = not m.advanced
+
+    def advanced_label(self):
+        return "Simple" if self._app.model.advanced else "Advanced"
+
+    def advanced_role(self):
+        return "primary" if self._app.model.advanced else ""
+
     def request_guide(self):
         self._app.tour.start()
 
@@ -280,7 +291,7 @@ class IRFEstimatorApp(ImApp):
         if self.future is not None:
             self.rerun = self.rerun or bool(quick)
             return False
-        if m.source == "blind":  # the tool's original estimate, with its parameters
+        if m.source == "blind" and not m.vv_vh:  # the tool's original estimate, with its parameters
             self.future = _EXECUTOR.submit(
                 estimate_irf,
                 m.decay_data_original.copy(),

@@ -28,6 +28,7 @@ def _reference(seed: int = 2):
 def test_a_reference_dye_handed_over_is_extracted_and_shown():
     vv, vh = _reference()
     app = IRFEstimatorApp()
+    app.model.advanced = False  # the window as it opens: Simple
     drv = Driver(app, (1200, 800))
     try:
         receive_irf_source(
@@ -51,5 +52,7 @@ def test_a_reference_dye_handed_over_is_extracted_and_shown():
             assert text in shown, label
         assert "Reference dye, Rh110: Rh110.ptu" in shown and "from its tail" in shown
         assert "Extracted IRF (scaled)" in shown
+        # Simple: the source and the estimate, the extraction's settings behind Advanced
+        assert "Source" in shown and "Advanced" in shown and "Lifetime (ns)" not in shown
     finally:
         app.close()

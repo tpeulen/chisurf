@@ -18,7 +18,11 @@ MLE, Burst IRF & Background and the MFD burst fit hand their histograms to it
 and take the IRF back; none extracts one of its own, and the tool's window shows
 and tunes the same extraction (Burst MLE's **IRF tool** button).
 
-In order of preference:
+In order of preference (`AUTO_ORDER`, the one order every "Auto" follows): a
+reference dye first -- the owner's choice, because it is measured in the same
+conditions as the sample -- then a scatter, then the photons outside the bursts,
+then a blind estimate. A scatter stays selectable (Burst MLE's **IRF from**). The
+sections below are in the order the sources were introduced.
 
 ## A scatter (water, Ludox)
 
@@ -109,10 +113,41 @@ multi-exponential sample leaves of its decay in the estimate is shed by fitting
 a skewed Gaussian to its prompt. An IRF estimated from the decay it then fits
 absorbs whatever the model lacks: a good fit is no evidence.
 
+## The time shift, calibrated against a reference dye
+
+An IRF measured or extracted apart from the sample need not sit at the sample's
+delay: count rate, pile-up, a cable or a filter between the two measurements
+move it by a fraction of a bin or a few bins, and a burst fit would take that
+into its lifetime. Before any fit Burst MLE therefore calibrates the shift of
+each detector's IRF, VV and VH on their own, against a reference dye: the dye's
+decay is fitted with the IRF convolved with its polarised exponential, an
+amplitude and a flat background per polarisation, **the shift free and the
+lifetime fixed** to the dye's known one (`calibrate_shifts`: a quarter-bin grid,
+then golden section; Poisson deviance). The lifetime is the dye database's,
+stored beside D with its source (`chisurf/core/fluorescence/dyes.py`, an exact
+export of MMFDB's curated set: Rh110 4.0 ns, Rh6G 4.08 ns, fluorescein 4.1 ns,
+Alexa 647 1.0 ns, ...); a dye without one has it fitted with the shift, which the
+status and the report say. A dye measured at **single-molecule conditions**
+(in 1 ms bins its median count under a fifth of the 99.5th percentile: dark most
+of the time, bright bursts) is preferred: the timing response of a SPAD moves
+with the photon count rate, so a reference measured at single-molecule rates
+has the same timing offset as the bursts, while a bulk dye measured at a high
+rate is shifted. A bulk measurement serves otherwise; the count rates of the
+reference and of the bursts are recorded, and a bulk reference at more than
+three times the bursts' rate is warned of (⚠ in the status, the numbers in its
+tooltip and in the calibration report). The shifts are the fit's
+`shift_sp` (VV) and `shift_ss` (VH), fixed; **Opt** refines them within half a
+bin. Shifts set in the IRF tool (Advanced) replace them.
+
+On a simulated Rh110 with the IRF measured 1.25 or −2.5 bins away, the shift is
+recovered within 0.06 bins (lifetime fixed) and 0.05 bins with the lifetime
+fitted (3.98 ns for 4.0). On the Burst Analysis demo the water scatter and the
+Rh110 share the instrument: the calibrated shift is within 0.4 bins of zero.
+
 ## What extraction is not
 
-The VH shift, the clip and the background levels a fit applies to its IRF
-belong to the fit (Burst MLE's IRF tab), not to the extraction.
+The clip and the background levels a fit applies to its IRF belong to the fit,
+not to the extraction; Burst MLE keeps them at their defaults.
 
 ## See also
 

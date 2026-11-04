@@ -15,8 +15,8 @@ histograms here and takes the IRF back; none extracts one of its own. Where the 
 * **blind**, from a fluorescence decay alone (truncated exponential + Richardson-Lucy,
   Gómez-Sánchez et al. 2024), the last resort -- :func:`irf_from_decay`.
 
-:func:`best_irf` picks among several: a scatter wins, else the reference dye with the most
-photons. Every function takes and returns plain NumPy histograms (one polarisation, or the two
+:func:`best_irf` picks among several in :data:`AUTO_ORDER`: a reference dye first (measured in
+the same conditions as the sample), then a scatter, then the non-burst photons, then blind. Every function takes and returns plain NumPy histograms (one polarisation, or the two
 halves VV | VH); reading photon files is the caller's (its reader settings, gates, binning).
 
 What a fit then does to an IRF (VH shift, clip, background levels) is the fit's business, not
@@ -34,7 +34,10 @@ import numpy as np
 __all__ = [
     "IrfResult",
     "R0",
+    "AUTO_ORDER",
+    "ShiftCalibration",
     "best_irf",
+    "calibrate_shifts",
     "gaussian_prompt",
     "irf_from_decay",
     "irf_from_prompt",
@@ -657,10 +660,157 @@ def irf_from_decay(
 
 
 # -- choice -------------------------------------------------------------------------------- #
+#: Which source an automatic choice takes first (owner's choice, 2026-11-04): a reference dye --
+#: measured in the same conditions as the sample, its IRF recovered by deconvolution -- then a
+#: scatter measurement, then the photons outside the bursts, then the blind estimate. Every
+#: consumer's "Auto" follows this one order (:func:`best_irf`, Burst MLE's IRF selector).
+AUTO_ORDER = ("reference", "scatter", "non_burst", "blind")
+
+
 def best_irf(results: Iterable[IrfResult | None], min_counts: float = 0.0) -> IrfResult | None:
-    """The best of several extractions: a scatter wins over every dye; of the dyes, the one with
-    the most photons in its weaker polarisation; ``None`` when none has *min_counts* in both."""
+    """The best of several extractions, in :data:`AUTO_ORDER`: a reference dye before a scatter;
+    of several of one kind, the one with the most counts in its weaker polarisation; ``None``
+    when none has *min_counts* in both."""
     usable = [r for r in results if r is not None and r.counts and min(r.counts) >= min_counts]
     if not usable:
         return None
-    return max(usable, key=lambda r: (r.source == "scatter", min(r.counts)))
+    rank = {kind: i for i, kind in enumerate(AUTO_ORDER)}
+    return min(usable, key=lambda r: (rank.get(r.source, len(rank)), -min(r.counts)))
+
+
+# -- time-shift calibration ------------------------------------------------------------------ #
+@dataclass
+class ShiftCalibration:
+    """The IRF's time shift against a reference dye's decay, per polarisation, in bins.
+
+    ``shift_vv`` / ``shift_vh`` move the IRF the way a fit moves it (linear interpolation of the
+    fraction, :func:`chisurf.core.fluorescence.mle.irf.interpolate_shift`): positive is later.
+    ``tau_ns`` is the lifetime the fit used -- the dye's known one (``tau_known``) or fitted.
+    """
+
+    shift_vv: float
+    shift_vh: float
+    tau_ns: float
+    tau_known: bool
+    rho_ns: float | None
+    deviance: float
+    text: str = ""
+    info: dict[str, Any] = field(default_factory=dict)
+
+
+def _decay_model(irf: np.ndarray, kernel: np.ndarray, shift: float) -> np.ndarray:
+    from chisurf.core.fluorescence.mle.irf import interpolate_shift
+
+    moved = interpolate_shift(np.clip(np.asarray(irf, dtype=float), 0.0, None), shift)
+    n = moved.size
+    return np.fft.irfft(np.fft.rfft(moved) * np.fft.rfft(kernel[:n], n), n)
+
+
+def _poisson_fit(data: np.ndarray, shape: np.ndarray, mask: np.ndarray) -> float:
+    """Poisson deviance of ``a * shape + b`` fitted to *data* in *mask* (a, b >= 0, by a few
+    Newton steps on the likelihood from the least-squares start)."""
+    y, f = data[mask], shape[mask]
+    if f.sum() <= 0:
+        return np.inf
+    A = np.vstack([f, np.ones_like(f)]).T
+    w = 1.0 / np.maximum(y, 1.0)
+    a, b = np.linalg.lstsq(A * np.sqrt(w)[:, None], y * np.sqrt(w), rcond=None)[0]
+    a, b = max(a, 1e-12), max(b, 1e-9)
+    for _ in range(20):
+        m = np.maximum(a * f + b, 1e-12)
+        r = y / m - 1.0
+        g = np.array([np.dot(r, f), r.sum()])
+        h = np.array([[np.dot(y / m**2, f * f), np.dot(y / m**2, f)], [np.dot(y / m**2, f), (y / m**2).sum()]])
+        try:
+            step = np.linalg.solve(h + 1e-12 * np.eye(2), g)
+        except np.linalg.LinAlgError:
+            break
+        a, b = max(a + step[0], 1e-12), max(b + step[1], 1e-9)
+        if np.all(np.abs(step) < 1e-9 * (1 + np.abs([a, b]))):
+            break
+    m = np.maximum(a * f + b, 1e-12)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        term = np.where(y > 0, y * np.log(y / m), 0.0)
+    return float(2.0 * np.sum(term - (y - m)))
+
+
+def _best_shift(data, irf, kernel, mask, max_shift: float) -> tuple[float, float]:
+    """The shift minimising the deviance: a grid of quarter bins, then golden section."""
+    grid = np.arange(-max_shift, max_shift + 1e-9, 0.25)
+    scores = [_poisson_fit(data, _decay_model(irf, kernel, s), mask) for s in grid]
+    k = int(np.argmin(scores))
+    lo, hi = grid[max(0, k - 1)], grid[min(len(grid) - 1, k + 1)]
+    best = _golden(lambda s: _poisson_fit(data, _decay_model(irf, kernel, s), mask), lo, hi, 0.01)
+    return float(best), _poisson_fit(data, _decay_model(irf, kernel, best), mask)
+
+
+def calibrate_shifts(
+    parts: Sequence[np.ndarray],
+    irf_parts: Sequence[np.ndarray],
+    dt_ns: float,
+    *,
+    tau_ns: float | None = None,
+    rho_ns: float | None = None,
+    window: tuple[int, int] | None = None,
+    max_shift: float = 5.0,
+    name: str = "reference dye",
+) -> ShiftCalibration:
+    """The time shift of the IRF against a reference dye's decay, VV and VH on their own.
+
+    The dye's decay is fitted with the IRF convolved with its polarised exponential
+    (:func:`polarised_kernels`), an amplitude and a flat background per polarisation, the
+    shift free and the lifetime **fixed** to *tau_ns* (the dye database's). Without a known
+    lifetime it is fitted too (the shift and the lifetime trade off a little: said in ``text``).
+    What the shift absorbs: the different delays of the IRF's and the dye's measurements --
+    detector count rate, pile-up, a cable or a filter between them -- which a burst fit would
+    otherwise take into its lifetime.
+
+    Parameters
+    ----------
+    parts, irf_parts : sequence of numpy.ndarray
+        The dye's counts and the IRF, VV then VH (or one polarisation), on the same bins.
+    dt_ns : float
+        Bin width.
+    tau_ns, rho_ns : float, optional
+        The dye's lifetime and rotational correlation time (``None``: fitted / no rotation).
+    window : tuple of int, optional
+        ``[start, stop)`` bins the fit sees (the detector's gate).
+    max_shift : float
+        The largest shift searched, bins.
+    """
+    parts = [np.asarray(p, dtype=float) for p in parts]
+    irf_parts = [np.asarray(p, dtype=float) for p in irf_parts]
+    n = parts[0].size
+    lo, hi = _window(n, window)
+    mask = np.zeros(n, dtype=bool)
+    mask[lo:hi] = True
+    two = len(parts) > 1 and not np.array_equal(parts[0], parts[1])
+    known = tau_ns is not None and tau_ns > 0
+
+    def fit(tau: float) -> tuple[list[float], float]:
+        kv, kh = polarised_kernels(n, dt_ns, tau, rho_ns if two else None)
+        out, total = [], 0.0
+        for data, irf, kernel in zip(parts, irf_parts, (kv, kh)):
+            s, d = _best_shift(data, irf, kernel, mask, max_shift)
+            out.append(s)
+            total += d
+        return out, total
+
+    if known:
+        tau = float(tau_ns)
+    else:
+        magic = parts[0] + 2.0 * parts[1] if two else parts[0]
+        start = reference_tail_lifetime(magic, dt_ns, window=window) or 2.0
+        tau = float(np.exp(_golden(lambda lt: fit(float(np.exp(lt)))[1], np.log(start / 2), np.log(start * 2), 0.01)))
+    shifts, deviance = fit(tau)
+    if len(shifts) == 1:
+        shifts = shifts * 2
+    how = "known" if known else "fitted (no lifetime in the dye database)"
+    text = (
+        f"shift VV {shifts[0]:+.2f}, VH {shifts[1]:+.2f} bins against {name} "
+        f"(lifetime {tau:.2f} ns {how})"
+    )
+    return ShiftCalibration(
+        shifts[0], shifts[1], tau, known, rho_ns, deviance, text,
+        {"name": name, "window": (lo, hi), "dt_ns": float(dt_ns)},
+    )

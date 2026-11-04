@@ -9,6 +9,45 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
+**Burst MLE's IRF "for dummies" and the tuned IRF coming back (2026-11-04).** Owner: "by default
+use the irf extraction tool. when click irf tool, computed irf must be feed back. rm ctrl from
+IRF in MLE, just leave selector" and "extract irf from ref dyes by default". Burst MLE's IRF tab is
+one radio selector **IRF from** (Auto / IRF measurement / Reference dye / Outside the bursts /
+Estimate from the data, plus "IRF tool (tuned)" once one came back), greyed per source by emtk
+0.1.44's `enabled_source` / `descriptions_source`; a one-word status (details in its tooltip), the
+plot, **IRF tool**. Gone from MLE: Measured IRF input (pipeline: the IRF/BG files tab is hidden;
+standalone keeps it), IRF model, VH shift, IRF start/stop, background levels, Use the estimate, the
+IRF-range drag lines (the fit still subtracts 0.02 and Opt still searches the shifts). Engine:
+`MleSession.irf_choice` / `irf_candidates` / `apply_irf_choice` / `choose_irf` / `take_tuned_irf` /
+`irf_options`; Auto follows the tool's `extraction.AUTO_ORDER` (reference dye, scatter, non-burst,
+blind; `best_irf` ranks by it). Round trip: the payload carries `reply`; the tool sends every
+estimate the user makes (not the one on opening) back, MLE takes it on its next frame
+(`_take_tuned`), refits, and picking another source asks once (`irf_confirm`). The IRF tool opens
+Simple (Source + Estimate), **Advanced** button for every setting. Test:
+`test_irf_from_the_irf_tool.py::test_an_irf_tuned_in_the_irf_tool_comes_back_and_is_fitted`.
+
+**IRF time shift calibrated against a reference dye (2026-11-04).** Owner: "before fitting, optimize
+the time shifts; a reference dye at single-molecule conditions is the reference, otherwise the
+reference dyes; lifetimes of ref dyes ideally known." `extraction.calibrate_shifts` fits the dye's
+decay with the IRF (polarised kernel, amplitude + flat background per polarisation, Poisson
+deviance, quarter-bin grid + golden section), shifts VV/VH free, lifetime fixed (fitted when
+unknown). `MleSession.calibrate_shift` runs after every IRF choice (`apply_irf_choice`), prefers
+records with `single_molecule()` (1 ms bins: median < 0.2 x p99.5) because SPAD timing moves with
+the count rate (owner; stated as the instrument's behaviour, no citation at hand), records the
+reference's and the bursts' count rates (`burst_count_rate_khz`) and warns (status ⚠, tooltip,
+report `warning`) for a bulk reference above 3x the bursts' rate; sets the detector's `shift_sp`
+/ `shift_ss`; Opt refines them within +-0.5 bin; the IRF tool's Advanced Shift VV/VH go back as
+`shift_override`. Lifetimes: MMFDB `reference_diffusion.json` gained `tau_ns` / `tau_solvent` /
+`tau_sources` (mmfdb ea052d6, stored as probe property `tau_fl`), recopied into
+`chisurf/core/fluorescence/reference_diffusion.json`; `reference_dyes.yaml` lost its own tau
+column, `reference_files.dye_lifetime` reads the database. Report: `calibration_report.build_report(
+irf_shift=...)` (hub `_update_report`, MLE `on_calibrated`). Measured: injected 1.25 / -2.5 bins
+recovered within 0.06 bins (tau fixed), 0.05 with tau fitted (3.98 for 4.0); demo scatter vs Rh110
+within 0.4 bins of 0. Open: (a) Data Selection has no "single-molecule" tag for a reference row --
+the flag is inferred from the photon stream only; (b) Cy5, Alexa 488, Rh B have no lifetime in the
+database yet (no source at hand) -- they are fitted; (c) the integer VH shift (`shift`, data and IRF
+together) is not calibrated, only the IRF's sub-bin shifts against the dye.
+
 **One IRF extraction tool (2026-11-04).** Owner: "IRF extraction not good. Use the logic of the IRF
 extraction tool. Do not duplicate: a single IRF extraction tool/plugin that is used." `irf_estimator`
 is that tool: `core/extraction.py` holds every IRF source -- scatter (`irf_from_scatter`), reference
@@ -29,8 +68,7 @@ DNA13bp_3 G|G with Rh110: smooth IRF, 2I* 20.93 -> 20.91, chi2r 29.1 -> 27.9. Op
 (~3-bin) IRF still comes out ~30 ps late/wide from a reference -- the stopped deconvolution; a
 Tikhonov/positivity solver or more iterations with a sharper stop could close it; (b) the blind
 mode of the window still runs the tttrlib engine with its own parameters, not `irf_from_decay`'s
-trim; (c) the round trip back (a tuned IRF from the window into Burst MLE) is not wired -- Transfer
-registers a dataset, Burst MLE's Measured IRF takes photon streams only.
+trim; (c) done 2026-11-04: the round trip back is wired (see above).
 
 1. Measure: **the Anisotropy Wizard's example** — Load example → Load / reload data → Create fits → Fit, untouched:
    χ²ᵣ 0.99, τ 3.997 ns, ρ 1.999 ns, r0 0.381 (truth 4 / 2 / 0.38). Each fit uses its IRF only over the pulse's

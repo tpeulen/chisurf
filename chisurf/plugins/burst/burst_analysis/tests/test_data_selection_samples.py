@@ -264,8 +264,9 @@ def test_without_calibration_files_the_workflow_goes_on_with_a_warning(demo_file
 
 
 def test_irf_and_buffer_files_reach_burst_mle(demo_files):
-    """The workflow context hands Data Selection's files to Burst MLE per detector; the engine
-    takes the IRF from the IRF measurement and the buffer rate from the buffer."""
+    """The workflow context hands Data Selection's files to Burst MLE per detector; Auto takes
+    the IRF from the reference dye first (the owner's order: measured like the sample), the IRF
+    measurement stays selectable, and the buffer gives the buffer rate."""
     from chisurf.plugins.burst.burst_analysis.workflow_context import BurstWorkflowContext
     from chisurf.plugins.burst.burst_mle_analysis import engine
     from chisurf.plugins.burst.burst_mle_analysis.gui.model import MleViewModel
@@ -286,9 +287,13 @@ def test_irf_and_buffer_files_reach_burst_mle(demo_files):
     model.set_setup(copy.deepcopy(demo.SETUP))
     model.prepare_patterns([str(demo_files["measurement"])], references)
     session = model.session
-    assert session.irf_files["G|G"] == [Path(demo_files["irf"])]
+    assert sorted(session.irf_files["G|G"]) == sorted(
+        [Path(demo_files["irf"]), Path(demo_files["reference"])]
+    )
     assert session.bg_files["G|G"] == [Path(demo_files["buffer"])]
-    assert session.irf_source["G|G"].startswith("the IRF measurement water_irf.ptu")
+    assert "Rh110_ref.ptu" in session.irf_source["G|G"]
+    session.choose_irf("G|G", "measurement")
+    assert session.irf_source["G|G"].startswith("scatter water_irf.ptu")
     assert model.buffer_rate("G|G") == pytest.approx(sum(demo.TRUTH["background_khz"]), rel=0.03)
     assert "B_G|G" in model.irf_source_text()
 

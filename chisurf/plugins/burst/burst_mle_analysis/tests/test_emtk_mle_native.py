@@ -182,6 +182,10 @@ def test_the_parameter_table_edits_a_start_value_and_a_fixed_flag(fitted):
     # double click the Start cell of tau (the first '4' under the Start column), type, Enter
     rec = {r["name"]: r for r in window.model.parameter_records()}
     assert rec["tau"]["start"] == 4.0 and rec["gamma"]["fixed"] is False
+    # the table sits under the Input section and the detector: scroll its rows on screen
+    for _ in range(3):
+        drv.app.wheel(200, 400, -3.0)
+        drv.draw(1)
     cell = drv.text_rect(drv.draw(2), "4")
     drv.click((cell[0], cell[1], cell[2], cell[3]), clicks=2)
     assert window_table(window).editing is not None, (
@@ -210,6 +214,9 @@ def test_the_parameter_table_edits_a_start_value_and_a_fixed_flag(fitted):
     assert window.model.fix_gamma is True and window.model.parameter_records()[1]["fixed"] is True
     drv.click((header[0] + 4, row[1], 20.0, row[3]))
     assert window.model.fix_gamma is False
+    for _ in range(12):  # back to the top: the module's next tests click the buttons there
+        drv.app.wheel(200, 400, 3.0)
+        drv.draw(1)
 
 
 def test_the_binning_choice_re_estimates_the_patterns_and_refits(fitted):
@@ -366,8 +373,16 @@ def test_guide_targets_are_drawn_and_the_awaited_steps_are_released_by_presses(a
             "decay",
             "results",
             "irf_measurement:workspace_input_rows",
-        ):  # in the plot tabs / the files tab
+            "irf_from",
+        ):  # in the plot tabs / the files tab / the IRF tab (drawn when its step shows it)
             assert key in app.item_rects or key in app.form.rects, key
+    irf_step = next(i for i, step in enumerate(steps) if step.get("target", {}).get("name") == "irf_from")
+    app.start_guide()
+    app.tour.start(irf_step)  # the step shows the IRF tab, where the selector is
+    drv.draw(3)
+    assert "irf_from" in app.item_rects
+    app.tour.active = False
+    app.docks.focus("controls")
     auto_step = next(
         i
         for i, step in enumerate(steps)
@@ -450,8 +465,7 @@ def test_the_detector_calibration_and_the_anisotropies_are_drawn(fitted):
     window, drv = fitted
     shown = " ".join(texts(drv.draw(3)))
     assert "r scatter" in shown and "r experimental" in shown
-    window.docks.focus("irf")  # the tab ("IRF" is also an entry of the plot's legend)
-    shown = " ".join(texts(drv.draw(3)))
+    # beside the detector (the IRF tab holds only where the IRF comes from)
     assert "G 1.0000, l1 0.0308, l2 0.0368." in shown
     assert "Background rate:" in shown and "kHz" in shown
 
@@ -468,7 +482,7 @@ def test_the_current_file_and_the_inspected_bursts_file_are_named(fitted):
     drv.click_text("Decay and fit")
 
 
-def test_the_window_fields_and_the_dragged_lines_move_the_fit_window_and_the_irf_range(fitted):
+def test_the_window_fields_and_the_dragged_lines_move_the_fit_window(fitted):
     """Every input shows in the decay plot: Window stop narrows the green band (also inside a gate),
     and letting go of a dragged line writes the field and fits again."""
     window, drv = fitted
@@ -487,8 +501,8 @@ def test_the_window_fields_and_the_dragged_lines_move_the_fit_window_and_the_irf
     window._dragging = {("micro_time_start", 1): lo + 2 - 0.5}
     drv.draw(1)
     assert model.micro_time_start == lo + 2 and model.fit_curves.fit_windows[1][0] == half + lo + 2
-    # an IRF line: its stop is the last bin kept
-    irf_lo, irf_hi = model.fit_curves.irf_windows[0]
-    window._dragging = {("irf_stop", 0): irf_hi - 1 - 0.5}
+    # the IRF range is shown, not dragged: the IRF's settings are the IRF tool's
+    irf_before = (model.irf_start, model.irf_stop)
+    window._dragging = {("irf_stop", 0): model.fit_curves.irf_windows[0][1] - 1.5}
     drv.draw(1)
-    assert model.irf_stop == irf_hi - 2 and model.fit_curves.irf_windows[0][1] <= irf_hi - 1
+    assert (model.irf_start, model.irf_stop) == irf_before

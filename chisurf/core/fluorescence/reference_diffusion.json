@@ -18,6 +18,18 @@
           "PB/CF"
         ]
       }
+    ],
+    "tau_ns": 4.08,
+    "tau_solvent": "water",
+    "tau_sources": [
+      {
+        "citation": "Boens N. et al. (2007) Fluorescence lifetime standards for time and frequency domain fluorescence spectroscopy. Anal. Chem. 79, 2137-2149",
+        "url": "https://doi.org/10.1021/ac062160k",
+        "methods": [
+          "TCSPC",
+          "frequency domain"
+        ]
+      }
     ]
   },
   {
@@ -68,6 +80,17 @@
           "PFG-NMR"
         ]
       }
+    ],
+    "tau_ns": 4.0,
+    "tau_solvent": "water",
+    "tau_sources": [
+      {
+        "citation": "ISS, Lifetime data of selected fluorophores (technical note), rhodamine 110 in water",
+        "url": "",
+        "methods": [
+          "TCSPC"
+        ]
+      }
     ]
   },
   {
@@ -85,6 +108,18 @@
           "PB/CF"
         ]
       }
+    ],
+    "tau_ns": 4.1,
+    "tau_solvent": "0.1 M NaOH",
+    "tau_sources": [
+      {
+        "citation": "Boens N. et al. (2007) Fluorescence lifetime standards for time and frequency domain fluorescence spectroscopy. Anal. Chem. 79, 2137-2149",
+        "url": "https://doi.org/10.1021/ac062160k",
+        "methods": [
+          "TCSPC",
+          "frequency domain"
+        ]
+      }
     ]
   },
   {
@@ -98,6 +133,17 @@
         "url": "https://www.picoquant.com/images/uploads/page/files/7353/appnote_diffusioncoefficients.pdf",
         "methods": [
           "2fFCS"
+        ]
+      }
+    ],
+    "tau_ns": 4.1,
+    "tau_solvent": "water",
+    "tau_sources": [
+      {
+        "citation": "Thermo Fisher Scientific, Molecular Probes Handbook: fluorescence lifetimes of the Alexa Fluor dyes (water)",
+        "url": "",
+        "methods": [
+          "TCSPC"
         ]
       }
     ]
@@ -119,6 +165,17 @@
           "2fFCS"
         ]
       }
+    ],
+    "tau_ns": 4.1,
+    "tau_solvent": "water",
+    "tau_sources": [
+      {
+        "citation": "ATTO-TEC GmbH, product information (fluorescence lifetime in water)",
+        "url": "",
+        "methods": [
+          "TCSPC"
+        ]
+      }
     ]
   },
   {
@@ -137,6 +194,17 @@
         "methods": [
           "2fFCS",
           "PFG-NMR"
+        ]
+      }
+    ],
+    "tau_ns": 1.8,
+    "tau_solvent": "water",
+    "tau_sources": [
+      {
+        "citation": "ATTO-TEC GmbH, product information (fluorescence lifetime in water)",
+        "url": "",
+        "methods": [
+          "TCSPC"
         ]
       }
     ]
@@ -212,6 +280,17 @@
           "2fFCS"
         ]
       }
+    ],
+    "tau_ns": 1.0,
+    "tau_solvent": "water",
+    "tau_sources": [
+      {
+        "citation": "Thermo Fisher Scientific, Molecular Probes Handbook: fluorescence lifetimes of the Alexa Fluor dyes (water)",
+        "url": "",
+        "methods": [
+          "TCSPC"
+        ]
+      }
     ]
   },
   {
@@ -229,6 +308,17 @@
         "url": "https://www.picoquant.com/images/uploads/page/files/7353/appnote_diffusioncoefficients.pdf",
         "methods": [
           "2fFCS"
+        ]
+      }
+    ],
+    "tau_ns": 3.2,
+    "tau_solvent": "water",
+    "tau_sources": [
+      {
+        "citation": "Thermo Fisher Scientific, Molecular Probes Handbook: fluorescence lifetimes of the Alexa Fluor dyes (water)",
+        "url": "",
+        "methods": [
+          "TCSPC"
         ]
       }
     ]
