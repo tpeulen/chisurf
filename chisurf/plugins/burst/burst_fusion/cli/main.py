@@ -44,19 +44,37 @@ def _channel_definition(detectors_file: str | None, setup_name: str | None):
     Returns
     -------
     detectors, windows : dict or None
+        The detectors and the windows record (``tttrlib.micro_time_windows``: the PIE windows,
+        the detectors' gates and the channel width they are in -- the file's
+        ``micro_time_resolution_ps`` or the setup's reading routine; unknown: raw channels).
         ``None`` means "use whatever the folder recorded".
     """
     if detectors_file:
         payload = json.loads(pathlib.Path(detectors_file).read_text(encoding="utf-8"))
-        return payload.get("detectors") or payload, payload.get("windows") or {}
+        detectors = payload.get("detectors") or payload
+        return detectors, _windows_record(payload, detectors)
     if setup_name:
         from chisurf.core.data_io.detector_setups import load_detector_setups
 
         setup = (load_detector_setups().get("setups") or {}).get(setup_name)
         if not setup:
             raise click.ClickException(f"no saved detector setup named {setup_name!r}")
-        return setup.get("detectors") or {}, setup.get("windows") or {}
+        detectors = setup.get("detectors") or {}
+        return detectors, _windows_record(setup, detectors)
     return None, None
+
+
+def _windows_record(definition: dict, detectors: dict) -> dict:
+    """The windows record of a definition file or saved setup: its windows, the detectors'
+    gates and the channel width both are in (``None`` when it does not say)."""
+    from tttrlib import micro_time_windows, setup_gates, setup_micro_time_resolution
+
+    width = definition.get("micro_time_resolution_ps")
+    if width is None:
+        seconds = setup_micro_time_resolution(definition)
+        width = seconds * 1e12 if seconds else None
+    return micro_time_windows(definition.get("windows") or {},
+                              setup_gates({"detectors": dict(detectors or {})}), width)
 
 
 def _shared_options(function):

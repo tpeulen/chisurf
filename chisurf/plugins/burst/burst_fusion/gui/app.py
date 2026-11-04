@@ -537,15 +537,19 @@ class BurstFusionApp(ImApp):
         self.model.set_folder(str(folder))
 
     def set_channel_settings(self, settings):
-        self.model.detectors = dict(settings.get("detectors") or {})
-        self.model.windows = dict(settings.get("windows") or {})
+        from tttrlib import setup_micro_time_resolution
+
+        width = setup_micro_time_resolution(settings)
+        self.model.set_definition({
+            "detectors": dict(settings.get("detectors") or {}),
+            "windows": dict(settings.get("windows") or {}),
+            "micro_time_resolution_ps": width * 1e12 if width else None,
+        })
         self.model.windows_check = None
         self.model._preflight_definition = None
         import json
 
-        self.controller.channel_text = json.dumps(
-            {"detectors": self.model.detectors, "windows": self.model.windows}, indent=2
-        )
+        self.controller.channel_text = json.dumps(self.model.definition(), indent=2)
 
     @property
     def output_folder(self):

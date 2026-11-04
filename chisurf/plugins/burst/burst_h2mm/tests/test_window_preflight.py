@@ -33,8 +33,11 @@ WRONG = [StreamDef("G|G", [0], [(2048, 4094)]), StreamDef("R|G", [1], [(0, 2047)
 
 
 def stream_window_warnings(tttrs, stream_defs):
-    return window_warnings(tttrs, stream_detectors(
-        {s.name: (s.channels, s.micro_time_ranges) for s in stream_defs}))
+    from chisurf.core.fluorescence.burst.streams import gates_record
+
+    detectors = stream_detectors(
+        {s.name: (s.channels, s.micro_time_ranges) for s in stream_defs})
+    return window_warnings(tttrs, gates_record(detectors, None), detectors)
 
 
 @pytest.fixture(scope="module")

@@ -55,7 +55,7 @@ def build_setup(windows: dict, donor, acceptor, period: int) -> dict:
 
     ``R|G`` and ``R|R`` are the *same physical detector* listed twice, once per excitation window (the Seidel
     convention), which makes a two-detector ALEX measurement readable by tools written for a three-detector MFD
-    setup.
+    setup. ``windows`` are the two laser gates, keyed by laser colour (``green`` / ``red``), not detectors.
 
     Parameters
     ----------

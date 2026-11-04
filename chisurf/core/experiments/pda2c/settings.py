@@ -194,6 +194,10 @@ class PdaReaderSettings(WindowsPreflightMixin):
         self.reader.detector_setup = name
         self.reader.detector_names = inputs.preferred_detectors(self._detectors(), self.n_colors)
         reading = self.setups[name].get("tttr_reading") or {}
+        from tttrlib import setup_micro_time_resolution
+
+        width = setup_micro_time_resolution(self.setups[name])
+        self.reader.micro_time_resolution_ps = width * 1e12 if width else None
         routine = reading.get("file_type") if isinstance(reading, dict) else None
         if isinstance(routine, str) and routine in self._routines:
             self.reader.reading_routine = routine
@@ -438,6 +442,7 @@ class PdaReaderSettings(WindowsPreflightMixin):
     def take_preflight_setup(self, setup: dict) -> None:
         """Write the detected excitation periods onto the reader (earliest first)."""
         self.reader.take_windows(setup.get("windows") or {})
+        self.reader.micro_time_resolution_ps = (setup.get("tttr_reading") or {}).get("micro_time_resolution")
 
     def set_use(self, path: str, use: bool) -> None:
         """Tick or untick *path*: only ticked entries are read."""

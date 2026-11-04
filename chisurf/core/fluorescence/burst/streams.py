@@ -16,6 +16,11 @@ holds almost none of its photons, or lies beyond the data's channels. Detectors 
 streams came from that share a stream's routing channels are checked with them
 (:func:`preflight_detectors`), so PIE's split of one acceptor detector into prompt (``red``) and
 delayed (``yellow``) is understood. Nothing is changed: the line goes into the warnings.
+
+Ranges are channel numbers of a width: the streams travel with the width of the setup they came
+from (``micro_time_resolution_ps`` of :func:`fret_pair_from_workflow`, the windows record of
+:func:`gates_record`), so the check names a binning instead of proposing new windows, and an
+engine applies them in the measurement's channels (:func:`ranges_in_data`).
 """
 
 from __future__ import annotations
@@ -24,14 +29,23 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from tttrlib import ranges_from_inclusive, ranges_to_inclusive
+from tttrlib import (
+    micro_time_windows,
+    micro_time_windows_at,
+    ranges_from_inclusive,
+    ranges_to_inclusive,
+    setup_gates,
+    setup_micro_time_resolution,
+)
 
 from chisurf.core.fluorescence.excitation import windows_message, windows_preflight
 
 __all__ = [
     "FULL_MICRO_TIME",
     "fret_pair_from_workflow",
+    "gates_record",
     "preflight_detectors",
+    "ranges_in_data",
     "stream_detectors",
     "window_checks",
     "window_warnings",
@@ -51,11 +65,12 @@ def fret_pair_from_workflow(workflow_context: Mapping | None) -> dict[str, Any]:
     Returns
     -------
     dict
-        ``{"names": (donor, acceptor), "detectors": {...}, "settings": {...}}`` -- the detector
-        names in the setup (``"donor"`` / ``"acceptor"`` where it has fewer), the setup's
-        detectors (half-open gates, for :func:`preflight_detectors`) and the settings keywords
-        (``donor_channels``, ``donor_micro_time_ranges``, ``acceptor_*``, ``file_type``) for the
-        engine's settings dataclass.
+        ``{"names": (donor, acceptor), "detectors": {...}, "settings": {...},
+        "micro_time_resolution_ps": float | None}`` -- the detector names in the setup
+        (``"donor"`` / ``"acceptor"`` where it has fewer), the setup's detectors (half-open gates,
+        for :func:`preflight_detectors`), the settings keywords (``donor_channels``,
+        ``donor_micro_time_ranges``, ``acceptor_*``, ``file_type``) for the engine's settings
+        dataclass, and the channel width the gates are in (``None``: the setup does not say).
     """
     channel_settings = dict((workflow_context or {}).get("channel_settings") or {})
     detectors = {str(k): dict(v) for k, v in (channel_settings.get("detectors") or {}).items()
@@ -74,11 +89,46 @@ def fret_pair_from_workflow(workflow_context: Mapping | None) -> dict[str, Any]:
         )
     if reading.get("file_type"):
         settings["file_type"] = str(reading["file_type"])
+    width = setup_micro_time_resolution(channel_settings)
     return {
         "names": tuple((names + ["donor", "acceptor"][len(names):])[:2]),
         "detectors": detectors,
         "settings": settings,
+        "micro_time_resolution_ps": width * 1e12 if width else None,
     }
+
+
+def ranges_in_data(
+    ranges: Sequence[Sequence[int]] | None,
+    micro_time_resolution_ps: float | None,
+    tttr: Any,
+) -> list[tuple[int, int]]:
+    """Inclusive engine ranges given in channels of *micro_time_resolution_ps* in the channels
+    of *tttr* (what the engine applies). Unknown width: unchanged (raw). The ungated stream
+    (:data:`FULL_MICRO_TIME`) stays ungated."""
+    out = [(int(r[0]), int(r[1])) for r in (ranges or [])]
+    if not micro_time_resolution_ps or not out or out == [FULL_MICRO_TIME]:
+        return out
+    try:
+        res = float(tttr.header.micro_time_resolution)
+    except Exception:  # noqa: BLE001 - no header: nothing to convert to
+        return out
+    rec = micro_time_windows_at(
+        micro_time_windows(gates={"s": ranges_from_inclusive(out)},
+                           micro_time_resolution_ps=micro_time_resolution_ps), res)
+    return ranges_to_inclusive(rec["gates"].get("s"))
+
+
+def gates_record(
+    detectors: Mapping[str, Mapping],
+    micro_time_resolution_ps: float | None,
+    windows: Mapping | None = None,
+) -> dict:
+    """The windows record (``tttrlib.micro_time_windows``) of *detectors*' gates and *windows*
+    (``{name: [start, stop)}``), in channels of *micro_time_resolution_ps* (``None``: the width
+    is not known -- raw channels, which the pre-flight says)."""
+    return micro_time_windows(windows, setup_gates({"detectors": dict(detectors or {})}),
+                              micro_time_resolution_ps)
 
 
 def stream_detectors(
@@ -133,20 +183,30 @@ def preflight_detectors(
     return out
 
 
-def window_checks(tttrs: Mapping[str, Any], detectors: Mapping[str, Mapping],
-                  windows: Mapping | None = None) -> dict:
-    """The shared check of *detectors*' gates (and *windows*, when given) against every
-    measurement in *tttrs*.
+def window_checks(tttrs: Mapping[str, Any], windows: Mapping,
+                  detectors: Mapping[str, Mapping]) -> dict:
+    """The shared check of a windows record's gates (and windows) against every measurement in
+    *tttrs*.
 
-    Returns ``{name: WindowCheck or None}``; empty when no detector is gated (an ungated stream
-    takes every photon: nothing to check).
+    Parameters
+    ----------
+    tttrs : mapping
+        ``{name: tttrlib.TTTR}``.
+    windows : mapping
+        The windows record (:func:`gates_record`): the gates of *detectors*, any PIE windows and
+        the channel width they are in.
+    detectors : mapping
+        ``{name: {"chs": [...]}}`` -- the streams' routing channels.
+
+    Returns ``{name: WindowCheck or None}``; empty when nothing is gated and there are no windows
+    (an ungated stream takes every photon: nothing to check).
     """
-    if not any((d or {}).get("micro_time_ranges") for d in detectors.values()):
+    if not windows.get("gates") and not windows.get("windows"):
         return {}
     out: dict = {}
     for key, tttr in tttrs.items():
         try:
-            out[key] = windows_preflight(tttr, dict(windows or {}), detectors=dict(detectors))
+            out[key] = windows_preflight(tttr, windows, detectors=dict(detectors))
         except Exception:  # noqa: BLE001 - a stream that cannot be checked says nothing
             out[key] = None
     return out
@@ -154,10 +214,10 @@ def window_checks(tttrs: Mapping[str, Any], detectors: Mapping[str, Mapping],
 
 def window_warnings(
     tttrs: Mapping[str, Any],
+    windows: Mapping | None,
     detectors: Mapping[str, Mapping],
     *,
     checks: Mapping | None = None,
-    windows: Mapping | None = None,
 ) -> list[str]:
     """One line per measurement whose gates do not hold its excitation pulses.
 
@@ -165,12 +225,12 @@ def window_warnings(
     ----------
     tttrs : mapping
         ``{name: tttrlib.TTTR}`` -- the measurements the streams are read from.
+    windows : mapping
+        The windows record (:func:`gates_record`); may be ``None`` when *checks* are given.
     detectors : mapping
         From :func:`preflight_detectors` / :func:`stream_detectors`, or a setup's detectors.
     checks : mapping, optional
         Checks already made by :func:`window_checks` (not repeated).
-    windows : mapping, optional
-        PIE windows ``{name: [start, stop)}`` checked with the gates.
 
     Returns
     -------
@@ -178,7 +238,7 @@ def window_warnings(
         Empty when every measurement fits or nothing is gated. The line names the measurement
         when there is more than one.
     """
-    checks = window_checks(tttrs, detectors, windows) if checks is None else checks
+    checks = window_checks(tttrs, windows or {}, detectors) if checks is None else checks
     out: list[str] = []
     for key, check in checks.items():
         message = windows_message(check)

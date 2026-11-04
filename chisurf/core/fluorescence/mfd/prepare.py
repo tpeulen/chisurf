@@ -476,17 +476,41 @@ def burst_directory(folder: pathlib.Path | str) -> tuple[pathlib.Path, pathlib.P
         If no ``.bur`` tables can be found.
     """
     path = pathlib.Path(folder)
+
+    def _has_bur(d: pathlib.Path) -> bool:
+        return d.is_dir() and any(
+            p.suffix.lower() == ".bur" and not p.name.startswith(".")
+            for p in d.iterdir()
+            if p.is_file()
+        )
+
     if path.is_file() and path.suffix.lower() == ".bur":
         bur_dir = path.parent
-    elif path.is_dir() and any(path.glob("*.bur")):
+    elif _has_bur(path):
         bur_dir = path
     elif path.is_dir():
-        candidates = sorted(
-            child for child in path.iterdir() if child.is_dir() and any(child.glob("*.bur"))
-        )
-        if not candidates:
-            raise FileNotFoundError(f"no .bur tables under {path}")
-        bur_dir = candidates[0]
+        cand_dirs = [path / "bi4_bur", path / "bur"]
+        cand = next((d for d in cand_dirs if _has_bur(d)), None)
+        if cand is not None:
+            bur_dir = cand
+        else:
+            candidates = sorted(
+                child
+                for child in path.iterdir()
+                if child.is_dir() and not child.name.startswith(".") and _has_bur(child)
+            )
+            if not candidates:
+                for child in path.iterdir():
+                    if child.is_dir() and not child.name.startswith("."):
+                        sub_cand = next(
+                            (child / sub for sub in ("bi4_bur", "bur") if _has_bur(child / sub)),
+                            None,
+                        )
+                        if sub_cand is not None:
+                            candidates.append(sub_cand)
+            if not candidates:
+                raise FileNotFoundError(f"no .bur tables under {path}")
+            bur_dir = candidates[0]
     else:
         raise FileNotFoundError(f"{path} is neither a .bur file nor a directory")
 
@@ -717,8 +741,16 @@ def _streams_from_manifest(
     manifest = read_analysis_manifest(analysis_dir) or {}
     settings = manifest.get("settings") or {}
     detectors = settings.get("detectors")
+    if not detectors:
+        detectors = next(((source.get("settings") or {}).get("detectors")
+                          for source in manifest.get("sources") or []
+                          if (source.get("settings") or {}).get("detectors")), None)
     if not isinstance(detectors, Mapping) or not detectors:
         return None
+    return _streams_from_detectors(detectors, names)
+
+
+def _streams_from_detectors(detectors: Mapping, names: Sequence[str]) -> list[StreamDef] | None:
     out: list[StreamDef] = []
     for name in names:
         entry = detectors.get(name)
@@ -1002,6 +1034,7 @@ def _mean_micro_time_from_photons(
     streams: Sequence[StreamDef],
     tttrs: Mapping[str, Any],
     convention: PhotonIndexConvention,
+    window_records: Mapping[str, Mapping] | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Compute per-burst per-detector mean micro time and count from the photons.
 
@@ -1024,8 +1057,14 @@ def _mean_micro_time_from_photons(
     files = np.asarray(frame["First File"]).astype(object)
     stop_offset = convention.stop_offset
 
+    from chisurf.core.fluorescence.burst.streams import ranges_in_data
+
     cache: dict[str, tuple[np.ndarray, np.ndarray, float]] = {}
+    streams_by_file = {}
     for key, tttr in tttrs.items():
+        width = (window_records or {}).get(key, {}).get("micro_time_resolution_ps")
+        streams_by_file[key] = [StreamDef(s.name, s.channels, ranges_in_data(
+            s.micro_time_ranges, width, tttr)) for s in streams]
         resolution = float(getattr(tttr.header, "micro_time_resolution", 0.0) or 0.0)
         cache[key] = (
             np.asarray(tttr.routing_channels),
@@ -1044,7 +1083,7 @@ def _mean_micro_time_from_photons(
         if hi <= lo:
             continue
         mt = micro[lo:hi]
-        masks = _detector_masks(channels[lo:hi], mt, streams)
+        masks = _detector_masks(channels[lo:hi], mt, streams_by_file[key])
         for s in range(k):
             selected = masks[s]
             n_selected = int(selected.sum())
@@ -1099,16 +1138,27 @@ def prepare_burst_folder(
     from chisurf.core.fio.analysis_path import is_container_path
 
     preopened: dict[str, Any] | None = None
+    container_settings: dict[str, Any] = {}
     if is_container_path(folder):
         # A burst run of a measurement container (``m000.pto/<run>``): read as every burst analysis
         # reads a run, with the container's photon stream opened by the same reader.
         from chisurf.core.fio.fluorescence.burst import _read_burst_analysis_from_container
 
         frame, preopened = _read_burst_analysis_from_container(pathlib.Path(str(folder)))
+        from chisurf.core.fio.analysis_path import split_container_path
+        from chisurf.core.fio.fluorescence.burst_container import burst_table_name
+        from chisurf.core.fio.pto import Measurement
+
+        container_path, run = split_container_path(folder)
+        with Measurement.open(container_path, writable=False) as measurement:
+            name = burst_table_name(measurement, run)
+            uid = measurement._f.find(name) if name else 0
+            if uid:
+                container_settings = measurement.provenance(uid).get("settings") or {}
         analysis_dir = bur_dir = pathlib.Path(str(folder))
     else:
         analysis_dir, bur_dir = burst_directory(folder)
-        paths = sorted(bur_dir.glob("*.bur"))
+        paths = [p for p in sorted(bur_dir.glob("*.bur")) if not p.name.startswith(".")]
         if not paths:
             raise FileNotFoundError(f"no .bur tables in {bur_dir}")
         frame = load_bur_dataframe(paths)
@@ -1131,7 +1181,8 @@ def prepare_burst_folder(
     if streams is None:
         # A run records no detector definition beside it: it is inferred from the photons.
         resolved_streams = (
-            None if preopened is not None else _streams_from_manifest(analysis_dir, names)
+            _streams_from_detectors(container_settings.get("detectors") or {}, names)
+            if preopened is not None else _streams_from_manifest(analysis_dir, names)
         )
         stream_origin = "manifest"
         if resolved_streams is None:
@@ -1175,6 +1226,7 @@ def prepare_burst_folder(
         "n_sentinel_rows": n_sentinel,
         "n_bursts": row_count(frame),
         "stream_origin": stream_origin,
+        "container_settings": container_settings,
         "count_agreement": {},
         "n_empty": {name: int((counts[:, i] == 0).sum()) for i, name in enumerate(names)},
     }
@@ -1219,8 +1271,17 @@ def prepare_burst_folder(
     # detector definition and a plausible wrong answer.
     recomputed = None
     if need_photons:
+        records = {}
+        if stream_origin == "manifest":
+            from chisurf.core.fluorescence.excitation import stored_micro_time_windows
+
+            manifest = read_analysis_manifest(analysis_dir) or {}
+            for key in tttrs:
+                source = reading_settings_for(key, manifest)
+                records[key] = stored_micro_time_windows(
+                    container_settings or source.get("settings") or manifest.get("settings") or {})
         photon_micro, recomputed = _mean_micro_time_from_photons(
-            frame, resolved_streams, tttrs, convention
+            frame, resolved_streams, tttrs, convention, records
         )
         for i, name in enumerate(names):
             summary["count_agreement"][name] = float(np.mean(recomputed[:, i] == counts[:, i]))

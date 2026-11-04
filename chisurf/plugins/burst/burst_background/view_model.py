@@ -216,9 +216,12 @@ class BackgroundViewModel:
                 unreadable.append(os.path.basename(path))
                 continue
             scale = float(getattr(tttr.header, "macro_time_resolution", 1.0)) * 1000.0
+            from tttrlib import setup_micro_time_resolution
+            width = setup_micro_time_resolution(input_settings or {})
+            applied = _burst.background._applied_detectors(tttr, detectors, width * 1e12 if width else None)
             self._interphoton[path] = {
                 name: _burst.background._detector_interphoton_times(tttr, info, scale)
-                for name, info in detectors.items()
+                for name, info in applied.items()
             }
         if callable(cancel_check):
             cancel_check()

@@ -5,6 +5,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Event
 
+import tttrlib
+
 from emtk import im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
@@ -242,6 +244,7 @@ class BidToAnalysisApp(ImApp, TourTarget):
         self.cancel.clear()
         settings = copy.deepcopy(self.setup.model.get_settings())
         options = dict(
+            micro_time_resolution_ps=(tttrlib.setup_micro_time_resolution(settings) or 0) * 1e12 or None,
             windows=settings.get("windows") or None,
             detectors=settings.get("detectors") or None,
             selected_setup=self.setup.model.current_name or None,

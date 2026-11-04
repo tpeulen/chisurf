@@ -30,6 +30,8 @@ Findings (:class:`~.result.Issue` codes):
     A detector's micro-time gate starts beyond the data, holds none of the excitations the
     detector sees (a gate keeping one of them on purpose is fine), or holds almost none of its
     photons; the gate is proposed opened to the whole range.
+``resolution_unknown`` (info, from :func:`~.measure.check_setup`)
+    The windows do not say which channel width they are in; they are applied as raw channels.
 ``single_pulse`` / ``unclear`` (info)
     One excitation pulse (donor-only sample, or not PIE) or no clear pulse: nothing is checked
     against pulses; nothing is proposed.
@@ -135,7 +137,7 @@ def check_windows(
                     "resolution_mismatch",
                     "warning",
                     f"The windows are in {windows_resolution_s * 1e12:.4g} ps channels, the data in "
-                    f"{res * 1e12:.4g} ps: converted ("
+                    f"{res * 1e12:.4g} ps{_binning(ratio)}: converted ("
                     + ", ".join(f"{k} {win[k][0]}–{win[k][1]} → {conv[k][0]}–{conv[k][1]}"
                                 for k in win)
                     + ").",
@@ -313,6 +315,15 @@ def _check_gates(gates, detection, histograms, issues, unit, channels=None) -> d
     for d in broken:
         proposal[d] = [[0, n]]
     return proposal
+
+
+def _binning(ratio: float) -> str:
+    """Name a channel-width ratio that is a binning (``" (the data binned 4x finer)"``)."""
+    for r, word in ((ratio, "finer"), (1.0 / ratio if ratio else 0.0, "coarser")):
+        k = round(r)
+        if k >= 2 and abs(r - k) < 0.01 * k:
+            return f" (a binning: the data is {k}x {word})"
+    return " (another TAC range or binning)"
 
 
 def _fmt(ranges) -> str:

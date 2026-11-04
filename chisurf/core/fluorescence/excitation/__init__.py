@@ -38,6 +38,11 @@ from .result import (
 )
 from .setup import (
     GATE_CODES,
+    STORED_WINDOWS_KEY,
+    applied_windows,
+    setup_in_data,
+    stored_micro_time_windows,
+    windows_in_data,
     format_ranges,
     gate_check,
     gate_setup,
@@ -47,6 +52,11 @@ from .setup import (
 
 __all__ = [
     "GATE_CODES",
+    "STORED_WINDOWS_KEY",
+    "applied_windows",
+    "setup_in_data",
+    "stored_micro_time_windows",
+    "windows_in_data",
     "format_ranges",
     "gate_check",
     "gate_setup",

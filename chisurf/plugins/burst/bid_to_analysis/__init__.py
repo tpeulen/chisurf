@@ -296,7 +296,7 @@ def zip_output_folder(output_folder: pathlib.Path) -> pathlib.Path | None:
     return zip_path
 
 
-def window_warning(tttr, name: str, windows: dict | None, detectors: dict | None) -> str | None:
+def window_warning(tttr, name: str, windows: dict | None, detectors: dict | None, micro_time_resolution_ps: float | None = None) -> str | None:
     """The shared excitation-window pre-flight on the measurement a selection indexes into.
 
     Only windows the caller gave are checked (the default single window over the whole micro
@@ -312,9 +312,10 @@ def window_warning(tttr, name: str, windows: dict | None, detectors: dict | None
     if not windows:
         return None
     from chisurf.core.fluorescence.excitation import windows_message, windows_preflight
+    from chisurf.core.fluorescence.burst.streams import gates_record
 
     try:
-        message = windows_message(windows_preflight(tttr, windows, detectors=detectors or None))
+        message = windows_message(windows_preflight(tttr, gates_record(detectors or {}, micro_time_resolution_ps, windows), detectors=detectors or None))
     except Exception:  # noqa: BLE001 - a check that cannot run says nothing
         return None
     return f"{name}: {message}" if message else None
@@ -328,6 +329,7 @@ def _per_file_process(
     bid_index: int = 1,
     container_dir: os.PathLike | str | None = None,
     warnings: list[str] | None = None,
+    micro_time_resolution_ps: float | None = None,
 ) -> tuple[tttrlib.TTTR, dict, dict]:
     """Import one BID selection: read it, tabulate its bursts, write the container.
 
@@ -342,11 +344,18 @@ def _per_file_process(
         )
     tttr = _load_tttr(tttr_path)
 
-    warning = window_warning(tttr, tttr_path.name, windows, detectors)
+    warning = window_warning(tttr, tttr_path.name, windows, detectors, micro_time_resolution_ps)
     if warning:
         logging.warning(warning)
         if warnings is not None:
             warnings.append(warning)
+    from chisurf.core.fluorescence.burst.streams import gates_record
+    record = gates_record(detectors or {}, micro_time_resolution_ps, windows)
+    source_detectors = dict(detectors or {})
+    if windows or detectors:
+        from chisurf.core.fluorescence.excitation import applied_windows
+        applied = applied_windows(record, detectors or {}, tttr)
+        windows, detectors = applied["windows"], applied["detectors"]
     windows, detectors = _infer_windows_detectors(tttr, windows, detectors)
 
     start_stop = _read_bid_start_stop(bid_path)
@@ -370,7 +379,8 @@ def _per_file_process(
     _set_constant(df, "BID File", bid_path.name)
     _set_constant(df, "BID Index", int(bid_index))
 
-    _write_container(tttr_path, bid_path, df, bid_index, container_dir=container_dir)
+    _write_container(tttr_path, bid_path, df, bid_index, container_dir=container_dir,
+                     windows_record=record, detectors=source_detectors)
 
     return tttr, detectors, windows
 
@@ -381,6 +391,8 @@ def _write_container(
     df,
     bid_index: int,
     container_dir: os.PathLike | str | None = None,
+    windows_record: dict | None = None,
+    detectors: dict | None = None,
 ) -> None:
     """Write the imported bursts, and the `.bid` they were imported from.
 
@@ -438,7 +450,8 @@ def _write_container(
                 artifact_kind="burst_table",
                 operation_type="import",
                 row_grain="burst",
-                parameters={"bid_file": bid_path.name, "bid_index": int(bid_index)},
+                parameters={"bid_file": bid_path.name, "bid_index": int(bid_index),
+                            "micro_time_windows": windows_record, "detectors": detectors},
                 derived_from=source,
                 units=units_for(table),
             )
@@ -475,6 +488,7 @@ def convert_bid_file(
     zip_output: bool = False,
     remove_folder: bool = False,
     selected_setup: str | None = None,
+    micro_time_resolution_ps: float | None = None,
     bid_index: int = 1,
     container_dir: os.PathLike | str | None = None,
     warnings: list[str] | None = None,
@@ -527,6 +541,7 @@ def convert_bid_file(
         bid_index=bid_index,
         container_dir=container_dir,
         warnings=warnings,
+        micro_time_resolution_ps=micro_time_resolution_ps,
     )
 
     # Info files
@@ -555,6 +570,7 @@ def convert_many(
     zip_output: bool = False,
     remove_folder: bool = False,
     selected_setup: str | None = None,
+    micro_time_resolution_ps: float | None = None,
     warnings: list[str] | None = None,
 ) -> list[pathlib.Path]:
     """Import several BID files; *warnings* as in :func:`convert_bid_file`."""
@@ -581,7 +597,7 @@ def convert_many(
 
     for i, p in enumerate(bid_paths, start=1):
         try:
-            _per_file_process(p, output_dir, windows, detectors, bid_index=i, warnings=warnings)
+            _per_file_process(p, output_dir, windows, detectors, bid_index=i, warnings=warnings, micro_time_resolution_ps=micro_time_resolution_ps)
             converted.append(p)
             # track tttr path for info listing (found: the file was just converted)
             tttr_path = _find_tttr_by_stem(p.parent, p.stem)

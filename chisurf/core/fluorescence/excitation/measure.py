@@ -24,7 +24,7 @@ import tttrlib
 
 from .check import check_windows
 from .pie import detect_pie_windows
-from .result import ExcitationWindows, Pulse, WindowCheck
+from .result import ExcitationWindows, Issue, Pulse, WindowCheck
 
 __all__ = [
     "check_setup",
@@ -275,8 +275,16 @@ def check_setup(
     gates = tttrlib.setup_gates(s) if detection.domain == "micro" else {}
     if detection.domain == "macro":
         windows = s.get("alex_windows") or {}
-    return check_windows(
+    check = check_windows(
         windows, detection, windows_resolution_s=windows_resolution_s, histogram=histogram,
         gates=gates, histograms=dict(histograms) if histograms else None,
         gate_channels=tttrlib.setup_detectors(s),
     )
+    if detection.domain == "micro" and not windows_resolution_s and (windows or gates):
+        check.issues.append(Issue(
+            "resolution_unknown", "info",
+            "The windows do not say which channel width they are in (an analysis stored before "
+            "ChiSurf recorded it, or a setup without its reading routine's micro-time "
+            "resolution): applied as raw channels of the data.",
+        ))
+    return check

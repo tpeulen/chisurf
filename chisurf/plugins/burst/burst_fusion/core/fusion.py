@@ -37,6 +37,7 @@ from collections.abc import Sequence
 from typing import Any
 
 import numpy as np
+from tttrlib import as_micro_time_windows
 
 from chisurf.core.datastore import (
     column_names as _column_names,
@@ -68,6 +69,11 @@ from chisurf.core.fluorescence.burst.fusion import (
     group_slices,
 )
 from chisurf.core.fluorescence.burst.photons import is_sentinel_file_reference
+from chisurf.core.fluorescence.excitation import (
+    STORED_WINDOWS_KEY,
+    applied_windows,
+    stored_micro_time_windows,
+)
 
 from ..api.models import FusionAnalysis, FusionSettings, MeasurementFusion
 
@@ -397,17 +403,20 @@ def _detector_definition(
     detectors: dict[str, Any] | None,
     windows: dict[str, Any] | None,
 ) -> tuple[dict[str, Any], dict[str, Any], float | None, str | None]:
-    """Resolve detectors, windows, macro-time resolution and container type.
+    """Resolve detectors, the windows record, macro-time resolution and container type.
 
-    Explicit arguments win; otherwise the burst folder's own reading manifest is
-    used. Without either there is nothing to regenerate the per-detector columns
+    Explicit arguments win (*windows* is a ``tttrlib.micro_time_windows`` record); otherwise the
+    burst folder's own reading manifest is used -- its windows record, or for a manifest written
+    before the channel width was recorded, its bare windows and gates as a record of unknown
+    width (raw channels; the pre-flight says so). Without either there is nothing to regenerate the per-detector columns
     from, and a fused table missing them would quietly break every downstream
     step — so this raises rather than writing a table that only looks right.
     """
     entry = reading_settings(analysis.folder, source_name)
     recorded = dict(entry.get("settings") or {})
     resolved_detectors = detectors if detectors is not None else recorded.get("detectors") or {}
-    resolved_windows = windows if windows is not None else recorded.get("windows") or {}
+    resolved_windows = (as_micro_time_windows(windows) if windows is not None
+                        else stored_micro_time_windows(recorded))
     resolution = recorded.get("macro_time_resolution") or entry.get("macro_time_resolution")
     container = entry.get("container_type")
     if not resolved_detectors:
@@ -451,9 +460,10 @@ def _merged_intervals(
 def window_warning(tttr, name: str, windows, detectors) -> str | None:
     """The shared excitation-window pre-flight on one measurement, as a line for the run's warnings.
 
-    The fused bursts are regenerated from the photons with *windows* exactly as given (raw
-    micro-time channels of the measurement), so they are checked as they are applied: a mismatch
-    is reported, never corrected here. A donor-only measurement gives a note instead.
+    *windows* is the windows record (``tttrlib.micro_time_windows``): checked in the channel width
+    it says (a binning is named, the user's windows converted are proposed), applied by the writer
+    in the measurement's channels. A mismatch is reported, never corrected here. A donor-only
+    measurement gives a note instead.
 
     Returns
     -------
@@ -465,7 +475,7 @@ def window_warning(tttr, name: str, windows, detectors) -> str | None:
 
     try:
         message = windows_message(
-            windows_preflight(tttr, dict(windows or {}), detectors=dict(detectors or {}))
+            windows_preflight(tttr, windows, detectors=dict(detectors or {}))
         )
     except Exception:  # noqa: BLE001 - a check that cannot run says nothing
         logger.debug("burst fusion: window pre-flight failed for %s", name, exc_info=True)
@@ -509,7 +519,7 @@ def preflight_source(
                     "name": container.name,
                     "tttr": open_tttr(str(container)),
                     "detectors": dict(detectors or {}),
-                    "windows": dict(windows or {}),
+                    "windows": as_micro_time_windows(windows),
                 }
             source_name = str(np.asarray(frame["First File"])[0])
             det, win, _resolution, container = _detector_definition(
@@ -525,7 +535,7 @@ def preflight_source(
                 "name": source_name,
                 "tttr": open_tttr(path, container or _file_type(analysis)),
                 "detectors": dict(det),
-                "windows": dict(win),
+                "windows": win,
             }
     except Exception:  # noqa: BLE001 - nothing to check against
         logger.debug("burst fusion: no measurement for the window pre-flight", exc_info=True)
@@ -554,8 +564,9 @@ def write_fused_analysis(
     output_folder : path-like, optional
         Target folder; a threshold-named sibling of the source by default.
     detectors, windows : dict, optional
-        Detector definition and PIE windows to regenerate the burst columns
-        with. Default: whatever the source folder's reading manifest recorded.
+        Detector definition and the windows record (``tttrlib.micro_time_windows``) to
+        regenerate the burst columns with. Default: whatever the source folder's reading
+        manifest recorded.
     data_folder : path-like, optional
         Where the raw measurements live. Default: the source folder's parent,
         the layout burst selection writes.
@@ -598,12 +609,13 @@ def write_fused_analysis(
             warnings.append(warning)
 
         intervals, kept = _merged_intervals(frame, measurement.labels, len(tttr))
+        applied = applied_windows(win, det, tttr)
         fused = generate_burst_dataframe(
             intervals,
             path,
             tttr,
-            windows=win,
-            detectors=det,
+            windows=applied["windows"],
+            detectors=applied["detectors"],
             include_interleaved_zeros=True,
             macro_time_resolution=resolution,
         )
@@ -634,7 +646,7 @@ def write_fused_analysis(
                 tttr,
                 container_type=container,
                 settings={
-                    "windows": dict(win),
+                    STORED_WINDOWS_KEY: win,
                     "detectors": dict(det),
                     "macro_time_resolution": resolution,
                 },
@@ -962,12 +974,13 @@ def write_fused_runs(
             if "First File" in _column_names(frame)
             else container.name
         )
+        applied = applied_windows(windows, detectors, tttr)
         fused = generate_burst_dataframe(
             intervals,
             first_file,
             tttr,
-            windows=dict(windows or {}),
-            detectors=dict(detectors),
+            windows=applied["windows"],
+            detectors=applied["detectors"],
             include_interleaved_zeros=False,
             macro_time_resolution=None,
         )

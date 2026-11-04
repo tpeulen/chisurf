@@ -94,7 +94,7 @@ def window_warnings(prep) -> list[str]:
     -------
     list of str
     """
-    from chisurf.core.fluorescence.burst.streams import stream_detectors, window_warnings
+    from chisurf.core.fluorescence.burst.streams import gates_record, stream_detectors, window_warnings
 
     detectors = stream_detectors(
         {s.name: (s.channels, s.micro_time_ranges) for s in getattr(prep, "streams", ()) or ()}
@@ -106,7 +106,21 @@ def window_warnings(prep) -> list[str]:
     except Exception:  # noqa: BLE001 - photons that cannot be opened: nothing to check
         logger.debug("window pre-flight: photons not opened", exc_info=True)
         return []
-    return window_warnings(tttrs, detectors, windows=_recorded_windows(prep))
+    from chisurf.core.fluorescence.excitation import stored_micro_time_windows
+    from chisurf.core.fio.fluorescence.burst_manifest import read_analysis_manifest, reading_settings_for
+
+    manifest = read_analysis_manifest(Path(str(prep.folder))) or {}
+    warnings = []
+    for name, tttr in tttrs.items():
+        source = reading_settings_for(name, manifest)
+        settings = ((getattr(prep, "summary", {}) or {}).get("container_settings")
+                    or source.get("settings") or manifest.get("settings") or {})
+        record = stored_micro_time_windows(settings)
+        record = gates_record(detectors, record.get("micro_time_resolution_ps"), record.get("windows"))
+        lines = window_warnings({name: tttr}, record, detectors)
+        warnings.extend(f"{Path(str(name)).name}: {line}" if len(tttrs) > 1 else line
+                        for line in lines)
+    return warnings
 
 
 def _photon_streams(prep) -> dict:
@@ -129,21 +143,6 @@ def _photon_streams(prep) -> dict:
     keys = [k for k in dict.fromkeys(prep.file_key.tolist()) if not is_sentinel_file_reference(k)]
     return open_sources(resolve_sources(folder, keys))
 
-
-def _recorded_windows(prep) -> dict:
-    """The PIE windows the burst search recorded in the run's manifest (empty when none)."""
-    try:
-        from chisurf.core.fio.fluorescence.burst_manifest import read_analysis_manifest
-
-        manifest = read_analysis_manifest(Path(str(prep.folder))) or {}
-    except Exception:  # noqa: BLE001
-        return {}
-    for source in manifest.get("sources") or []:
-        windows = ((source or {}).get("settings") or {}).get("windows")
-        if windows:
-            return {str(k): [int(v[0]), int(v[1])] for k, v in dict(windows).items()}
-    windows = (manifest.get("settings") or {}).get("windows")
-    return {str(k): [int(v[0]), int(v[1])] for k, v in dict(windows or {}).items()}
 
 
 def describe_preparation() -> dict:

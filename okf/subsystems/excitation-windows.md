@@ -9,6 +9,23 @@ timestamp: '2026-10-29T12:00:00Z'
 
 # Where to pick this up
 
+**2026-10-29 continuation, in progress:** The working trees of tttrlib, ChiSurf and
+`modules/ndxplorer` contain uncommitted changes for channel-width propagation and
+excitation-aware 2CDE. The rebuilt tttrlib engine supports separate detector gates
+and passed 34 2CDE tests; ChiSurf's 2CDE and workflow focused tests passed. Explicit
+µs-ALEX phase settings are preserved in new Record settings and burst provenance;
+an update accepted after recording starts is not written back to the PTU header.
+Imaging, PDA and trace/image browser conversion has focused coverage. A combined
+Record/2CDE run had one order-dependent workspace failure (64 passed, one skipped);
+that test passed in isolation. Verify remaining consumers and rerun broader suites
+before deployment. ndXplorer's
+detached nested checkout contains an uncommitted stale-2CDE filter; its commit and
+parent submodule pointer have not been made. Two MFD guided-tour tests failed in
+the broad run, with no established baseline. The MT200 wheel from run
+40878363425 predates the new engine; Windows PTO tests and a native crash also
+failed on the preceding baseline. The MT200 was rebooted after the experiment ended;
+the first direct vendor open still reports busy, so live counting remains unverified.
+
 Layering (owner: "respect the software dependency chain"): **tttrlib** reads a detector setup
 (`ext/python/ChannelSetup.py`: `setup_detectors`, `setup_gates`, `setup_windows`,
 `setup_micro_time_resolution` (ps, or `micro_time_resolution_unit`), `setup_macro_time_resolution`,

@@ -17,6 +17,8 @@ MEASURED = {
         "R|G": {"chs": [9, 1, 2], "micro_time_ranges": [[2048, 4095]]},
     },
     "windows": {"prompt": [0, 2048], "delayed": [2048, 4095]},
+    # the definition carries the channel width its windows and gates are in (None: raw channels)
+    "micro_time_resolution_ps": None,
 }
 
 
@@ -55,7 +57,7 @@ def test_actual_demo_worker_replaces_measured_definition_and_apply_uses_demo(con
     controller.demo()
     controller._future.result(timeout=60)
     controller.poll()
-    definition = {"detectors": controller.model.detectors, "windows": controller.model.windows}
+    definition = controller.model.definition()
     assert definition["detectors"]["G|G"]["chs"] == [0]
     assert definition["detectors"]["R|G"]["chs"] == [1]
     assert definition["windows"] == {}

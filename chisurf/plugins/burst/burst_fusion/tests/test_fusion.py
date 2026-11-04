@@ -14,6 +14,7 @@ import shutil
 
 import numpy as np
 import pytest
+from tttrlib import micro_time_windows, setup_gates
 
 from chisurf.core.datastore import column_names, numeric_column, row_count
 from chisurf.core.fio.fluorescence.burst import read_bur_file
@@ -43,7 +44,11 @@ DETECTORS = {
     "G|G": {"chs": [0, 8], "micro_time_ranges": [[0, 2048]]},
     "R|G": {"chs": [1, 9], "micro_time_ranges": [[0, 2048]]},
 }
-WINDOWS = {"prompt": [0, 2048], "delayed": [2048, 4095]}
+#: The windows record (``tttrlib.micro_time_windows``): the PIE windows and the detectors'
+#: gates, in raw channels of the data (the channel width is not given).
+WINDOWS = micro_time_windows(
+    {"prompt": [0, 2048], "delayed": [2048, 4095]}, setup_gates({"detectors": DETECTORS}), None
+)
 
 
 @pytest.fixture

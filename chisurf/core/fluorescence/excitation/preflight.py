@@ -13,7 +13,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from tttrlib import setup_detectors
+from tttrlib import (
+    as_micro_time_windows,
+    micro_time_windows_setup,
+    setup_definition,
+    setup_detectors,
+)
 
 from .measure import (
     check_setup,
@@ -34,34 +39,34 @@ PREFLIGHT_PHOTONS = 1_000_000
 
 def windows_preflight(
     tttr: Any,
-    windows: Mapping | None,
+    windows: Mapping | None = None,
     *,
     detectors: Mapping | None = None,
-    tttr_reading: Mapping | None = None,
     setup: Mapping | None = None,
 ) -> WindowCheck | None:
-    """Check *windows* against the micro time of *tttr*; ``None`` when there is nothing to check
-    (no windows and no micro time).
+    """Check windows and gates against the micro time of *tttr*; ``None`` when there is nothing to
+    check (no windows and no micro time).
 
     Parameters
     ----------
     tttr : tttrlib.TTTR or path
         The measurement about to be analysed.
-    windows : mapping
-        ``{name: [start, stop]}`` in micro-time channels.
-    detectors, tttr_reading : mapping, optional
-        The setup's detectors (name the histograms) and reading routine (the channel width the
-        windows are in).
+    windows : mapping, optional
+        The windows record (``tttrlib.micro_time_windows``: ``windows``, ``gates`` and the
+        ``micro_time_resolution_ps`` they are in). Bare ``{name: [start, stop]}`` windows are
+        refused: without their channel width a binning cannot be told from a wrong window. The
+        record's gates replace the detectors' gates.
+    detectors : mapping, optional
+        ``{name: {"chs": [...]}}`` -- names the histograms the gates are checked against.
     setup : mapping, optional
-        A whole setup instead of the three parts.
+        A whole setup (it carries its own windows, gates and channel width); *windows* and
+        *detectors*, when given, replace its parts.
     """
-    s = dict(setup or {})
-    if windows is not None:
-        s["windows"] = {k: [int(v[0]), int(v[1])] for k, v in dict(windows).items()}
+    s = setup_definition(setup) if setup else {}
     if detectors is not None:
         s["detectors"] = dict(detectors)
-    if tttr_reading is not None:
-        s["tttr_reading"] = dict(tttr_reading)
+    if windows is not None:
+        s = micro_time_windows_setup(as_micro_time_windows(windows), s)
     try:
         from .measure import _load  # noqa: PLC0415 - a path is read once for both steps
 
@@ -80,6 +85,13 @@ def windows_message(check: WindowCheck | None) -> str | None:
     """One line for an analysis's warnings, or ``None`` when the windows hold the pulses."""
     if check is None:
         return None
+    raw = next((" " + i.message for i in check.issues if i.code == "resolution_unknown"), "")
+    line = _windows_line(check)
+    return line + raw if line else None
+
+
+def _windows_line(check: WindowCheck) -> str | None:
+    """The verdict without the note on windows of unknown channel width."""
     det = check.detection
     codes = {i.code for i in check.issues}
     if not det.alternating and check.mismatch and codes & _GATE_CODES:

@@ -64,6 +64,8 @@ class FusionViewModel(WindowsPreflightMixin):
         #: Without it the fused folder falls back to the source folder's manifest.
         self.detectors: dict[str, Any] = {}
         self.windows: dict[str, Any] = {}
+        #: The channel width (ps) the windows and gates are in (``None``: not known, raw).
+        self.micro_time_resolution_ps: float | None = None
         #: The definition the writer will regenerate the bursts with (the given one, or a legacy
         #: folder's recorded one), as resolved for the window pre-flight; ``None`` before.
         self._preflight_definition: dict[str, Any] | None = None
@@ -324,7 +326,7 @@ class FusionViewModel(WindowsPreflightMixin):
         if analysis.sources:
             # A run of the project's analysis container: the fused bursts are a new run of it.
             result = write_fused_runs(
-                analysis, detectors=self.detectors or None, windows=self.windows or None
+                analysis, detectors=self.detectors or None, windows=self.windows_record()
             )
             self._written = str(result["output_folder"])
             self._emitted = self._read_runs(result.get("runs") or [])
@@ -333,7 +335,7 @@ class FusionViewModel(WindowsPreflightMixin):
             result = write_fused_analysis(
                 analysis,
                 detectors=self.detectors or None,
-                windows=self.windows or None,
+                windows=self.windows_record(),
             )
             self._written = str(result["output_folder"])
             self._emitted = self._read_written(result.get("bur_files") or [])
@@ -358,7 +360,7 @@ class FusionViewModel(WindowsPreflightMixin):
         analysis = analysis if analysis is not None else self._analysis
         source = (
             preflight_source(
-                analysis, detectors=self.detectors or None, windows=self.windows or None
+                analysis, detectors=self.detectors or None, windows=self.windows_record()
             )
             if analysis is not None
             else None
@@ -373,26 +375,52 @@ class FusionViewModel(WindowsPreflightMixin):
         }
         return self.run_windows_preflight(source["tttr"])
 
-    def preflight_setup(self) -> dict:
-        """The definition the writer uses, for the shared window pre-flight.
+    def definition(self) -> dict:
+        """The detector definition as the editor shows it: detectors (with their gates), PIE
+        windows and the channel width (ps) both are in (``None``: raw channels)."""
+        return {"detectors": self.detectors, "windows": self.windows,
+                "micro_time_resolution_ps": self.micro_time_resolution_ps}
 
-        No channel width is given: the writer applies the windows as raw channels of the
-        measurement, so that is how they are checked.
-        """
-        definition = self._preflight_definition or {
-            "detectors": self.detectors,
-            "windows": self.windows,
-        }
-        return {
-            "detectors": dict(definition.get("detectors") or {}),
-            "windows": dict(definition.get("windows") or {}),
-        }
+    def set_definition(self, definition: dict) -> None:
+        """Take a definition of :meth:`definition`'s shape."""
+        self.detectors = dict(definition.get("detectors") or {})
+        self.windows = {k: [int(v[0]), int(v[1])]
+                        for k, v in (definition.get("windows") or {}).items()}
+        width = definition.get("micro_time_resolution_ps")
+        self.micro_time_resolution_ps = float(width) if width else None
+
+    def windows_record(self) -> dict | None:
+        """The windows record the writer applies (``tttrlib.micro_time_windows``); ``None``
+        without a definition (the source folder's reading manifest is used)."""
+        if not self.detectors and not self.windows:
+            return None
+        from tttrlib import micro_time_windows, setup_gates
+
+        return micro_time_windows(self.windows, setup_gates({"detectors": self.detectors}),
+                                  self.micro_time_resolution_ps)
+
+    def preflight_setup(self) -> dict:
+        """The definition the writer uses, for the shared window pre-flight: the windows and gates
+        with the channel width they are in, so a binning is named and converted."""
+        from tttrlib import micro_time_windows_setup
+
+        if self._preflight_definition:
+            d = self._preflight_definition
+            return micro_time_windows_setup(d["windows"], {"detectors": d["detectors"]})
+        return micro_time_windows_setup(self.windows_record() or {
+            "windows": {}, "gates": {}, "micro_time_resolution_ps": None},
+            {"detectors": self.detectors})
 
     def take_preflight_setup(self, setup: dict) -> None:
-        """Regenerate the fused bursts with the detected windows (and opened gates)."""
-        self.detectors = dict(setup.get("detectors") or {})
-        self.windows = {k: [int(v[0]), int(v[1])] for k, v in (setup.get("windows") or {}).items()}
-        self._preflight_definition = {"detectors": self.detectors, "windows": self.windows}
+        """Regenerate the fused bursts with the detected windows (and opened gates), in the
+        data's channel width."""
+        from tttrlib import setup_micro_time_resolution
+
+        width = setup_micro_time_resolution(setup)
+        self.set_definition({"detectors": setup.get("detectors") or {},
+                             "windows": setup.get("windows") or {},
+                             "micro_time_resolution_ps": width * 1e12 if width else None})
+        self._preflight_definition = None
         self._status = "Windows from the data: " + format_ranges(self.windows)
         self.notify("changed")
 

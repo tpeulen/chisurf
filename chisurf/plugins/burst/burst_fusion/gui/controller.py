@@ -20,13 +20,9 @@ class FusionController:
         self._future = None
         self.action = "save"
         self.dialog = None
-        self.channel_text = json.dumps(
-            {"detectors": model.detectors, "windows": model.windows}, indent=2
-        )
+        self.channel_text = json.dumps(model.definition(), indent=2)
         #: The definition the editor text was last written from (see :meth:`sync_channel_text`).
-        self._shown_definition = copy.deepcopy(
-            {"detectors": model.detectors, "windows": model.windows}
-        )
+        self._shown_definition = copy.deepcopy(model.definition())
 
     def adopt_run(self, address) -> bool:
         """Take the burst run *address* (from the workspace) as the bursts to fuse."""
@@ -75,10 +71,7 @@ class FusionController:
         self._cancel.clear()
         snapshot = copy.copy(self.model)
         snapshot.settings = copy.deepcopy(self.model.settings)
-        snapshot.detectors, snapshot.windows = (
-            copy.deepcopy(self.model.detectors),
-            copy.deepcopy(self.model.windows),
-        )
+        snapshot.set_definition(copy.deepcopy(self.model.definition()))
         snapshot._observers = []
         snapshot.folder_written = None
         self.running = True
@@ -105,12 +98,10 @@ class FusionController:
             if self._cancel.is_set() and not (self._action == "fuse" and snapshot._written):
                 raise CancelledError()
             observers, handoff = self.model._observers, self.model.folder_written
-            previous_definition = copy.deepcopy(
-                {"detectors": self.model.detectors, "windows": self.model.windows}
-            )
+            previous_definition = copy.deepcopy(self.model.definition())
             self.model.__dict__.update(snapshot.__dict__)
             self.model._observers, self.model.folder_written = observers, handoff
-            definition = {"detectors": self.model.detectors, "windows": self.model.windows}
+            definition = self.model.definition()
             if definition != previous_definition:
                 # A new authoritative definition replaces the old editor draft.
                 # Unchanged result delivery preserves deliberate unapplied edits.
@@ -147,18 +138,23 @@ class FusionController:
             channels = detector.get("chs", [])
             if not channels or any(not isinstance(ch, int) or ch < 0 for ch in channels):
                 raise ValueError(f"{name}: provide nonnegative routing channels in chs.")
-        self.model.detectors, self.model.windows = detectors, windows
+        width = data.get("micro_time_resolution_ps")
+        if width is not None and (not isinstance(width, (int, float)) or width <= 0):
+            raise ValueError("micro_time_resolution_ps: the channel width (ps) the windows and "
+                             "gates are in, or null when it is not known.")
+        self.model.set_definition({"detectors": detectors, "windows": windows,
+                                   "micro_time_resolution_ps": width})
         # The window check was made against the previous definition.
         self.model.windows_check = None
         self.model._preflight_definition = None
         self.channel_text = json.dumps(data, indent=2)
-        self._shown_definition = copy.deepcopy({"detectors": detectors, "windows": windows})
+        self._shown_definition = copy.deepcopy(self.model.definition())
         self.status = "Detector and PIE window definitions applied."
 
     def save_settings(self, path):
         # The schema makes the file a setup row the workspace hands back to this tool.
         data = {"schema": "chisurf.tool/burst_fusion/1", **self.model.settings.to_dict()}
-        data.update(detectors=self.model.detectors, windows=self.model.windows)
+        data.update(self.model.definition())
         Path(path).write_text(json.dumps(data, indent=2))
         self.status = "Fusion settings saved."
 
@@ -224,7 +220,7 @@ class FusionController:
     def sync_channel_text(self) -> None:
         """Rewrite the editor text when the model's definition changed elsewhere (*Use detected
         windows*, a workflow's setup); a draft typed against an unchanged definition is kept."""
-        definition = {"detectors": self.model.detectors, "windows": self.model.windows}
+        definition = self.model.definition()
         if definition != self._shown_definition:
             self.channel_text = json.dumps(definition, indent=2)
             self._shown_definition = copy.deepcopy(definition)
@@ -262,7 +258,9 @@ class FusionController:
                 "##fusion_channels", self.channel_text, size=(0, 140)
             )
             im.set_item_tooltip(
-                tr("JSON with named detectors (chs and micro_time_ranges) and named PIE windows.")
+                tr("JSON with named detectors (chs and micro_time_ranges), named PIE windows and "
+                   "micro_time_resolution_ps, the channel width (ps) the windows and gates are in "
+                   "(null: applied as raw channels of the data).")
             )
             if changed:
                 self.channel_text = text

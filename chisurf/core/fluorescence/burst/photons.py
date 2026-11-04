@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from chisurf.core.fluorescence.channels import channel_mask
 from chisurf.core.fluorescence.detector_names import ACCEPTOR, DONOR
 import tttrlib
 from tttrlib import micro_time_mask
@@ -130,7 +131,7 @@ def stream_index_arrays(
     # Assign in reverse so earlier stream definitions take precedence.
     for s_i in range(len(streams) - 1, -1, -1):
         s = streams[s_i]
-        mask = np.isin(channels, np.asarray(s.channels, dtype=channels.dtype))
+        mask = channel_mask(channels, s.channels)
         idx[mask & micro_time_mask(micro_times, s.micro_time_ranges, inclusive=True)] = s_i
     return idx
 
@@ -184,6 +185,7 @@ def extract_burst_photons(
     min_photons: int = 3,
     with_meta: bool = False,
     with_rows: bool = False,
+    micro_time_resolution_ps: float | None = None,
 ):
     """Slice bursts into per-burst ``(times, stream_index)`` arrays.
 
@@ -204,6 +206,9 @@ def extract_burst_photons(
     with_meta : bool
         Also return per-photon ``(micro_time, channel)`` arrays (same filter and
         order as the stream arrays) for building a per-photon result table.
+    micro_time_resolution_ps : float or None
+        Channel width of the stream gates in picoseconds; each source converts them to its own
+        micro-time resolution. None leaves channel numbers unchanged.
     with_rows : bool
         Also return the **positions in** ``df`` **of the bursts that survived**.
         Bursts too short, too empty, or from a file that is not loaded are
@@ -231,8 +236,13 @@ def extract_burst_photons(
     firsts = numeric_column(df, "First Photon")
     lasts = numeric_column(df, "Last Photon")
 
+    from chisurf.core.fluorescence.burst.streams import ranges_in_data
+
     cache: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
+    data_streams = {}
     for ff, tttr in tttrs.items():
+        data_streams[ff] = [StreamDef(s.name, s.channels, ranges_in_data(
+            s.micro_time_ranges, micro_time_resolution_ps, tttr)) for s in streams]
         cache[ff] = (
             np.asarray(tttr.macro_times),
             np.asarray(tttr.routing_channels),
@@ -263,7 +273,7 @@ def extract_burst_photons(
         ch = chan[first : last + 1]
         mi = micro[first : last + 1]
 
-        s_idx = stream_index_arrays(ch, mi, streams)
+        s_idx = stream_index_arrays(ch, mi, data_streams[ff])
         keep = s_idx >= 0
         if keep.sum() < min_photons:
             continue

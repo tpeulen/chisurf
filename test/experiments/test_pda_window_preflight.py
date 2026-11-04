@@ -84,6 +84,7 @@ def test_the_form_offers_the_detected_periods_and_takes_them(demo):
     assert settings.add_paths([str(demo)]) == 1
     assert settings.windows_check_offer and "do not match" in settings.windows_check_text()
     assert settings.use_detected_windows()
+    assert reader.micro_time_resolution_ps == pytest.approx(32.0)
     (blue_lo, blue_hi), (green_lo, green_hi) = reader.micro_time_ranges
     assert blue_lo <= 2e-9 / 32e-12 <= blue_hi < green_lo <= 52e-9 / 32e-12 <= green_hi
     assert reader.windows_warning(str(demo)) is None
@@ -94,3 +95,28 @@ def test_the_form_says_nothing_at_two_colours(demo):
     settings = PdaReaderSettings(reader, setups={}, routines=["PTU"])
     settings.add_paths([str(demo)])
     assert settings.windows_check_quiet and not settings.windows_check_offer
+
+
+def test_recorded_windows_convert_independently_for_each_source():
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    class Photons:
+        def __init__(self, ps, micro):
+            self.header = SimpleNamespace(micro_time_resolution=ps * 1e-12)
+            self.micro_times = np.array(micro)
+            self.routing_channels = np.array([0, 1, 1, 2])
+
+        def __len__(self):
+            return len(self.micro_times)
+
+        def get_ranges_by_time_window(self, *args):
+            return np.array([0, 3])
+
+    reader = _reader([[0, 99], [100, 199]])
+    reader.micro_time_resolution_ps = 32
+    a = Photons(32, [50, 50, 150, 150])
+    b = Photons(16, [100, 100, 300, 300])
+    assert np.array_equal(reader.burst_count_table(a, 1, 0.001),
+                          reader.burst_count_table(b, 1, 0.001))

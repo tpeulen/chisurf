@@ -60,7 +60,11 @@ def donor_only_run(tmp_path):
 
 
 def _fuse(run, windows):
-    return fuse_folder(run, FusionSettings(threshold=0.5), detectors=DETECTORS, windows=windows)
+    """Fuse *run* with *windows* given as a record of unknown channel width (raw channels)."""
+    from tttrlib import micro_time_windows
+
+    return fuse_folder(run, FusionSettings(threshold=0.5), detectors=DETECTORS,
+                       windows=micro_time_windows(windows, {}, None))
 
 
 def test_wrong_windows_are_reported_in_the_result(pie_run):

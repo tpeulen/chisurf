@@ -47,6 +47,7 @@ WINDOWS = {"prompt": (0, 2048), "delayed": (2048, 4096)}
 def produced(tmp_path_factory):
     """Run the real burst pipeline and return the folder it wrote."""
     from chisurf.plugins.burst.burst_selection.api.models import AnalysisSettings
+    from chisurf.core.fluorescence.burst.streams import gates_record
     from chisurf.plugins.burst.burst_selection.api.selection import analyze_file
 
     out = tmp_path_factory.mktemp("burst-pipeline")
@@ -58,7 +59,8 @@ def produced(tmp_path_factory):
     result = analyze_file(
         MEASUREMENT,
         settings=settings,
-        windows=WINDOWS,
+        # the windows record: windows and gates in raw channels of the data (width unknown)
+        windows=gates_record(DETECTORS, None, WINDOWS),
         detectors=DETECTORS,
         output_dir=out / "bi4_bur",
         mti_output_dir=out,
@@ -111,26 +113,28 @@ def test_the_per_detector_columns_are_not_all_zero(produced):
     assert float(np.mean(two_colour == preparation.total_counts)) < 0.9
 
 
-def test_the_reader_infers_the_definitions_the_writer_used(produced):
-    """A detector name does not determine its definition, so it is measured.
+def test_the_reader_uses_the_definitions_the_writer_recorded(produced):
+    """A detector name does not determine its definition, so it is read from the run.
 
     ``red`` and ``yellow`` here are the *same routing channels* split by micro-time
     window. No name-based rule can recover that, and guessing wrong is silent: the
     counts simply come out different and every downstream number moves with them.
+    The search records its detectors in the run's reading manifest, so the reader
+    takes them from there rather than inferring them from the photons.
     """
     from chisurf.core.fluorescence.mfd.prepare import prepare_burst_folder
 
     preparation = prepare_burst_folder(produced, with_photons=True)
-    inferred = preparation.summary.get("inferred_streams")
-    assert inferred is not None, "the definitions should have been inferred"
+    assert preparation.summary["stream_origin"] == "manifest"
+    streams = {s.name: s for s in preparation.streams}
 
-    assert sorted(inferred["green"]["channels"]) == [0, 8]
-    assert sorted(inferred["red"]["channels"]) == [1, 9]
-    assert sorted(inferred["yellow"]["channels"]) == [1, 9]
+    assert sorted(streams["green"].channels) == [0, 8]
+    assert sorted(streams["red"].channels) == [1, 9]
+    assert sorted(streams["yellow"].channels) == [1, 9]
     # The two acceptor detectors are distinguished by their windows, not by name.
-    assert inferred["red"]["micro_time_ranges"] != inferred["yellow"]["micro_time_ranges"]
-    assert inferred["red"]["micro_time_ranges"][0][0] == 0
-    assert inferred["yellow"]["micro_time_ranges"][0][0] == 2048
+    assert streams["red"].micro_time_ranges != streams["yellow"].micro_time_ranges
+    assert streams["red"].micro_time_ranges[0][0] == 0
+    assert streams["yellow"].micro_time_ranges[0][0] == 2048
 
 
 def test_the_produced_folder_fits(produced):

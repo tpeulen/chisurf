@@ -233,3 +233,21 @@ def test_tour_waits_for_real_example_and_process(tmp_path, monkeypatch):
         assert "1/1" in app.status
     finally:
         app.close()
+
+
+def test_import_records_original_window_width_and_gates(tmp_path):
+    from chisurf.core.fio.pto import Measurement
+    from chisurf.plugins.burst.bid_to_analysis import convert_bid_file
+
+    path = selection(tmp_path)
+    detectors = {"green": {"chs": [0, 8], "micro_time_ranges": [[100, 400]]}}
+    windows = {"prompt": [50, 500]}
+    convert_bid_file(path, detectors=detectors, windows=windows, micro_time_resolution_ps=8)
+    with Measurement.open(path.with_suffix(".pto"), writable=False) as measurement:
+        settings = measurement.provenance(measurement._resolve("bursts"))["settings"]
+    assert settings["micro_time_windows"] == {
+        "windows": {"prompt": [50, 500]},
+        "gates": {"green": [[100, 400]]},
+        "micro_time_resolution_ps": 8,
+    }
+    assert settings["detectors"] == detectors

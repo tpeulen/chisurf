@@ -111,3 +111,24 @@ def test_the_window_shows_the_warning_and_offers_no_replacement(demo, tmp_path):
     assert model.windows_check_text() == warning and not model.windows_check_quiet
     assert warning.split(":")[0] + " (see below)" in model.status_text
     assert not hasattr(model, "use_detected_windows")
+
+
+def test_manifest_streams_convert_for_each_measurement_binning():
+    from types import SimpleNamespace
+    import numpy as np
+    import pandas as pd
+    from chisurf.core.fluorescence.burst.photons import StreamDef
+    from chisurf.core.fluorescence.mfd.prepare import _mean_micro_time_from_photons, PhotonIndexConvention
+
+    def source(width, micro):
+        return SimpleNamespace(header=SimpleNamespace(micro_time_resolution=width),
+                               routing_channels=np.array([0, 0]), micro_times=np.array(micro))
+    tttrs = {'fine': source(8e-12, [10, 30]), 'coarse': source(16e-12, [5, 15])}
+    frame = pd.DataFrame([('fine', 0, 1), ('coarse', 0, 1)],
+                         columns=['First File', 'First Photon', 'Last Photon'])
+    records = {key: {'micro_time_resolution_ps': 8.0} for key in tttrs}
+    means, counts = _mean_micro_time_from_photons(
+        frame, [StreamDef('G|G', [0], [(8, 19)])], tttrs,
+        PhotonIndexConvention(inclusive=True, agreement=1.0), records)
+    assert counts[:, 0].tolist() == [1, 1]
+    assert means[:, 0].tolist() == pytest.approx([0.08, 0.08])

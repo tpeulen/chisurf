@@ -132,6 +132,17 @@ def test_micro_time_gating_splits_the_excitation_periods(photons):
     assert np.allclose(table[:, 2] + table[:, 4], full[:, 2])
 
 
+def test_three_colour_windows_follow_setup_channel_width(photons):
+    data_ps = photons.header.micro_time_resolution * 1e12
+    direct = _reader(channels=([0], [1], [8]),
+                     micro_time_ranges=[(0, 2047), (2048, 4095)], n_colors=3)
+    finer = _reader(channels=([0], [1], [8]),
+                    micro_time_ranges=[(0, 4095), (4096, 8191)], n_colors=3)
+    finer.micro_time_resolution_ps = data_ps / 2
+    assert np.array_equal(direct.burst_count_table(photons, 20, 2e-3),
+                          finer.burst_count_table(photons, 20, 2e-3))
+
+
 # ── the three-colour dataset ───────────────────────────────────────────────
 
 

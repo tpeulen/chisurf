@@ -28,6 +28,7 @@ def estimate_background_for_files(
     tail_fraction: float = 0.2,
     min_counts: int = 1,
     verbose: bool = False,
+    micro_time_resolution_ps: float | None = None,
 ) -> dict[str, dict[str, float]]:
     """Estimate background rates for all files and detectors.
 
@@ -59,6 +60,7 @@ def estimate_background_for_files(
             binsize_ms=binsize_ms,
             tail_fraction=tail_fraction,
             min_counts=min_counts,
+            micro_time_resolution_ps=micro_time_resolution_ps,
         )
         results[path] = bg
 
@@ -219,6 +221,7 @@ def analyze(
         click.echo(f"Detectors: {len(detectors)}")
         click.echo(f"Processing {len(files)} files...")
 
+    width = tttrlib.setup_micro_time_resolution(setup_data)
     backgrounds = estimate_background_for_files(
         list(files),
         detectors,
@@ -226,6 +229,7 @@ def analyze(
         tail_fraction=tail_fraction,
         min_counts=min_counts,
         verbose=verbose,
+        micro_time_resolution_ps=width * 1e12 if width else None,
     )
 
     if not backgrounds:

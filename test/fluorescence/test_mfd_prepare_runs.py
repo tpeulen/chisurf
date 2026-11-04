@@ -40,7 +40,8 @@ def folder_and_run(tmp_path):
     container = write_container(
         data / "m000.spc",
         deinterleave_bursts(read_bur_file(ANALYSIS / "bi4_bur" / "m000.bur")),
-        parameters={"search": 1},
+        parameters={"search": 1, "micro_time_windows": {"windows": {}, "gates": {},
+                    "micro_time_resolution_ps": 8.0}},
         out_dir=tmp_path / "analysis",
         run=RUN,
         raw_data="sidecar",
@@ -62,3 +63,4 @@ def test_a_run_prepares_as_its_folder_does(folder_and_run):
     assert prepared.verified_channels == legacy.verified_channels
     assert set(prepared.sources.origin.values()) == {"container"}
     assert prepared.summary["photons"] and all(n > 0 for n in prepared.summary["photons"].values())
+    assert prepared.summary["container_settings"]["micro_time_windows"]["micro_time_resolution_ps"] == 8.0

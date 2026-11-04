@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
+
+from chisurf.core.fluorescence.channels import channel_mask
 import tttrlib
 from tttrlib import micro_time_mask
 
@@ -296,6 +298,7 @@ def estimate_background_from_bursts(
     tail_fraction: float = 0.8,
     min_counts: int = 1,
     warnings: list[str] | None = None,
+    micro_time_resolution_ps: float | None = None,
 ) -> dict[str, float]:
     """Estimate background count rates (kHz) for multiple detector definitions.
 
@@ -334,7 +337,8 @@ def estimate_background_from_bursts(
         Mapping from detector name to estimated background rate in kHz.
         Detectors for which no estimate can be obtained are assigned 0.0.
     """
-    _check_gates(tttr, detectors, warnings)
+    _check_gates(tttr, detectors, warnings, micro_time_resolution_ps)
+    detectors = _applied_detectors(tttr, detectors, micro_time_resolution_ps)
     macro = np.asarray(tttr.macro_times, dtype=np.int64)
     if macro.size < 2:
         return {name: 0.0 for name in detectors.keys()}
@@ -355,7 +359,7 @@ def estimate_background_from_bursts(
             continue
 
         # Channel selection
-        mask = np.isin(rout, chs)
+        mask = channel_mask(rout, chs)
 
         # Optional micro-time windowing (the setup's [start, stop) gates)
         mask &= micro_time_mask(micro, det_info.get("micro_time_ranges"))
@@ -377,7 +381,7 @@ def estimate_background_from_bursts(
     return results
 
 
-def _check_gates(tttr, detectors, warnings) -> None:
+def _check_gates(tttr, detectors, warnings, micro_time_resolution_ps=None) -> None:
     """Append the excitation-window pre-flight of the detectors' micro-time gates to *warnings*
     (nothing when *warnings* is ``None``).
 
@@ -388,9 +392,16 @@ def _check_gates(tttr, detectors, warnings) -> None:
     """
     if warnings is None:
         return
-    from chisurf.core.fluorescence.burst.streams import window_warnings
+    from chisurf.core.fluorescence.burst.streams import gates_record, window_warnings
 
-    warnings.extend(window_warnings({"": tttr}, detectors))
+    warnings.extend(window_warnings({"": tttr}, gates_record(detectors, micro_time_resolution_ps), detectors))
+
+
+def _applied_detectors(tttr, detectors, micro_time_resolution_ps):
+    from chisurf.core.fluorescence.burst.streams import gates_record
+    from chisurf.core.fluorescence.excitation import applied_windows
+
+    return applied_windows(gates_record(detectors, micro_time_resolution_ps), detectors, tttr)["detectors"]
 
 
 def _detector_interphoton_times(tttr, det_info, dt_scale):
@@ -401,7 +412,7 @@ def _detector_interphoton_times(tttr, det_info, dt_scale):
     chs = np.asarray(det_info.get("chs", []), dtype=int)
     if chs.size == 0:
         return np.empty(0)
-    mask = np.isin(rout, chs) & micro_time_mask(micro, det_info.get("micro_time_ranges"))
+    mask = channel_mask(rout, chs) & micro_time_mask(micro, det_info.get("micro_time_ranges"))
     times = macro[mask]
     if times.size < 2:
         return np.empty(0)
@@ -416,6 +427,7 @@ def background_diagnostics_from_bursts(
     tail_fraction: float = 0.8,
     min_counts: int = 1,
     warnings: list[str] | None = None,
+    micro_time_resolution_ps: float | None = None,
 ) -> dict[str, BackgroundDiagnostics]:
     """Per-detector inter-photon-time histogram + tail fit for diagnostic plots.
 
@@ -424,7 +436,8 @@ def background_diagnostics_from_bursts(
     histogram, the fitted model and the tail region. *warnings*, when given,
     receives the gate pre-flight (:func:`_check_gates`), as there.
     """
-    _check_gates(tttr, detectors, warnings)
+    _check_gates(tttr, detectors, warnings, micro_time_resolution_ps)
+    detectors = _applied_detectors(tttr, detectors, micro_time_resolution_ps)
     header = tttr.header
     dt_scale = float(getattr(header, "macro_time_resolution", 1.0)) * 1000.0
     out: dict[str, BackgroundDiagnostics] = {}

@@ -168,6 +168,7 @@ class Pda2cReader(ExperimentReader):
         #: of each row (see :class:`~chisurf.core.experiments.pda2c.settings.PdaReaderSettings`).
         self.detector_setup = ""
         self.detector_names: list = []
+        self.micro_time_resolution_ps = None
         #: The file list: ``{"use": bool, "path": str}`` per TTTR file, burst
         #: table or burst-analysis folder. :attr:`filename` is its ticked part.
         self.files: list = []
@@ -369,13 +370,15 @@ class Pda2cReader(ExperimentReader):
             for detector, chs in zip(COLOUR_DEFAULTS[3], list(self.channels)[:3])
             if chs
         }
-        return {"windows": windows, "detectors": detectors}
+        reading = {"micro_time_resolution": self.micro_time_resolution_ps} if self.micro_time_resolution_ps else {}
+        return {"windows": windows, "detectors": detectors, "tttr_reading": reading}
 
     def take_windows(self, windows: Mapping) -> None:
         """Use *windows* (``{name: [start, stop)}``) as the two excitation periods, earliest first."""
         ordered = sorted((int(v[0]), int(v[1])) for v in dict(windows).values())[:2]
         if len(ordered) == 2:
             self.micro_time_ranges = [list(r) for r in ranges_to_inclusive(ordered)]
+            self.micro_time_resolution_ps = None  # detected windows are in the data's channels
 
     def windows_warning(self, tttr) -> str | None:
         """The excitation-window pre-flight of the PIE excitation periods against *tttr*.
@@ -500,6 +503,17 @@ class Pda2cReader(ExperimentReader):
             dtype=np.int64,
         )
         windows = self.detection_windows()
+        if self.micro_time_resolution_ps:
+            from chisurf.core.fluorescence.excitation import windows_in_data
+
+            source = {str(i): r for i, (_, r) in enumerate(windows)}
+            record = tttrlib.micro_time_windows(
+                windows=dict(zip(source, ranges_from_inclusive(source.values()))),
+                micro_time_resolution_ps=self.micro_time_resolution_ps,
+            )
+            converted = windows_in_data(record, tttr_data)["windows"]
+            windows = [(chs, ranges_to_inclusive([converted[str(i)]])[0])
+                       for i, (chs, _) in enumerate(windows)]
         if ranges.size < 2:
             return np.zeros((0, len(windows)))
         ranges = ranges.reshape(-1, 2)

@@ -58,6 +58,7 @@ from concurrent.futures import CancelledError
 from typing import Any
 
 import numpy as np
+from tttrlib import micro_time_windows
 
 logger = logging.getLogger(__name__)
 
@@ -289,7 +290,10 @@ def _run_burst_search(source: pathlib.Path, settings: dict, search: dict) -> pat
         source,
         settings=analysis_settings,
         filetype="HT3",
-        windows={"prompt": (0, int(settings["micro_time_channels"]))},
+        windows=micro_time_windows(
+            {"prompt": (0, int(settings["micro_time_channels"]))},
+            micro_time_resolution_ps=float(settings["micro_time_resolution"]) * 1e12,
+        ),
         detectors=demo_detectors(),
         output_dir=bur_dir,
         mti_output_dir=analysis,
