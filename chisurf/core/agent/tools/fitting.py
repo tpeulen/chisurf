@@ -230,6 +230,29 @@ def get_fit(context: AgentContext, fit: Any = None) -> dict[str, Any]:
     return summary
 
 
+def _without_irfs(
+    context: AgentContext, indices: list[int], named: bool
+) -> tuple[list[int], list[int]]:
+    """Drop IRF reference measurements from *indices*; refuse when only IRFs were named.
+
+    Fitting an IRF is the commonest slip of a small model in a folder of
+    samples and their references; the result looks like a fit and is noise.
+    """
+    from chisurf.core.agent.tools.decay import looks_like_irf
+
+    irfs = [i for i in indices if looks_like_irf(context.datasets[i])]
+    kept = [i for i in indices if i not in irfs]
+    if irfs and named and not kept:
+        names = [str(getattr(context.datasets[i], "name", i)) for i in irfs]
+        raise ToolError(
+            f"{names} {'is an IRF' if len(names) == 1 else 'are IRFs'} — the instrument "
+            "response is the reference of a decay fit, not a sample. Create the fit on the "
+            "decay and attach the IRF with set_irf (or use auto_fit_decay); pass "
+            "allow_irf=true only if you really mean to fit the IRF itself."
+        )
+    return kept, irfs
+
+
 @registry.add(
     name="create_fit",
     description=(
@@ -262,6 +285,14 @@ def get_fit(context: AgentContext, fit: Any = None) -> dict[str, Any]:
                     "fit per dataset. Default false."
                 ),
             },
+            "allow_irf": {
+                "type": "boolean",
+                "description": (
+                    "Fit a dataset whose name marks it as an IRF. Default false: "
+                    "an IRF is the reference of a decay fit (attach it with "
+                    "set_irf), not a sample."
+                ),
+            },
         },
         "required": ["model_name"],
     },
@@ -272,12 +303,16 @@ def create_fit(
     model_name: str,
     datasets: Any = None,
     grouped: bool = False,
+    allow_irf: bool = False,
 ) -> dict[str, Any]:
     """Create one or more fits and initialise their fit ranges."""
     context.ensure_experiments()
     indices = context.resolve_datasets(datasets)
     if not indices:
         raise ToolError("no datasets are loaded — call load_data first")
+    skipped_irfs: list[int] = []
+    if not allow_irf:
+        indices, skipped_irfs = _without_irfs(context, indices, named=datasets is not None)
 
     resolved_name = resolve_model_name(model_name)
 
@@ -320,6 +355,14 @@ def create_fit(
         )
     result: dict[str, Any] = {
         "ok": True,
+        **(
+            {
+                "skipped_irfs": skipped_irfs,
+                "note": "IRF datasets were not fitted; attach them with set_irf",
+            }
+            if skipped_irfs
+            else {}
+        ),
         "n_created": len(created),
         "model": resolved_name,
         "fits": created,

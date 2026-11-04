@@ -345,3 +345,18 @@ def test_set_irf_loads_an_irf_named_beside_the_decay(context):
 
     assert result["irf"]["index"] == 1
     assert decay_tools._irf_attached(context.fits[0].model)
+
+
+def test_create_fit_refuses_an_irf_and_says_what_to_do_instead(context):
+    """A fit of the IRF looks like a fit and is noise: the slip seen in the shell run."""
+    data_tools.load_data(context, paths=[DECAY_FILE, IRF_FILE])
+    with pytest.raises(ToolError, match="set_irf"):
+        fitting_tools.create_fit(context, model_name=MODEL, datasets=[1])
+    assert context.fits == []
+
+    everything = fitting_tools.create_fit(context, model_name=MODEL)
+    assert everything["skipped_irfs"] == [1]
+    assert len(context.fits) == 1
+
+    deliberate = fitting_tools.create_fit(context, model_name=MODEL, datasets=[1], allow_irf=True)
+    assert deliberate["n_created"] == 1

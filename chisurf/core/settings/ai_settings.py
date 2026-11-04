@@ -312,6 +312,7 @@ def save_api_settings(settings: dict, provider: str | None = None) -> bool:
             "repeat_penalty",
             "manage_server",
             "reasoning",
+            "focus_tools",
         ]
     }
 

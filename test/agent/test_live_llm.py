@@ -80,6 +80,8 @@ def live_session(context):
             "(an ambient API key alone does not arm them)"
         )
     settings = LLMSettings.from_provider(PROVIDER, model=MODEL or None, base_url=BASE_URL or None)
+    if os.environ.get("CHISURF_AGENT_TEST_FOCUS", "") in ("0", "1"):
+        settings.focus_tools = os.environ["CHISURF_AGENT_TEST_FOCUS"] == "1"
     if os.environ.get("CHISURF_AGENT_TEST_REASONING", "") == "0":
         settings.extra_body["chat_template_kwargs"] = {"enable_thinking": False}
     if PROVIDER in KEYLESS_PROVIDERS:

@@ -21,12 +21,14 @@ timestamp: '2026-07-25T00:00:00Z'
    Shell end-to-end (LFM3 driving the real emtk shell offscreen, worker-thread
    agent + frame-thread draws, `emtk.export.png_bytes` screenshots): "fit it
    with the IRF and show me the fit" answered 3/3 in 91–143 s, "open the FCS
-   tool" and "write a script and open it in the code editor" first time. Open:
-   one run first created a fit *of the IRF* (`create_fit` warns but does not
-   refuse); refusing an IRF-named dataset there is the next small fix.
-   Open: the 46-tool catalogue is most of that prompt; deferring rarely used
-   tools (LFM3's template supports `defer_loading` / `tool_reference`) is the
-   next lever on speed.
+   tool" and "write a script and open it in the code editor" first time.
+   Done 2026-11-04: `create_fit` refuses IRFs; tool focus sends ~20 of 46
+   tools. Open: the system prompt (~3–4k tokens, mostly the active skill's
+   procedure) is now the largest fixed block — a compact skill rendering for
+   the local model is the next lever. Trap seen in the shell run: LFM3 garbles
+   very long absolute paths when copying them into `write_file` (it dropped a
+   path segment, then wrote to a relative path under the working directory);
+   give short paths in prompts that are tests.
 
 1. Measure: **The battery is the measurement, and it is not in the test suite.** Ten
    questions against a live provider, scored on *whether a page was opened and
@@ -496,6 +498,24 @@ Three things the model needs that a hosted one does not, all measured on it:
   generation 85 tok/s with flash attention (64 without, 38–53 on the CPU). The
   conda-forge osx-arm64 build is named `cpu_accelerate` but ships
   `libggml-metal` and lists `MTL0` — the name does not mean CPU-only.
+- **Tool focus** (`tool_focus.py`, `LLMSettings.focus_tools`, on for the
+  local provider): the request is sent a core set (load, fit, report,
+  script, the window) plus its active skills' `tools:`, the tools of topics
+  its wording names, and whatever the model asks for with `find_tools`. The
+  set only grows within a conversation, because the tool list heads the prompt
+  and any change re-processes it all; a known tool called without having been
+  offered still runs and joins. Measured with llama-server's tokenizer: a
+  decay-fit request 11.7k → 7.0k tokens (20 of 46 tools), a burst request
+  10.9k → 7.5k, a documentation question 12.4k → 8.5k. `test_tool_focus.py`
+  pins that every named tool exists. Live suite on the same GPU server,
+  2026-11-04: focus on 8/8 in 12:53, off 7/8 in 14:32 (the decay fit ran out
+  of steps) — one run per arm.
+- **An IRF is never fitted by accident.** `create_fit` refuses a dataset named
+  like an IRF unless `allow_irf=true`, and a blanket "fit everything" skips
+  them (`skipped_irfs`). The guard found three tests (`test_tools.py`,
+  `test_runtime.py`, `test_project_roundtrip.py`) that had been fitting
+  `215-268 D0 irf.dat`: the folder sorts it before `215-268 D0.dat`, so index
+  0 is the reference.
 - **One call per intention.** A 1.7B model drops the tail of a multi-step
   loop, so `auto_fit_decay(datasets="all")` fits every loaded sample with the
   IRF named like it (`x.dat` ↔ `x irf.dat`, `_matching_irf`) in a single call.

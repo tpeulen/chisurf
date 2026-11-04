@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-11-04
+
+- Agent: tool focus for the on-device model (tool_focus.py; ~20 of 46 tools per request, prompt 11.7k→7.0k tokens for a decay fit; live suite 8/8 in 12:53 vs 7/8 in 14:32 without) and create_fit refuses IRF datasets (three tests had been fitting the IRF). See subsystems/llm-agent.md.
+
 ## 2026-11-03
 
 - 2026-11-03 — Burst Selection names the button that is there: the pipeline step's preview/empty texts say "press Next" (it has no Run button), standalone keeps "press Run" (`model.run_word`; test `test/native_emtk/test_burst_selection_names_the_run_button.py`).

@@ -202,6 +202,10 @@ class LLMSettings:
         Additional request fields, sent only to servers that accept them —
         ``top_k`` and ``repeat_penalty`` for a local llama.cpp server. Hosted
         APIs reject unknown fields, so this stays empty for them.
+    focus_tools : bool
+        Send only the tools a request needs
+        (:mod:`chisurf.core.agent.tool_focus`) — on for the on-device model,
+        whose every turn re-reads the tool list.
     managed_server : bool
         Start the on-device model server
         (:func:`chisurf.core.agent.local_model.ensure_server`) when nothing
@@ -220,6 +224,7 @@ class LLMSettings:
     extra_headers: dict[str, str] = field(default_factory=dict)
     extra_body: dict[str, Any] = field(default_factory=dict)
     managed_server: bool = False
+    focus_tools: bool = False
 
     @classmethod
     def from_provider(cls, provider: str | None = None, **overrides: Any) -> LLMSettings:
@@ -265,6 +270,7 @@ class LLMSettings:
                 # LFM3 (and other hybrid models) think before every turn unless
                 # the chat template is told not to.
                 settings.extra_body["chat_template_kwargs"] = {"enable_thinking": False}
+            settings.focus_tools = bool(stored.get("focus_tools", True))
             settings.managed_server = bool(stored.get("manage_server", True)) and (
                 local_model.is_local_url(settings.base_url)
             )

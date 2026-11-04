@@ -32,7 +32,7 @@ cites the pages, and cannot change anything.
 
 **Out of the box there is nothing to set up.** The assistant runs Liquid AI's
 [LFM3-1.7B](https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF) on your own computer
-through llama.cpp's `llama-server`, which ships with the ChiSurf environment.
+through the llama.cpp server that ships with the ChiSurf environment.
 The first question starts the server and downloads the model (about 1.1 GB,
 once, into llama.cpp's cache); after that a start takes seconds. It needs no
 account, no key and no network, runs on Linux, macOS and Windows without a
@@ -72,7 +72,10 @@ llama-server -hf LiquidAI/LFM3-1.7B-GGUF:Q4_K_M --jinja --port 8080 \
 ```
 
 `--jinja` matters: without it LFM3's tool calls arrive as text instead of as
-tool calls. Another GGUF works too — put its Hugging Face reference
+tool calls. On this computer the assistant is shown only the tools a request
+needs, about half of them — it reads its whole instructions again at every
+step, so a shorter list makes each step faster and its choices better. It can
+ask for more itself (`find_tools`) when a job needs them. Another GGUF works too — put its Hugging Face reference
 (`repo:quant`) or the path of a `.gguf` file in the model field.
 
 ## Things to ask it

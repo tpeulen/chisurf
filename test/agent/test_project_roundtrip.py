@@ -32,7 +32,8 @@ def fitted_session(clean_session, tmp_path):
         shutil.copy(source, tmp_path)
     context = AgentContext(working_directory=str(tmp_path))
     data_tools.load_data(context, directory=".", pattern="*.dat")
-    fitting_tools.create_fit(context, model_name="Lifetime", datasets=[0])
+    # By name: the folder sorts "215-268 D0 irf.dat" first, so index 0 is the IRF.
+    fitting_tools.create_fit(context, model_name="Lifetime", datasets=["215-268 D0.dat"])
     fitting_tools.run_fit(context, fit=0)
     return context
 

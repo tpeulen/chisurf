@@ -104,7 +104,7 @@ def test_full_load_fit_report_workflow(session):
             ("load_data", {"directory": TCSPC, "pattern": "*.dat"}),
             ("create_fit", {"model_name": MODEL}),
             ("run_fit", {}),
-            "Fitted 4 decays; reduced chi2 between 1 and 30.",
+            "Fitted 2 decays; reduced chi2 between 1 and 30.",
         ]
     )
     result = agent.ask("fit every decay in the EasyTau300 folder")
@@ -112,8 +112,9 @@ def test_full_load_fit_report_workflow(session):
     assert result.ok
     assert result.tool_names() == ["list_files", "load_data", "create_fit", "run_fit"]
     assert all(invocation.ok for invocation in result.invocations)
-    assert len(agent.context.fits) == 4
-    assert result.text.startswith("Fitted 4 decays")
+    # Two samples and their two IRFs: the IRFs are references, not fitted.
+    assert len(agent.context.fits) == 2
+    assert result.text.startswith("Fitted 2 decays")
 
 
 def test_several_tool_calls_in_one_turn(session):

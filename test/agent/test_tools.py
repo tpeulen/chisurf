@@ -132,6 +132,11 @@ def test_list_experiments_rejects_an_invented_experiment(context):
 # ── fitting ───────────────────────────────────────────────────────────
 
 
+#: The two sample decays of the folder. Its IRFs sort first ("215-268 D0 irf.dat"
+#: < "215-268 D0.dat"), so index 0 is a reference, which create_fit refuses to fit.
+SAMPLES = ["215-268 D0.dat", "215-268 DA.dat"]
+
+
 @pytest.fixture()
 def loaded(context):
     """Load the TCSPC sample directory and return the context."""
@@ -142,7 +147,9 @@ def loaded(context):
 def test_create_fit_makes_one_runnable_fit_per_dataset(loaded):
     result = fitting_tools.create_fit(loaded, model_name=MODEL_NAME)
     assert result["ok"]
-    assert result["n_created"] == len(loaded.datasets)
+    # One per sample; the two IRFs are references, skipped and said so.
+    assert result["n_created"] == len(SAMPLES)
+    assert len(result["skipped_irfs"]) == 2
     for entry in result["fits"]:
         assert entry["fit_range"][1] > entry["fit_range"][0], "fit range was not initialised"
 
@@ -180,17 +187,17 @@ def test_a_prefix_resolves_when_it_is_unique(monkeypatch):
 
 
 def test_create_fit_reports_the_name_it_resolved_to(loaded):
-    result = fitting_tools.create_fit(loaded, model_name=MODEL_NAME.upper(), datasets=[0])
+    result = fitting_tools.create_fit(loaded, model_name=MODEL_NAME.upper(), datasets=[SAMPLES[0]])
     assert result["model"] == MODEL_NAME
 
 
 def test_create_fit_can_group_datasets_into_one_fit(loaded):
-    result = fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0, 1], grouped=True)
+    result = fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=SAMPLES, grouped=True)
     assert result["n_created"] == 1
 
 
 def test_run_fit_improves_and_reports_chi2r(loaded):
-    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0])
+    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[SAMPLES[0]])
     result = fitting_tools.run_fit(loaded, fit=0)
     assert result["ok"]
     entry = result["results"][0]
@@ -201,7 +208,7 @@ def test_run_fit_improves_and_reports_chi2r(loaded):
 
 
 def test_create_fit_withholds_chi2r_until_the_fit_has_been_run(loaded):
-    result = fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0])
+    result = fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[SAMPLES[0]])
     entry = result["fits"][0]
     assert "chi2r" not in entry, "a starting value must not look like a result"
     assert entry["optimised"] is False
@@ -214,7 +221,7 @@ def test_run_fit_without_any_fit_says_what_to_do(context):
 
 
 def test_get_fit_lists_named_parameters(loaded):
-    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0])
+    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[SAMPLES[0]])
     result = fitting_tools.get_fit(loaded, fit=0)
     names = [parameter["name"] for parameter in result["parameters"]]
     assert names, "model exposes no parameters"
@@ -228,7 +235,7 @@ def _first_free_parameter(context) -> str:
 
 
 def test_a_derived_quantity_cannot_be_set(loaded):
-    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0])
+    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[SAMPLES[0]])
     parameters = loaded.fits[0].model.parameters_all_dict
     derived = [name for name, p in parameters.items() if getattr(p, "is_output", False)]
     assert derived, "the lifetime model reports derived quantities"
@@ -237,7 +244,7 @@ def test_a_derived_quantity_cannot_be_set(loaded):
 
 
 def test_set_parameter_changes_value_fixed_and_bounds(loaded):
-    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0])
+    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[SAMPLES[0]])
     name = _first_free_parameter(loaded)
 
     result = fitting_tools.set_parameter(
@@ -251,26 +258,26 @@ def test_set_parameter_changes_value_fixed_and_bounds(loaded):
 
 
 def test_set_parameter_needs_something_to_change(loaded):
-    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0])
+    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[SAMPLES[0]])
     with pytest.raises(ToolError, match="at least one"):
         fitting_tools.set_parameter(loaded, parameter="t0", fit=0)
 
 
 def test_set_parameter_lists_the_real_names_when_the_name_is_wrong(loaded):
-    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0])
+    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[SAMPLES[0]])
     with pytest.raises(ToolError, match="Parameters of fit 0"):
         fitting_tools.set_parameter(loaded, parameter="not_a_parameter", fit=0, value=1.0)
 
 
 def test_set_parameter_can_target_every_fit(loaded):
-    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0, 1])
+    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=SAMPLES)
     name = _first_free_parameter(loaded)
     result = fitting_tools.set_parameter(loaded, parameter=name, value=3.0, all_fits=True)
     assert len(result["changed"]) == 2
 
 
 def test_set_fit_range_explicit_and_auto(loaded):
-    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0])
+    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[SAMPLES[0]])
     explicit = fitting_tools.set_fit_range(loaded, fit=0, start=100, stop=900)
     assert explicit["fit_range"] == [100, 900]
     automatic = fitting_tools.set_fit_range(loaded, fit=0, auto=True)
@@ -278,7 +285,7 @@ def test_set_fit_range_explicit_and_auto(loaded):
 
 
 def test_export_fit_results_writes_a_table(loaded, tmp_path):
-    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0, 1])
+    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=SAMPLES)
     fitting_tools.run_fit(loaded)
     target = tmp_path / "results.csv"
     result = fitting_tools.export_fit_results(loaded, path=str(target))
@@ -292,19 +299,19 @@ def test_export_fit_results_writes_a_table(loaded, tmp_path):
 
 
 def test_a_fit_can_be_addressed_by_name(loaded):
-    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0])
+    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[SAMPLES[0]])
     name = loaded.fits[0].name
     assert loaded.resolve_fit(name)[1] == 0
 
 
 def test_an_ambiguous_reference_asks_for_an_index(loaded):
-    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0, 1])
+    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=SAMPLES)
     with pytest.raises(ToolError, match="say which one"):
         loaded.resolve_fit(None)
 
 
 def test_an_out_of_range_index_reports_the_session_size(loaded):
-    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0])
+    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[SAMPLES[0]])
     with pytest.raises(ToolError, match="out of range"):
         loaded.resolve_fit(17)
 
@@ -313,7 +320,7 @@ def test_an_out_of_range_index_reports_the_session_size(loaded):
 
 
 def test_run_python_sees_the_live_session(loaded):
-    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0])
+    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[SAMPLES[0]])
     result = scripting_tools.run_python(
         loaded, code="print(len(datasets), len(fits))", purpose="count objects"
     )

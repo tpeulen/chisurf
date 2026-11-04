@@ -104,6 +104,10 @@ class AgentConfig:
     #: match is composed of are loaded on top of this, not counted against it.
     max_active_skills: int = MAX_AUTO_SKILLS
     skill_match_threshold: float = 2.0
+    #: Send only the tools a request needs (:mod:`chisurf.core.agent.tool_focus`).
+    #: ``None`` follows the model's settings (``LLMSettings.focus_tools``: on for
+    #: the on-device model, off for hosted ones).
+    focus_tools: bool | None = None
 
 
 @dataclass
@@ -289,6 +293,17 @@ class AgentSession:
         # handler needs no back-reference to the session.
         self.context.extras["skill_library"] = self.skills
         self.context.extras.setdefault("active_skills", [])
+        # Tool focus: ``None`` sends the whole catalogue; a set is the tools
+        # offered so far in this conversation (it only grows).
+        self._focus: set[str] | None = None
+        if self.focus_enabled:
+            from chisurf.core.agent import tool_focus
+
+            for spec in tool_focus.registry.tools.values():
+                self.registry.register(spec)
+            self._focus = set()
+            self.context.extras["tool_focus"] = self._focus
+            self.context.extras["agent_registry"] = self.registry
 
     # ── public API ────────────────────────────────────────────────────
 
@@ -296,6 +311,38 @@ class AgentSession:
     def native_tools(self) -> bool:
         """Whether tool schemas are sent through the provider's tool API."""
         return bool(self.llm.settings.supports_tools)
+
+    @property
+    def focus_enabled(self) -> bool:
+        """Whether only the tools a request needs are sent (see ``AgentConfig.focus_tools``)."""
+        settings = getattr(self.llm, "settings", None)
+        if settings is None or not getattr(settings, "supports_tools", True):
+            # No model yet (a session built to run tools directly), or the text
+            # protocol, which describes the whole catalogue in the prompt.
+            return False
+        if self.config.focus_tools is not None:
+            return bool(self.config.focus_tools)
+        return bool(getattr(settings, "focus_tools", False))
+
+    def offered_tools(self) -> list[str]:
+        """Return the names of the tools the next request sends to the model."""
+        specs = self.registry.filtered(self.config.max_safety)
+        if self._focus is None:
+            return [spec.name for spec in specs]
+        self._grow_focus("")
+        return [spec.name for spec in specs if spec.name in self._focus]
+
+    def _grow_focus(self, question: str) -> None:
+        """Add the tools *question* and the active skills need to the focus."""
+        if self._focus is None:
+            return
+        from chisurf.core.agent.tool_focus import focus_for
+
+        skill_tools: list[str] = []
+        for name in self.active_skills:
+            skill = self.skills.get(name)
+            skill_tools.extend(getattr(skill, "tools", None) or [])
+        self._focus.update(focus_for(question, skill_tools))
 
     def cancel(self) -> None:
         """Ask the running loop to stop after the current tool call."""
@@ -307,6 +354,8 @@ class AgentSession:
         self._cancelled = False
         self._clarification_pending = False
         self.context.extras["active_skills"] = []
+        if self._focus is not None:
+            self._focus.clear()
 
     def ask(self, question: str) -> AgentResult:
         """Answer *question*, calling tools as needed.
@@ -322,6 +371,7 @@ class AgentSession:
         """
         self._cancelled = False
         self._activate_skills(question)
+        self._grow_focus(question)
         self._sync_system_prompt()
         self.messages.append({"role": "user", "content": str(question)})
         self.context.emit("agent.started", {"question": question})
@@ -451,7 +501,14 @@ class AgentSession:
 
     def _complete(self) -> LLMResponse:
         """Run one chat completion with the current conversation."""
-        tools = self.registry.to_openai_tools(self.config.max_safety) if self.native_tools else None
+        tools = None
+        if self.native_tools:
+            offered = set(self.offered_tools())
+            tools = [
+                spec.to_openai_tool()
+                for spec in self.registry.filtered(self.config.max_safety)
+                if spec.name in offered
+            ]
         self._trim_history()
         return self.llm.complete(self.messages, tools)
 
@@ -711,6 +768,19 @@ class AgentSession:
         """Insert or refresh the system prompt with the current session state."""
         catalogue = "" if self.native_tools else self.registry.describe(self.config.max_safety)
         extra = self.extra_instructions
+        if self._focus is not None:
+            extra = "\n\n".join(
+                filter(
+                    None,
+                    [
+                        extra,
+                        "Only the tools this request seems to need are listed. If you "
+                        "need another — burst analysis, linking parameters for a global "
+                        "fit, documentation, export, plots, saving, running a program — "
+                        "call find_tools with what you need.",
+                    ],
+                )
+            )
         if not self.native_tools:
             extra = "\n\n".join(filter(None, [extra, text_protocol_prompt(catalogue)]))
         active = [
@@ -753,6 +823,10 @@ class AgentSession:
         self.context.emit("tool.started", {"tool": call.name, "arguments": call.arguments})
 
         spec = self.registry.get(call.name)
+        if spec is not None and self._focus is not None:
+            # A known tool called without having been offered still runs; it
+            # is offered from now on.
+            self._focus.add(spec.name)
         if spec is None:
             # A near miss is a spelling slip, not a different intention:
             # ``list_plugin``, ``functions.run_python``, ``Run_Fit``. Routing an
