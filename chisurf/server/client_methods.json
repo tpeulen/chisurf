@@ -9,6 +9,7 @@
     {"name": "dataset__rename", "rpc": "dataset.rename", "params": [{"name": "new_name", "required": true}, {"name": "dataset_index", "default": null}, {"name": "dataset_uid", "default": null}]},
     {"name": "dataset__group", "rpc": "dataset.group", "params": [{"name": "dataset_indices", "required": true}, {"name": "group_name", "default": null}]},
     {"name": "dataset__ungroup", "rpc": "dataset.ungroup", "params": [{"name": "dataset_indices", "required": true}]},
+    {"name": "dataset__tag", "rpc": "dataset.tag", "params": [{"name": "dataset_uid", "required": true}, {"name": "key", "required": true}, {"name": "value", "default": null}]},
 
     {"name": "fit__list", "rpc": "fit.list", "params": [{"name": "statistics", "default": false}], "result_key": "fits", "default": []},
     {"name": "fit__get", "rpc": "fit.get", "params": [{"name": "fit_index", "default": null}, {"name": "fit_uid", "default": null}], "result_key": "fit", "default": {}},

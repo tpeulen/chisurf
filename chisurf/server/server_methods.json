@@ -14,6 +14,7 @@
     {"rpc": "dataset.rename", "service": "datasets.dataset_rename"},
     {"rpc": "dataset.group", "service": "datasets.dataset_group"},
     {"rpc": "dataset.ungroup", "service": "datasets.dataset_ungroup"},
+    {"rpc": "dataset.tag", "service": "datasets.dataset_tag"},
     {"rpc": "dataset.load", "service": "datasets.add_dataset", "event_bus": true, "events": ["dataset.added"]},
 
     {"rpc": "fit.list", "service": "fits.list_fits"},

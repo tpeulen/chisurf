@@ -132,6 +132,10 @@ def _dataset_dto(
     result_of = str(getattr(dataset, "result_of", "") or "")
     if result_of:
         dto["result_of"] = result_of
+    # What a tool said the dataset is ({"sample": "buffer"}, :func:`dataset_tag`).
+    tags = (getattr(dataset, "meta_data", None) or {}).get("tags") if hasattr(dataset, "meta_data") else None
+    if isinstance(tags, dict) and tags:
+        dto["tags"] = {str(k): v for k, v in tags.items()}
     if include_length:
         dto["length"] = (
             None
@@ -792,6 +796,59 @@ def dataset_rename(
         return {"ok": True, "uid": dataset_uid, "new_name": new_name}
     except Exception as e:
         return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
+
+
+def _find_dataset(state: SessionState, dataset_uid: str) -> Any:
+    """The dataset of *dataset_uid*, a top-level one or a member of a group (``None``: none)."""
+    for dataset in list(state.datasets):
+        if str(getattr(dataset, "unique_identifier", "")) == dataset_uid:
+            return dataset
+        for member in _dataset_members(dataset) or ():
+            if str(getattr(member, "unique_identifier", "")) == dataset_uid:
+                return member
+    return None
+
+
+def dataset_tag(
+    state: SessionState,
+    dataset_uid: str,
+    key: str,
+    value: Any = None,
+) -> ServiceResult:
+    """Tag a dataset: ``meta_data["tags"][key] = value`` (``None`` removes the tag).
+
+    A tool labels a dataset with what it is for it -- Burst Analysis' sample type
+    (``{"sample": "buffer"}``) -- so the label goes with the dataset in the project and comes
+    back when the dataset is handed to a tool again. Tags are listed in the dataset's summary
+    (``tags``).
+
+    Parameters
+    ----------
+    state : SessionState
+        Server-side session state.
+    dataset_uid : str
+        Unique identifier (a top-level dataset or a member of a group).
+    key : str
+        Tag name.
+    value : JSON value, optional
+        Tag value; ``None`` removes the tag.
+
+    """
+    dataset = _find_dataset(state, str(dataset_uid or ""))
+    if dataset is None:
+        return service_error("dataset not found", error_code=NOT_FOUND)
+    if not key:
+        return service_error("a tag needs a key", error_code=INVALID_INPUT)
+    meta = getattr(dataset, "meta_data", None)
+    if not isinstance(meta, dict):
+        return service_error("the dataset takes no tags", error_code=OPERATION_FAILED)
+    tags = dict(meta.get("tags") or {})
+    if value is None:
+        tags.pop(str(key), None)
+    else:
+        tags[str(key)] = value
+    meta["tags"] = tags
+    return {"ok": True, "uid": dataset_uid, "tags": dict(tags)}
 
 
 def dataset_group(

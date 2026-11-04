@@ -486,6 +486,19 @@ class ChiSurfAPI:
 
         return dataset_ungroup(self._state, list(dataset_indices))
 
+    def tag_dataset(self, dataset_uid: str, key: str, value: Any = None) -> dict[str, Any]:
+        """Tag a dataset (``value=None`` removes the tag); the tags are in its summary's ``tags``.
+
+        A tool says what a dataset is for it -- Burst Analysis labels a photon stream with its
+        sample type, ``tag_dataset(uid, "sample", "buffer")`` -- and the label stays with the
+        dataset in the project.
+        """
+        if self.mode == "server" and self.client is not None:
+            return self.client.dataset__tag(dataset_uid=dataset_uid, key=key, value=value)
+        from chisurf.server.services.datasets import dataset_tag
+
+        return dataset_tag(self._state, str(dataset_uid), str(key), value)
+
     # ── fits ──────────────────────────────────────────────────────
 
     def list_fits(self, statistics: bool = False) -> list[dict[str, Any]]:

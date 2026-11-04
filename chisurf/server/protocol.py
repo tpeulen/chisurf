@@ -275,6 +275,11 @@ METHOD_PARAM_SCHEMAS = {
         "optional_params": [],
         "result": "ActionResult",
     },
+    "dataset.tag": {
+        "required_params": ["dataset_uid", "key"],
+        "optional_params": ["value"],
+        "result": "ActionResult",
+    },
     "dataset.load": {
         "required_params": [],
         "optional_params": ["reader_name", "filename", "name", "curve_data"],
