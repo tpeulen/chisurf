@@ -42,8 +42,7 @@ measurement). New calibration files are added in step 1; the recipe follows them
    *Samples* (a group brings all its files), or drop files on the ChiSurf window while the step
    is open.
 3. Press **Run** (or **Next**). The window waits behind the progress card; **Stop** stops after
-   the step each sample is in. Samples run one at a time, or several at once when the files are
-   large enough for the burst search to use more processes (the same limit, `CHISURF_BURST_WORKERS`).
+   the step each sample is in (every sample in flight).
 
 ![Step 4 in Simple mode after a run: two samples done, a third (not a photon file) failed](figures/116_more_samples_simple.png)
 
@@ -56,6 +55,38 @@ others; **Run** again processes the failed and queued ones.
 **Re-run** of the selected sample with the recipe as it is now:
 
 ![Step 4 in Advanced: the recipe part by part](figures/116_more_samples_advanced.png)
+
+## Using the whole machine
+
+A batch is scheduled, not looped (`more_samples.SampleQueue`):
+
+- **One pool, all stages.** A single pool of `core_budget()` worker processes — the physical
+  cores but one (the window's), never more than Burst MLE's own fit limit, because it *is* Burst
+  MLE's fit pool — runs every sample's burst search, BVA and 2CDE and takes every sample's fit
+  chunks. No pool is started per sample or per stage, so the batch never runs more workers than
+  that, and the stages of different samples overlap: sample 2 searches while sample 1 fits.
+- **Samples in flight.** As many as there are worker processes and free memory for, admitted
+  largest first while the memory of those in flight leaves room (`concurrent_samples`). One sample
+  needs about 37 bytes per byte of its photon file — 20 M photons (a 103 MB PTU) about 3.7 GB,
+  measured as the physical footprint of the window's process and the pool; the batch plans with
+  60 % of the memory that is free, and always runs at least one.
+- **Rebalancing.** While every worker has a sample, everything after a sample's search is one task
+  of the pool (its fit runs in that worker); once fewer samples are in flight, the stages run in
+  the window's process again and the fit's chunks fan out over all the workers, so the last
+  samples get the freed cores.
+
+Measured on an 8-core laptop (7 workers, 16 GB, about 3 GB free; other jobs kept its load average
+at 20–30, so these are lower bounds), the benchmark is described in
+`okf/plugins/burst.md`:
+
+| Batch | One after the other | Side by side | Speed-up |
+|---|---|---|---|
+| 6 demo samples (~0.6 MB, ~570 bursts each) | 6.5 s | 2.5 s (6 in flight) | 2.6× |
+| 6 synthetic samples (2 M photons, 5.5 k bursts each) | 22.4 s | 13.6 s (3 in flight: memory) | 1.6× |
+
+The results do not depend on any of this: a batch run side by side gives the same bursts and
+lifetimes as one run sample after sample (tested). `process_more(..., workers=1)` keeps one sample
+in flight.
 
 ## Where the results go
 

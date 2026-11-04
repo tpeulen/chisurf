@@ -214,3 +214,63 @@ def test_the_step_takes_dropped_samples_and_runs_them(first):
         hub.set_advanced(advanced)
         assert emtk_inventory(step)["controls_without_tooltip"] == [], advanced
     hub.set_advanced(False)
+
+
+def test_a_parallel_batch_equals_the_serial_one_and_stays_within_the_cores(first, tmp_path):
+    """Several samples in flight (their stages in one shared pool) give exactly what one after
+    the other gives; the batch never runs more worker processes than the core budget, and that
+    budget never exceeds the physical cores."""
+    import shutil
+    import threading
+
+    import psutil
+
+    from chisurf.plugins.burst.burst_analysis import more_samples as ms
+
+    recipe = first["hub"].capture_recipe()
+    paths = []
+    for index, source in enumerate(first["more"] * 2):  # four samples, two of each measurement
+        target = tmp_path / f"s{index}_{Path(source).name}"
+        shutil.copy(source, target)
+        paths.append(target)
+    budget = ms.core_budget()
+    assert 1 <= budget <= ms.physical_cores()
+    serial = ms.process_more(recipe, paths, workers=1, register=False)
+
+    me = psutil.Process()
+    before = {c.pid for c in me.children(recursive=True)}
+    seen: set = set()
+    stop = threading.Event()
+
+    def watch() -> None:
+        while not stop.is_set():
+            seen.update(c.pid for c in me.children(recursive=True))
+            time.sleep(0.02)
+
+    watcher = threading.Thread(target=watch, daemon=True)
+    watcher.start()
+    try:
+        parallel = ms.process_more(recipe, paths, register=False)
+    finally:
+        stop.set()
+        watcher.join()
+    pool = ms.batch_pool(budget)
+    assert pool._max_workers == budget
+    pool_pids = set(getattr(pool, "_processes", {}) or {})
+    assert len(pool_pids) <= budget
+    # nothing but the one pool's processes appeared for the batch (no pool per sample or stage)
+    assert seen - before <= pool_pids, (seen - before, pool_pids)
+    key = lambda rows: [(Path(r["path"]).name, r["status"], r["bursts"], r["tau"]) for r in rows]  # noqa: E731
+    assert key(parallel) == key(serial)
+    assert all(r["status"] == "done" for r in parallel)
+    assert ms.concurrent_samples(paths, budget) == min(len(paths), budget)
+
+
+def test_the_batch_admits_samples_by_memory():
+    from chisurf.plugins.burst.burst_analysis import more_samples as ms
+
+    one = ms.MEMORY_PER_SAMPLE
+    # no room for two: one at a time, but always one
+    assert ms.concurrent_samples(["a", "b", "c"], budget=7, memory=one) == 1
+    assert ms.concurrent_samples(["a", "b", "c"], budget=7, memory=10 * one) == 3
+    assert ms.concurrent_samples(["a", "b", "c"], budget=2, memory=10 * one) == 2

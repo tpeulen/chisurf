@@ -1539,8 +1539,11 @@ class BurstWorkflow:
             (``Recipe.to_payload()``), or a JSON file holding it -- the recipe the Burst Analysis
             window captures (``hub.capture_recipe()``) and keeps in its settings.
         workers : int, optional
-            Samples processed at once; default: as many as the burst search would use processes
-            for these files.
+            Samples in flight at once (1: one after the other); default: as many as the cores
+            and the available memory allow. Either way the batch runs one shared pool of
+            :func:`~chisurf.plugins.burst.burst_analysis.more_samples.core_budget` worker
+            processes (the physical cores but one) for every search, BVA, 2CDE and burst fit;
+            the results do not depend on it.
 
         Returns
         -------

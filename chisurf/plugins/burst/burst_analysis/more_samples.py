@@ -341,14 +341,18 @@ def _check(should_stop: Callable[[], bool] | None) -> None:
         raise SampleStopped("stopped")
 
 
-def _search(recipe: Recipe, path: Path, uid: str) -> tuple[Path, Any]:
-    """Burst Selection's search, through its model (the run goes into the container of the
-    measurement's photon dataset); the run written and the model."""
+def search_task(setup: dict, setup_name: str, selection: dict, path: str, uid: str,
+                container_dir: str) -> str:
+    """Burst Selection's search of one measurement through its model, in whichever process runs
+    it (a worker of the shared pool): the run goes into *container_dir*, the folder of the
+    measurement's analysis container (given, not derived: a worker has a session of its own).
+    Returns the run written."""
+    from chisurf.core.fio.staging import open_tttr
     from chisurf.plugins.burst.burst_selection.gui.model import BurstSelectionModel
 
     from .workflow_context import searched_runs
 
-    from chisurf.core.fio.staging import open_tttr
+    path = Path(path)
 
     try:  # said plainly here: the search's own worker reports an unreadable file as "Unknown"
         open_tttr(str(path))
@@ -356,13 +360,15 @@ def _search(recipe: Recipe, path: Path, uid: str) -> tuple[Path, Any]:
         reason = str(exc).replace(str(path), path.name).split(". ")[0]
         raise ValueError(f"{path.name} cannot be read as a photon stream: {reason}") from exc
     model = BurstSelectionModel()
-    model.set_setup({**recipe.setup, "setup_name": recipe.setup_name})
-    model.import_settings(recipe.selection)
+    model.set_setup({**setup, "setup_name": setup_name})
+    model.import_settings(selection)
     # the pipeline writes .pto only; zipped folders are Legacy Export's
     model.zip_output = model.remove_folder = False
     if not model.add_paths([path]):
         raise ValueError(f"{path.name} is not a photon file Burst Selection reads")
     model.sources = {str(Path(p).resolve()): uid for p in model.files} if uid else {}
+    dirs = {str(p): str(container_dir) for p in model.files}
+    model.container_dirs = lambda: dict(dirs)
     why = model.prepare_run(force=True)
     if why is not None:
         raise RuntimeError(why)
@@ -370,7 +376,34 @@ def _search(recipe: Recipe, path: Path, uid: str) -> tuple[Path, Any]:
     runs = searched_runs(result, model.files)
     if not runs:
         raise RuntimeError(f"the burst search wrote no run ({model.status_text})")
-    return runs[0], model
+    return str(runs[0])
+
+
+def _search(recipe: Recipe, path: Path, uid: str, folder: Path, pool, should_stop) -> tuple[Path, Any]:
+    """The search of one sample (in *pool* when given); the run and what registers it in the
+    workspace (Burst Selection's files, sources and container folders)."""
+    run = _call(pool, should_stop, search_task, recipe.setup, recipe.setup_name, recipe.selection,
+                str(path), uid, str(folder))
+    files = [Path(path).resolve()]
+    dirs = {str(files[0]): str(folder)}
+    model = SimpleNamespace(files=files, sources={str(files[0]): uid} if uid else {},
+                            container_dirs=lambda: dict(dirs))
+    return Path(run), model
+
+
+def _call(pool, should_stop, fn, *args):
+    """*fn(*args)* in *pool* (a process pool shared by every sample and stage) or here; a Stop
+    cancels a task not started yet and abandons a running one."""
+    if pool is None:
+        return fn(*args)
+    future = pool.submit(fn, *args)
+    while True:
+        try:
+            return future.result(timeout=0.2)
+        except concurrent.futures.TimeoutError:
+            if should_stop is not None and should_stop():
+                future.cancel()
+                raise SampleStopped("stopped") from None
 
 
 def _fuse(recipe: Recipe, run: Path) -> Path:
@@ -406,22 +439,24 @@ def _stamp_args(tool: str, run: Path, settings: dict) -> tuple[str, list, dict]:
     return fingerprint, inputs, params
 
 
-def _bva(recipe: Recipe, run: Path) -> None:
+def _bva(recipe: Recipe, run: Path, pool=None, should_stop=None) -> None:
     from .gui.background_tasks import bva_task
 
     settings = dict(recipe.optional["bva"])
     fingerprint, inputs, params = _stamp_args("bva", run, settings)
-    _columns, note = bva_task(str(run), settings, True, fingerprint, inputs, params)
+    _columns, note = _call(pool, should_stop, bva_task, str(run), settings, True, fingerprint,
+                           inputs, params)
     if note:
         raise RuntimeError(note.strip(" ()"))
 
 
-def _two_cde(recipe: Recipe, run: Path) -> None:
+def _two_cde(recipe: Recipe, run: Path, pool=None, should_stop=None) -> None:
     from .gui.background_tasks import two_cde_task
 
     settings = dict(recipe.optional["two_cde"])
     fingerprint, inputs, params = _stamp_args("two_cde", run, settings)
-    _columns, _variant, note = two_cde_task(str(run), settings, fingerprint, inputs, params)
+    _columns, _variant, note = _call(pool, should_stop, two_cde_task, str(run), settings,
+                                     fingerprint, inputs, params)
     if note:
         raise RuntimeError(note.strip(" ()"))
 
@@ -437,19 +472,29 @@ def _h2mm(recipe: Recipe, run: Path) -> None:
     model.compute(force=True)
 
 
-def _fit(recipe: Recipe, run: Path, path: Path, should_stop, progress) -> Any:
-    """Burst MLE: the bursts handed over as the hub hands them (the background of this
-    measurement, the buffer's when there is one), then the recipe's IRF, shifts, model and fit
-    window; fitted and written into the container. Returns the session."""
+def _fit(recipe: Recipe, run: Path, path: Path, should_stop, progress, workers=None) -> Any:
+    """Burst MLE as the hub hands bursts over -- the run read, the setup on top, the buffer of
+    the calibration files (Burst MLE's ``prepare_patterns``) -- with the recipe's IRF, shifts,
+    model and fit window, the background this measurement's own (the buffer's, else the strict
+    selection of its photons outside the bursts, judged with the recipe's IRF); fitted and
+    written into the container. The IRF is not derived again from the reference files: it is
+    the recipe's. Returns the session."""
     from chisurf.plugins.burst.burst_mle_analysis.engine import MleSettings
     from chisurf.plugins.burst.burst_mle_analysis.gui.model import MleViewModel
 
     model = MleViewModel()
     model.split_by_state = bool(recipe.mle.get("split_by_state", False))
-    model.take_bursts([str(run)], recipe.setup, [str(path)], recipe.references())
+    model.take_bursts([str(run)], recipe.setup)
     session = model.session
     if session.df_bursts is None:
         raise RuntimeError("Burst MLE read no bursts from the run")
+    buffers = [str(b) for b in recipe.references().get("buffer") or ()]
+    if buffers and session.detectors:  # one buffer serves every detector, as prepare_patterns does
+        one, session.bg_one_for_all = session.bg_one_for_all, True
+        try:
+            session.set_pattern_files("bg", next(iter(session.detectors)), buffers)
+        finally:
+            session.bg_one_for_all = one
     known = set(MleSettings.__dataclass_fields__)
     settings = (recipe.mle.get("settings") or {}).get("detector_settings") or {}
     for det, values in settings.items():
@@ -466,8 +511,11 @@ def _fit(recipe: Recipe, run: Path, path: Path, should_stop, progress) -> Any:
         if det in session.detectors:
             session.shift_calibration[det] = dict(entry)
     session.outcome = None
+    session.ensure_background()  # the photons outside the bursts, strictly selected with this IRF
     _check(should_stop)
-    session.run_batch(progress=progress, should_stop=should_stop)
+    # the shared fit pool (engine.fit_pool) at the batch's size: every sample's chunks go into the
+    # same processes, so a sample alone gets all of them and several share them
+    session.run_batch(progress=progress, should_stop=should_stop, max_workers=workers)
     _check(should_stop)
     session.export_results()
     return session
@@ -512,6 +560,7 @@ def read_recipe(container: str | Path) -> dict[str, Any]:
 
 
 def _summarise(sample: dict, session: Any) -> None:
+    """The short numbers of a processed sample into *sample*: bursts, mean τ per detector, mean E."""
     from chisurf.core.datastore import row_count
     from chisurf.plugins.burst.burst_mle_analysis.gui.fit_view import burst_lifetimes
     from chisurf.plugins.burst.burst_selection.api.features import proximity_ratio
@@ -529,13 +578,20 @@ def process_sample(
     *,
     should_stop: Callable[[], bool] | None = None,
     on_stage: Callable[[str], Any] | None = None,
+    pool: Any = None,
+    workers: int | None = None,
+    share: Callable[[], int] | None = None,
 ) -> dict:
     """Run the recipe's pipeline on one *sample* (a :func:`new_sample` row, updated in place):
     search, optional steps, Burst MLE, then the calibration report and the recipe into its
-    container. Raises what the failing step raised (the caller marks the sample failed)."""
-    from chisurf.core.project.analysis import container_dir
+    container. Raises what the failing step raised (the caller marks the sample failed).
 
-    from .calibration_report import write_report
+    With *pool* (the process pool a batch shares, :func:`batch_pool`) the search, BVA and 2CDE
+    run in it. Then *share()* (default *workers*) says how many of its processes this sample may
+    count on now: one -- many samples in flight -- and everything after the search is a single
+    task of the pool; more -- few samples left -- and the stages run here, Burst MLE's chunks
+    fanned out over the pool. Without a pool, everything here and in the fit's own pool."""
+    from chisurf.core.project.analysis import container_dir
 
     def stage(text: str) -> None:
         sample["stage"] = text
@@ -548,9 +604,35 @@ def process_sample(
     uid = str(sample.get("uid") or "")
     folder = container_dir(uid)
     stage("searching bursts")
-    run, search = _search(recipe, path, uid)
+    run, search = _search(recipe, path, uid, folder, pool, should_stop)
     sample["search_model"] = search  # the caller registers the run in the workspace
     _check(should_stop)
+    now = int(share() if callable(share) else (workers or 0))
+    if pool is not None and now <= 1:
+        # many samples in flight: everything after the search is one task of the pool (its fit
+        # chunks in that worker), so the samples' stages run side by side on every core
+        stage("analysing (one worker)")
+        sample.update(_call(pool, should_stop, analyse_task, recipe.to_payload(), str(run),
+                            str(path), str(folder)))
+    else:
+        # few samples left: the stages here, the fit's chunks fanned out over the pool
+        sample.update(_analyse(recipe, run, path, folder, pool=pool, workers=workers or None,
+                               should_stop=should_stop, stage=stage))
+    stage("")
+    return sample
+
+
+#: What :func:`_analyse` gives a sample row.
+RESULT_KEYS = ("run", "container", "recipe_id", "report_id", "bursts", "tau", "E")
+
+
+def _analyse(recipe: Recipe, run: Path, path: Path, folder: Path, *, pool=None, workers=None,
+             should_stop=None, stage=None) -> dict:
+    """The stages after the search: fusion, BVA, 2CDE, Burst MLE, H2MM, then the calibration
+    report and the recipe into the container. Returns :data:`RESULT_KEYS`."""
+    from .calibration_report import write_report
+
+    stage = stage or (lambda _text: None)
     if "fusion" in recipe.optional:
         stage("fusing bursts")
         run = _fuse(recipe, run)
@@ -558,14 +640,14 @@ def process_sample(
     for step, work in (("bva", _bva), ("two_cde", _two_cde)):
         if step in recipe.optional:
             stage(f"computing {STEP_LABELS[step]}")
-            work(recipe, run)
+            work(recipe, run, pool, should_stop)
             _check(should_stop)
     stage("fitting lifetimes")
 
     def progress(done: int, total: int) -> None:
         stage(f"fitting lifetimes {done}/{total}")
 
-    session = _fit(recipe, run, path, should_stop, progress)
+    session = _fit(recipe, run, path, should_stop, progress, workers)
     if "h2mm" in recipe.optional:
         stage("computing H2MM")
         _h2mm(recipe, run)
@@ -573,13 +655,44 @@ def process_sample(
     report = recipe.workflow.get("calibration_report") or {}
     if report:
         write_report(path, report, folder)
-    sample["container"] = write_recipe(path, recipe, folder, runs=[str(run)])
-    sample["run"] = str(run)
-    sample["recipe_id"] = recipe.recipe_id
-    sample["report_id"] = recipe.calibration_report_id
-    _summarise(sample, session)
-    stage("")
-    return sample
+    out: dict = {
+        "container": write_recipe(path, recipe, folder, runs=[str(run)]),
+        "run": str(run),
+        "recipe_id": recipe.recipe_id,
+        "report_id": recipe.calibration_report_id,
+    }
+    _summarise(out, session)
+    return out
+
+
+class _InlineExecutor:
+    """An executor that runs what it is given at once, here: Burst MLE's fit chunks inside the
+    pool worker that analyses a sample (no pool started from a worker)."""
+
+    def submit(self, fn, *args, **kwargs):
+        future: concurrent.futures.Future = concurrent.futures.Future()
+        try:
+            future.set_result(fn(*args, **kwargs))
+        except BaseException as exc:  # noqa: BLE001 - delivered through the future
+            future.set_exception(exc)
+        return future
+
+    def shutdown(self, *args, **kwargs) -> None:
+        pass
+
+
+def analyse_task(recipe_payload: dict, run: str, path: str, folder: str) -> dict:
+    """:func:`_analyse` of one sample in a worker of the batch pool, every stage in this process
+    (the fit's chunks too); returns :data:`RESULT_KEYS`."""
+    from chisurf.plugins.burst.burst_mle_analysis import engine
+
+    pool_of = engine.fit_pool
+    engine.fit_pool = lambda workers=None: _InlineExecutor()
+    try:
+        return _analyse(Recipe.from_payload(recipe_payload), Path(run), Path(path), Path(folder),
+                        workers=1)
+    finally:
+        engine.fit_pool = pool_of
 
 
 def sample_tip(sample: dict) -> str:
@@ -617,22 +730,90 @@ def sample_cells(sample: dict) -> dict[str, Any]:
 
 
 # -- many samples ------------------------------------------------------------------------------ #
-def sample_workers(paths: Iterable[str | Path], uids: Iterable[str] = ()) -> int:
-    """How many samples are processed at once: as many processes as the burst search would use for
-    these files (one per file, never more than its cap and the cores; one for small files)."""
-    from chisurf.core.project.analysis import container_dir
-    from chisurf.plugins.burst.burst_selection.api.selection import _search_workers
+#: Peak memory of one sample in flight, per byte of its photon file: the TTTR read in the
+#: window's process and in a search worker, the burst table, the MLE session's per-photon arrays
+#: and the fit's shared-memory copies. Measured as the summed physical footprint (compressed
+#: pages included) of the process and its pool: 20 M photons (103 MB PTU) +3.73 GB, 2 M photons
+#: (10 MB) +0.31 GB -- about 37 bytes per file byte, 190 bytes per photon (okf/plugins/burst.md).
+MEMORY_PER_FILE_BYTE = 37.0
+#: What a sample needs besides its photons (models, tables, the IRF and background patterns).
+MEMORY_PER_SAMPLE = 100 * 1024**2
+#: The share of the available memory a batch may plan for (the rest stays free: no swap).
+MEMORY_SHARE = 0.6
 
-    paths = [str(p) for p in paths]
-    uids = list(uids) + [""] * len(paths)
-    request = SimpleNamespace(
-        files=paths, output_dir=None,
-        container_dirs={p: str(container_dir(u)) for p, u in zip(paths, uids)},
-    )
+
+def physical_cores() -> int:
+    """The physical cores this process may run on (not hyper-threads)."""
+    import os
+
     try:
-        return max(1, int(_search_workers(request, None)))
-    except Exception:  # noqa: BLE001 - one at a time
+        allowed = len(os.sched_getaffinity(0))  # type: ignore[attr-defined]
+    except AttributeError:
+        allowed = getattr(os, "process_cpu_count", os.cpu_count)() or 1
+    try:
+        import psutil
+
+        physical = psutil.cpu_count(logical=False) or allowed
+    except Exception:  # noqa: BLE001 - no psutil: the logical count
+        physical = allowed
+    return max(1, min(int(physical), int(allowed)))
+
+
+def core_budget() -> int:
+    """Worker processes a batch uses in all: the physical cores but one (the window's and the
+    sample threads'), never more than the burst fit's own limit -- its pool is the one shared."""
+    from chisurf.plugins.burst.burst_mle_analysis.engine import fit_workers
+
+    cores = physical_cores()
+    return max(1, min(int(fit_workers()), cores - 1 if cores > 1 else 1))
+
+
+def batch_pool(budget: int | None = None):
+    """The one process pool of a batch: Burst MLE's fit pool at *budget* processes. The searches,
+    BVA and 2CDE of every sample are tasks in it, and every sample's fit chunks go into it, so
+    the batch never runs more than *budget* worker processes."""
+    from chisurf.plugins.burst.burst_mle_analysis.engine import fit_pool
+
+    return fit_pool(int(budget or core_budget()))
+
+
+def sample_memory(path: str | Path) -> int:
+    """What one sample needs in memory while it is processed, bytes (from its file's size)."""
+    try:
+        size = Path(path).stat().st_size
+    except OSError:
+        size = 0
+    return int(size * MEMORY_PER_FILE_BYTE + MEMORY_PER_SAMPLE)
+
+
+def available_memory() -> int:
+    """The memory a batch may plan for, bytes (:data:`MEMORY_SHARE` of what is available)."""
+    try:
+        import psutil
+
+        free = psutil.virtual_memory().available
+    except Exception:  # noqa: BLE001 - unknown: assume 4 GB free
+        free = 4 * 1024**3
+    return int(free * MEMORY_SHARE)
+
+
+def concurrent_samples(paths: Iterable[str | Path], budget: int | None = None,
+                       memory: int | None = None) -> int:
+    """How many samples are in flight at once: every one while there are cores (one process
+    each at least) and memory for them -- the largest first, so the bound holds whichever run
+    together; at least one."""
+    sizes = sorted((sample_memory(p) for p in paths), reverse=True)
+    if not sizes:
         return 1
+    budget = int(budget or core_budget())
+    memory = available_memory() if memory is None else int(memory)
+    n, used = 0, 0
+    for size in sizes[:budget]:
+        if n and used + size > memory:
+            break
+        used += size
+        n += 1
+    return max(1, n)
 
 
 class SampleQueue:
@@ -652,6 +833,8 @@ class SampleQueue:
         self._finished: list[dict] = []
         self._total = 0
         self.recipe: Recipe | None = None
+        #: Worker processes of the batch running (:func:`core_budget`; 0 before one).
+        self.budget = 0
         #: Called (from the worker) whenever a sample changes; a window wakes its frame loop.
         self.on_change: Callable[[], Any] | None = None
 
@@ -773,14 +956,15 @@ class SampleQueue:
             except Exception:  # noqa: BLE001 - a window that cannot be woken redraws later
                 pass
 
-    def _one(self, recipe: Recipe, sample: dict) -> None:
+    def _one(self, recipe: Recipe, sample: dict, pool=None, budget: int | None = None) -> None:
         if self._stop.is_set():
             return
         sample.update(status="running", stage="starting", error="")
         self._changed()
         try:
             process_sample(recipe, sample, should_stop=self._stop.is_set,
-                           on_stage=lambda _text: self._changed())
+                           on_stage=lambda _text: self._changed(), pool=pool, workers=budget,
+                           share=None if pool is None else self.share)
             sample["status"] = "done"
         except (SampleStopped, InterruptedError):
             sample.update(status="queued", stage="", error="Stopped before it finished; Run goes on.")
@@ -792,20 +976,45 @@ class SampleQueue:
         self._changed()
 
     def _work(self, recipe: Recipe, targets: list[dict], workers: int | None) -> None:
+        """Every target through the pipeline: up to *workers* samples in flight (default: as many
+        as cores and memory allow, :func:`concurrent_samples`), each admitted while the memory of
+        those in flight leaves room for it, their stages overlapping in the one process pool of
+        :func:`core_budget` processes (sample 2 searches while sample 1 fits)."""
         if not targets:
             return
-        n = workers or sample_workers([s["path"] for s in targets], [s["uid"] for s in targets])
-        n = max(1, min(int(n), len(targets)))
-        if n == 1:
-            for sample in targets:
-                self._one(recipe, sample)
-            return
-        # the fit processes are shared: started once, before the samples ask for them together
-        from chisurf.plugins.burst.burst_mle_analysis.engine import fit_pool
+        budget = core_budget()
+        limit = max(1, min(int(workers or budget), budget, len(targets)))
+        memory = available_memory()
+        pool = batch_pool(budget)
+        self.budget = budget
+        pending = list(targets)
+        running: dict = {}
+        self._in_flight = lambda: len(running)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=limit,
+                                                   thread_name_prefix="burst-sample") as threads:
+            while pending or running:
+                while pending and len(running) < limit and not self._stop.is_set():
+                    need = sample_memory(pending[0]["path"])
+                    if running and sum(running.values()) + need > memory:
+                        break  # waits until a sample in flight has given its memory back
+                    sample = pending.pop(0)
+                    running[threads.submit(self._one, recipe, sample, pool, budget)] = need
+                if self._stop.is_set():
+                    pending = []
+                if not running:
+                    break
+                done, _ = concurrent.futures.wait(
+                    list(running), timeout=0.2, return_when=concurrent.futures.FIRST_COMPLETED
+                )
+                for future in done:
+                    running.pop(future)
 
-        fit_pool()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=n, thread_name_prefix="burst-sample") as pool:
-            list(pool.map(lambda s: self._one(recipe, s), targets))
+    def share(self) -> int:
+        """The worker processes one sample may count on now: the batch's, divided among the
+        samples in flight -- more each as fewer are left."""
+        in_flight = getattr(self, "_in_flight", None)
+        n = in_flight() if callable(in_flight) else 1
+        return max(1, int(self.budget or 1) - max(1, n) + 1)
 
     def poll(self) -> list[dict]:
         """The samples finished since the last poll (on the caller's thread)."""
@@ -897,6 +1106,10 @@ __all__ = [
     "register_sample",
     "sample_cells",
     "sample_tip",
-    "sample_workers",
+    "batch_pool",
+    "concurrent_samples",
+    "core_budget",
+    "physical_cores",
+    "sample_memory",
     "write_recipe",
 ]

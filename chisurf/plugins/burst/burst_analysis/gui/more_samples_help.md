@@ -10,9 +10,11 @@ with the first one's and with each other.
 1. **Drop the measurements on the step.** Drag them from the *Workspace data* table into the
    *Samples* table (a group is one row and brings all its files), right-click a row › *Add to this
    tool*, or drop files on the window while this step is open.
-2. Press **Run** (or **Next**). The samples are processed one after another, or several at once when
-   the files are large enough for the burst search to use more processes. The window waits behind
-   the progress card; its **Stop** stops after the step each sample is in. A sample that fails is
+2. Press **Run** (or **Next**). The samples are processed side by side, using the whole machine:
+   one pool of worker processes (the physical cores but one) runs every sample's burst search,
+   BVA, 2CDE and lifetime fit, so one sample searches while another fits; as many samples are in
+   flight as the cores and the free memory allow, and the last ones get the freed cores. The
+   results are the same as one after the other. The window waits behind the progress card; its **Stop** stops after the step each sample is in. A sample that fails is
    marked *failed* and the others go on; **Run** again processes the failed and the queued ones.
 
 Each row is short: the sample, how many bursts were found, the mean lifetime τ of the first
