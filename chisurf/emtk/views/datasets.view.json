@@ -31,6 +31,7 @@
        {"key": "experiment", "label": "Experiment", "collapse_order": 1, "description": "The experiment the dataset was read for."},
        {"key": "source", "label": "Source", "collapse_order": 2, "description": "The file or container the data came from; hover a row for its full address."}
      ]},
+    {"type": "splitter", "between": ["dataset_rows", "fit_rows"], "attr": "split"},
     {"type": "table", "source": "fit_rows", "row_key": "uid", "selected_call": "select_fit", "height": 130, "stretch": 1, "min_height": 52,
      "description": "The fits. Select one to show its window and its parameters in the Analysis panel.",
      "columns": [

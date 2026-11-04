@@ -2829,12 +2829,20 @@ class EmtkShellApp(ImApp):
         return {"shell": self.docks, "workspace": self.workspace_docks}
 
     def export_settings(self) -> dict:
-        """The plugins open in the shell and the ribbon's pin (with a pinned ribbon's fold and tab)."""
-        return {"open": list(self.hosted), "ribbon": self.ribbon.ribbon.state()}
+        """The plugins open in the shell, the ribbon's pin (with a pinned ribbon's fold and tab) and
+        the split between the Datasets and Fits tables."""
+        out = {"open": list(self.hosted), "ribbon": self.ribbon.ribbon.state()}
+        split = getattr(self.data.datasets, "split", None)
+        if isinstance(split, float):
+            out["datasets_split"] = split  # where the grip between datasets and fits sits
+        return out
 
     def restore_settings(self, state: dict) -> None:
         """Reopen the plugins that were open (each built on its worker thread); put the ribbon back as pinned."""
         self.ribbon.ribbon.restore((state or {}).get("ribbon"))
+        split = (state or {}).get("datasets_split")
+        if isinstance(split, (int, float)) and 0.0 < float(split) < 1.0:
+            self.data.datasets.split = float(split)
         for plugin_id in (state or {}).get("open", []):
             if str(plugin_id).partition("#")[0] in self.by_id:  # "ndxplorer#2" reopens as #2
                 self.open_plugin(plugin_id, focus=False)

@@ -264,6 +264,9 @@ class DatasetsModel:
         self.fits = _Rows()
         #: The kind the table is narrowed to (``""``: every kind), from the filter above it.
         self.kind_filter = ""
+        #: The datasets table's share of the height the two tables have (the grip between
+        #: them); ``None``: half each. Kept with the shell's settings.
+        self.split: float | None = None
         self._shown: tuple = ((), _Rows())
 
     def can_embed(self, record: Any = None) -> bool:
