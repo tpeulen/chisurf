@@ -35,6 +35,21 @@ no per-sample plot (decay / E histogram) -- the run is in the workspace, ndX ope
 in threads sharing the MLE fit pool; >1 only for files >= 32 MB (the search's rule), not measured on
 real data; (d) the recipe is captured at Run: a step changed while samples run applies to the next Run.
 
+**Burst MLE lifetimes are written into the fitted run (2026-11-04).** Owner: "the lifetimes are
+missing ... all missing after burst mle" + "they should be linked". `MleSession.run_batch` kept
+the rows in memory; only **Save results** wrote them, and the pipeline has no such button -- the
+owner's DNA13bp_3 container held bursts, 2CDE, background and the calibration report, no MLE.
+Now `MleViewModel.run_batch` writes after every finished batch (`_write_results`), and
+`core/export.write_mle_container` names the fits as members of the burst run they were fitted
+from (`<run>/mle G|G`, `<run>/irf G|G`, `<run>/mle state lifetimes`; `engine.export_results`
+addresses `m.pto/<run>` from `bur_files`), derived from that run's burst table, replacing an
+earlier fit of the run. ndX's `_burst_frames` merges any burst-grain table whose parent is the
+run's burst table, so nothing changed there. Guard:
+`burst_mle_analysis/tests/test_lifetimes_in_the_run.py` (two runs, the picked one gets
+`Tau (G|G)` / `Tau (R|G)` through `ndxplorer.io.pto_reader.read_run`, the other none, a refit
+replaces). Column names stay `Tau (<detector>)` (the existing convention; the owner wrote
+`tau_G|G`).
+
 **Burst MLE fit quality: G, the fit window, the IRF threshold, the background, the reference fit
 (2026-11-04).** Owner: "the wres look horrible! for the ref sample it must be perfect why does the
 bg have a decay shape?" + "inverted burst selection is not buffer, must be stricter". Measured on

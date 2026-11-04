@@ -2770,9 +2770,24 @@ class MleSession:
             written = write_b4_tables(legacy, files_by_stem, det_meta, settings, tick=tick)
             paths = [] if written is None else list(written[0])
         if in_container:
-            # `First Stem` of a container row is the container itself: one container is one measurement.
+            # `First Stem` of a container row is the container itself: one container is one
+            # measurement -- addressed as the run its bursts were read from (``m.pto/<run>``), so
+            # the fits become members of that run, not of whichever search is newest.
+            from chisurf.core.fio.analysis_path import split_container_path
+
+            run_of = {}
+            for path in self.bur_files:
+                box, run = split_container_path(path)
+                if box is not None and run:
+                    run_of.setdefault(str(Path(box).resolve()), str(path))
+
+            def address(first: str) -> str:
+                box = split_container_path(first)[0]
+                key = str(Path(box if box is not None else first).resolve())
+                return run_of.get(key, first)
+
             containers = write_container_tables(
-                [dict(r, **{"First Stem": r["First File"]}) for r in in_container],
+                [dict(r, **{"First Stem": address(str(r["First File"]))}) for r in in_container],
                 det_meta,
                 settings,
                 state_rows=self.state_lifetimes or None,

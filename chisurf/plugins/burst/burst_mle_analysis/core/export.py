@@ -110,6 +110,33 @@ def _units_by_prefix(columns) -> dict[str, str]:
     return out
 
 
+def _burst_run(source: str | Path, out_dir=None) -> tuple[str, str]:
+    """``(run, burst table)`` of the burst search *source* names (``m.pto/<run>``), else the
+    newest search of the container; ``("", "")`` when it has none."""
+    from chisurf.core.fio.analysis_path import split_artifact_name, split_container_path
+    from chisurf.core.fio.fluorescence.burst_container import burst_table_name, container_for
+    from chisurf.core.fio.pto import Measurement, is_measurement
+
+    container, source_run = split_container_path(source)
+    target = container if container is not None else container_for(source, out_dir)
+    if not (Path(target).exists() and is_measurement(target)):
+        return "", ""
+    with Measurement.open(target, writable=False) as m:
+        parent = burst_table_name(m, source_run)
+    return (split_artifact_name(parent)[0], parent) if parent else ("", "")
+
+
+def _remove(source: str | Path, names, out_dir=None) -> None:
+    """Take the objects named *names* out of *source*'s container (a refit replaces them)."""
+    from chisurf.core.fio.fluorescence.burst_container import open_measurement
+
+    wanted = set(names)
+    with open_measurement(source, out_dir, raw_data="sidecar") as m:
+        for obj in list(m._f.objects()):
+            if str(getattr(obj, "name", "")) in wanted:
+                m._f.remove(obj.uid)
+
+
 def write_mle_container(
     source: str | Path,
     tables: Mapping[str, Any],
@@ -153,11 +180,20 @@ def write_mle_container(
     from chisurf.core.fio.analysis_path import artifact_name
     from chisurf.core.fio.fluorescence.burst_container import analysis_run, write_burst_artifact
 
-    # One run per fit settings, derived from the burst table that was fitted: the
-    # run picker lists it beside the burst search, and lineage() runs
-    # fit -> burst table -> photons.
-    run, parent = analysis_run(source, "mle", parameters, out_dir=out_dir)
+    # The fits are members of the burst run they were fitted from (``<run>/mle G|G``),
+    # derived from that run's burst table -- as its 2CDE is: one Burst Analysis
+    # pipeline's products belong together, ndX merges them onto that run, the workspace
+    # shows them under it, and lineage() runs fit -> burst table -> photons. A new search
+    # is a new run; these stay with the one they were fitted from. A refit (other
+    # settings) replaces them: one lifetime table per detector and run.
+    run, parent = _burst_run(source, out_dir)
+    if not run:  # no burst search in the container: a run of their own, as before
+        run, parent = analysis_run(source, "mle", parameters, out_dir=out_dir)
     parent_of = parent or "bursts"
+    names = [artifact_name(run, f"mle {colour_of(d)}") for d, t in tables.items() if t is not None]
+    names += [artifact_name(run, "mle state lifetimes")]
+    names += [artifact_name(run, f"irf {colour_of(d)}") for d in (experiment or {}).get("detectors", {})]
+    _remove(source, names, out_dir)
     written = ""
     for detector, table in tables.items():
         if table is None:

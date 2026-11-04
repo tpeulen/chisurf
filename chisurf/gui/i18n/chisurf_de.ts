@@ -77796,6 +77796,14 @@ Background (kHz): {bg}</source>
             <source>&lt;b&gt;Run&lt;/b&gt; processes every queued sample. The progress card's &lt;b&gt;Stop&lt;/b&gt; stops after the current step; a sample that fails is marked &lt;i&gt;failed&lt;/i&gt; and the others go on. Hover a row for its details.</source>
             <translation>&lt;b&gt;Ausführen&lt;/b&gt; verarbeitet jede wartende Probe. &lt;b&gt;Stop&lt;/b&gt; auf der Fortschrittskarte hält nach dem aktuellen Schritt an; eine fehlgeschlagene Probe wird als &lt;i&gt;failed&lt;/i&gt; markiert und die anderen laufen weiter. Fahren Sie über eine Zeile für ihre Details.</translation>
         </message>
+        <message>
+            <source>Not written: {error}</source>
+            <translation>Nicht geschrieben: {error}</translation>
+        </message>
+        <message>
+            <source>Written into {count} container(s).</source>
+            <translation>In {count} Container geschrieben.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

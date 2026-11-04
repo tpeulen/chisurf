@@ -461,10 +461,16 @@ A measurement's `.pto` can be added instead of a `.bur` (**Add files**, or drop
 it on the window). The **Runs** table under the burst files lists the burst
 searches stored in the container; the run you click is the burst table that is
 fitted, over the photons stored in the same file (a bare container opens its
-newest run). **Save results** then writes the per-detector fits (`mle green`,
-`mle red`, ...), the pooled states and the IRF/background curves into the
-container instead of `bg4`/`br4` folders; **Export legacy...** in the PTO
-inspector makes those folders on request. **Split by H2MM state** still reads
+newest run). Every finished **Fit bursts** writes the per-detector fits at once
+-- in the pipeline, which has no Save button, too -- as members of the run they
+were fitted from (`<run>/mle G|G`, `<run>/mle R|G`, ...: one row per burst,
+skipped bursts included, derived from that run's burst table, as its 2CDE is),
+with the pooled states and the IRF/background curves (`<run>/irf G|G`). So ndX
+opens the run with `Tau (G|G)`, `Tau (R|G)`, `Tau (R|R)`, `gamma`, `r0`, `2I*`
+... beside the burst columns, the workspace lists them under that run, and a new
+search (another run) does not inherit them; a refit replaces them. **Save
+results** writes them again. **Export legacy...** in the PTO inspector makes
+`bg4`/`br4` folders on request. **Split by H2MM state** still reads
 the loose `h2mm` folder and does not apply to a container.
 
 Saved detector definitions carry LUTs and channel shifts to the photon reader.

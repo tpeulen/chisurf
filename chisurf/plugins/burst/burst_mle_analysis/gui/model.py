@@ -1330,10 +1330,13 @@ class MleViewModel(RunPickerMixin):
 
             rows = self.session.run_batch(progress=progress, should_stop=self._cancel.is_set)
             self.burst_results = rows
-            if not self._cancel.is_set():
-                self.held_fingerprint = fingerprint
             n = len(fit_view.burst_lifetimes(rows))
             self.status_text = f"Fitted {self.n_bursts} bursts ({n} lifetime series)."
+            if not self._cancel.is_set():
+                self.held_fingerprint = fingerprint
+                # the lifetimes go into the run they were fitted from at once (Save results
+                # writes them again): kept only in memory they never reached ndX or the workspace
+                self._write_results()
             self.notify("batch")
         finally:
             self._release_snapshot()
@@ -1352,8 +1355,22 @@ class MleViewModel(RunPickerMixin):
         """
         return self._cancel
 
+    def _write_results(self) -> None:
+        """After a batch: its lifetimes into the containers they were fitted from (members of the
+        burst run, :func:`~..core.export.write_mle_container`); a failure is said, not raised."""
+        if not self.burst_results:
+            return
+        try:
+            self.session.burst_results = self.burst_results
+            written = self.session.export_results()
+        except Exception as exc:  # noqa: BLE001 - the fits are kept; Save results tries again
+            self.status_text += " " + str(tr("Not written: {error}")).format(error=exc)
+            return
+        self.status_text += " " + str(tr("Written into {count} container(s).")).format(count=len(written))
+
     def export_results(self) -> int:
-        """Write the ``b?4`` burst tables beside the burst folders; returns how many files were written."""
+        """Write the lifetimes of the last batch again (they are written after every batch):
+        into the runs they were fitted from; returns how many files were written."""
         self.session.burst_results = self.burst_results
         written = self.session.export_results()
         self.status_text = f"{len(written)} burst-fit file(s) written."

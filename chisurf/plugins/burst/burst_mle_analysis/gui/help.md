@@ -16,7 +16,10 @@ placeholder.
   window does the same as **Use selected**), then **Clear**, **Auto IRF/background**, **Refit**, **Fit bursts**,
   **Stop**, **Save results** and **Save/Load settings**; below them the burst-file table, the detector and fit window,
   the IRF settings and the editable *Fit parameters* table (start value, fixed flag, fitted value). A change refits the
-  current decay. **Detector setup** is the shared detector editor.
+  current decay. **Detector setup** is the shared detector editor. Every finished **Fit bursts** writes its lifetimes
+  into the burst run they were fitted from (`<run>/mle G|G`, one row per burst, linked to the run's burst table): ndX
+  opens that run with `Tau (G|G)`, `Tau (R|G)`, `Tau (R|R)` beside the burst columns. **Save results** writes them
+  again.
 * **IRF** tab: one choice, **IRF from** -- **Auto** (the reference dye of Data Selection, else the IRF
   measurement, else the photons outside the bursts, else an estimate from the data), or one of them; a
   source whose measurement is missing is greyed. One line says what the IRF is (details in its tooltip),

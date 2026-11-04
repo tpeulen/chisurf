@@ -67,6 +67,7 @@
 - 2026-11-04: docs: guide 116 'More samples, processed the same way' (the recipe, the window, where results go, BurstWorkflow.process_more), registered in docs/guides/index.md; figures from docs/guides/screenshots/guide_116_more_samples.py (demo session, two samples done and one broken file failed).
 - 2026-11-04: docs/references/figures.yaml: provenance of guide 116's two renders (guide_116_more_samples.py).
 - 2026-11-04: okf/plugins/burst.md: resume point for step 4 (More samples): how the recipe is captured and replayed, the by-hand equality measured on the demo, and what is open (IRF re-derived then overwritten per sample, no per-sample plot, threads only for large files, recipe captured at Run).
+- Burst MLE writes its lifetimes after every batch into the burst run they were fitted from (<run>/mle G|G, derived from the run's burst table, a refit replaces them): the pipeline had no Save results, so ndX showed no Tau columns ([burst](plugins/burst.md)).
 
 ## 2026-11-03
 
