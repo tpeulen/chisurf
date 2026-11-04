@@ -36,6 +36,18 @@ def test_a_legacy_burstwise_folder_is_a_burst_folder(tmp_path: Path):
     assert classify(folder) == "burst_folder"
 
 
+def test_an_enclosing_folder_with_burstwise_is_a_burst_folder(tmp_path: Path):
+    workspace = tmp_path / "measurement.sptw"
+    burstwise = workspace / "burstwise_All 0.3000#20"
+    (burstwise / "bi4_bur").mkdir(parents=True)
+    (burstwise / "bi4_bur" / "Split_000.bur").write_text("First Photon\tLast Photon\n0\t0\n")
+    # Also add AppleDouble artifact beside it
+    (burstwise / "bi4_bur" / "._Split_000.bur").write_bytes(b"Mac OS X quarantine")
+
+    assert is_burst_folder(workspace)
+    assert classify(workspace) == "burst_folder"
+
+
 def test_a_folder_without_burst_tables_is_not(tmp_path: Path):
     (tmp_path / "data").mkdir()
     (tmp_path / "data" / "notes.txt").write_text("nothing")

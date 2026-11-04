@@ -478,6 +478,19 @@ def receive_folder(app: BurstwiseImportApp, payload: dict) -> None:
     folder = Path(str(payload["folder"])).expanduser()
     if not folder.is_dir():
         raise ValueError(f"{folder} is not a folder")
+    if not (folder / "bi4_bur").is_dir() and not (folder / "bur").is_dir():
+        try:
+            candidates = [
+                d for d in folder.iterdir()
+                if d.is_dir() and not d.name.startswith(".") and (
+                    (d / "bi4_bur").is_dir() or (d / "bur").is_dir()
+                )
+            ]
+            if candidates:
+                burstwise = [d for d in candidates if d.name.lower().startswith("burstwise")]
+                folder = burstwise[0] if burstwise else candidates[0]
+        except OSError:
+            pass
     app.model.folder = str(folder.resolve())
     if app.scan() is None:
         raise ValueError(app.status)

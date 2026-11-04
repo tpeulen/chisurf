@@ -105,13 +105,24 @@ def create_beside_resolver(
     -------
     Callable[[str, dict[str, float]], Path | None]
     """
-    base_dir = Path(folder).expanduser().resolve().parent
+    folder_path = Path(folder).expanduser().resolve()
+    base_dir = folder_path.parent
 
     def resolver(stem: str, mti: dict[str, float]) -> Path | None:
-        for ext in (".ht3", ".spc", ".ptu", ".pt3", ".phu", ".t3r", ".ht2"):
-            cand = base_dir / f"{stem}{ext}"
-            if cand.is_file():
-                return cand
+        unsplit = re.sub(r"^Split_", "", stem, flags=re.IGNORECASE)
+        unsplit = re.sub(r"-\d+$", "", unsplit)
+        stems_to_try = [stem]
+        if unsplit and unsplit != stem:
+            stems_to_try.append(unsplit)
+
+        dirs_to_try = [base_dir, folder_path]
+
+        for d in dirs_to_try:
+            for s in stems_to_try:
+                for ext in (".ht3", ".spc", ".ptu", ".pt3", ".phu", ".t3r", ".ht2"):
+                    cand = d / f"{s}{ext}"
+                    if cand.is_file() and not cand.name.startswith("."):
+                        return cand
         return None
 
     return resolver

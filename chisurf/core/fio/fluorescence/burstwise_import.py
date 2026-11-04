@@ -72,13 +72,13 @@ def scan_folder(folder: str | Path) -> dict:
         raise BurstwiseImportError(f"{folder} is not a directory")
     out: dict = {"tables": {}, "info": None, "mti": None, "parameters": {}}
     for sub in sorted(folder.iterdir()):
-        if not sub.is_dir():
+        if not sub.is_dir() or sub.name.startswith("."):
             continue
         role = COMPANION_DIRS.get(sub.name.lower())
         if role is None:
             continue
         for f in sorted(sub.iterdir()):
-            if not f.is_file():
+            if not f.is_file() or f.name.startswith("."):
                 continue
             stem = _stem_of(f.name)
             out["tables"].setdefault(stem, {})[role] = f
@@ -86,12 +86,23 @@ def scan_folder(folder: str | Path) -> dict:
     info_dir = folder / "Info"
     if info_dir.is_dir():
         for f in sorted(info_dir.iterdir()):
+            if f.name.startswith("."):
+                continue
             name = f.name.lower()
-            if name.endswith(".txt"):
+            if name.endswith(".txt") and name != "datetime.txt":
                 out["info"] = f
             elif name.endswith(".bin"):
                 out["info_bin"] = f
+            elif name.endswith(".json"):
+                out["info_json"] = f
+        if out["info"] is None:
+            if out.get("info_json") is not None:
+                out["info"] = out["info_json"]
+            elif (info_dir / "datetime.txt").exists():
+                out["info"] = info_dir / "datetime.txt"
     for f in sorted(folder.rglob("*.mti")):
+        if f.name.startswith("."):
+            continue
         out["mti"] = f
         break
     m = _FOLDER_NAME_RE.search(folder.name)
@@ -110,6 +121,36 @@ def _stem_of(filename: str) -> str:
     return re.sub(r"_\d+$", "", stem)
 
 
+def _deduplicate_legacy_header(header: list[str]) -> list[str]:
+    """Ensure all column names in `header` are unique."""
+    from collections import Counter
+
+    total_counts = Counter(header)
+    if len(total_counts) == len(header):
+        return header
+
+    result = list(header)
+    occurrence = Counter()
+
+    for i, name in enumerate(header):
+        occurrence[name] += 1
+        occ = occurrence[name]
+        tot = total_counts[name]
+        if tot > 1:
+            if occ < tot:
+                if name == "Green Count Rate (KHz)" and any("(Green)" in h for h in header[max(0, i - 6):i]):
+                    result[i] = "Green Count Rate (Green) (KHz)"
+                elif name == "Red Count Rate (KHz)" and any("(Red)" in h for h in header[max(0, i - 6):i]):
+                    result[i] = "Red Count Rate (Red) (KHz)"
+                else:
+                    result[i] = f"{name}_{occ}"
+            else:
+                result[i] = name
+        else:
+            result[i] = name
+    return result
+
+
 def read_legacy_table(path: str | Path) -> dict[str, np.ndarray]:
     """Read one legacy ``.bur``/``.bg4``/``.br4`` file into name -> column.
 
@@ -125,6 +166,7 @@ def read_legacy_table(path: str | Path) -> dict[str, np.ndarray]:
     lines = path.read_text(errors="replace").split("\n")
     header = [c.strip() for c in lines[0].split("\t")]
     header = [c for c in header if c]
+    header = _deduplicate_legacy_header(header)
     data_rows: list[list[str]] = []
     for line in lines[1:]:
         if not line.strip():
@@ -148,15 +190,25 @@ def read_legacy_table(path: str | Path) -> dict[str, np.ndarray]:
     for i, name in enumerate(header):
         vals = [r[i] for r in data_rows]
         try:
-            columns[name] = np.asarray([float(v) for v in vals], dtype=np.float64)
+            columns[name] = np.asarray([float(v) if v != "" else np.nan for v in vals], dtype=np.float64)
         except ValueError:
             columns[name] = np.asarray(vals, dtype=object)
     return columns
 
 
 def parse_info(path: str | Path) -> dict:
-    """Parse a ``Paris*info.txt`` into a flat parameter dict."""
-    text = Path(path).read_text(errors="replace")
+    """Parse a ``Paris*info.txt`` or JSON parameter file into a flat parameter dict."""
+    p = Path(path)
+    if p.suffix.lower() == ".json":
+        try:
+            import json
+
+            data = json.loads(p.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return {str(k): str(v) for k, v in data.items() if not isinstance(v, (dict, list))}
+        except Exception:
+            return {}
+    text = p.read_text(errors="replace")
     params: dict[str, str] = {}
     for line in text.split("\n"):
         parts = [p.strip(" \t\u0000") for p in line.split("\t")]
@@ -318,9 +370,9 @@ def convert_folder(
     ImportReport
     """
     folder = Path(folder)
-    if any(p.is_dir() for p in folder.glob("burstwise_*")):
+    if any(p.is_dir() and not p.name.startswith(".") for p in folder.glob("burstwise_*")):
         measurement = folder  # given the measurement itself
-    elif folder.name.startswith("burstwise_"):
+    elif folder.name.lower().startswith("burstwise") or (folder / "bi4_bur").is_dir() or (folder / "bur").is_dir():
         measurement = folder.parent  # given one of its trees
     else:
         # a lone tree without the naming convention: its parent is the
@@ -352,13 +404,16 @@ def convert_measurement(
     from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
 
     folder = Path(folder)
-    trees = sorted(
-        p
-        for p in folder.iterdir()
-        # a tree is a folder that holds the legacy subfolders; the deposition
-        # tree names them `burstwise_*`, fixtures and local copies may not
-        if p.is_dir() and (p / "bi4_bur").is_dir()
-    )
+    if (folder / "bi4_bur").is_dir() or (folder / "bur").is_dir():
+        trees = [folder]
+    else:
+        trees = sorted(
+            p
+            for p in folder.iterdir()
+            # a tree is a folder that holds the legacy subfolders; the deposition
+            # tree names them `burstwise_*`, fixtures and local copies may not
+            if p.is_dir() and not p.name.startswith(".") and ((p / "bi4_bur").is_dir() or (p / "bur").is_dir())
+        )
     if not trees:
         raise BurstwiseImportError(f"no burstwise analysis tree in {folder}")
     out_dir = Path(out_dir) if out_dir else folder

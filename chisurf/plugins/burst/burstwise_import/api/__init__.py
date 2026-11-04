@@ -52,11 +52,19 @@ def make_resolver(
         if settings.source_mode == "beside":
             # instrument files sit next to the burstwise folder (its parent),
             # occasionally inside it — check both
+            import re
+            unsplit = re.sub(r"^Split_", "", stem, flags=re.IGNORECASE)
+            unsplit = re.sub(r"-\d+$", "", unsplit)
+            stems_to_try = [stem]
+            if unsplit and unsplit != stem:
+                stems_to_try.append(unsplit)
+
             for base in (folder.parent, folder):
-                for suffix in BESIDE_SUFFIXES:
-                    cand = base / f"{stem}{suffix}"
-                    if cand.is_file():
-                        return cand
+                for s in stems_to_try:
+                    for suffix in BESIDE_SUFFIXES:
+                        cand = base / f"{s}{suffix}"
+                        if cand.is_file() and not cand.name.startswith("."):
+                            return cand
             return None
         return None
 

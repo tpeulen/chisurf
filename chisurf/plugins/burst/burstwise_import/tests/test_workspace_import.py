@@ -83,3 +83,22 @@ def test_a_container_with_its_photons_becomes_the_runs_parent(tmp_path):
         assert run.result_of == stream.unique_identifier
         assert list(container_dir(stream.unique_identifier).glob("*.pto"))
         assert not Path(staged).exists()
+
+
+def test_receive_enclosing_folder_resolves_and_detects_beside(tmp_path):
+    workspace = tmp_path / "exp.sptw"
+    burstwise = workspace / "burstwise_All 0.3000#20"
+    (burstwise / "bi4_bur").mkdir(parents=True)
+    (burstwise / "bi4_bur" / "Split_DNA-000000.bur").write_text("First Photon\tLast Photon\n0\t0\n")
+    # Beside TTTR file in workspace
+    (workspace / "DNA.ptu").write_bytes(b"PQTTTR")
+
+    app = create_app()
+    try:
+        receive_folder(app, {"folder": str(workspace)})
+        assert Path(app.model.folder).resolve() == burstwise.resolve()
+        assert app.model.resolver_mode == "beside"
+        assert len(app.model.inventory.get("tables", {})) == 1
+    finally:
+        app.close()
+

@@ -178,15 +178,32 @@ def _suffix(path: Path) -> str:
 
 def is_burst_folder(path: str | Path) -> bool:
     """Whether *path* is a legacy burstwise analysis folder: one holding ``.bur`` burst tables
-    (in ``bi4_bur/``, ``bur/`` or itself, the layouts the old burst search wrote)."""
+    (in ``bi4_bur/``, ``bur/``, itself, or a nested ``burstwise_*`` folder)."""
     folder = Path(path)
     if not folder.is_dir():
         return False
-    return any(
-        next(candidate.glob("*.bur"), None) is not None
-        for candidate in (folder / "bi4_bur", folder / "bur", folder)
-        if candidate.is_dir()
-    )
+
+    def _has_bur(d: Path) -> bool:
+        if not d.is_dir():
+            return False
+        try:
+            return any(p.suffix.lower() == ".bur" and not p.name.startswith(".") for p in d.iterdir() if p.is_file())
+        except OSError:
+            return False
+
+    if any(_has_bur(candidate) for candidate in (folder / "bi4_bur", folder / "bur", folder)):
+        return True
+
+    try:
+        for child in folder.iterdir():
+            if child.is_dir() and not child.name.startswith("."):
+                if child.name.lower().startswith("burstwise") and any(
+                    _has_bur(cand) for cand in (child / "bi4_bur", child / "bur", child)
+                ):
+                    return True
+    except OSError:
+        pass
+    return False
 
 
 def classify(path: str | Path) -> str:

@@ -89,6 +89,12 @@ class BurstwiseImportViewModel:
             self.mti_entries = {}
 
         stem_count = len(inv.get("tables", {}))
+        if inv.get("tables") and not self.new_prefix:
+            first_stem = next(iter(inv["tables"]))
+            beside_res = create_beside_resolver(self.folder)
+            if beside_res(first_stem, self.mti_entries) is not None:
+                self.resolver_mode = "beside"
+
         self.status_text = f"Scanned: {stem_count} measurement stem(s) found."
         self.messages.append(f"Scanned {self.folder}: {stem_count} stem(s).")
         self.notify("scan")

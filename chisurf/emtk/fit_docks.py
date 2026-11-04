@@ -1924,6 +1924,21 @@ class DataDocks:
         project's analysis containers as children of their photon streams."""
         from chisurf.core.plugin.handoff import HandoffError
 
+        folder = Path(path)
+        if folder.is_dir() and not (folder / "bi4_bur").is_dir() and not (folder / "bur").is_dir():
+            try:
+                candidates = [
+                    d for d in folder.iterdir()
+                    if d.is_dir() and not d.name.startswith(".") and (
+                        (d / "bi4_bur").is_dir() or (d / "bur").is_dir()
+                    )
+                ]
+                if candidates:
+                    burstwise = [d for d in candidates if d.name.lower().startswith("burstwise")]
+                    path = str(burstwise[0] if burstwise else candidates[0])
+            except OSError:
+                pass
+
         try:
             self.shell.hand_off("burstwise_import", "legacy_folder", {"folder": str(path)})
         except HandoffError as exc:
