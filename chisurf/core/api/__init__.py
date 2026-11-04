@@ -470,13 +470,11 @@ class ChiSurfAPI:
                 dataset_indices=dataset_indices,
                 group_name=group_name,
             )
-        from chisurf.macros import core_data
+        # This API's own session (the process lists by default), not the process lists always:
+        # an API made over its own SessionState grouped the wrong list, or raised.
+        from chisurf.server.services.datasets import dataset_group
 
-        core_data.group_datasets(
-            dataset_indices=dataset_indices,
-            _from_controller=True,
-        )
-        return {"ok": True}
+        return dataset_group(self._state, list(dataset_indices), group_name)
 
     def ungroup_datasets(
         self,
@@ -484,13 +482,9 @@ class ChiSurfAPI:
     ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
             return self.client.dataset__ungroup(dataset_indices=dataset_indices)
-        from chisurf.macros import core_data
+        from chisurf.server.services.datasets import dataset_ungroup
 
-        core_data.ungroup_datasets(
-            dataset_indices=dataset_indices,
-            _from_controller=True,
-        )
-        return {"ok": True}
+        return dataset_ungroup(self._state, list(dataset_indices))
 
     # ── fits ──────────────────────────────────────────────────────
 

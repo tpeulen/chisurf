@@ -221,6 +221,8 @@ takes its input from the workspace, never from a file dialog or a drop of its ow
 tool** still enters the workspace first; once linked, the rows of a kind the tool accepts are fed to it
 (`EmtkShellApp._feed_after_import` / `_feed_dropped`, through `feed_from_workspace`), so a PTU dropped on
 Burst Analysis' Data Selection is in Datasets *and* in the step's file list (owner 2026-11-04).
+Several files in one drop become one Datasets group named after their folder (`fit_docks._group_dropped`,
+server `dataset.group`; burst runs stay children of their streams); a feed matches the group's members.
 
 * **Declaration.** `accepts[].from_workspace = {kinds, experiments, representations, many, key, with_setup,
   defaults}` on the existing hand-off (`HandoffSpec.from_workspace`, validated by `_validate_accepts`, parsed

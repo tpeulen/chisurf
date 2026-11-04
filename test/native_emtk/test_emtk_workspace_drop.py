@@ -165,3 +165,28 @@ def test_a_file_dropped_while_the_session_starts_is_added_once_it_is_up(shell, t
     shell.data.adopt(session)  # the session comes up: the kept drop goes in
     _settle(driver, lambda: _idle(shell) and _photon_rows(shell), "the early drop")
     assert [r["source_address"] for r in _photon_rows(shell)] == [str(target)]
+
+
+def test_files_dropped_together_become_one_group_named_after_their_folder(shell, tmp_path):  # noqa: F811
+    """Several photon files in one drop stay together: one group row (its folder's name and
+    count) holding a linked photon stream per file, not a flat list of rows."""
+    driver = Driver(shell, (1300, 900))
+    driver.frame(4)
+    folder = tmp_path / "sm_dna"
+    folder.mkdir()
+    targets = []
+    for i in range(3):
+        targets.append(folder / f"m00{i}.spc")
+        shutil.copy(SPC, targets[-1])
+    assert shell.on_files_dropped([str(t) for t in targets])
+
+    def groups():
+        return [r for r in shell.data.datasets.datasets if r.get("group")]
+
+    _settle(driver, lambda: _idle(shell) and groups(), "the group")
+    (group,) = groups()
+    assert group["name"] == "sm_dna (3)"
+    top = [r for r in shell.data.datasets.datasets if "." not in str(r.get("number", ""))]
+    assert [r["name"] for r in top if r.get("kind") == "photons"] == ["sm_dna (3)"]
+    members = [r for r in shell.data.datasets.datasets if str(r.get("number", "")).startswith(f"{group['number']}.")]
+    assert sorted(r["name"] for r in members) == ["m000.spc", "m001.spc", "m002.spc"]

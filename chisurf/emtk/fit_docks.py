@@ -561,6 +561,26 @@ class DatasetsModel:
             self.selected = {}
 
 
+def _group_dropped(api: Any, datasets: list) -> dict:
+    """Several files dropped at once stay together: the top-level datasets of one drop (not the
+    burst runs, which are their streams' children) become one group, named after their folder.
+
+    Returns the API's answer (``{"ok": True}`` when there is nothing to group).
+    """
+    tops = [d for d in datasets if not str(getattr(d, "result_of", "") or "")]
+    if len(tops) < 2:
+        return {"ok": True}
+    from chisurf.core.fio.address import container_of
+
+    uids = {str(d.unique_identifier) for d in tops}
+    indices = [int(r["index"]) for r in api.list_datasets() or [] if str(r.get("uid")) in uids]
+    if len(indices) < 2:
+        return {"ok": True}
+    folders = {container_of(str(getattr(d, "address", "") or d.name)).parent.name for d in tops}
+    name = f"{folders.pop() if len(folders) == 1 else tr('Dropped files')} ({len(indices)})"
+    return api.group_datasets(dataset_indices=indices, group_name=name)
+
+
 def _mcts_setting(key: str, default: Any) -> Any:
     """One ``optimization.mcts`` user setting, or *default*."""
     from chisurf.core import settings
@@ -2372,7 +2392,7 @@ class DataDocks:
                     result = api.load_dataset(dataset=dataset)
                     if isinstance(result, dict) and result.get("ok") is False:
                         return result
-                return {"ok": True}
+                return _group_dropped(api, datasets)
 
             def after(_result: Any, problems=problems) -> None:
                 if problems:

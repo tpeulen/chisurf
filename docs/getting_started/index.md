@@ -58,7 +58,9 @@ and adds it to **Datasets**, the workspace every tool picks its input from. **Ad
 Read data page decides whether a large file is *linked* (the project records its path, size and
 checksum and stays small; the default) or *embedded* in the project file; see
 {doc}`../guides/114_project_data`. The **Show** filter above the Datasets table narrows it to one
-kind of data.
+kind of data. Several files dropped at once stay together as one group, named after their folder
+(`sm_dna (11)`; **Ungroup** in its context menu splits it). Dropped on a tool — Burst Analysis'
+Data Selection, say — the files also go straight to that tool once they are linked.
 
 Docks are yours to rearrange: drag one out of the stack to another edge,
 resize it, or close it. The arrangement is saved when ChiSurf exits and

@@ -26,3 +26,23 @@ def test_dataset_grouping():
     finally:
         # Restore original datasets
         chisurf.imported_datasets = original_datasets
+
+
+def test_a_local_api_groups_its_own_session_not_the_process_lists():
+    """``ChiSurfAPI(mode="local", state=...)`` groups and ungroups the datasets of *its* session
+    (it once reached for ``chisurf.imported_datasets`` and raised IndexError there)."""
+    import numpy as np
+
+    from chisurf.core.api import ChiSurfAPI
+    from chisurf.core.data import DataCurve
+    from chisurf.server.session import SessionState
+
+    api = ChiSurfAPI(mode="local", state=SessionState())
+    for name in ("a", "b"):
+        api.load_dataset(dataset=DataCurve(x=np.arange(4.0), y=np.ones(4), name=name))
+    result = api.group_datasets(dataset_indices=[0, 1], group_name="both")
+    assert result["ok"] and result["member_count"] == 2
+    (row,) = api.list_datasets()
+    assert row["name"] == "both"
+    assert api.ungroup_datasets(dataset_indices=[0])["ok"]
+    assert sorted(r["name"] for r in api.list_datasets()) == ["a", "b"]
