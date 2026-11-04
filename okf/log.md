@@ -48,6 +48,7 @@
 - 2026-11-04: Burst Analysis `samples.py`: session roles from the setup's colours, dye inference via the dye database, buffer B_<det>, per-colour G factor and confocal volume from reference dyes; `demo.py` simulates a session with a known answer; the workflow context carries samples, calibration, references() and estimated().
 - 2026-11-04: Burst Analysis Data Selection assigns the session's files to role rows made from the setup (drag from the workspace, groups kept), computes buffer / G / confocal volume per colour off the UI thread, Simple applies G, Advanced shows the Calibration window; missing references warn and fall back; emtk 0.1.43 required.
 - 2026-11-04: Docs for Data Selection's roles and calibration: concept `reference_dye_calibration`, guides 13 and 21, OKF burst resume point; known issue for the order-dependent ALEX titration test.
+- 2026-11-04: Burst Selection in the Burst Analysis pipeline hides its 'Burst Selection' tab (files, runs, Run/Restart, output) in Simple and Advanced: step 1 has the files, Next runs; the step opens on Filter settings, the status moves to Summary, the tour drops steps pointing into the hidden tab.
 
 ## 2026-11-03
 

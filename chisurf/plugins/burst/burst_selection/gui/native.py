@@ -196,7 +196,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             size=(720.0, 540.0),
         )
         self.tour = EmTkGuidedTour(
-            steps=HERE / "guide.json",
+            steps=self._guide_steps(),
             get_target_rect=lambda k: self.item_rects.get(k) or self.form.rects.get(k),
             on_step_change=self._tour_step,
             owner=self.model,
@@ -226,7 +226,29 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         add("decay", "Micro-time decay", self._decay, dock="plots_a", closable=False)
         add("histogram", "Histogram", self._histogram, dock="plots_b", closable=False)
         add("table", "Bursts", self._bursts, dock="plots_b", closable=False)
+        if self.pipeline:
+            # The files, runs, Run/Restart and output belong to the standalone tool: in the
+            # pipeline step 1 chooses the files, Next runs the search and the runs go to the
+            # project. The step opens on its filter settings.
+            self.docks.hide("files")
+            self.docks.focus("settings")
         super().__init__(gui=self._render)
+
+    #: Docks the pipeline never shows (:meth:`set_advanced` leaves them hidden in both modes).
+    PIPELINE_HIDDEN = ("files",)
+
+    def _guide_steps(self) -> list:
+        """The tour: in the pipeline, without the steps that point into a dock it hides."""
+        import json
+
+        steps = json.loads((HERE / "guide.json").read_text(encoding="utf-8"))
+        listed = steps.get("steps", steps) if isinstance(steps, dict) else steps
+        if not self.pipeline:
+            return listed
+        return [
+            step for step in listed
+            if (step.get("target") or {}).get("tab") not in self.PIPELINE_HIDDEN
+        ]
 
     # -- tour / help ----------------------------------------------------------------------------------------- #
     def start_guide(self) -> None:
@@ -301,7 +323,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             else:
                 self.docks.hide(key)
         if not advanced:
-            self.docks.focus("files")
+            self.docks.focus("settings" if self.pipeline else "files")
 
     def use_files(self, paths, uids=()) -> bool:
         """Make the files exactly *paths* (in order) -- the pipeline's hand-off from Data Selection.
@@ -766,6 +788,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
 
     def _summary(self, box=None) -> None:
         m = self.model
+        if self.pipeline and (self.job.progress or m.status_text):  # the files tab is hidden
+            im.text_wrapped(self.job.progress or m.status_text)
+            im.separator()
         if not m.has_processed and m.display_frame is None:
             im.text_wrapped(
                 tr(

@@ -348,7 +348,12 @@ def test_the_pipeline_selection_shows_no_legacy_exports(hub, files):
     shown = set(selection.item_rects) | set(selection.form.rects)
     for key in ("export_cif", "metadata", "load_example", "toolAction_clear", "zip_output", "remove_folder"):
         assert key not in shown, key
-    assert "toolAction_run" in shown and "mmfdb_output" in shown
+    # the files / runs / Run tab is the standalone tool's: in the pipeline step 1 has the files
+    # and Next runs, so it is hidden in Simple and Advanced alike
+    assert "toolAction_run" not in shown and not selection.docks.is_shown("files")
+    hub.set_advanced(False)
+    drv.draw(2)
+    assert not selection.docks.is_shown("files")
     selection.model.zip_output = selection.model.remove_folder = True
     selection.run()
     assert not selection.model.zip_output and not selection.model.remove_folder
