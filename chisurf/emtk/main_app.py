@@ -2122,8 +2122,10 @@ class EmtkShellApp(ImApp):
                     # every frame cost ~18 ms of each shell frame
                     row_h = getattr(self, "_tool_row_h", 0.0)
                     if row_h > 0 and not im.is_rect_visible((1.0, row_h)):
+                        x, y = im.get_cursor_screen_pos()
+                        # where the row is (a dummy records no item rect of its own)
+                        self.item_rects["tools." + entry.plugin_id] = (x, y, self._tool_row_w, row_h)
                         im.dummy(1.0, row_h)
-                        self.item_rects["tools." + entry.plugin_id] = im.get_item_rect()
                         continue
                     label = entry_label(entry)
                     if im.selectable(
@@ -2133,7 +2135,7 @@ class EmtkShellApp(ImApp):
                     ):
                         self.open_plugin(entry.plugin_id, new=True)
                     self.item_rects["tools." + entry.plugin_id] = im.get_item_rect()
-                    self._tool_row_h = float(im.get_item_rect()[3])
+                    self._tool_row_w, self._tool_row_h = (float(v) for v in im.get_item_rect()[2:])
                     accents.mark_item(accent(self.task_categories.get(entry.plugin_id)))
                     im.set_item_tooltip(entry_tooltip(entry))
                 if caption:
