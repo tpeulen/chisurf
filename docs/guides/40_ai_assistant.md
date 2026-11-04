@@ -229,7 +229,7 @@ to see its arguments and result.
 
 | Step | Tool | What to read in its result |
 | --- | --- | --- |
-| Detect the experiment | `detect_smfret` | cw / PIE / µs-ALEX, donor and acceptor channels, warnings to confirm |
+| Detect the experiment | `detect_smfret` | cw / PIE / µs-ALEX, the detectors (`G\|G`, `R\|G`, `R\|R`) and their routing channels, warnings to confirm |
 | Find the bursts | `run_burst_analysis` | number of bursts, E/S distributions, `factors_used`, the `.pto` the burst table was written to |
 | Look at them | `inspect_bursts` | the summary the gate will be chosen from |
 | Gate the species | `select_species` | how many bursts the gate keeps |

@@ -392,7 +392,7 @@ match the requested channel width ({doc}`/guides/76_decay_analysis_tools`).
 ## Global fitting
 
 Fitting several decays together — donor-only vs donor-acceptor, a titration, or
-parallel/perpendicular polarization channels — with **shared (linked) lifetimes**
+VV/VH polarization channels — with **shared (linked) lifetimes**
 but independent amplitudes breaks the amplitude/lifetime degeneracy. This is how
 FRET distance distributions and anisotropy decays are resolved; see
 {doc}`/guides/10_lifetime_anisotropy_fitting` and

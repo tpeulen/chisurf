@@ -42,14 +42,14 @@ last = numeric_column(bursts, "Last Photon").astype(int)
 micro = np.asarray(tttr.micro_times)
 route = np.asarray(tttr.routing_channels)
 dt_ns = tttr.header.micro_time_resolution * 1e9
-donor_channels, prompt = (0, 8), (0, 2048)                 # donor detectors, Dex window
+gg_channels, prompt = (0, 8), (0, 2048)                    # G|G routing channels, Dex window
 
 mean_delay = []
 for s, e in zip(first, last):
     if e <= s:                                               # separator row
         continue
     m, r = micro[s:e + 1], route[s:e + 1]
-    dd = m[np.isin(r, donor_channels) & (m >= prompt[0]) & (m < prompt[1])]
+    dd = m[np.isin(r, gg_channels) & (m >= prompt[0]) & (m < prompt[1])]
     mean_delay.append(dd.mean() * dt_ns if dd.size >= 20 else np.nan)
 # per-burst mean donor delay; a full ML lifetime fit is tutorial 21
 ```

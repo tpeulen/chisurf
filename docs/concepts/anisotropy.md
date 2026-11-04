@@ -77,7 +77,7 @@ applied after the $G$ correction, and the forward model builds
 $f_\parallel = f_\mathrm{VM}\,[1 + (2-3l_1)\,r]$ and
 $f_\perp = f_\mathrm{VM}\,[1 - (1-3l_2)\,r]/G$ so the two invert exactly.
 
-Tail-matched G = VV/VH must multiply the perpendicular signal in both the
+Tail-matched G = VV/VH must multiply the VH signal in both the
 anisotropy and linked-mixing equations. An isotropic reference with VV = 2 VH
 therefore gives G = 2 and r = 0. Applying that same ratio to VV instead creates
 spurious anisotropy. Background subtraction can leave bins with a zero total
@@ -303,9 +303,9 @@ f_\parallel(t) = f_\mathrm{VM}(t)\,\big(1 + (2-3l_1)\,r(t)\big), \qquad
 f_\perp(t)     = \frac{f_\mathrm{VM}(t)\,\big(1 - (1-3l_2)\,r(t)\big)}{G}.
 $$
 
-$G = S_\parallel/S_\perp$ is the ratio of the two channel sensitivities, so the
-perpendicular channel records $1/G$ of what an equally sensitive one would: $G$
-*divides* the whole perpendicular channel rather than scaling only its
+$G = S_\mathrm{VV}/S_\mathrm{VH}$ is the ratio of the two channel sensitivities, so the
+VH channel records $1/G$ of what an equally sensitive one would: $G$
+*divides* the whole VH channel rather than scaling only its
 depolarization term. That placement is the one the corrected estimator at the
 top of this page inverts —
 $r = (f_\parallel - G\,f_\perp)/\big((1-3l_2) f_\parallel + (2-3l_1)\,G\,f_\perp\big)$

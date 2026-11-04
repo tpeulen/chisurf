@@ -21,7 +21,7 @@ interval on a parameter means, see
 
 The example throughout is the repository's ibh donor-only decay
 (`test/data/tcspc/ibh_sample/Decay_577D.txt`, 4096 channels of 14.1 ps rebinned
-to 512, fit window channels 55–480) and its donor–acceptor partner
+to 512, fit window channels 55:480) and its donor–acceptor partner
 (`Decay_577D+577A+GTPgS.txt`), with the shared `Prompt.txt` as IRF.
 
 ## F-Test

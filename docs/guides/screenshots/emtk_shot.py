@@ -51,8 +51,8 @@ def simulated_alex_table(path, *, gamma, alpha, beta, delta, efficiencies=(0.28,
                          tau_d0=4.0, r0=52.0):
     """Write an ALEX burst table with known correction factors (two FRET populations, D-only, A-only).
 
-    ``Green Count Rate (KHz)``/``Red Count Rate (KHz)``/``S delayed yellow (kHz)``/``Tau (green)`` -- the
-    ``.bur`` spellings the Accurate FRET channel guess recognises. Returns *path*.
+    ``G|G Count Rate (KHz)``/``R|G Count Rate (KHz)``/``R|R Count Rate (KHz)``/``Tau (G|G)`` -- the
+    detector-named columns the Accurate FRET channel guess recognises. Returns *path*.
     """
     import numpy as np
 
@@ -82,7 +82,7 @@ def simulated_alex_table(path, *, gamma, alpha, beta, delta, efficiencies=(0.28,
         path,
         np.column_stack([np.concatenate(c).astype(float) for c in (dd, da, aa, tau)]),
         delimiter=",", comments="",
-        header="Green Count Rate (KHz),Red Count Rate (KHz),S delayed yellow (kHz),Tau (green)",
+        header="G|G Count Rate (KHz),R|G Count Rate (KHz),R|R Count Rate (KHz),Tau (G|G)",
     )
     return path
 

@@ -123,7 +123,7 @@ gains one photon when read back.
   levels that $\Delta t$ is coarse enough to separate.
 * **The ratio row** is labelled *FRET efficiency* but is
   $n_0/\sum_c n_c$ for the **first** ticked detector — the proximity ratio when
-  the acceptor detector comes first, its complement when the donor does. It is
+  `R|G` comes first, its complement when `G|G` does. It is
   not corrected for background, crosstalk or $\gamma$, and in background bins
   it is noise. Read it only inside the bright state.
 * **The state row** is the decoded path. On diffusing molecules the two states

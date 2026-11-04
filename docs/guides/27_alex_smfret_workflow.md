@@ -77,8 +77,8 @@ Selection**.
 :width: 100%
 
 The same 198-burst workflow on **6. Burst MLE** after **Auto IRF/background**: the
-pooled single-lifetime-plus-anisotropy fit (Fit23) of the donor detector `G|G` gives a
-primary lifetime of 2.049 ns (2I* 2.54) in the window 15–116 at binning 32. The
+pooled single-lifetime-plus-anisotropy fit (Fit23) of `G|G` gives a
+primary lifetime of 2.049 ns (2I* 2.54) in the window 15:116 at binning 32. The
 MLE controls and plot stay in the step; the detector setup is shared through
 step 0.
 ```

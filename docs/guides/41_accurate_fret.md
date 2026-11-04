@@ -316,6 +316,20 @@ which does the whole thing in one click on the loaded measurement:
    `Stoichiometry (accurate)`, `R_DA (accurate)`, `Off static FRET line` and
    `Population` — so they can be plotted and gated like any other column.
 
+Before it runs, an options dialog asks three things. **Determine** chooses which
+factors (α, δ, γ, β, R₀) the calibration may write; the others keep the
+window's values. **Background ▸ Take from** chooses where the rates `Bg_G|G`,
+`Bg_R|G` and `Bg_R|R` (kHz, subtracted as rate × the burst's `Duration (ms)`)
+come from: *Run (Bg_G|G …)*, the run's own background record (the default when
+the run has one), *Buffer*, *Fixed (ndX parameters)*, *Fit (reference
+populations)* or *None*; sources the measurement does not store are greyed.
+**Populations ▸ Gating dimensions** chooses what the populations are told apart
+by: S, E and the lifetime and anisotropy dimensions, labelled after the
+detector column they read — *τ (G|G)*, *τ (R|R)*, *r (G|G)*, *r (R|R)* — and
+disabled when the table has no such column.
+
+![ndX's FRET calibration options on the cal1 ALEX measurement: Run is the default, Buffer greyed (no buffer measurement stored), the three Bg_<detector> rates it will use under the list; the lifetime and anisotropy dimensions greyed, as cal1 has no Tau or r columns](figures/41_fret_calibration_options.png)
+
 While it runs, a progress bar shows the calibration's steps: the calibration is
 six refinement passes plus the bootstrap resamples, twice over when the
 backgrounds are fitted, and the bar counts those steps. Cancelling stops it and
@@ -404,7 +418,7 @@ bursts = simulation.burst_table(min_photons=50)
 ```
 
 The photons are a real `tttrlib.TTTR` object whose routing channel is the ALEX
-stream (`0` = I_DD, `1` = I_DA, `2` = donor detector under acceptor excitation,
+stream (`0` = I_DD, `1` = I_DA, `2` = `G|R`, donor emission under acceptor excitation,
 `3` = I_AA), and every burst carries the ground-truth species it came from. The
 donor decay of a FRET population is the multi-exponential decay of the same
 Gaussian-broadened distance the static line integrates, so the simulated

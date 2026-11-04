@@ -14,7 +14,7 @@ A single-molecule session measures more than the sample. Beside it the lab recor
 - the **buffer** without dye: the background of every detector;
 - a **scatterer** (water, Ludox): the instrument response function (IRF);
 - a **reference dye** per colour: a small, free, fast-rotating dye such as
-  Rhodamine 110 (green) or Alexa Fluor 647 (red).
+  Rhodamine 110 for `G|G` or Alexa Fluor 647 for `R|R` (and `R|G`).
 
 Burst Analysis' *1. Data Selection* has a row for each of these roles, made from the detector
 setup (one IRF and one reference-dye row per emission colour), and computes from them what they
@@ -62,7 +62,7 @@ tail.
 ## The confocal volume from the reference dye's correlation
 
 The reference dye's photons on the colour's detector with the most photons are correlated —
-the parallel against the perpendicular channel, which removes detector dead time and
+the VV against the VH channel, which removes detector dead time and
 afterpulsing — in ten parts of the measurement, whose spread weights the fit. Free 3-D diffusion
 through a Gaussian detection volume $\exp(-2(x^2+y^2)/w_0^2 - 2z^2/z_0^2)$ gives
 

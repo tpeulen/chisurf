@@ -81,7 +81,7 @@ fret_2cde = eng.two_cde          # one value per burst; NaN if a stream is empty
 
 The **FRET-2CDE tool** computes the score over a burst folder and plots it
 against the proximity ratio; the controls set the KDE variant, kernel and time
-constant $\tau$ and the donor/acceptor channels:
+constant $\tau$ and the routing channels of `G|G` and `R|G`:
 
 ```{figure} figures/burst_2cde_tool.png
 :name: fig-2cde-tool

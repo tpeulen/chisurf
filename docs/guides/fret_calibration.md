@@ -44,7 +44,7 @@ Four correction factors (Greek-letter convention):
 
 | factor | symbol | meaning |
 |---|---|---|
-| leakage | $\alpha$ | donor emission bleeding into the acceptor channel |
+| leakage | $\alpha$ | donor emission bleeding into `R\|G` |
 | direct excitation | $\delta$ | acceptor directly excited by the donor laser |
 | detection | $\gamma$ | detection·quantum-yield ratio $(g_R\,\Phi_A)/(g_G\,\Phi_D)$ |
 | excitation flux | $\beta$ | green/red excitation-flux ratio (stoichiometry) |
@@ -123,8 +123,8 @@ post = refine_calibration(calib, i_dd, i_da, i_aa, labels)
 ```
 
 The light-path priors use the same conventions as the data estimators above:
-$\alpha$ is referenced to the donor detector `G|G` alone and $\delta$ to the
-acceptor-excitation channel, i.e. $\delta = \mathrm{ex}[\text{green}, A] /
+$\alpha$ is referenced to `G|G` alone and $\delta$ to the
+acceptor-excitation detector `R|R`, i.e. $\delta = \mathrm{ex}[\text{green}, A] /
 \mathrm{ex}[\text{red}, A]$. The donor-excitation and acceptor-excitation lasers
 default to the first and second excitation rows of the payload; name them with
 `green_laser=` / `red_laser=` when the setup has more than two. A single-laser
@@ -144,7 +144,7 @@ value and the result says so: `post["gamma_updated"]` is `False` and
 ### 2. Reference samples (donor-only, acceptor-only)
 
 The standard smFRET procedure derives the factors directly from reference
-measurements: $\alpha$ from a **donor-only** sample (its acceptor channel is pure
+measurements: $\alpha$ from a **donor-only** sample (its `R|G` signal is pure
 leakage), $\delta$ from an **acceptor-only** sample (pure direct excitation), and
 $\gamma$/$\beta$ from the $1/S$-vs-$E$ population fit (Lee *et al.* 2005;
 Hellenkamp *et al.* 2018).

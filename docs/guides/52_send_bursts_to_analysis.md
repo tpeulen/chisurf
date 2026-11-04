@@ -44,7 +44,7 @@ rather than failing later.
 :width: 100%
 
 ndX opened from ChiSurf on 293 bursts searched in `BH_SPC132.spc`, plotted as
-proximity ratio against the green lifetime `tau green (ns)`. The gate `FRET` (proximity
+proximity ratio against the `G|G` lifetime `Tau (G|G)`. The gate `FRET` (proximity
 ratio 0.35–1.0) leaves 59 bursts; right-clicking the 2-D histogram offers the
 four consumers ChiSurf advertises under **Send selection to**.
 ```

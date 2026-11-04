@@ -39,8 +39,8 @@ kept). That is expected, and it is shown rather than hidden.
 
 ```{note}
 If the reader refuses a detector, its channel definition could not be reproduced
-from the photons. An acceptor-excitation detector is usually a micro-time *window*
-on the acceptor channels, and no detector name can convey which window — record the
+from the photons. An acceptor-excitation detector such as `R|R` is usually a micro-time *window*
+on the routing channels of `R|G`, and no detector name can convey which window — record the
 detectors in the analysis manifest, or pass them explicitly through the API.
 ```
 
@@ -198,7 +198,7 @@ of 1.0000 each and a background of 0.001 kHz — the simulator adds no dark coun
 ## Two things not to misread
 
 **Amplitudes are not population fractions.** The donor-photon cut removes high-FRET
-bursts preferentially — they put most of their photons in the acceptor channel — so
+bursts preferentially — they put most of their photons on `R|G` — so
 the histogram understates every high-FRET species. The fit is unaffected, because
 the model histogram is cut identically, but the numbers you read off the picture
 are not the mixture.

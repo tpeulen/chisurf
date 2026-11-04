@@ -117,7 +117,7 @@ authenticated actor or configured local default.
 :width: 100%
 
 The two example batch decays (ρ 8 and 30 ns) after **Run batch** with the example's corrected G
-(1.2395) and tail bins 358–460: $r_\infty$ = 0.047 and 0.230. The table lists file, $r_\infty$,
+(1.2395) and tail bins 358:460: $r_\infty$ = 0.047 and 0.230. The table lists file, $r_\infty$,
 region, G, both backgrounds and an error column.
 ```
 

@@ -44,8 +44,8 @@ filters, reconstruction, weights = calc_ffcs_filters(total_decay, patterns)
 If the total decay has empty micro-time bins where a pattern still has weight
 (for example a decay gated to a PIE window against an ungated pattern), pass
 `empty_bins="exclude"` so those bins are left out instead of being weighted as
-one-photon bins; see "Empty bins" in {ref}`concept-filtered-fcs`. For parallel
-and perpendicular detectors sharing one filter, concatenate their decays and
+one-photon bins; see "Empty bins" in {ref}`concept-filtered-fcs`. For VV
+and VH detectors sharing one filter, concatenate their decays and
 patterns on one micro-time axis.
 
 The `fcs_filter_calculator` and `flc_2d` plugins provide the interactive

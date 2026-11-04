@@ -86,7 +86,7 @@ def grab_view_menu_rank(fig: pathlib.Path) -> None:
     efficiency = np.r_[rng.normal(0.02, 0.02, 400), rng.normal(0.5, 0.05, 600)]
     table = pathlib.Path(tempfile.mkdtemp(prefix="ndx-menu-")) / "bursts.csv"
     np.savetxt(table, np.column_stack([4.0 * (1 - efficiency), efficiency]), delimiter=",",
-               header="Tau (green),FRET efficiency", comments="")
+               header="Tau (G|G),FRET efficiency", comments="")
     app = load_plugin("ndxplorer", persist=False)
     driver = Driver(app, (900, 520))
     driver.frame(3)

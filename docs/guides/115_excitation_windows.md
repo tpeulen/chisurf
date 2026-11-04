@@ -26,11 +26,11 @@ known — and, above it, the detector setup to check.
 :width: 90%
 
 The simulated PIE demo (32 ps channels, 3125 per 100 ns; donor pulse at 2 ns, acceptor pulse at
-52 ns) checked against a setup made for an SPC-130 (50 ps channels, prompt 0–2048, delayed
-2048–4095). The windows are converted to 32 ps channels (0–3200 / 3200–6398, grey lines) and
+52 ns) checked against a setup made for an SPC-130 (50 ps channels, prompt 0:2048, delayed
+2048:4095). The windows are converted to 32 ps channels (0:3200 / 3200:6398, grey lines) and
 found wrong: *delayed* lies beyond the data, *prompt* holds both pulses. Orange: the detected
-windows, prompt 50–1613 (donor excitation, both detectors lit) and delayed 1613–3125 (acceptor
-excitation, the donor detector dark).
+windows, prompt 50:1613 (donor excitation, both detectors lit) and delayed 1613:3125 (acceptor
+excitation, `G|R` dark).
 ```
 
 **Use detected windows** saves the setup with the detected windows (and the channel width they

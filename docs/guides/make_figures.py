@@ -386,8 +386,8 @@ def fig_tttr():
     c = 0.5 * (edges[:-1] + edges[1:])
 
     fig, ax = plt.subplots(figsize=(5.4, 4.0))
-    ax.semilogy(c, hist_g + 1, color="#2ca02c", label="green detector")
-    ax.semilogy(c, hist_r + 1, color="#d62728", label="red detector")
+    ax.semilogy(c, hist_g + 1, color="#2ca02c", label="G|G")
+    ax.semilogy(c, hist_r + 1, color="#d62728", label="R|G")
     ax.set_xlim(0, 25); ax.set_ylim(1, None)
     ax.set_xlabel("micro time (ns)"); ax.set_ylabel("counts")
     ax.set_title("Micro-time histograms from a TTTR file")
@@ -1205,12 +1205,12 @@ def fig_timestamps():
     for s, e in [(40, 70), (110, 138), (170, 196)]:
         gaps[s:e] *= 0.08
     macro = np.cumsum(gaps)
-    route = (rng.random(n_ph) < 0.42).astype(int)          # 0 = green, 1 = red
+    route = (rng.random(n_ph) < 0.42).astype(int)          # 0 = G|G, 1 = R|G
     bursts = [(40, 69), (110, 137), (170, 195)]
 
     fig, (a1, a2) = plt.subplots(2, 1, figsize=(10.0, 4.6), sharex=True,
                                  gridspec_kw={"height_ratios": [1.5, 1]})
-    for ch, c, lbl, y in [(0, "#2ca02c", "green detector", 1), (1, "#d62728", "red detector", 0)]:
+    for ch, c, lbl, y in [(0, "#2ca02c", "G|G", 1), (1, "#d62728", "R|G", 0)]:
         m = route == ch
         a1.vlines(macro[m], y, y + 0.8, color=c, lw=0.9)
         a1.text(-0.01, y + 0.4, lbl, ha="right", va="center", fontsize=8,
@@ -1276,7 +1276,7 @@ def fig_ndxplorer():
         initial={"a1": counts.max(), "m1": 0.05, "s1": 0.03,
                  "a2": counts.max() * 0.6, "m2": 0.45, "s2": 0.06},
         x=xc, counts=counts.astype(float),
-        constant_names=["Bg"],
+        constant_names=["Bg_G|G"],
     )
     print(f"ndxplorer_marginal_fit: tau0 {tau0_fit:.3f} ns (chi2r {line.chi2r:.2f}); "
           f"E peaks {res.params['m1']:.3f} / {res.params['m2']:.3f} (chi2r {res.chi2r:.2f})")

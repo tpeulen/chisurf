@@ -63,9 +63,9 @@ In a two-colour PIE / ALEX setup the analyses find their roles by these names:
 
 | Detector | Role | Historic name |
 |---|---|---|
-| `G\|G` | donor emission under donor (green) excitation | green |
+| `G\|G` | donor emission under green-laser (donor) excitation | green |
 | `R\|G` | acceptor emission under donor excitation: the FRET-sensitised acceptor | red |
-| `R\|R` | acceptor emission under acceptor (red) excitation: the directly excited acceptor | yellow |
+| `R\|R` | acceptor emission under red-laser (acceptor) excitation: the directly excited acceptor | yellow |
 
 The burst-table columns carry the same names (`Number of Photons (G|G)`, `Tau (G|G)`,
 `S prompt R|G (kHz)`, `S delayed R|R (kHz)`, ...). **Add detector ...** offers the default
@@ -162,7 +162,7 @@ TTTR measurement of a fast-rotating reference. A timing-only `.set` header
 is rejected because it contains no reference photons. This reference is read
 on a private copy of the setup: the working definition's loaded measurement,
 preview and timing stay in place. The setup's routing-channel order alternates
-parallel and perpendicular channels; the reference combines entries 1, 3, …
+VV and VH channels; the reference combines entries 1, 3, …
 into VV and entries 2, 4, … into VH, with the configured LUTs, shifts and
 micro-time binning. The native [VV/VH calculator](91_vv_vh_g_factor.md) then
 provides tail, background, fractional VH shift, channel flip, manual G,
@@ -192,7 +192,7 @@ file/export/archive controls remain available for its standalone decay workflow.
 
 The native calculator embedded in the detector editor, driven with the measured
 BH SPC-132 photon fixture, binning 2 and the fixture's channel-0 shift of 2. The
-shown tail 425–925 maps to raw channels 850–1850; its G 1.32776 and SD 0.456709
+shown tail 425:925 maps to raw channels 850:1850; its G 1.32776 and SD 0.456709
 are workflow results for these inputs, not measured calibration ground truth.
 The active setup's timing remains separate from the independent reference clock.
 ```
@@ -210,7 +210,7 @@ The detector page stores tail endpoints in **raw TAC channels**. The calculator
 plots and edits **binned histogram bins**: with binning B, raw endpoints are
 divided by B on entry and the final calculator endpoints are multiplied by B
 and stored as raw integer endpoints on application. For example, raw channels
-850–1850 become calculator bins 425–925 when B = 2. Its slow-reference
+850:1850 become calculator bins 425:925 when B = 2. Its slow-reference
 **dt** is initialized from the reference's effective micro-time tick:
 raw tick in ps × B × 0.001 gives ns per calculator bin.
 

@@ -117,8 +117,8 @@ too; this step only drives it and publishes the detector setup.
 :width: 95%
 
 The alternation step on the shipped example (**Load example** in *2. Files*,
-then **Next**): period 8000 macro-time units = 100 µs, donor gate 235–3685,
-acceptor gate 4235–7685. The folded *intensity* has no laser-off gap — as in real
+then **Next**): period 8000 macro-time units = 100 µs, donor gate 235:3685,
+acceptor gate 4235:7685. The folded *intensity* has no laser-off gap — as in real
 µs-ALEX — but the two detectors swap: donor bright in the first shaded gate,
 acceptor in the second. That swap is what the detection uses, and what you
 check. The tag on the axis marks half the period.
@@ -137,7 +137,7 @@ same thing, and the step refuses to convert rather than folding a meaningless
 micro-time into every file.
 
 The **channel assignment is decided, not asked**. One physical fact settles it:
-under acceptor excitation the donor detector sees essentially nothing, whatever
+under acceptor excitation `G|R` (donor emission) sees essentially nothing, whatever
 the sample's efficiency or labelling. On the µs-ALEX calibration measurement this
 was built against — a 300 s Cy3B/ATTO647N dsDNA file — the donor turns out to be
 routing channel **1** and is 5 % as bright under acceptor excitation, i.e. the

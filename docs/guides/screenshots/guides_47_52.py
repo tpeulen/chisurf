@@ -41,8 +41,8 @@ def _write_bur_folder(root: pathlib.Path) -> pathlib.Path:
     ut0 = float(ut[np.isin(ch, (0, 8))].min())
     cols = ["First Photon", "Last Photon", "Duration (ms)", "Mean Macro Time (ms)",
             "Number of Photons", "Count Rate (KHz)", "First File", "Last File",
-            "Number of Photons (green)", "Number of Photons (red)", "Proximity Ratio",
-            "tau green (ns)"]
+            "Number of Photons (G|G)", "Number of Photons (R|G)", "Proximity Ratio",
+            "Tau (G|G)"]
     folder = root / "burstwise"
     (folder / "bi4_bur").mkdir(parents=True, exist_ok=True)
     zero = "\t".join(["0"] * len(cols)) + "\n"
@@ -68,15 +68,15 @@ def _ndx_with_gate(root: pathlib.Path):
 
     ndX is the emtk app, given ChiSurf's in-process RPC client as ChiSurf's
     ``Main → Tools → ndX`` gives it. Returns the capture driver
-    (:mod:`ndx_emtk`). Axes: proximity ratio against the mean green micro time
-    (an E-tau view); the gate keeps proximity ratio 0.35-1.0.
+    (:mod:`ndx_emtk`). Axes: proximity ratio against the mean G|G micro time
+    (an E-tau view); the gate keeps proximity ratio 0.35:1.0.
     """
     import ndx_emtk
 
     folder = _write_bur_folder(root)
     driver = ndx_emtk.replay(size=(1400, 860), chisurf=True)
     ndx_emtk.open_table(driver, folder)
-    ndx_emtk.axes(driver, "Proximity Ratio", "tau green (ns)", "Number of Photons")
+    ndx_emtk.axes(driver, "Proximity Ratio", "Tau (G|G)", "Number of Photons")
     panel = driver.app.panel
     panel.x_bins_2d = panel.y_bins_2d = 25
     panel.x_bins_1d = panel.y_bins_1d = 40

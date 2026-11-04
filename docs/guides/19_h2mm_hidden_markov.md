@@ -197,7 +197,7 @@ Three things worth knowing before you use the PTU:
 - **Photons no decoder saw keep their own ids.** Anything outside a burst, or
   matching no stream, lands on the compressed form of its original channel. So
   after a split those ids hold *only* background — summing what used to be the
-  donor channel gives you background, not the donor total.
+  `G|G` routing channel gives you background, not the `G|G` total.
 - **PTU is the target.** Its records carry six channel bits (0–63); narrower
   containers silently truncate an out-of-range id, which would merge two states
   without a word of warning.

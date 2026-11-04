@@ -35,7 +35,7 @@ the decay and the IRF on a log axis with the draggable windows tagged **Fit**, *
 
 **IRF files (this detector)** lists the photon files that make up the IRF. **Files…** opens a multi-select chooser,
 **Database…** picks files from the MMFDB object store, **Remove** deletes the selected row, **Clear** empties the list, and
-a file dropped on the window is added. The files are summed using the detector's parallel and perpendicular channels. With
+a file dropped on the window is added. The files are summed using the detector's VV and VH channels. With
 no IRF file the raw data are used (the list says so).
 
 ## 3. Windows, backgrounds, shifts
@@ -44,7 +44,7 @@ no IRF file the raw data are used (the list says so).
 | --- | --- |
 | **Conv start / Conv stop** | the convolution / fit window in micro-time channels (the blue **Fit** boundaries on the decay) |
 | **IRF start / IRF stop** | the window of the IRF (the green **IRF** boundaries) |
-| **Background VV (∥) / VH (⊥)** | background counts per micro-time bin subtracted from each IRF; the grey **BG** interval estimates them from the source decay; **0** uses the IRF's automatic baseline |
+| **Background VV / VH** | background counts per micro-time bin subtracted from each IRF; the grey **BG** interval estimates them from the source decay; **0** uses the IRF's automatic baseline |
 | **Shift VV / VH (ch)** | circular shift of each IRF in micro-time channels; fractions are allowed |
 
 Type a number and press Enter, step with the arrows, or drag a boundary on the plot. The raw histograms are cached, so

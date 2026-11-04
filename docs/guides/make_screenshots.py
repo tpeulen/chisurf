@@ -50,13 +50,13 @@ def _grab_ndx_overlay_axes():
         try:
             assert app.model.has_data, app.model.error
             app.model.set_parameter("x", "FRET efficiency")
-            app.model.set_parameter("y", "Tau (green)")
+            app.model.set_parameter("y", "Tau (G|G)")
             tool.minimum, tool.maximum, tool.tau_d0 = 20.0, 120.0, 4.0
             tool.add_line()
             tool.push_callback = push_to_ndx
             tool.push()
             assert not tool.dialog_text, tool.dialog_text
-            assert (app.model.x.name, app.model.y.name) == ("Tau (green)", "FRET efficiency")
+            assert (app.model.x.name, app.model.y.name) == ("Tau (G|G)", "FRET efficiency")
             app.docks.focus("Overlays")
             _native_shot(app, "ndxplorer_overlay_axes.png", size=(900, 600))
         finally:
@@ -1111,9 +1111,9 @@ def _grab_alex_suite_titration():
         path = workdir / f"c{concentration:g}.csv"
         with open(path, "w", newline="", encoding="utf-8") as fh:
             writer = csv.writer(fh, delimiter="\t")
-            writer.writerow(["Number of Photons (green)",
-                             "Number of Photons (red)",
-                             "Number of Photons (yellow)", "Duration (ms)"])
+            writer.writerow(["Number of Photons (G|G)",
+                             "Number of Photons (R|G)",
+                             "Number of Photons (R|R)", "Duration (ms)"])
             for a, b, c in zip(green - i_da, i_da, total - green):
                 writer.writerow([a, b, c, 1.0])
         rows.append((concentration, path))
@@ -1287,8 +1287,8 @@ def _grab_file_tools():
 def _grab_fcs_toolbox():
     """Grab the FCS workflow (Spectroscopy:Correlation:FCS): every correlator step, as the native rail draws it.
 
-    Loads the BH SPC-132 test stream, turns on the photon filter, correlates the green channels against the
-    red ones in ten chunks and hands them to the merger: the state a user reaches after one pass through the
+    Loads the BH SPC-132 test stream, turns on the photon filter, correlates the G|G routing channels against the
+    R|G ones in ten chunks and hands them to the merger: the state a user reaches after one pass through the
     rail. Each step is written through :class:`emtk.testing.PixelPainter`.
     """
     from emtk.testing import PixelPainter, png_encode

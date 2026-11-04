@@ -44,8 +44,8 @@ windowless computation.
 :name: fig-microtime-histogram
 :width: 100%
 
-Measured BH132 photon fixture (183,657 photons), donor detector `G|G`: parallel
-channels 8 and 3, perpendicular channel 0. The selected VV/VH counts are
+Measured BH132 photon fixture (183,657 photons), detector `G|G`: VV
+routing channels 8 and 3, VH routing channel 0. The selected VV/VH counts are
 79,468/56,499. The combined 113-bin width reads 0.372 ns under provider/header-derived
 0.0032958984375 ns/bin timing; this headerless SPC fixture does not independently
 calibrate the instrument. The logarithmic plot and complete native inputs are

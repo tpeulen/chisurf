@@ -256,7 +256,7 @@ marked ⚠ (its rate and the bursts' in the tooltip and the report). The status 
 (Rh110)**; the shifts, the dye, the files and the lifetime's source are in its
 tooltip and in the calibration report.
 
-The red detectors are calibrated once. Under PIE `R|G` (the red detectors gated
+`R|G` and `R|R` are calibrated once. Under PIE `R|G` (red emission gated
 on the green pulse) and `R|R` are the same detector pair, and G, the IRF's shape
 and the SPAD timing belong to the detection side: both take the calibration on
 the red reference dye in the window that sees it (`R|R`'s), `R|G`'s IRF placed at
@@ -312,7 +312,7 @@ reference fit with one lifetime, rotation and initial anisotropy:
 | G\|G | Rh110 | 4.00 (database) | 0.17 | 0.38 | 1.436 | +0.01 / +0.00 | 1.40 |
 | R\|R, R\|G | Alexa 647 | 1.16 (tail; database 1.0) | 1.04 | 0.15 | 1.564 | −0.00 / −0.00 | 1.66 |
 
-The red row holds only with RVZMT150's red channels in the right order: as
+The `R|R`, `R|G` row holds only with RVZMT150's VV and VH routing channels of `R|R` in the right order: as
 defined, Alexa 647's anisotropy starts at −0.10 -- its VV and VH are swapped --
 and Data Selection marks the red reference *VV/VH swapped?* (Burst MLE ⚠): G
 reads 0.629 and the reference fit 13.2 until the order is changed in step 0.
@@ -412,8 +412,8 @@ In the pipeline the IRF of each detector is taken, in this order (Auto), from:
    IRF[i] = D[i] − exp(−Δt/τ)·D[i−1], gave the noisy, broad hump of a single
    polarisation's rotation; on a simulated Rh110 its VV IRF was 0.12 ns early
    and a 2.5 ns sample came out 2.63 ns (now 2.50 ns). Of several dyes, each
-   detector takes the one with the most photons in its gate: Rh110 for the
-   green detectors, Alexa647 for the red detectors of a PIE set-up. A colour
+   detector takes the one with the most photons in its gate: Rh110 for
+   `G|G`, Alexa647 for `R|G` and `R|R` of a PIE set-up. A colour
    without a reference dye falls through to the next source for that colour only.
 2. **A scatter measurement** (Data Selection's IRF row, or a file named `H2O`,
    `water`, `Ludox`, `scatter`, `IRF` or `prompt` beside the data). The buffer
@@ -584,9 +584,9 @@ also be loaded through the normal burst-file selector.
 :name: fig-21-burst-mle
 :width: 100%
 
-Burst MLE on `m000.bur` of the BH SPC-132 sample folder (green = routing
-0/8, red = 1/9), after **Auto IRF**: binning 32, window 15–116, and a Fit23 of
-all selected green photons at τ = 2.103 ns (γ, r₀, ρ fixed). Right: the VV|VH
+Burst MLE on `m000.bur` of the BH SPC-132 sample folder (`G|G` = routing
+0/8, `R|G` = 1/9), after **Auto IRF**: binning 32, window 15:116, and a Fit23 of
+all selected `G|G` photons at τ = 2.103 ns (γ, r₀, ρ fixed). Right: the VV|VH
 decays (white), the Gaussian IRF (red), the non-burst background (blue) and the
 model (green); top, the weighted residuals.
 ```
@@ -599,7 +599,7 @@ the rising edge seen here.
 :name: fig-21-burst-mle-model-selection
 :width: 100%
 
-The same `m000.bur` (green = routing 0/8) with **Fit model** switched to Fit24:
+The same `m000.bur` (`G|G` = routing 0/8) with **Fit model** switched to Fit24:
 the parameter table now holds `tau1`, `gamma`, `tau2`, `A2`, `offset`. `A2`
 fits to zero here — no evidence for a second lifetime.
 ```

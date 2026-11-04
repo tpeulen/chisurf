@@ -342,7 +342,7 @@ def _grab_21_burst_mle():
     driver.frame(3)
     app.auto_extract()
     wait(driver, lambda: not app.job.busy, timeout=400)
-    print("tau green:", app.model.tau_result, "binning", app.model.binning,
+    print("Tau (G|G):", app.model.tau_result, "binning", app.model.binning,
           "range", app.model.session.micro_time_range)
     render(app, "21_burst_mle.png", size=(1400, 900), driver=driver)
     return app
