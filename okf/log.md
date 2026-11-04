@@ -21,6 +21,7 @@
 - 2026-11-04: acq: instrument_sim.py, a synthetic PIE instrument (heads, shutters, diode) owned by source selection.
 - 2026-11-04: acq: video connects without OpenCV (capture-card fallback, .tif remedy, recorder failure keeps the preview); guide section on video preview and recording.
 - 2026-11-04: acq: per-head laser cards, the µW target gesture and the standalone power calibration panel (power.view.json).
+- 2026-11-04: acq: guided measurement wizard (measurement_wizard, guided_panel, guided_plots, live/guided_analysis), modal-only, with live plots in every stage.
 
 ## 2026-11-03
 
