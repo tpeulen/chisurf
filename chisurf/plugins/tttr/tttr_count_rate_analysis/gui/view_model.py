@@ -151,7 +151,12 @@ class CountRateViewModel:
 
             rates: dict[str, float] = {}
             nphot: dict[str, int] = {}
-            for cname, infos in channels.items():
+            file_channels = channels
+            if self.setup is not None and tttrlib.setup_micro_time_resolution(self.setup):
+                from chisurf.core.fluorescence.excitation import setup_in_data
+                from tttrlib import setup_channel_map
+                file_channels = setup_channel_map(setup_in_data(self.setup, tttr), ungated_means_all=True, per_detector_without_windows=True)
+            for cname, infos in file_channels.items():
                 crs: list[float] = []
                 nps: list[int] = []
                 for info in infos:

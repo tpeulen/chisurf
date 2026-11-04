@@ -78,6 +78,25 @@ def test_a_mosaic_load_carries_the_warnings():
     assert data is not None and data["warnings"] == []
 
 
+def test_mosaic_applies_setup_width_before_rendering(demo, monkeypatch):
+    import numpy as np
+
+    from chisurf.plugins.tttr.tttr_image_browser.core import image
+
+    seen = []
+    monkeypatch.setattr(image, "load_mosaic_cache", lambda *a: None)
+    monkeypatch.setattr(image, "save_mosaic_cache", lambda *a: None)
+    def render(path, channels, routine, **kwargs):
+        seen.append(channels)
+        return np.zeros((1, 1), dtype=np.uint8), ["green"], 1, 1, 1, 1
+    monkeypatch.setattr(image, "render_mosaic_array", render)
+    setup = {"windows": {"prompt": [0, 4000]},
+             "detectors": {"green": {"chs": [0], "micro_time_ranges": [[0, 4000]]}},
+             "tttr_reading": {"micro_time_resolution": 8}}
+    assert image.load_image(str(demo), setup) is not None
+    assert seen[0]["green"][0]["micro_time_range"] == [0, 1000]
+
+
 def test_the_model_offers_the_detected_gates_and_the_user_takes_them(demo, tmp_path):
     import tttrlib
 

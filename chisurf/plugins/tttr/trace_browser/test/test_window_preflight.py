@@ -73,6 +73,17 @@ def test_matching_ungated_and_donor_only_say_nothing(pie, donor_only, tmp_path):
     )
 
 
+def test_setup_gate_width_is_converted_before_binning_and_cached(pie, tmp_path):
+    setup_32 = {"detectors": {"G|G": {"chs": [0], "micro_time_ranges": [[0, 1000]]}},
+                "tttr_reading": {"micro_time_resolution": 32}}
+    setup_8 = {"detectors": {"G|G": {"chs": [0], "micro_time_ranges": [[0, 4000]]}},
+               "tttr_reading": {"micro_time_resolution": 8}}
+    first = load_trace(str(pie), setup_settings=setup_32, cache_folder=str(tmp_path))
+    converted = load_trace(str(pie), setup_settings=setup_8, cache_folder=str(tmp_path))
+    assert converted["counts"] == first["counts"]
+    assert load_trace(str(pie), setup_settings=setup_8, cache_folder=str(tmp_path))["counts"] == first["counts"]
+
+
 def test_the_cli_prints_the_warning(pie, tmp_path):
     from click.testing import CliRunner
 

@@ -38,6 +38,7 @@
 - 2026-11-04: `anisotropy.rt.rt_curves`: the comment now states the convention the code computes (g multiplies VH in numerator and denominator, Ströhl et al. DOI 10.1088/2050-6120/aa872e Eq. 1; l1/l2 applied to the corrected signals) instead of the outdated reciprocal-G explanation.
 - 2026-11-04: Plugin reference regenerated for the burst plugins (accurate_fret, bid_to_analysis, burst_bva, burst_fusion, burst_gs, burst_h2mm, burst_selection, fret_check), the new Excitation Windows page, the plugin index (129 plugins) and the parameter tables.
 - 2026-11-04: imaging tools convert detector gates to each scan's channel width: windows_from_payload keeps the setup's micro_time_resolution_ps on every window, pixel_maps.ranges_for_data converts the gates through tttrlib micro_time_windows_at for the TTTR being read (cached_clsm, prefill, compute_windows workers, image_source stacks), and the width is part of every CLSM/stack cache key. Gate pre-flight (imaging_common.gate_check) converts per detector when the widths differ; taking detected gates stores the width with them (pixel tools, Colocalization). Stale test fixed: the Detectors editor shows the setup's green as G|G.
+- 2026-11-04: Trace Browser, Count Rate Analysis and TTTR Image Browser apply the setup through excitation.setup_in_data for the file they read, so gates and windows of another channel width are converted before binning; the setup's tttr_reading is in the trace cache signature (v2) and the image cache version is 3; save_tiff_stacks converts per file.
 
 ## 2026-11-03
 

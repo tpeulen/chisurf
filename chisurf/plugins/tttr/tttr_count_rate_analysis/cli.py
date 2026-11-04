@@ -47,7 +47,7 @@ def window_check(tttr: Any, setup: dict[str, Any] | None):
     if not windows:
         return gate_check(tttr, setup)
     try:
-        return windows_preflight(tttr, windows, setup=gate_setup(setup))
+        return windows_preflight(tttr, setup={**(setup or {}), "windows": windows})
     except Exception:  # noqa: BLE001 - a check that cannot run says nothing
         return None
 
@@ -118,7 +118,11 @@ def calculate_count_rates(
             # Store measurement time for this file
             measurement_times[file_path] = measurement_time
 
-            for channel_name, channel_info_list in channels.items():
+            file_channels = channels
+            if setup is not None and tttrlib.setup_micro_time_resolution(setup):
+                from chisurf.core.fluorescence.excitation import setup_in_data
+                file_channels = setup_channel_map(setup_in_data(setup, tttr), ungated_means_all=True, per_detector_without_windows=True)
+            for channel_name, channel_info_list in file_channels.items():
                 channel_count_rates = []
                 channel_n_photons = []
 

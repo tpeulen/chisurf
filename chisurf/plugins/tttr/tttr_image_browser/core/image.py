@@ -12,7 +12,11 @@ import numpy as np
 from tttrlib import setup_channel_map, setup_gates
 
 from chisurf.core.fio.staging import open_tttr
-from chisurf.core.fluorescence.excitation import remembered_gate_check, windows_message
+from chisurf.core.fluorescence.excitation import (
+    remembered_gate_check,
+    setup_in_data,
+    windows_message,
+)
 
 try:
     import tttrlib
@@ -22,7 +26,7 @@ except Exception:
 _log = logging.getLogger(__name__)
 
 CACHE_DIR_NAME = ".tttr_image_cache"
-CACHE_VERSION = "2"
+CACHE_VERSION = "3"
 
 
 def scanner_params(file_path):
@@ -486,9 +490,17 @@ def load_image(
         reading = setup_settings.get("tttr_reading", {})
         reading_routine = reading.get("file_type") or None
 
+    # Resolve setup ranges against this file before forming the cache key.
+    tttr_obj = None
+    if setup_gates(setup_settings) or (setup_settings or {}).get("windows"):
+        tttr_obj = open_tttr(file_path, reading_routine)
+        applied_setup = setup_in_data(setup_settings, tttr_obj)
+    else:
+        applied_setup = setup_settings
+
     # The windows × detectors map, falling back to a single default image when it is empty.
     try:
-        channels_map = setup_channel_map(setup_settings)
+        channels_map = setup_channel_map(applied_setup)
         if not channels_map:
             channels_map = {
                 "Image": [
@@ -508,13 +520,12 @@ def load_image(
         }
 
     # Try cache first
-    tttr_obj = None
     cached = load_mosaic_cache(file_path, channels_map, reading_routine)
     if cached is not None:
         mosaic, labels, cols, rows, tile_w, tile_h = cached
     else:
         # Precompute (the file opened once, for the mosaic and the gate check)
-        if tttrlib is not None and setup_gates(setup_settings):
+        if tttr_obj is None and tttrlib is not None and setup_gates(setup_settings):
             try:
                 tttr_obj = open_tttr(file_path, reading_routine)
             except Exception:
@@ -555,30 +566,15 @@ def save_tiff_stacks(
         reading = setup_settings.get("tttr_reading", {})
         reading_routine = reading.get("file_type") or None
 
-    try:
-        channels_map = setup_channel_map(setup_settings)  # windows × detectors
-        if not channels_map:
-            channels_map = {
-                "Image": [
-                    {
-                        "window_range": (None, None),
-                        "detector_chs": [],
-                        "micro_time_range": (None, None),
-                    }
-                ]
-            }
-        channels_map = group_channels_by_detector(channels_map)
-    except Exception:
-        channels_map = {
-            "Image": [
-                {"window_range": (None, None), "detector_chs": [], "micro_time_range": (None, None)}
-            ]
-        }
-
     for path_str in paths:
         p = pathlib.Path(path_str)
         try:
             tttr_obj = open_tttr(p, reading_routine)
+            channels_map = setup_channel_map(setup_in_data(setup_settings, tttr_obj))
+            if not channels_map:
+                channels_map = {"Image": [{"window_range": (None, None), "detector_chs": [],
+                                            "micro_time_range": (None, None)}]}
+            channels_map = group_channels_by_detector(channels_map)
             for combo_name, entries in channels_map.items():
                 stack = get_combo_stack(tttr_obj, p, entries, reading_routine)
                 if stack is None:

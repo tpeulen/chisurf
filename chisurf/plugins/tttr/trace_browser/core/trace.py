@@ -55,12 +55,13 @@ def trace_signature(
     else:
         mode = {"chs": list(selected_channels) if selected_channels else None}
     payload = {
-        "v": 1,
+        "v": 2,
         "path": str(file_path.resolve()),
         "size": size,
         "mtime": mtime,
         "win_ms": float(window_ms),
         "mode": mode,
+        "reading": (setup_settings or {}).get("tttr_reading", {}),
     }
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -156,17 +157,22 @@ def load_trace(
 
         time_window_s = window_ms / 1000.0
         if isinstance(setup_settings, dict) and "detectors" in setup_settings:
-            if gated:  # the file opened once, for the trace and the gate check
+            if setup_gates(setup_settings):  # convert and check using the same source
                 try:
                     from chisurf.core.fio.staging import open_tttr
 
                     tttr_obj = open_tttr(file_path)  # as the binner opens it (auto-detect)
                 except Exception:  # noqa: BLE001 - the binner reports an unreadable file
+                    if (setup_settings.get("tttr_reading") or {}).get("micro_time_resolution"):
+                        raise
                     tttr_obj = None
+            from chisurf.core.fluorescence.excitation import setup_in_data
+
+            applied = setup_in_data(setup_settings, tttr_obj) if tttr_obj is not None else setup_settings
             time_axis, counts, labels = bin_trace(
                 tttr_obj if tttr_obj is not None else file_path,
                 time_window_s,
-                detectors=setup_settings.get("detectors") or {},
+                detectors=applied.get("detectors") or {},
                 channels=selected_channels,
             )
         else:
