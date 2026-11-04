@@ -77690,6 +77690,70 @@ Background (kHz): {bg}</source>
             <source>reference</source>
             <translation>référence</translation>
         </message>
+        <message>
+            <source>Background: {share:.1%} of the photons in the window ({what}).</source>
+            <translation>Fond : {share:.1%} des photons dans la fenêtre ({what}).</translation>
+        </message>
+        <message>
+            <source>the buffer {files}: its shape and rate</source>
+            <translation>le tampon {files} : sa forme et son taux</translation>
+        </message>
+        <message>
+            <source>flat + scatter of the photons outside the bursts, scaled to the time in the bursts: flat VV {fv:.3g} | VH {fh:.3g} counts per bin, scatter {sv:.3g} | {sh:.3g} counts in the IRF's shape</source>
+            <translation>plat + diffusion des photons hors des bursts, ramené au temps dans les bursts : plat VV {fv:.3g} | VH {fh:.3g} coups par canal, diffusion {sv:.3g} | {sh:.3g} coups à la forme de l'IRF</translation>
+        </message>
+        <message>
+            <source>no background yet</source>
+            <translation>pas encore de fond</translation>
+        </message>
+        <message>
+            <source> Background rate: {rate:.4g} kHz</source>
+            <translation> Taux de fond : {rate:.4g} kHz</translation>
+        </message>
+        <message>
+            <source> (all photons outside the bursts: {rate:.4g} kHz)</source>
+            <translation> (tous les photons hors des bursts : {rate:.4g} kHz)</translation>
+        </message>
+        <message>
+            <source>reference fit χ²ᵣ {value:.2f}</source>
+            <translation>ajustement de référence χ²ᵣ {value:.2f}</translation>
+        </message>
+        <message>
+            <source>Reference fit: the dye's decay fitted with this IRF and the burst model (lifetime {tau:.2f} ns fixed, G {g:.3f}, the shifts above): χ²ᵣ {chi2r:.3f}; with G free ({g_free:.3f}) χ²ᵣ {chi2r_free:.3f}. About 1 when the IRF, G, l1, l2 and the rotation describe the reference; the IRF tool's Reference fit view shows its residuals.</source>
+            <translation>Ajustement de référence : le déclin du colorant ajusté avec cette IRF et le modèle des bursts (durée de vie {tau:.2f} ns fixée, G {g:.3f}, les décalages ci-dessus) : χ²ᵣ {chi2r:.3f} ; avec G libre ({g_free:.3f}) χ²ᵣ {chi2r_free:.3f}. Environ 1 lorsque l'IRF, G, l1, l2 et la rotation décrivent la référence ; la vue Ajustement de référence de l'outil IRF montre ses résidus.</translation>
+        </message>
+        <message>
+            <source>the strict background selection: {seconds:.0f} s ({fraction:.0%} of the measurement) at the background's level</source>
+            <translation>la sélection stricte du fond : {seconds:.0f} s ({fraction:.0%} de la mesure) au niveau du fond</translation>
+        </message>
+        <message>
+            <source>a flat + scatter model, as {reason}: flat VV {fv:.3g} | VH {fh:.3g} counts per bin, scatter {sv:.3g} | {sh:.3g} counts in the IRF's shape</source>
+            <translation>un modèle plat + diffusion, car {reason} : plat VV {fv:.3g} | VH {fh:.3g} coups par canal, diffusion {sv:.3g} | {sh:.3g} coups à la forme de l'IRF</translation>
+        </message>
+        <message>
+            <source> Strict background selection: {seconds:.0f} s of {total:.0f} s kept ({fraction:.0%}), {rate:.3g} kHz.</source>
+            <translation> Sélection stricte du fond : {seconds:.0f} s sur {total:.0f} s conservées ({fraction:.0%}), {rate:.3g} kHz.</translation>
+        </message>
+        <message>
+            <source>the buffer</source>
+            <translation>le tampon</translation>
+        </message>
+        <message>
+            <source>strict background selection</source>
+            <translation>sélection stricte du fond</translation>
+        </message>
+        <message>
+            <source>flat + scatter model</source>
+            <translation>modèle plat + diffusion</translation>
+        </message>
+        <message>
+            <source>No stretch at the background level: flat + scatter model.</source>
+            <translation>Aucun intervalle au niveau du fond : modèle plat + diffusion.</translation>
+        </message>
+        <message>
+            <source> Strict background selection: {fraction:.0%} of the time.</source>
+            <translation> Sélection stricte du fond : {fraction:.0%} du temps.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

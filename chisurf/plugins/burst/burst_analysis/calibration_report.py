@@ -17,6 +17,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Mapping
 
+import numpy as np
+
 __all__ = ["REPORT_NAME", "SCHEMA", "build_report", "read_report", "write_report"]
 
 #: The name of the report object in a measurement's container.
@@ -80,7 +82,10 @@ def build_report(
         the VV and VH shifts in bins, the dye and files they were calibrated against, whether at
         single-molecule conditions (preferred: SPAD timing moves with the count rate), the count
         rates of the reference and of the bursts, a warning for a bulk reference at a much higher
-        rate, the lifetime and its source.
+        rate, the lifetime and its source; and the reference fit -- the dye's decay fitted with
+        the IRF and the burst model at those shifts: ``fit_chi2r`` (with the setup's G),
+        ``fit_g_fitted`` / ``fit_chi2r_g_free`` (G free), ``fit_window`` and the weighted
+        residuals ``fit_residuals`` (null outside the window, VV then VH).
     """
     from chisurf.core.fluorescence.dyes import get_dye
 
@@ -124,11 +129,17 @@ def build_report(
             "volume_fit": fit,
         }
     keep = ("shift_vv", "shift_vh", "dye", "files", "single_molecule", "tau_ns", "tau_known",
-            "rho_ns", "source", "text", "reference_rate_khz", "burst_rate_khz", "warning")
+            "rho_ns", "source", "text", "reference_rate_khz", "burst_rate_khz", "warning",
+            # the reference dye fitted with the IRF and the burst model (lifetime fixed): its
+            # chi2_r with the setup's G, and the G it asks for
+            "fit_chi2r", "fit_g", "fit_g_fitted", "fit_chi2r_g_free", "fit_window", "fit_text")
     report["irf_shift"] = {
         det: {
             **{k: entry[k] for k in keep if k in entry},
             "tau_citation": ((entry.get("tau_source") or {}).get("sources") or [{}])[0].get("citation", ""),
+            **({"fit_residuals": [None if not np.isfinite(v) else round(float(v), 3)
+                                  for v in np.asarray(entry["fit_residuals"], dtype=float)]}
+               if entry.get("fit_residuals") is not None else {}),
         }
         for det, entry in (irf_shift or {}).items()
     }

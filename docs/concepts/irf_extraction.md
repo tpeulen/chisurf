@@ -144,10 +144,45 @@ recovered within 0.06 bins (lifetime fixed) and 0.05 bins with the lifetime
 fitted (3.98 ns for 4.0). On the Burst Analysis demo the water scatter and the
 Rh110 share the instrument: the calibrated shift is within 0.4 bins of zero.
 
+## The reference fit: is the IRF right?
+
+A shift calibration says where the IRF sits; it does not say that the IRF, G and
+the rotation describe the sample. So the reference dye is then fitted with the
+IRF and **the model a burst fit uses** (`reference_fit`): for polarisation
+$p$,
+
+$$
+F_p(t) = A\,\big[\mathrm{IRF}_p(t - s_p) \otimes k_p\big](t) + b_p,\quad
+k_{VV} = e^{-t/\tau}\big(1 + r_0(2 - 3l_1)e^{-t/\rho}\big),\quad
+k_{VH} = \tfrac{1}{G}\,e^{-t/\tau}\big(1 + r_0(3l_2 - 1)e^{-t/\rho}\big),
+$$
+
+one amplitude $A$, a flat $b_p$ and a shift $s_p$ per polarisation free; $\tau$
+fixed to the dye database's, $\rho$ read from the dye, $r_0 = 0.38$, and $G$,
+$l_1$, $l_2$ the detector's -- the kernels of Fit23, binned like photons. The
+shifts come from the same fit with $G$ free, so a wrong $G$ shows as a bad fit
+instead of moving the IRF. With the right IRF and corrections a dye of one
+lifetime fits at $\chi^2_r \approx 1$; its weighted residuals
+$(d - F)/\sqrt{F}$ tell what is wrong: a wave at the rise is the IRF, VV and VH
+pulling apart G or $l_1$/$l_2$, the first nanosecond the rotation. The fit with
+$G$ free gives the $G$ the reference asks for.
+
+On a simulated Rh110 (G 1.3) the IRF deconvolved from it gives $\chi^2_r < 1.2$
+and $G$ within 2 %; with $G$ 1.0 the fit is ten times worse and still finds
+1.3. On Rh110_thick_1 (bulk, 61 kHz, 80 ps bins): $\chi^2_r$ 309 with the
+setup's $G$ 1.000, 1.45 with Data Selection's 1.436 (free: 1.428, 1.40); with the
+lifetime free 1.10 at 4.02 ns.
+
 ## What extraction is not
 
 The clip and the background levels a fit applies to its IRF belong to the fit,
-not to the extraction; Burst MLE keeps them at their defaults.
+not to the extraction; Burst MLE keeps the clip open and takes no background
+level off (an extracted IRF has none; 0.02 of the peak cut a deconvolved IRF's
+tail and took the reference fit from 1.5 to 4). Nor is a burst fit's
+*background* extraction: it is the buffer, else a strict selection of the
+measurement's background photons, else a flat + scatter model
+([Fluorescence lifetime from photon bursts](../guides/21_lifetime_from_bursts.md),
+*The background*).
 
 ## See also
 

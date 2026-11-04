@@ -204,6 +204,9 @@ class IRFEstimatorApp(ImApp):
         )
         self.docks.add_window("plot", "Plots", self.plot, dock="plot", closable=False)
         self.docks.add_window(
+            "reference_fit", "Reference fit", self.reference_fit_plot, dock="plot", closable=False
+        )
+        self.docks.add_window(
             "results", "Est Results", self.results, dock="results", closable=False
         )
         self.native_layouts = {"main": self.docks}
@@ -371,8 +374,67 @@ class IRFEstimatorApp(ImApp):
         im.text_wrapped(self.model.time_axis_text())
         im.pop_style_color()
 
+    def reference_fit_plot(self, box):
+        """The reference dye fitted with the extracted IRF (its lifetime fixed, the detector's G,
+        l1, l2): the data and the model over the weighted residuals, chi2_r in the title."""
+        fit = self.model.reference_fit
+        if fit is None:
+            im.text_wrapped(
+                "A reference dye's decay is fitted here with the IRF extracted from it, its "
+                "lifetime fixed: estimate an IRF with the Reference dye source."
+            )
+            return
+        w, h = im.get_content_region_avail()
+        if not implot.begin_subplots(
+            "##reference_fit", 2, 1, (w, max(120.0, h)), implot.SUBPLOT_FLAGS_LINK_ALL_X
+            | implot.SUBPLOT_FLAGS_NO_TITLE, row_ratios=[0.72, 0.28],
+        ):
+            return
+        x = np.arange(fit.data.size)
+        n_half = fit.data.size // (2 if self.model.vv_vh else 1)
+        lo, hi = fit.window
+        spans = [(lo + k * n_half, hi + k * n_half) for k in range(fit.data.size // n_half)]
+        if implot.begin_plot("Reference dye and fit", (-1, -1)):
+            implot.setup_axes("Channel (VV, then VH)", "Counts",
+                              implot.AXIS_FLAGS_NO_TICK_LABELS | implot.AXIS_FLAGS_NO_LABEL)
+            implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
+            # linked axes do not fit themselves: the fitted windows, and the counts in them
+            implot.setup_axis_limits(implot.AXIS_X1, spans[0][0] - 0.5, spans[-1][1] - 0.5)
+            shown = np.hstack([fit.data[a:b] for a, b in spans])
+            shown = shown[shown > 0]
+            if shown.size:
+                implot.setup_axis_limits(implot.AXIS_Y1, float(shown.min()) * 0.5, float(shown.max()) * 2.0)
+            implot.setup_legend(implot.LOCATION_NORTH_EAST)
+            inside = np.zeros(fit.data.size, dtype=bool)
+            for a, b in spans:
+                inside[a:b] = True
+            positive = inside & (fit.data > 0)
+            implot.plot_scatter("Data", x[positive], fit.data[positive], marker_size=1.6)
+            for k, (a, b) in enumerate(spans):
+                seg = np.arange(a, b)
+                implot.plot_line("Model" if k == 0 else "##Model", seg, fit.model[seg])
+            implot.end_plot()
+        title = f"Weighted residuals, χ²ᵣ = {fit.chi2r:.3f}##refres"
+        if implot.begin_plot(title, (-1, -1)):
+            implot.setup_axes("Channel (VV, then VH)", "w.res.")
+            res = fit.residuals
+            finite = np.abs(res[np.isfinite(res)])
+            reach = float(np.clip(np.percentile(finite, 99) * 1.2, 3.0, 50.0)) if finite.size else 3.0
+            implot.setup_axis_limits(implot.AXIS_Y1, -reach, reach)
+            implot.plot_inf_lines("##zero", np.array([0.0]), flags=implot.INF_LINES_HORIZONTAL)
+            for a, b in spans:
+                seg = np.arange(a, b)
+                implot.plot_line("##w.res.", seg, res[seg])
+            implot.end_plot()
+        implot.end_subplots()
+        im.set_item_tooltip(
+            "(data - model) / sqrt(model). The reference dye has one known lifetime: with the "
+            "right IRF, G, l1, l2, rotation and time shifts the residuals scatter about zero and "
+            "χ²ᵣ is about 1 (a little more for a bright bulk measurement)."
+        )
+
     def results(self, box):
-        for label, text in self.model.result_rows():
+        for label, text in self.model.result_rows() + self.model.reference_fit_rows():
             im.text(f"{label}:")
             im.same_line(150.0)
             im.text(text)

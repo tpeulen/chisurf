@@ -19,6 +19,14 @@ Burst MLE's **IRF tool** button opens this window with what its IRF came from.
 * **Non-burst** — the photons between the molecules: a Gaussian or skewed Gaussian
   fitted to the prompt's rising edge leaves the fluorescent tail behind.
 
+**Reference fit** (a view beside **Plots**): with the Reference dye source the dye's decay is fitted with
+the IRF just extracted from it and the model a burst fit uses -- one amplitude, a flat background per
+polarisation, the time shifts free, the lifetime fixed to the dye database's, the rotation read from
+it and G, l1, l2 as the detector has them (opened from Burst MLE; G fitted otherwise). Data and model
+over the weighted residuals, χ²ᵣ in the title, G and the shifts under **Est Results**. For a dye of
+one lifetime it must be about 1 (a little more for a bright bulk measurement); a wave at the rise is
+the IRF, VV and VH pulling apart is G or l1/l2, the first nanosecond the rotation.
+
 The window opens **Simple** (the source and **Estimate IRF**); **Advanced** shows every setting. Opened from
 Burst MLE's **IRF tool**, each estimate you make goes back to Burst MLE and is fitted there.
 

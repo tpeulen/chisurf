@@ -983,8 +983,12 @@ class MleSettings:
     shift_ss: float = 0.0
     irf_start: int = -1
     irf_stop: int = -1
-    irf_threshold_vv: float = 0.02
-    irf_threshold_vh: float = 0.02
+    #: Background levels taken off the IRF (a fraction of each polarisation's peak). Zero: every
+    #: IRF source (the IRF Estimation tool's extraction) is already free of its background, and
+    #: 0.02 cut a deconvolved IRF's tail at 2 % of its peak (a reference dye then fitted at chi2_r
+    #: 4.1 instead of 1.5).
+    irf_threshold_vv: float = 0.0
+    irf_threshold_vh: float = 0.0
     #: The fit window in bins; ``-1, -1``: not set, the detector's gate (:func:`window_bins`).
     micro_time_start: int = -1
     micro_time_stop: int = -1
@@ -1685,9 +1689,10 @@ class MleSession:
         )
         half = clean.size // 2
         names = ", ".join(Path(r["path"]).name for r in group)
+        g, l1, l2 = (float(self.detectors[det].get(k, d)) for k, d in (("g_factor", 1.0), ("l1", 0.0), ("l2", 0.0)))
         found = calibrate_shifts(
             [vv, vh] if two else [vv], [clean[:half], clean[half:]] if two else [clean[:half]],
-            dt, tau_ns=tau, rho_ns=rho, window=window, name=names,
+            dt, tau_ns=tau, rho_ns=rho, window=window, name=names, g_factor=g, l1=l1, l2=l2,
         )
         settings.shift_sp, settings.shift_ss = found.shift_vv, found.shift_vh
         rates = [r.get("rate_khz") for r in group if r.get("rate_khz") is not None]
@@ -1707,6 +1712,23 @@ class MleSession:
             "tau_source": group[0]["tau_source"], "rho_ns": rho, "text": found.text,
             "source": "single-molecule reference dye" if sm else "reference dye",
         }
+        fit = found.fit
+        if fit is not None:
+            #: the dye fitted with the burst model at these shifts (the IRF tool's reference_fit):
+            #: the data, model and weighted residuals the IRF tab, the IRF tool and the
+            #: calibration report show, and the G the reference asks for
+            self.shift_calibration[det].update({
+                "fit_chi2r": fit.chi2r, "fit_g": fit.g_factor, "fit_g_fitted": fit.g_fitted,
+                "fit_chi2r_g_free": fit.chi2r_g_free, "fit_window": fit.window,
+                "fit_data": fit.data, "fit_model": fit.model, "fit_residuals": fit.residuals,
+                "fit_text": fit.text,
+            })
+            if abs(fit.g_fitted - fit.g_factor) > 0.05 * fit.g_fitted and fit.chi2r > 2.0 * fit.chi2r_g_free:
+                g_warning = (
+                    f"the reference asks for G {fit.g_fitted:.3f}, the setup has {fit.g_factor:.3f} "
+                    f"(chi2_r {fit.chi2r:.1f} against {fit.chi2r_g_free:.2f}): apply the G of Data Selection"
+                )
+                self.shift_calibration[det]["warning"] = "; ".join(w for w in (warning, g_warning) if w)
         return self.shift_calibration[det]
 
     def take_tuned_irf(self, det: str, irf: np.ndarray, text: str, inputs: dict | None = None) -> bool:

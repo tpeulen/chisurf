@@ -209,8 +209,9 @@ Whatever you estimate there comes back to Burst MLE for that detector and is
 fitted at once; **IRF from** then says **IRF tool (tuned)**. Picking another
 source afterwards asks once before the tuned IRF is discarded. The IRF's shape,
 VH shift, clip and background levels are the tool's: Burst MLE has no fields for
-them (it subtracts a background level of 0.02 of each polarisation's peak, and
-Opt can still search the shifts).
+them (it takes no background level off the IRF -- every source is already free
+of it, and 0.02 of the peak cut a deconvolved IRF's tail -- and Opt can still
+search the shifts).
 
 With a reference dye in Data Selection the IRF's time shift is calibrated
 before any fit, VV and VH on their own: the dye's decay is fitted with the IRF,
@@ -223,6 +224,38 @@ marked ⚠ (its rate and the bursts' in the tooltip and the report). The status 
 (Rh110)**; the shifts, the dye, the files and the lifetime's source are in its
 tooltip and in the calibration report. There is nothing to set; the IRF tool
 shows the shifts under **Advanced** and takes your own.
+
+Then the reference dye is fitted with that IRF and **the burst model**: one
+amplitude for VV and VH, a flat background each, the shifts free, the lifetime
+fixed, the rotation read from the dye and the detector's G, l1, l2
+(`reference_fit`). A dye of one lifetime must fit at χ²ᵣ ≈ 1 -- if not, the IRF,
+G or the rotation is wrong, and every burst fit inherits it. The status line
+shows **reference fit χ²ᵣ**, the tooltip the same fit with G free (the G the
+reference asks for); ⚠ when the two disagree: apply Data Selection's G. On
+Rh110_thick_1 (bulk, 61 kHz) with the setup's G 1.000 it is 309 (G free: 1.428,
+χ²ᵣ 1.40); with Data Selection's G 1.436 it is 1.45. The IRF tool's **Reference
+fit** view draws it with its residuals; the calibration report keeps its χ²ᵣ,
+G and residuals.
+
+```{figure} figures/21_irf_tool_reference_fit.png
+:name: fig-21-irf-tool-reference-fit
+:width: 100%
+
+The IRF tool opened from Burst MLE's **IRF tool** on Rh110_thick_1: the
+**Reference fit** view, the dye fitted with the IRF deconvolved from it, the
+lifetime fixed at 4.00 ns and G 1.436, χ²ᵣ 1.45 (G free: 1.428, 1.40).
+```
+
+```{figure} figures/21_reference_fit_steps.png
+:name: fig-21-reference-fit-steps
+:width: 100%
+
+Rh110_thick_1 fitted with Fit23 itself, τ 4.00 ns fixed: as shipped χ²ᵣ 269
+(G 1.000), with G 1.436 6.1, the window honoured 3.6, the IRF kept whole (no
+2 % level taken off it) 1.49; last, the reference fit Burst MLE now shows, 1.45.
+What is left: a slight rise of VV late in the window (the dye's 4.02 ns from its
+tail against the database's 4.0 ns) and a bulk measurement at 61 kHz.
+```
 
 ```{figure} figures/21_burst_mle_irf_auto.png
 :name: fig-21-burst-mle-irf-auto

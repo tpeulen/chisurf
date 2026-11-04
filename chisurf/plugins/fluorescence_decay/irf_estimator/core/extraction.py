@@ -44,6 +44,8 @@ __all__ = [
     "irf_from_reference",
     "irf_from_scatter",
     "polarised_kernels",
+    "ReferenceFit",
+    "reference_fit",
     "reference_irf",
     "reference_rotation",
     "reference_tail_lifetime",
@@ -696,6 +698,9 @@ class ShiftCalibration:
     deviance: float
     text: str = ""
     info: dict[str, Any] = field(default_factory=dict)
+    #: The dye's decay fitted with the burst model at the calibrated shifts (:func:`reference_fit`):
+    #: what tells whether the IRF, G, l1, l2 and the rotation describe the reference.
+    fit: ReferenceFit | None = None
 
 
 def _decay_model(irf: np.ndarray, kernel: np.ndarray, shift: float) -> np.ndarray:
@@ -754,6 +759,10 @@ def calibrate_shifts(
     window: tuple[int, int] | None = None,
     max_shift: float = 5.0,
     name: str = "reference dye",
+    g_factor: float | None = None,
+    l1: float = 0.0,
+    l2: float = 0.0,
+    fit_model: bool = True,
 ) -> ShiftCalibration:
     """The time shift of the IRF against a reference dye's decay, VV and VH on their own.
 
@@ -777,6 +786,10 @@ def calibrate_shifts(
         ``[start, stop)`` bins the fit sees (the detector's gate).
     max_shift : float
         The largest shift searched, bins.
+    g_factor, l1, l2 : float, optional
+        The detector's polarisation factors (``g_factor`` ``None``: fitted). With *fit_model* the
+        shifts each polarisation gives on its own are refined by fitting both together with the
+        burst model (:func:`reference_fit`), which is kept on :attr:`ShiftCalibration.fit`.
     """
     parts = [np.asarray(p, dtype=float) for p in parts]
     irf_parts = [np.asarray(p, dtype=float) for p in irf_parts]
@@ -806,11 +819,150 @@ def calibrate_shifts(
     if len(shifts) == 1:
         shifts = shifts * 2
     how = "known" if known else "fitted (no lifetime in the dye database)"
+    joint = None
+    if fit_model:
+        joint = reference_fit(
+            parts if two else parts[:1], irf_parts if two else irf_parts[:1], dt_ns,
+            tau_ns=tau, rho_ns=rho_ns if two else None, g_factor=g_factor, l1=l1, l2=l2,
+            window=window, shifts=shifts,
+        )
+        shifts = [joint.shift_vv, joint.shift_vh]
     text = (
         f"shift VV {shifts[0]:+.2f}, VH {shifts[1]:+.2f} bins against {name} "
         f"(lifetime {tau:.2f} ns {how})"
     )
+    if joint is not None:
+        text += "; " + joint.text
     return ShiftCalibration(
         shifts[0], shifts[1], tau, known, rho_ns, deviance, text,
-        {"name": name, "window": (lo, hi), "dt_ns": float(dt_ns)},
+        {"name": name, "window": (lo, hi), "dt_ns": float(dt_ns)}, joint,
+    )
+
+
+# -- the reference dye fitted with the burst model ------------------------------------------- #
+@dataclass
+class ReferenceFit:
+    """A reference dye's decay fitted with the IRF and the model a burst fit uses.
+
+    ``data`` and ``model`` are ``VV | VH`` (or one polarisation) on the full axis; ``residuals``
+    the weighted residuals ``(data - model) / sqrt(model)``, NaN outside the window; ``chi2r``
+    their reduced chi-square with the polarisation factors the caller gave (the setup's: what the
+    bursts are fitted with). ``g_fitted`` / ``chi2r_g_free`` are the same fit with G free -- the
+    G the reference itself asks for.
+    """
+
+    data: np.ndarray
+    model: np.ndarray
+    residuals: np.ndarray
+    chi2r: float
+    shift_vv: float
+    shift_vh: float
+    g_factor: float
+    g_fitted: float
+    chi2r_g_free: float
+    tau_ns: float
+    rho_ns: float | None
+    window: tuple[int, int]
+    background: tuple[float, ...] = ()
+    text: str = ""
+
+
+def _reference_model(params, irfs, dt_ns, tau, rho, r0, l1, l2, n, g):
+    """``A (IRF(shift) * kernel) + flat`` per polarisation, the kernels of Fit23's physics:
+    ``VV = e^-t/tau + r0 (2 - 3 l1) e^-t/tau e^-t/rho``,
+    ``VH = (e^-t/tau + r0 (3 l2 - 1) e^-t/tau e^-t/rho) / G``, binned like photons."""
+    from chisurf.core.fluorescence.mle.irf import interpolate_shift
+
+    plain, _ = polarised_kernels(n, dt_ns, tau, None)
+    if rho is not None and rho > 0 and len(irfs) > 1:
+        rotating, _ = polarised_kernels(n, dt_ns, 1.0 / (1.0 / tau + 1.0 / rho), None)
+        kernels = (plain + r0 * (2.0 - 3.0 * l1) * rotating, (plain + r0 * (3.0 * l2 - 1.0) * rotating) / g)
+    else:
+        kernels = (plain, plain / g)
+    amplitude, flats, shifts = params[0], params[1 : 1 + len(irfs)], params[1 + len(irfs) :]
+    return [
+        amplitude * np.fft.irfft(np.fft.rfft(interpolate_shift(irf, s)) * np.fft.rfft(k, n), n) + b
+        for irf, k, b, s in zip(irfs, kernels, flats, shifts)
+    ]
+
+
+def reference_fit(
+    parts: Sequence[np.ndarray],
+    irf_parts: Sequence[np.ndarray],
+    dt_ns: float,
+    *,
+    tau_ns: float,
+    rho_ns: float | None = None,
+    r0: float = R0,
+    g_factor: float | None = None,
+    l1: float = 0.0,
+    l2: float = 0.0,
+    window: tuple[int, int] | None = None,
+    shifts: Sequence[float] = (0.0, 0.0),
+) -> ReferenceFit:
+    """Fit a reference dye's decay with its IRF and the burst fit's polarised model.
+
+    One amplitude for both polarisations, a flat background each, the IRF's time shift of each
+    free; the lifetime *tau_ns* (the dye database's), the rotation *rho_ns*, *r0* and the
+    polarisation factors fixed. Everything a burst fit takes for granted is tested at once: an
+    IRF that is too narrow or late shows at the rise, a wrong G or l1/l2 as VV and VH pulling
+    apart, a wrong rotation in the first nanosecond. Fitted by least squares with Neyman weights;
+    the reported chi-square uses the model's Poisson variance (as a burst fit's residuals do).
+    With *g_factor* ``None`` G is free; otherwise the fit is also repeated with G free
+    (:attr:`ReferenceFit.g_fitted`), the G this reference asks for.
+    """
+    from chisurf.core.math.numerics import least_squares
+
+    data = [np.asarray(p, dtype=float) for p in parts]
+    irfs = [np.clip(np.asarray(p, dtype=float), 0.0, None) for p in irf_parts]
+    n, k = data[0].size, len(data)
+    lo, hi = _window(n, window)
+    weights = [1.0 / np.sqrt(np.maximum(d[lo:hi], 1.0)) for d in data]
+    floor = [max(float(np.quantile(d[lo:hi], 0.05)), 0.0) for d in data]
+    shape = _reference_model([1.0] + [0.0] * k + list(shifts[:k]), irfs, dt_ns, tau_ns, rho_ns, r0, l1, l2, n,
+                             g_factor or 1.0)
+    amplitude = float(sum(d[lo:hi].sum() for d in data) / max(sum(s[lo:hi].sum() for s in shape), 1e-12))
+
+    def solve(g_free: bool, g0: float, at=None):
+        def residuals(p):
+            g = p[-1] if g_free else g0
+            model = _reference_model(p[: 1 + 2 * k], irfs, dt_ns, tau_ns, rho_ns, r0, l1, l2, n, g)
+            return np.hstack([(d[lo:hi] - m[lo:hi]) * w for d, m, w in zip(data, model, weights)])
+
+        start = list(shifts[:k]) if at is None else list(at)
+        x0 = [amplitude] + floor + start + ([g0] if g_free else [])
+        # shifts free, or held (within 1e-4 bin) at the ones the G-free fit found
+        low_s, high_s = ([-5.0] * k, [5.0] * k) if at is None else ([v - 1e-4 for v in at], [v + 1e-4 for v in at])
+        lower = [0.0] + [0.0] * k + low_s + ([0.05] if g_free else [])
+        upper = [np.inf] + [np.inf] * k + high_s + ([20.0] if g_free else [])
+        x = np.asarray(least_squares(residuals, np.asarray(x0, float), bounds=(lower, upper)).x)
+        g = float(x[-1]) if g_free else g0
+        model = _reference_model(x[: 1 + 2 * k], irfs, dt_ns, tau_ns, rho_ns, r0, l1, l2, n, g)
+        res = [np.full(n, np.nan) for _ in data]
+        for r, d, m in zip(res, data, model):
+            r[lo:hi] = (d[lo:hi] - m[lo:hi]) / np.sqrt(np.maximum(m[lo:hi], 1e-12))
+        flat = np.hstack([r[lo:hi] for r in res])
+        chi2r = float(np.sum(flat * flat) / max(flat.size - len(x0), 1))
+        return x, g, model, res, chi2r
+
+    two = k > 1
+    # The shifts come from the fit with G free: a G the setup has wrong must show as a bad fit,
+    # not be absorbed into the IRF's timing.
+    free = solve(True, float(g_factor or 1.0)) if two else None
+    if g_factor is None and two:
+        x, g, model, res, chi2r = free
+    elif two:
+        x, g, model, res, chi2r = solve(False, float(g_factor), at=free[0][1 + k : 1 + 2 * k])
+    else:
+        x, g, model, res, chi2r = solve(False, float(g_factor or 1.0))
+    g_fitted, chi2r_free = (free[1], free[4]) if free is not None else (g, chi2r)
+    shift_vv = float(x[1 + k])
+    shift_vh = float(x[1 + k + 1]) if two else shift_vv
+    text = f"reference fit chi2_r {chi2r:.2f} (lifetime {tau_ns:.2f} ns fixed"
+    if two:
+        text += f", G {g:.3f}" + ("" if g_factor is None else f"; G free {g_fitted:.3f}: chi2_r {chi2r_free:.2f}")
+    text += ")"
+    return ReferenceFit(
+        np.hstack(data), np.hstack(model), np.hstack(res), chi2r, shift_vv, shift_vh, g, float(g_fitted),
+        float(chi2r_free), float(tau_ns), rho_ns, (lo, hi), tuple(float(b) for b in x[1 : 1 + k]), text,
     )

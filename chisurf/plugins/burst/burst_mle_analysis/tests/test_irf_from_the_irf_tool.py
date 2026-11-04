@@ -261,3 +261,23 @@ def test_the_shift_calibration_goes_into_the_calibration_report(session, files):
     entry = report["irf_shift"]["G|G"]
     assert entry["dye"] == "Rh110" and entry["tau_known"] and entry["tau_ns"] == 4.0
     assert "shift_vv" in entry and "shift_vh" in entry and entry["tau_citation"]
+    # the reference fit: the dye fitted with its IRF and the burst model, its chi2_r and residuals
+    assert entry["fit_chi2r"] > 0 and entry["fit_g_fitted"] > 0
+    lo, hi = entry["fit_window"]
+    residuals = entry["fit_residuals"]
+    assert len(residuals) == 2 * len(session.reference_records["G|G"][0]["vv"])
+    assert residuals[lo] is not None and (lo == 0 or residuals[0] is None)
+
+
+def test_the_reference_dye_of_the_demo_fits_with_its_own_irf(session, files):
+    """The demo's Rh110 fitted with the IRF deconvolved from it: about 1 with the G Data Selection
+    computes (1.15, the simulation's); with the setup's 1.0 the fit says which G it asks for."""
+    session.irf_pattern("G|G", [files["reference"]])
+    session.choose_irf("G|G", "reference")
+    wrong = dict(session.shift_calibration["G|G"])
+    assert wrong["fit_g_fitted"] == pytest.approx(1.15, rel=0.03)
+    assert "apply the G of Data Selection" in wrong["warning"]
+    session.detectors["G|G"] = dict(session.detectors["G|G"], g_factor=1.15)
+    found = session.calibrate_shift("G|G")
+    assert found["fit_chi2r"] < 1.5, found["fit_text"]
+    assert not found["warning"].startswith("the reference asks")

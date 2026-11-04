@@ -686,6 +686,8 @@ class MleViewModel(RunPickerMixin):
         if shift:
             what = shift.get("dye") or str(tr("IRF tool"))
             text += " · " + str(tr("shift calibrated ({what})")).format(what=what)
+            if shift.get("fit_chi2r") is not None:
+                text += " · " + str(tr("reference fit χ²ᵣ {value:.2f}")).format(value=shift["fit_chi2r"])
             if shift.get("warning"):
                 text += " ⚠"
         return text
@@ -717,6 +719,18 @@ class MleViewModel(RunPickerMixin):
                 ]
                 if rates:
                     lines.append(f"{tr('Count rate')}: " + ", ".join(rates))
+                if shift.get("fit_chi2r") is not None:
+                    lines.append(str(tr(
+                        "Reference fit: the dye's decay fitted with this IRF and the burst model "
+                        "(lifetime {tau:.2f} ns fixed, G {g:.3f}, the shifts above): χ²ᵣ {chi2r:.3f}; "
+                        "with G free ({g_free:.3f}) χ²ᵣ {chi2r_free:.3f}. About 1 when the IRF, G, "
+                        "l1, l2 and the rotation describe the reference; the IRF tool's Reference "
+                        "fit view shows its residuals."
+                    )).format(
+                        tau=float(shift.get("tau_ns") or 0.0), g=float(shift["fit_g"]),
+                        chi2r=float(shift["fit_chi2r"]), g_free=float(shift["fit_g_fitted"]),
+                        chi2r_free=float(shift["fit_chi2r_g_free"]),
+                    ))
                 if shift.get("warning"):
                     lines.append("⚠ " + shift["warning"])
                 if shift.get("tau_known") and shift.get("tau_source", {}).get("sources"):

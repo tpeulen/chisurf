@@ -78,6 +78,14 @@ class IRFViewModel:
         self.buffer = None
         #: The extraction of the last estimate (:class:`..core.extraction.IrfResult`).
         self.extraction = None
+        #: The reference dye fitted with the extracted IRF and the burst model, its lifetime
+        #: fixed (:func:`..core.extraction.reference_fit`): the Reference fit view.
+        self.reference_fit = None
+        #: The detector's polarisation factors as the tool that opened this window has them
+        #: (``None``: G fitted to the reference).
+        self.g_factor = None
+        self.l1 = 0.0
+        self.l2 = 0.0
 
     @property
     def has_shifts(self) -> bool:
@@ -233,6 +241,7 @@ class IRFViewModel:
         estimate the user made goes back to the tool that opened this window (:attr:`reply`)."""
         self.result = result
         self.extraction = getattr(result, "extraction", None)
+        self.reference_fit = getattr(result, "reference_fit", None)
         if self.reply is not None and self.reply_armed:
             self.send_back()
         self.reply_armed = True
@@ -311,7 +320,33 @@ class IRFViewModel:
             offset=0.0,
         )
         result.extraction = found
+        result.reference_fit = None
+        if self.source == "reference" and any(np.any(h > 0) for h in found.halves):
+            # the dye fitted with what it gave: the IRF, the listed lifetime fixed, the rotation
+            # read from it, the detector's G / l1 / l2 -- what a burst fit takes for granted
+            tau = float(self.listed_tau_ns) or float(found.info.get("tau_ns") or 0.0)
+            two = len(parts) > 1
+            result.reference_fit = X.reference_fit(
+                parts, found.halves[: len(parts)], self.dt, tau_ns=tau,
+                rho_ns=found.info.get("rho_ns") if two else None,
+                g_factor=self.g_factor, l1=float(self.l1), l2=float(self.l2), window=self.gate,
+                shifts=(float(self.shift_vv), float(self.shift_vh)),
+            )
         return result
+
+    def reference_fit_rows(self):
+        """``(label, text)`` of the reference fit: chi-square, G, shifts, background."""
+        fit = self.reference_fit
+        if fit is None:
+            return []
+        rows = [("Reference fit χ²ᵣ", f"{fit.chi2r:.3f} (lifetime {fit.tau_ns:.2f} ns fixed)")]
+        if self.vv_vh:
+            g = f"{fit.g_factor:.3f}" + (" (fitted)" if self.g_factor is None else " (setup)")
+            if self.g_factor is not None:
+                g += f"; free: {fit.g_fitted:.3f}, χ²ᵣ {fit.chi2r_g_free:.3f}"
+            rows.append(("G", g))
+        rows.append(("Shift (fit)", f"VV {fit.shift_vv:+.2f} | VH {fit.shift_vh:+.2f} bins"))
+        return rows
 
     def receive_source(self, payload: dict) -> None:
         """Take what another tool extracted its IRF from (Burst MLE's ``irf_inputs``): the same
@@ -341,6 +376,9 @@ class IRFViewModel:
         self.listed_tau_ns = float(payload.get("listed_tau_ns") or self.listed_tau_ns)
         self.reference_tau_ns = float(payload.get("tau_ns") or 0.0)
         self.reference_rho_ns = float(payload.get("rho_ns") or 0.0)
+        g = payload.get("g_factor")
+        self.g_factor = float(g) if g is not None else None
+        self.l1, self.l2 = float(payload.get("l1") or 0.0), float(payload.get("l2") or 0.0)
         self.irf_model = str(payload.get("model") or self.irf_model)
         self.manual_background = 0.0
         self.current_file_path = None

@@ -272,3 +272,41 @@ def test_a_database_without_a_seeded_reference_set_reads_the_export(monkeypatch)
         assert dyes.diffusion_coefficient_25C("Rh110") > 0
     finally:
         dyes._CACHE = None
+
+
+def _reference_with_g(g: float, tau: float = 4.0, rho: float = 0.2, seed: int = 3):
+    """A Rh110-like bulk reference (photon-like binning) whose VH detector sees 1/g as much."""
+    t = (np.arange(N * OS) + 0.5) * DT / OS
+    fine = _fine_irf()
+    r = 0.38 * np.exp(-t / rho)
+    out = [
+        np.real(np.fft.ifft(np.fft.fft(fine) * np.fft.fft(pol * np.exp(-t / tau)))).reshape(N, OS).sum(1)
+        for pol in (1 + 2 * r, (1 - r) / g)
+    ]
+    total = sum(o.sum() for o in out)
+    rng = np.random.default_rng(seed)
+    return [rng.poisson(o / total * 3e6 + 120.0).astype(float) for o in out]
+
+
+def test_the_reference_dye_is_fitted_at_chi2_one_with_its_own_irf_and_the_right_g():
+    """The reference fit is the reference dye fitted with the IRF extracted from it and the burst
+    model (one amplitude, G, l1, l2, the rotation), its lifetime fixed: with the right G it is
+    essentially perfect; with a wrong G it is not, and says which G the dye asks for."""
+    from chisurf.plugins.fluorescence_decay.irf_estimator.core.extraction import calibrate_shifts
+
+    vv, vh = _reference_with_g(1.3)
+    extracted = irf_from_reference(vv, vh, DT, listed_tau_ns=4.0)
+    irf_vv, irf_vh = extracted.halves
+    rho = extracted.info["rho_ns"]
+    right = calibrate_shifts([vv, vh], [irf_vv, irf_vh], DT, tau_ns=4.0, rho_ns=rho, g_factor=1.3)
+    assert right.fit is not None
+    assert right.fit.chi2r < 1.2
+    assert abs(right.shift_vv) < 0.2 and abs(right.shift_vh) < 0.2
+    assert right.fit.g_fitted == pytest.approx(1.3, rel=0.02)
+    lo, hi = right.fit.window
+    residuals = right.fit.residuals[:N][lo:hi]
+    assert np.all(np.isfinite(residuals)) and abs(float(np.mean(residuals))) < 0.2
+    wrong = calibrate_shifts([vv, vh], [irf_vv, irf_vh], DT, tau_ns=4.0, rho_ns=rho, g_factor=1.0)
+    assert wrong.fit.chi2r > 10 * right.fit.chi2r
+    assert wrong.fit.g_fitted == pytest.approx(1.3, rel=0.02)
+    assert wrong.shift_vv == pytest.approx(right.shift_vv, abs=0.05)  # a wrong G is not a shift

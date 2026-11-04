@@ -24,6 +24,10 @@ placeholder.
   there comes back here ("IRF tool (tuned)") and is fitted. The IRF's settings are the tool's. With a
   reference dye the IRF's time shift (VV, VH) is calibrated before the fit against it, its lifetime
   fixed to the dye database's; a single-molecule dye measurement is preferred ("shift calibrated").
+  Then the dye itself is fitted with the IRF and the burst model (one amplitude, the setup's G, l1, l2,
+  its rotation): the line shows that **reference fit's χ²ᵣ** -- about 1 when the IRF, G and the rotation
+  describe the reference -- and ⚠ when the dye asks for another G than the setup has (apply Data
+  Selection's G). The IRF tool's **Reference fit** view draws it with its residuals.
 * **IRF/BG files** tab (outside Burst Analysis only; in the pipeline the files are Data Selection's): the **Measured IRF** and **Measured background** sections take photon streams from the
   workspace (measured patterns, per detector or *one for all*), **Save VV/VHs**. **Opt** (in the *Burst MLE* tab) searches the
   shifts, IRF window and thresholds for the lowest 2I*; **Save fit** stores a detector's fit settings on the selected

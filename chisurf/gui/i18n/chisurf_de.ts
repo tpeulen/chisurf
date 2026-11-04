@@ -77552,6 +77552,70 @@ Background (kHz): {bg}</source>
             <source>reference</source>
             <translation>Referenz</translation>
         </message>
+        <message>
+            <source>Background: {share:.1%} of the photons in the window ({what}).</source>
+            <translation>Hintergrund: {share:.1%} der Photonen im Fenster ({what}).</translation>
+        </message>
+        <message>
+            <source>the buffer {files}: its shape and rate</source>
+            <translation>der Puffer {files}: seine Form und Rate</translation>
+        </message>
+        <message>
+            <source>flat + scatter of the photons outside the bursts, scaled to the time in the bursts: flat VV {fv:.3g} | VH {fh:.3g} counts per bin, scatter {sv:.3g} | {sh:.3g} counts in the IRF's shape</source>
+            <translation>flach + Streulicht der Photonen außerhalb der Bursts, auf die Zeit in den Bursts skaliert: flach VV {fv:.3g} | VH {fh:.3g} Zählungen pro Kanal, Streulicht {sv:.3g} | {sh:.3g} Zählungen in der Form der IRF</translation>
+        </message>
+        <message>
+            <source>no background yet</source>
+            <translation>noch kein Hintergrund</translation>
+        </message>
+        <message>
+            <source> Background rate: {rate:.4g} kHz</source>
+            <translation> Hintergrundrate: {rate:.4g} kHz</translation>
+        </message>
+        <message>
+            <source> (all photons outside the bursts: {rate:.4g} kHz)</source>
+            <translation> (alle Photonen außerhalb der Bursts: {rate:.4g} kHz)</translation>
+        </message>
+        <message>
+            <source>reference fit χ²ᵣ {value:.2f}</source>
+            <translation>Referenz-Fit χ²ᵣ {value:.2f}</translation>
+        </message>
+        <message>
+            <source>Reference fit: the dye's decay fitted with this IRF and the burst model (lifetime {tau:.2f} ns fixed, G {g:.3f}, the shifts above): χ²ᵣ {chi2r:.3f}; with G free ({g_free:.3f}) χ²ᵣ {chi2r_free:.3f}. About 1 when the IRF, G, l1, l2 and the rotation describe the reference; the IRF tool's Reference fit view shows its residuals.</source>
+            <translation>Referenz-Fit: der Zerfall des Farbstoffs, angepasst mit dieser IRF und dem Burst-Modell (Lebensdauer {tau:.2f} ns fest, G {g:.3f}, die Verschiebungen oben): χ²ᵣ {chi2r:.3f}; mit freiem G ({g_free:.3f}) χ²ᵣ {chi2r_free:.3f}. Etwa 1, wenn IRF, G, l1, l2 und die Rotation die Referenz beschreiben; die Ansicht Referenz-Fit des IRF-Werkzeugs zeigt die Residuen.</translation>
+        </message>
+        <message>
+            <source>the strict background selection: {seconds:.0f} s ({fraction:.0%} of the measurement) at the background's level</source>
+            <translation>die strenge Hintergrundauswahl: {seconds:.0f} s ({fraction:.0%} der Messung) auf Hintergrundniveau</translation>
+        </message>
+        <message>
+            <source>a flat + scatter model, as {reason}: flat VV {fv:.3g} | VH {fh:.3g} counts per bin, scatter {sv:.3g} | {sh:.3g} counts in the IRF's shape</source>
+            <translation>ein Modell aus flachem Anteil + Streulicht, da {reason}: flach VV {fv:.3g} | VH {fh:.3g} Zählungen pro Kanal, Streulicht {sv:.3g} | {sh:.3g} Zählungen in der Form der IRF</translation>
+        </message>
+        <message>
+            <source> Strict background selection: {seconds:.0f} s of {total:.0f} s kept ({fraction:.0%}), {rate:.3g} kHz.</source>
+            <translation> Strenge Hintergrundauswahl: {seconds:.0f} s von {total:.0f} s behalten ({fraction:.0%}), {rate:.3g} kHz.</translation>
+        </message>
+        <message>
+            <source>the buffer</source>
+            <translation>der Puffer</translation>
+        </message>
+        <message>
+            <source>strict background selection</source>
+            <translation>strenge Hintergrundauswahl</translation>
+        </message>
+        <message>
+            <source>flat + scatter model</source>
+            <translation>Modell flach + Streulicht</translation>
+        </message>
+        <message>
+            <source>No stretch at the background level: flat + scatter model.</source>
+            <translation>Kein Abschnitt auf Hintergrundniveau: Modell flach + Streulicht.</translation>
+        </message>
+        <message>
+            <source> Strict background selection: {fraction:.0%} of the time.</source>
+            <translation> Strenge Hintergrundauswahl: {fraction:.0%} der Zeit.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

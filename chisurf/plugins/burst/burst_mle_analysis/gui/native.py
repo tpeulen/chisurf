@@ -685,7 +685,7 @@ class MleNativeApp(TourTarget, ImApp):
                 m.confirm_irf_from(True)
             elif pressed == "irf_keep":
                 m.confirm_irf_from(False)
-        im.text(m.irf_status())
+        im.text_wrapped(m.irf_status())  # the reference fit's chi2 made it longer than the panel
         im.set_item_tooltip(m.irf_status_tooltip())
         if button_row(
             [
@@ -728,7 +728,13 @@ class MleNativeApp(TourTarget, ImApp):
             self.__dict__.setdefault("_tuned_pending", {})[_det] = (irf, text, inputs)
             self.request_frame()
 
-        payload = dict(source, detector=det, origin="Burst MLE", reply=reply)
+        info = session.detectors.get(det, {})
+        payload = dict(
+            source, detector=det, origin="Burst MLE", reply=reply,
+            # the reference fit there uses the polarisation factors the bursts are fitted with
+            g_factor=float(info.get("g_factor", 1.0)), l1=float(info.get("l1", 0.0)),
+            l2=float(info.get("l2", 0.0)),
+        )
         shift = session.shift_calibration.get(det)
         if shift:
             payload["shifts"] = (shift["shift_vv"], shift["shift_vh"])
