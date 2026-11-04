@@ -64,11 +64,35 @@ former `_register_runs`). `SampleQueue` = the thread + `progress`/`stop` the bus
 step 4 is selected go to it (`receive_photons`). Measured on the demo (`demo.make_more_samples`): by
 hand (sample 2 as step 1's measurement, steps 2-3 re-run, MLE window set as tuned) = replay, 580
 bursts, mean tau 2.984289746440577 ns, IRF arrays identical (`test_more_samples.py`, 5 tests ~55 s).
-Open: (a) the replay re-derives the IRF candidates in `take_bursts` (~1 s/sample) and then overwrites
-them with the recipe's -- skip `prepare_patterns`' IRF part when a recipe IRF is given; (b) step 4 has
-no per-sample plot (decay / E histogram) -- the run is in the workspace, ndX opens it; (c) samples run
-in threads sharing the MLE fit pool; >1 only for files >= 32 MB (the search's rule), not measured on
-real data; (d) the recipe is captured at Run: a step changed while samples run applies to the next Run.
+**Batch scheduler (owner: "when processing multiple datasets, in batch, max out parallelization").**
+One pool of `core_budget()` processes (physical cores - 1, capped by `engine.fit_workers()`: it IS
+the MLE fit pool, `batch_pool`) runs every sample's `search_task`, `bva_task`, `two_cde_task` and
+fit chunks; `SampleQueue._work` admits samples (threads) up to the budget and while
+`sample_memory` (37 B per file byte + 100 MB) of those in flight fits 60 % of free memory;
+`share()` = budget - in flight + 1: 1 -> everything after the search is one pool task
+(`analyse_task`, the fit inline via `_InlineExecutor`), more -> stages in the thread, fit chunks
+fanned out. Replay MLE no longer re-derives the IRF (take_bursts without prepare, the buffer set as
+prepare_patterns does, recipe IRF, then `ensure_background` judges the strict selection with it) --
+by-hand equality still exact. Memory measured with macOS `proc_pid_rusage` phys_footprint summed
+over the process and pool (RSS lies under memory pressure: compressed pages): synthetic bursty PTU
+(scratch `memtest.py`: 75 % of photons in 150-photon 1 ms bursts every 4 ms), 2 M photons +0.31 GB,
+20 M +3.73 GB (~190 B/photon -- the per-photon cost itself is worth a look: TTTR in the parent and a
+search worker, strict-background masks, int32 micro-time copies). Benchmark (scratch `bench.py`:
+`process_more(workers=1)` vs default, same pool warmed; 4 extra demo samples from `demo._sample`
+seeds 500+13i; `BIG=1` six 2 M-photon synthetic files): 6 demo samples 6.5 -> 2.5 s, 6 x 2 M 22.4 ->
+13.6 s (3 in flight, memory), parallel == serial; measured under load average 20-30 from other agents,
+so lower bounds -- re-measure on an idle machine. Also found: `MleSession.export_results` parsed a
+container path per burst row (2.6 s of 5.5 k bursts, GIL-bound) -> once per measurement (96340cca7).
+`plugins/core/batch_analysis` is NOT on this scheduler: its runner restores one template fit object
+in the session, fits, records, per item through the action dispatcher -- serial by construction;
+parallel needs a fit object per item (separate redesign).
+Open: (a) step 4 has no per-sample plot -- the run is in the workspace, ndX opens it; (b) with
+few samples in flight the window's process does the MLE preparation and export (GIL; ~1.7 s per
+2 M-photon sample): a pool task that prepares and returns the batch configs would remove it, needs
+`run_batch` split into prepare / submit (engine); (c) a different `fit_pool(n)` size asked by the
+Burst MLE step during a batch (only where physical cores - 1 != logical - 1, i.e. SMT) would drop
+the batch's pool -- share one size; (d) Stop abandons a running `analyse_task`, the worker finishes
+it; (e) the recipe is captured at Run: a step changed while samples run applies to the next Run.
 
 **Burst MLE lifetimes are written into the fitted run (2026-11-04).** Owner: "the lifetimes are
 missing ... all missing after burst mle" + "they should be linked". `MleSession.run_batch` kept
