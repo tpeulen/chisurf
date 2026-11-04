@@ -4580,3 +4580,25 @@ guides/figures/115_excitation_windows_record.png:
     and writes guides/figures/115_excitation_windows_record.png.
   pages:
   - docs/guides/115_excitation_windows.md
+
+guides/figures/116_more_samples_simple.png:
+  caption: 'Burst Analysis step 4 in Simple mode on the demo session: two further measurements done with
+    the first one''s recipe (bursts, mean τ), a file that is not a photon stream failed.'
+  kind: screenshot
+  origin: docs/guides/screenshots/guide_116_more_samples.py::main
+  recipe: Run `CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) python docs/guides/screenshots/guide_116_more_samples.py`
+    from the repository root; it walks the demo session through the Burst Analysis hub headlessly, runs
+    step 4 and writes this PNG.
+  pages:
+  - docs/guides/116_more_samples.md
+
+guides/figures/116_more_samples_advanced.png:
+  caption: 'The same step in Advanced: the recipe part by part (setup, calibration, report, search, fit
+    window, the optional steps that ran) and Re-run.'
+  kind: screenshot
+  origin: docs/guides/screenshots/guide_116_more_samples.py::main
+  recipe: Run `CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) python docs/guides/screenshots/guide_116_more_samples.py`
+    from the repository root; it walks the demo session through the Burst Analysis hub headlessly, runs
+    step 4 and writes this PNG.
+  pages:
+  - docs/guides/116_more_samples.md
