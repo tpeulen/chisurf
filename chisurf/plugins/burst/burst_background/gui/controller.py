@@ -162,6 +162,7 @@ class BackgroundController:
         snapshot.tttr_provider = lambda path: reading.open_tttr(path, cancel_cb=self._cancel.is_set)
         snapshot._observers = []
         snapshot._interphoton = {}
+        snapshot._strict = {}
         snapshot.backgrounds, snapshot.diagnostics = {}, {}
         snapshot._write_containers = lambda: None
         return snapshot
@@ -195,6 +196,7 @@ class BackgroundController:
             "backgrounds",
             "diagnostics",
             "_interphoton",
+            "_strict",
             "_interphoton_settings",
             "_result_settings",
             "fit_from_ms",

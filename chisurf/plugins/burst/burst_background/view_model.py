@@ -103,6 +103,9 @@ class BackgroundViewModel:
         # Results.
         self.backgrounds: dict[str, dict[str, float]] = {}
         self.diagnostics: dict[str, dict] = {}
+        #: ``{path: (run, {detector: kHz}, info)}``: the strict background selection around the
+        #: bursts of each measurement's newest burst run, written as ``<run>/background``.
+        self._strict: dict[str, tuple] = {}
         self.status: str = "Load files, define detectors, then estimate."
 
         self._observers: list[Callable[[str], None]] = []
@@ -223,6 +226,7 @@ class BackgroundViewModel:
                 name: _burst.background._detector_interphoton_times(tttr, info, scale)
                 for name, info in applied.items()
             }
+            self._strict_selection(path, tttr, applied)
         if callable(cancel_check):
             cancel_check()
         if not self._interphoton:
@@ -408,6 +412,42 @@ class BackgroundViewModel:
         else:
             self.notify("files")
 
+    def _container_target(self, path) -> dict:
+        """Where *path*'s results go: a workspace dataset's (and every file the window was given,
+        ``in_project``) into its analysis container in the project, the photons linked; a file
+        named through the API keeps its own container."""
+        from chisurf.core.project.analysis import container_dir
+
+        uid = (getattr(self, "sources", None) or {}).get(str(path), "")
+        in_project = uid or getattr(self, "in_project", False)
+        return {"out_dir": container_dir(uid), "raw_data": "sidecar"} if in_project else {}
+
+    def _strict_selection(self, path, tttr, applied) -> None:
+        """The strict background selection around the bursts of *path*'s newest burst run (its
+        container's), per detector -- the background the run's bursts are corrected with; nothing
+        before a burst search."""
+        from chisurf.core.fio.analysis_path import split_artifact_name
+        from chisurf.core.fio.fluorescence.burst_container import burst_table_name, container_for
+        from chisurf.core.fio.fluorescence.run_background import _burst_mask, strict_selection_rates
+        from chisurf.core.fio.pto import Measurement, is_measurement
+
+        self._strict.pop(path, None)
+        target = container_for(path, self._container_target(path).get("out_dir"))
+        try:
+            if not is_measurement(target):
+                return
+            with Measurement.open(target) as m:
+                table = burst_table_name(m)
+                if not table:
+                    return
+                mask = _burst_mask(m, table, len(tttr))
+            rates, info = strict_selection_rates(tttr, mask, applied)
+        except Exception:  # noqa: BLE001 - the inter-photon estimate stands without it
+            logger.debug("no strict background selection for %s", path, exc_info=True)
+            return
+        if rates:
+            self._strict[path] = (split_artifact_name(table)[0], rates, info)
+
     def _write_containers(self) -> None:
         """Record each file's background rates in its measurement container.
 
@@ -495,6 +535,16 @@ class BackgroundViewModel:
                                     "Model": "counts",
                                 },
                             ),
+                        )
+                    if path in self._strict:
+                        # the run's own background: the strict selection around its bursts
+                        from chisurf.core.fio.fluorescence.run_background import write_run_background
+
+                        run, strict_rates, info = self._strict[path]
+                        write_run_background(
+                            measurement, run, strict_rates, "strict selection",
+                            seconds=info["seconds"],
+                            parameters={**parameters, "warning": info["warning"]},
                         )
             except Exception:
                 logger.debug("could not write the container for %s", path, exc_info=True)

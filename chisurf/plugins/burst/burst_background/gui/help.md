@@ -61,6 +61,11 @@ FRET difference.
 3. **Does the fit lie on the tail?** The most common failure is a tail region
    that starts inside the burst-dominated part of the histogram.
 
+Once a burst search has run, the rates of the **strict selection** of
+background photons around that run's bursts are stored with the run
+(`<run>/background`); ndX opens the run with them as `Bg_<detector>` (kHz), and
+subtracts rate × burst duration.
+
 It also runs headless: `csc burst-background --help`.
 
 ## Further reading

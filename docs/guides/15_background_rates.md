@@ -136,6 +136,21 @@ one exponential whose slope is the background rate. A weighted fit over the
 Background from inter-photon times.
 ```
 
+## Where the rates go
+
+Each measurement's rates are stored in its analysis container. Once a burst
+search has run, the step also takes the **strict selection** of background
+photons around that run's bursts (the bursts widened by their flanks, then only
+the stretches at the background's local count rate — the selection Burst MLE
+uses) and stores each detector's rate with the run, as `<run>/background`
+(`Detector`, `Rate` in kHz, `Source`, `Seconds`), derived from the run's burst
+table. ndX opens the run with these as `Bg_G|G`, `Bg_R|G`, `Bg_R|R` (a buffer
+measurement of Data Selection wins over them), and every corrected burst
+quantity takes off rate × the burst's duration (kHz × ms = photons). On
+DNA13bp_3 (RVZMT150, no buffer) the inter-photon tail of all photons gives
+1.79 / 0.69 / 0.43 kHz, the strict selection around the bursts 1.95 / 0.67 /
+0.39 kHz.
+
 ## See also
 
 - {src}`chisurf/core/fluorescence/burst/background.py`, `.../irf_bg.py`; plugin `burst_background`.
