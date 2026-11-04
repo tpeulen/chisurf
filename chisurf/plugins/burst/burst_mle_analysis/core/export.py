@@ -145,6 +145,7 @@ def write_mle_container(
     experiment: Mapping[str, Any] | None = None,
     parameters: Mapping[str, Any] | None = None,
     out_dir: str | Path | None = None,
+    background: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> str:
     """Write one measurement's MLE results into its container.
 
@@ -170,6 +171,11 @@ def write_mle_container(
         with the same settings replaces these objects instead of adding beside
         them.
     out_dir : str or Path, optional
+    background : mapping, optional
+        ``{detector: {"rate_khz", "source", "seconds"}}``: the background rate each detector's
+        fits were corrected with, written as the run's ``<run>/background``
+        (:func:`~chisurf.core.fio.fluorescence.run_background.write_run_background`), so ndX
+        prefills ``Bg_<detector>`` with the rates the lifetimes were fitted with.
 
     Returns
     -------
@@ -195,6 +201,18 @@ def write_mle_container(
     names += [artifact_name(run, f"irf {colour_of(d)}") for d in (experiment or {}).get("detectors", {})]
     _remove(source, names, out_dir)
     written = ""
+    rates = {d: float(v["rate_khz"]) for d, v in (background or {}).items()
+             if v.get("rate_khz") is not None and np.isfinite(float(v["rate_khz"]))}
+    if rates and run:
+        from chisurf.core.fio.fluorescence.burst_container import open_measurement
+        from chisurf.core.fio.fluorescence.run_background import write_run_background
+
+        with open_measurement(source, out_dir, raw_data="sidecar") as m:
+            write_run_background(
+                m, run, rates, {d: str(background[d].get("source") or "") for d in rates},
+                seconds={d: float(background[d].get("seconds") or np.nan) for d in rates},
+                parameters={"by": "burst MLE", **({"settings": dict(parameters)} if parameters else {})},
+            )
     for detector, table in tables.items():
         if table is None:
             continue

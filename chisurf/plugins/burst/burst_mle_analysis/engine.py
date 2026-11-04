@@ -524,7 +524,7 @@ def write_b4_tables(
 
 
 def write_container_tables(
-    results, det_meta, parameters, *, state_rows=None, experiment=None, tick=None
+    results, det_meta, parameters, *, state_rows=None, experiment=None, tick=None, background=None
 ):
     """Write the per-burst fits of measurements that live in a ``.pto`` into that container.
 
@@ -540,7 +540,7 @@ def write_container_tables(
         Detector -> ``(colour, letter, columns)``.
     parameters : mapping
         The fit settings; their hash is the identity of the run.
-    state_rows, experiment : optional
+    state_rows, experiment, background : optional
         Forwarded to :func:`~.core.export.write_mle_container`.
     tick : callable, optional
         ``tick(done) -> bool``; ``True`` cancels (the function then returns ``None``).
@@ -580,6 +580,7 @@ def write_container_tables(
                 state_rows=state_rows,
                 experiment=experiment,
                 parameters=parameters,
+                background=background,
             )
         )
         for container, by_det in tables.items()
@@ -3117,6 +3118,7 @@ class MleSession:
                 settings,
                 state_rows=self.state_lifetimes or None,
                 experiment=self.experiment_payload(),
+                background=self.background_rates(),
                 tick=tick,
             )
             paths += containers or []
@@ -3127,6 +3129,25 @@ class MleSession:
             if roots:
                 paths += state_split.write_state_lifetimes(self.state_lifetimes, roots)
         return paths
+
+    def background_rates(self) -> dict[str, dict]:
+        """``{detector: {"rate_khz", "source", "seconds"}}``: the background rate each detector's
+        fit is corrected with (:meth:`background_of`: the buffer, else the strict selection, else
+        the flat + scatter model of the photons outside the bursts), as the run records it."""
+        names = {"buffer": "buffer", "strict": "strict selection", "model": "model"}
+        out = {}
+        for det in self.detectors:
+            try:
+                self.background_of(det)
+            except Exception:  # noqa: BLE001 - a detector without a background has no rate
+                continue
+            info = self.background_info.get(det) or {}
+            if info.get("rate_khz") is None:
+                continue
+            seconds = (self.strict_background or {}).get("seconds") if info.get("source") == "strict" else None
+            out[det] = {"rate_khz": float(info["rate_khz"]), "source": names.get(info.get("source"), ""),
+                        "seconds": seconds}
+        return out
 
     def experiment_payload(self) -> dict:
         """The IRF and background each detector's fit used, in the layout the container writer takes."""

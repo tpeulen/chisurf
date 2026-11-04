@@ -194,7 +194,7 @@ lands on the row under the pointer; names guess the role (`guess_sample_type`, d
 dye database's aliases, mmfdb 878bc29). Only Measurement goes to Burst Selection
 (`BurstWorkflowContext.raw_files`); the assignment is `context.samples` and the step's settings, the
 workspace dataset gets a `sample` tag (`ChiSurfAPI.tag_dataset`, `dataset.tag` RPC). Calibrations
-(`samples.calibrate`, a thread, busy overlay via the step's `job`): buffer `B_<det>` kHz; per colour
+(`samples.calibrate`, a thread, busy overlay via the step's `job`): buffer `Bg_<det>` kHz; per colour
 the reference dye's G (tail ratio, `calculate_g_factor_core`, shared by detectors on the same
 channels) and confocal volume (VV x VH cross-correlation in 10 parts, SEM-weighted 3-D Gauss fit,
 D from `dyes.get_dye` corrected by `diffusion_at_temperature`), and the IRF's FWHM. G is written to
@@ -207,7 +207,7 @@ source, fit with standard errors and χ²r, G, buffer, IRF, estimated): `context
 and, once the bursts exist, object `burst_calibration` in each measurement's container
 (`write_report` / `read_report`). Burst MLE gets `context.references()` per detector (IRF before dye, a colour
 without IRF reads all IRF files; buffer for every detector); its source line names the IRF
-measurement and the buffer's `B_<det>`; the fit background is the buffer, else the strict background selection (2026-11-04, above).
+measurement and the buffer's `Bg_<det>`; the fit background is the buffer, else the strict background selection (2026-11-04, above).
 `context.estimated()` records what was estimated (also in the container provenance). Measured on
 the simulated session (`burst_analysis/demo.py`, known answer): G 1.150 (1.15), red 0.930 (0.92),
 B 1.402 kHz (1.40), green w0 +5 %, z0 -6 %, V_eff +4 % with the true D; tests `test_samples.py`,
@@ -267,7 +267,7 @@ per-file `choices` selector (emtk 0.1.42) is unused here now but kept in emtk.
    Burst Analysis runs the Background step (`_estimate_background` in `burst_analysis/gui/native.py`,
    Simple and Advanced) and stores the per-detector rates in the measurement's analysis container
    (`background` table: Detector, Rate); the window writes into the project containers only
-   (`model.in_project`), never beside the photons. Names everywhere: `B_G|G` / `B_R|G` / `B_R|R` (kHz) in
+   (`model.in_project`), never beside the photons. Names everywhere: `Bg_G|G` / `Bg_R|G` / `Bg_R|R` (kHz) in
    ndX and Accurate FRET, `B (kHz)` as the per-detector table column. Accurate FRET takes rates and
    subtracts rate x burst duration (`core.subtract_background`, window and CLI); ndX's calibration
    holds them fixed by default. DNA13bp_3.ptu: G|G 1.79, R|G 0.69, R|R 0.43 kHz. Open: the empty

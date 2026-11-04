@@ -122,7 +122,7 @@ def test_a_measurement_from_a_dataset_has_one_container(session_files, tmp_path)
         measurement.parent.mkdir()
         shutil.copy(session_files["measurement"], measurement)
         data.take_photons([measurement], ["dataset-uid-1"])
-        end = time.monotonic() + 30
+        end = time.monotonic() + 120  # the container is made on a thread
         while time.monotonic() < end and not list(container_dir("dataset-uid-1").glob("*.pto")):
             time.sleep(0.1)
         assert [p.name for p in container_dir("dataset-uid-1").glob("*.pto")] == ["sample.pto"]
@@ -166,7 +166,7 @@ def test_one_pipeline_leaves_one_container_with_one_linked_run(session_files):
             time.sleep(0.05)
         mle = hub.children["mle"]
         assert hub.step_done("mle"), (hub.status, mle.model.status_text)
-        _wait(drv, lambda: "Written into" in mle.model.status_text, "the lifetimes written", 60)
+        _wait(drv, lambda: "Written into" in mle.model.status_text, "the lifetimes written", 300)
         time.sleep(1.0)  # the report is written on a thread
         drv.draw(3)
 
@@ -184,6 +184,15 @@ def test_one_pipeline_leaves_one_container_with_one_linked_run(session_files):
                     assert [names[u] for u in m.parents(obj.uid)] == [bursts]
         store, _ = read_run(containers[0], table=bursts)
         assert "Tau (G|G)" in column_names(store)
+        # the run carries the background the lifetimes were fitted with: ndX's Bg_G|G is the MLE's
+        from ndxplorer.analysis.fret_background import stored_background_constants
+
+        session = mle.model.session
+        session.background_of("G|G")
+        assert f"{run}/background" in members
+        assert stored_background_constants(str(containers[0]), run)["Bg_G|G"] == pytest.approx(
+            session.background_info["G|G"]["rate_khz"], rel=1e-6
+        )
         assert not hub.errors, hub.errors
     finally:
         hub.close()

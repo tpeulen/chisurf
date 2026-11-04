@@ -35,7 +35,7 @@ class BurstWorkflowContext:
     #: measurements are in :attr:`raw_files`.
     samples: dict[str, str] = field(default_factory=dict)
     #: What the buffer and reference-dye files gave (:func:`.samples.calibrate`): ``buffer``
-    #: (``B_<detector>`` in kHz) and ``colours`` (per colour ``g_factor`` per detector and
+    #: (``Bg_<detector>`` in kHz) and ``colours`` (per colour ``g_factor`` per detector and
     #: ``volume``: ``w0_um``, ``z0_um``, ``veff_fl``, ...), for every later step to read.
     calibration: dict[str, Any] = field(default_factory=dict)
     #: The complete record of the calibration (:func:`.calibration_report.build_report`): files

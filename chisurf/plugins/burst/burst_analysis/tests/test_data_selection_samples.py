@@ -296,7 +296,7 @@ def test_irf_and_buffer_files_reach_burst_mle(demo_files):
     session.choose_irf("G|G", "measurement")
     assert session.irf_source["G|G"].startswith("scatter water_irf.ptu")
     assert model.buffer_rate("G|G") == pytest.approx(sum(demo.TRUTH["background_khz"]), rel=0.03)
-    assert "B_G|G" in model.irf_source_text()
+    assert "Bg_G|G" in model.irf_source_text()
 
     # only measurements: the fallbacks are named in the provenance
     bare = BurstWorkflowContext(channel_settings=copy.deepcopy(demo.SETUP))

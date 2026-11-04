@@ -32,9 +32,9 @@ them (Auto: the reference dye first). A colour without its own files reads the o
 on its channels, and a detector they show nothing keeps the estimate below. In the pipeline
 there is no file list in Burst MLE: the files are Data Selection's. Files in the
 **Buffer** row are the buffer (`bg_files`): they correct a scatter IRF for its background and are
-the fit's background -- its histogram the shape, its rate `B_<detector>` the rate -- named in the IRF
+the fit's background -- its histogram the shape, its rate `Bg_<detector>` the rate -- named in the IRF
 source line ("G|G: IRF from the IRF measurement water_irf.ptu (buffer-corrected); background: the
-buffer (buffer buffer.ptu: B_G|G = 1.40 kHz)"). Without a buffer the background is selected from the
+buffer (buffer buffer.ptu: Bg_G|G = 1.40 kHz)"). Without a buffer the background is selected from the
 measurement itself (see *The background* below). Without files in these rows the IRF and background are estimated as below
 and the line says so. See {ref}`concept-reference-dye-calibration`.
 

@@ -7,7 +7,7 @@ sample types (:data:`SAMPLE_TYPES`), guessed from its name (:func:`guess_sample_
 always the user's to change. Only measurements are searched for bursts; the others are
 calibration inputs:
 
-* a buffer gives the background rate of every detector, ``B_<detector>`` in kHz
+* a buffer gives the background rate of every detector, ``Bg_<detector>`` in kHz
   (:func:`buffer_rates`), and corrects a scatter IRF in Burst MLE;
 * an IRF measurement is Burst MLE's measured IRF;
 * a reference dye gives the **G factor** of every detector with a parallel and a

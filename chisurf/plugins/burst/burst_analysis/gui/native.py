@@ -840,7 +840,7 @@ class BurstAnalysisHubApp(ToolHubApp):
             return
         if self.context.raw_files and not child.model.files:
             # each file's rates go into its workspace dataset's analysis container, where ndX
-            # reads them (B_G|G, B_R|G, B_R|R), never beside the photons
+            # reads them (Bg_G|G, Bg_R|G, Bg_R|R), never beside the photons
             data = self.children.get("data")
             sources = getattr(getattr(data, "model", None), "sources", None) or {}
             paths = [str(p) for p in self.context.raw_files]
@@ -939,7 +939,7 @@ class BurstAnalysisHubApp(ToolHubApp):
     def _run_in_background(self) -> None:
         """Once the bursts are there: the background is estimated (in either mode) and stored in
         each measurement's container, so ndX and the accurate-FRET correction open with measured
-        B_G|G / B_R|G / B_R|R; in Simple mode the steps not shown (BVA, 2CDE) run with their
+        Bg_G|G / Bg_R|G / Bg_R|R; in Simple mode the steps not shown (BVA, 2CDE) run with their
         defaults too, so their results exist for the browser and the export."""
         self._estimate_background()
         if self.advanced:

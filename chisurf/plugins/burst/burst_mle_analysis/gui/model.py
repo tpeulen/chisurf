@@ -1431,7 +1431,7 @@ class MleViewModel(RunPickerMixin):
         if rate is None:
             return ""
         names = ", ".join(Path(p).name for p in self.session.bg_files.get(det, []))
-        return f" (buffer {names}: B_{det} = {rate:.2f} kHz)"
+        return f" (buffer {names}: Bg_{det} = {rate:.2f} kHz)"
 
     def auto_extract(self) -> None:
         """One click: binning, IRF and background from the non-burst photons, fit window, fit."""

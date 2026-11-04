@@ -967,7 +967,7 @@ class BurstDataSelectionApp(TourTarget, ImApp):
             rates = ((calibration.get("buffer") or {}).get("rates")) or {}
             if rates:
                 cells["bg"] = float(sum(r["B_kHz"] for r in rates.values() if r["B_kHz"] == r["B_kHz"]))
-                cells["tip"] += " " + ", ".join(f"B_{d} {r['B_kHz']:.2f} kHz" for d, r in rates.items())
+                cells["tip"] += " " + ", ".join(f"Bg_{d} {r['B_kHz']:.2f} kHz" for d, r in rates.items())
         elif kind == "irf":
             irf = (calibration.get("irf") or {}).get(colour) or {}
             if irf.get("fwhm_ps"):

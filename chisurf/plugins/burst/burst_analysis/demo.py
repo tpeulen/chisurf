@@ -13,7 +13,7 @@
 
 The answer is therefore known (:data:`TRUTH`): the reference dye's tail ratio is ``G``, its
 correlation gives ``w0``, ``z0`` and ``V_eff = pi^(3/2) w0^2 z0``, the buffer's rate is
-``B_G|G``. Diffusion is the TTTR library's photon simulator (3-D Brownian motion through the
+``Bg_G|G``. Diffusion is the TTTR library's photon simulator (3-D Brownian motion through the
 focus); the polarisation of each photon is drawn from ``r(t) = r0 exp(-t / rho)`` at its delay,
 the prompt is added to the delay. Nothing here is a measurement.
 """

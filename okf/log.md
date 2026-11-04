@@ -76,6 +76,7 @@
 - 2026-11-04: More samples batches use the whole machine: one pool of core_budget() processes (physical cores - 1, = Burst MLE's fit pool) runs every sample's search, BVA, 2CDE and fit chunks; samples in flight bounded by cores and free memory (37 B per file byte measured: 20 M photons = 3.7 GB); stages of different samples overlap; with every worker busy a sample's post-search stages are one pool task, with fewer in flight the fit fans out. Parallel == serial (tested), no extra pool processes (tested). 6 demo samples 6.5 -> 2.5 s, 6 x 2 M photons 22.4 -> 13.6 s on a contended 8-core laptop. Recipe replay no longer re-derives the IRF from the reference files (it is the recipe's).
 - 2026-11-04: okf/plugins/burst.md: More samples resume point updated with the batch scheduler, the memory measurement and benchmark recipe, why batch_analysis is not on it, and what is open.
 - Reference dyes are described once (one lifetime -- the database's within 5 % of the tail, else the tail's, said so --, the rotation and an initial anisotropy from the data) for their IRF, shift calibration and reference fit; swapped VV/VH channels are flagged (RVZMT150's red pair). Alexa647_thick_1: chi2_r 31 to 1.66 with the order put right ([IRF extraction](../docs/concepts/irf_extraction.md), [burst](plugins/burst.md)).
+- Burst MLE writes the background rate each detector's fits were corrected with as the run's <run>/background, so ndX's Bg_<detector> equals the MLE's; B_<detector> texts renamed Bg_<detector> ([burst](plugins/burst.md)).
 
 ## 2026-11-03
 
