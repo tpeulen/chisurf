@@ -285,7 +285,7 @@ class FilterPanel:
             elif not value and d in det.selected and len(det.selected) > 1:
                 det.selected.remove(d)  # at least one detector stays: the filters need a decay
         elif key == "irf":
-            det.values["irf"][f"{d}|{role}"] = str(value).strip()
+            det.values["irf"][det.key(d, role)] = str(value).strip()
         else:
             number = _number(value)
             if number is None:

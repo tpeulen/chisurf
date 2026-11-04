@@ -411,7 +411,7 @@ class FilterApp(TourTarget, ImApp):
         self.submit(lambda model: model.compute())
 
     def set_irf(self, detector, role, path):
-        self.model.detectors.values["irf"][f"{detector}|{role}"] = str(path)
+        self.model.detectors.values["irf"][self.model.detectors.key(detector, role)] = str(path)
 
     def form(self, name, spec=None, panel=None):
         state = self.forms.setdefault(name, FormState(on_used=self._used))

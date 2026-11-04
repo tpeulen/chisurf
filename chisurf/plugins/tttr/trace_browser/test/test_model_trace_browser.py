@@ -468,3 +468,14 @@ def test_the_scan_lists_a_real_single_molecule_file_and_hides_a_scan(tmp_path):
     model = TraceBrowserModel()
     model.open_folder(tmp_path)
     assert [r["name"] for r in model.rows] == [molecule.name]
+
+
+def test_detector_series_keep_their_own_colour():
+    """G|G, R|G and R|R (any case, with a channel suffix) take the detector colours."""
+    from chisurf.core.fluorescence import detector_names as dn
+    from chisurf.plugins.tttr.trace_browser.gui.app import DETECTOR_COLOURS, PALETTE, series_colour
+
+    assert series_colour("G|G", 5) == DETECTOR_COLOURS[dn.DONOR]
+    assert series_colour("r|g, ch 1", 5) == DETECTOR_COLOURS[dn.ACCEPTOR]
+    assert series_colour("R|R", 5) == DETECTOR_COLOURS[dn.ACCEPTOR_DIRECT]
+    assert series_colour("ch 3", 1) == PALETTE[1]

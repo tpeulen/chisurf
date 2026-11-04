@@ -106,7 +106,7 @@ def series_colour(label: str, index: int) -> tuple:
     index : int
         Position of the series, picking from :data:`PALETTE` for a label without own colour.
     """
-    name = re.split(r"[\s,+]", str(label).strip().lower(), maxsplit=1)[0]
+    name = re.split(r"[\s,+]", str(label).strip().upper(), maxsplit=1)[0]
     return DETECTOR_COLOURS.get(name, PALETTE[index % len(PALETTE)])
 
 

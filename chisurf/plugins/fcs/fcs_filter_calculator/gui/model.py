@@ -50,7 +50,7 @@ class Detectors:
         return detector, role
 
     def _get(self, field, detector, role="", default=0):
-        return self.values[field].get(f"{detector}|{role}", default)
+        return self.values[field].get(self.key(detector, role), default)
 
     def irf_path(self, detector, role=""):
         return str(self._get("irf", detector, role, ""))
@@ -65,13 +65,13 @@ class Detectors:
         return float(self._get("shift", detector, role, 0))
 
     def set_width(self, detector, value, role=""):
-        self.values["width"][f"{detector}|{role}"] = float(value)
+        self.values["width"][self.key(detector, role)] = float(value)
 
     def set_skew(self, detector, value, role=""):
-        self.values["skew"][f"{detector}|{role}"] = float(value)
+        self.values["skew"][self.key(detector, role)] = float(value)
 
     def set_shift(self, detector, value, role=""):
-        self.values["shift"][f"{detector}|{role}"] = float(value)
+        self.values["shift"][self.key(detector, role)] = float(value)
 
     def export_state(self):
         return deepcopy(self.values)
