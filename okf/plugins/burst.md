@@ -9,6 +9,29 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
+**Responsiveness after a burst search (2026-11-04).** Owner: "after burst selection the UI is very
+unresponsive". Measured on DNA13bp_3.ptu (20 M photons) in the whole shell (`EmtkShellApp` +
+`RealisticDriver`, real wgpu painter, cProfile per frame; script pattern: copy the settings dir, drop
+the PTU, run the search, then time 60 frames and count the frames a host would draw idle from
+`animating()`/`next_frame_in()`): **idle, the shell redrew 20 times a second for good** -- the
+watermark's once-a-second refresh asked for a frame every 50 ms while a tool covered it (its sample
+never refreshed), and the Console, given no frame callback, polled at 10 Hz. Each of those frames cost
+89 ms in Burst Selection (the trace keyed its cache on `_window_indices`, which copied all 20 M macro
+times out of tttrlib and ran two float `searchsorted` on them, ~50 ms) and 25 ms in Burst MLE (18 ms of
+it the Tools list drawing all ~90 rows). After: idle 20 -> 0.3 frames/s (autosave only), main thread
+busy ~100 % -> ~1 %; a Burst Selection frame 89 -> 36 ms, a Burst MLE frame 25 -> 21 ms. Guards:
+`test/native_emtk/test_emtk_shell_idle_wake.py`, `burst_selection/tests/test_diagnostic_window.py`
+(one macro-time read per window). Open: the Burst Selection trace's line strips still cost ~17 ms a
+frame (emtk `_render_line_strip` in Python over ~3000 points, two plots); only paid on input now.
+
+**Burst MLE weighted residuals (2026-11-04).** Under *Decay and fit*, a linked subplot
+(`begin_subplots`, `LINK_ALL_X`) draws (data − model)/σ of each fit window, σ = √model (√data where
+the model is 0), a zero line, and χ²ᵣ = Σ w.res.² / (bins − free parameters) in its title
+(`fit_display.weighted_residuals`, `reduced_chi2`, `DecayCurves.residuals_full` / `chi2r`; `n_free`
+from the fixed flags). DNA13bp_3 G|G with the Rh110 IRF, Fit23: χ²ᵣ 29 with a rising VV / dipping VH
+residual -- one lifetime does not describe the FRET + donor-only mix (resume item 0 (a)). Test:
+`test_emtk_mle_native.py` (the drawn residuals equal the curves'), `test_fit_plot_curves.py`.
+
 **Data Selection roles and calibration (2026-11-04).** Done: *1. Data Selection* is two tables --
 the workspace's photon streams on top (a group as one row), and under them one row per **role**
 made from the setup (`samples.row_keys`: Measurement, Buffer, then `irf:<colour>` and

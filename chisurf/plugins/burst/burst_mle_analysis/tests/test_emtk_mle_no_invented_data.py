@@ -138,8 +138,9 @@ def test_decay_curves_windows_each_polarisation_and_drops_the_irf_for_a_tail_fit
         and curves.irf is not None
         and curves.irf.sum() == pytest.approx(curves.data.sum())
     )
+    # weighted by the Poisson sigma of the model, sqrt(model)
     np.testing.assert_allclose(
-        curves.residuals, (curves.data - curves.model) / np.sqrt(curves.data)
+        curves.residuals, (curves.data - curves.model) / np.sqrt(curves.model)
     )
     assert fit_display.decay_curves(data, model, irf, bg, ranges, tail=True).irf is None
     runaway = fit_display.decay_curves(data, model * 1e6, irf, bg, ranges, diverged=True)

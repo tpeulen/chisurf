@@ -24,7 +24,9 @@ placeholder.
   **Fit bursts**).
 * **Decay and IRF fit**: the micro-time decay of the current file (data), the fitted model, the IRF and the
   background, VV window followed by VH window, on a log axis. IRF and background are scaled to the area of the data for
-  display only; their fit weight is the scatter parameter.
+  display only; their fit weight is the scatter parameter. Under it, on the same x axis, the **weighted residuals**
+  (data − model) / √model of each fit window (√data where the model is zero) around a zero line, and in its title
+  χ²ᵣ = Σ w.res.² / (bins − free parameters): about 1 and no structure for a good fit.
 * **Burst lifetime distribution**: histogram of the fitted per-burst lifetimes. Drag the box to count the bursts in a
   lifetime gate.
 * **Fitted lifetimes**: in the segment-level analysis (split by H2MM state) the pooled lifetime of each state.

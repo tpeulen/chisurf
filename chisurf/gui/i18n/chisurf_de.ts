@@ -77256,6 +77256,18 @@ Background (kHz): {bg}</source>
             <source>τ_D (µs)</source>
             <translation>τ_D (µs)</translation>
         </message>
+        <message>
+            <source>Weighted residuals, χ²ᵣ = {value}</source>
+            <translation>Gewichtete Residuen, χ²ᵣ = {value}</translation>
+        </message>
+        <message>
+            <source>Weighted residuals</source>
+            <translation>Gewichtete Residuen</translation>
+        </message>
+        <message>
+            <source>(data - model) / sigma in the fit window of each half, sigma = sqrt(model) (the Poisson noise the model expects; sqrt(data) where the model is zero). Scattered about zero within +-2 for a good fit; χ²ᵣ = sum of squares / (bins - free parameters), about 1.</source>
+            <translation>(Daten - Modell) / sigma im Fitfenster jeder Hälfte, sigma = sqrt(Modell) (das Poisson-Rauschen, das das Modell erwartet; sqrt(Daten), wo das Modell null ist). Bei einem guten Fit um null innerhalb ±2 gestreut; χ²ᵣ = Quadratsumme / (Kanäle - freie Parameter), etwa 1.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

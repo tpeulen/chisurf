@@ -122,6 +122,9 @@ class MleNativeApp(TourTarget, ImApp):
             table["height"] = 90
         cap_widths(self.sections + self.burst_sections + self.irf_sections + self.pattern_sections)
         self.labels = LabelColumn()
+        #: The decay's and the residuals' share of the Decay and fit panel (dragging the
+        #: splitter between them updates it).
+        self._decay_rows = [3.0, 1.0]
         self._measured = False
         self.dialog = None
         self.dialog_action = ""
@@ -837,8 +840,25 @@ class MleNativeApp(TourTarget, ImApp):
                 )
             )
             return
+        w, h = im.get_content_region_avail()
+        line = im.get_text_line_height_with_spacing()
+        # the decay over its weighted residuals, one x axis: zoom or pan one and both follow
+        if not implot.begin_subplots(
+            "##decay_fit",
+            2,
+            1,
+            (w, max(120.0, h - line)),
+            implot.SUBPLOT_FLAGS_LINK_ALL_X | implot.SUBPLOT_FLAGS_NO_TITLE,
+            row_ratios=self._decay_rows,
+        ):
+            im.text(self.model.current_file_text())
+            return
+        hidden_x = implot.AXIS_FLAGS_NO_TICK_LABELS | implot.AXIS_FLAGS_NO_LABEL
         if implot.begin_plot("Decay histogram and fit", (-1, -1)):
-            implot.setup_axes("Micro-time channel (VV, then VH)", "Photons")
+            implot.setup_axes("Micro-time channel (VV, then VH)", "Photons", hidden_x)
+            # linked axes do not fit themselves: the whole decay once, per decay length (the
+            # user's zoom is kept until another binning or detector changes it)
+            implot.setup_axis_limits(implot.AXIS_X1, -0.5, curves.data_full.size - 0.5)
             # the legend in a row over the plot: inside it covered the prompt of the decay
             implot.setup_legend(
                 implot.LOCATION_NORTH, implot.LEGEND_FLAGS_OUTSIDE | implot.LEGEND_FLAGS_HORIZONTAL
@@ -884,7 +904,43 @@ class MleNativeApp(TourTarget, ImApp):
                 "range (in either half); the decay is fitted again when a line is let go."
             )
         )
+        self._residuals(curves)
+        implot.end_subplots()
         im.text(self.model.current_file_text())
+
+    def _residuals(self, curves) -> None:
+        """The weighted residuals of the fit windows under the decay, VV and VH, on its x axis."""
+        chi2r = curves.chi2r
+        title = (
+            tr("Weighted residuals, χ²ᵣ = {value}").format(value=f"{chi2r:.3f}")
+            if np.isfinite(chi2r)
+            else tr("Weighted residuals")
+        )
+        if implot.begin_plot(f"{title}##wres", (-1, -1)):
+            implot.setup_axes("Micro-time channel (VV, then VH)", "w.res.")
+            res = curves.residuals_full
+            finite = np.abs(res[np.isfinite(res)])
+            reach = float(np.clip(np.percentile(finite, 99) * 1.2, 3.0, 50.0)) if finite.size else 3.0
+            implot.setup_axis_limits(implot.AXIS_Y1, -reach, reach)
+            half = res.size // 2
+            if res.size:
+                implot.plot_inf_lines("##VV|VH", np.array([res.size / 2.0 - 0.5]))
+            implot.set_next_line_style((150, 150, 150, 255), 1.0)
+            implot.plot_inf_lines("##zero", np.array([0.0]), flags=implot.INF_LINES_HORIZONTAL)
+            for lo, hi in curves.fit_windows:
+                if hi > lo:
+                    seg = np.arange(lo, hi)
+                    seg = seg[np.isfinite(res[seg])]
+                    implot.plot_line("w.res.", seg, res[seg])
+            implot.end_plot()
+        im.set_item_tooltip(
+            tr(
+                "(data - model) / sigma in the fit window of each half, sigma = sqrt(model) (the "
+                "Poisson noise the model expects; sqrt(data) where the model is zero). Scattered "
+                "about zero within +-2 for a good fit; χ²ᵣ = sum of squares / (bins - free "
+                "parameters), about 1."
+            )
+        )
 
     def _drag_ranges(self, curves, half: int) -> None:
         """Lines on the edges of the fit window and of the IRF range, in both halves (the VH half

@@ -1863,6 +1863,7 @@ class MleSession:
             irf_range=(self.settings.irf_start, self.settings.irf_stop),
             data_all=self.decay_all(self.decay),
             background_counts=True,
+            n_free=int(np.count_nonzero(~np.asarray(fixed, dtype=bool))),
         )
         self.outcome = FitOutcome(
             np.asarray(res.x, dtype=float),
@@ -1930,6 +1931,7 @@ class MleSession:
             diverged=False,
             data_all=self.decay_all(self.decay),
             background_counts=True,
+            n_free=int(np.count_nonzero(~np.asarray(fixed, dtype=bool))),
         )
         self.outcome = FitOutcome(x, score, list(TAIL_SCHEMA["properties"]), curves, model, d, res)
         self.status = "" if np.isfinite(score) else "Tail fit failed: non-finite score"

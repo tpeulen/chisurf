@@ -148,7 +148,17 @@ def test_auto_irf_background_click_equals_the_engine_and_draws_its_curves(monkey
     bands = [c[1] for c in spy.calls if c[0] == "plot_shaded"]
     assert bands == ["Fit window##Fit window0", "##Fit window1", "IRF range##IRF range0", "##IRF range1"]
     lines = sorted({c[1] for c in spy.calls if c[0] != "plot_shaded" and not c[1].startswith("##")})
-    assert lines == ["Background", "Data (VV|VH)", "IRF", "Model (fit)"]
+    assert lines == ["Background", "Data (VV|VH)", "IRF", "Model (fit)", "w.res."]
+    # under the decay, the weighted residuals of the fit windows: (data - model) / sqrt(model)
+    drawn = np.concatenate([c[2][1] for c in spy.calls if c[1] == "w.res."])
+    np.testing.assert_allclose(drawn, curves.residuals)
+    inside = curves.model > 0
+    np.testing.assert_allclose(
+        curves.residuals[inside],
+        (curves.data[inside] - curves.model[inside]) / np.sqrt(curves.model[inside]),
+    )
+    assert np.isfinite(curves.chi2r) and 0.2 < curves.chi2r < 20.0
+    assert "##zero" in [c[1] for c in spy.calls]
 
 
 def test_typing_the_window_refits_and_changes_the_curves(fitted):

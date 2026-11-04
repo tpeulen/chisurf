@@ -46,6 +46,11 @@ class DecayCurves:
     #: ``[(start, stop), ...]`` on the full axis, per half: where the IRF the fit convolves with is
     #: not zero, inside the IRF clip (``irf_start``/``irf_stop``).
     irf_windows: tuple = ()
+    #: The weighted residuals on the full axis (:func:`weighted_residuals`), NaN outside the fit
+    #: windows: what the residual plot under the decay draws.
+    residuals_full: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    #: Reduced chi-square of the fit windows: ``sum(w_res**2) / (n_bins - n_free)``.
+    chi2r: float = float("nan")
 
     @property
     def x(self) -> np.ndarray:
@@ -56,6 +61,29 @@ class DecayCurves:
     def x_full(self) -> np.ndarray:
         """Channel index into the whole decay (VV half, then VH half)."""
         return np.arange(self.data_full.size)
+
+
+def weighted_residuals(data: np.ndarray, model: np.ndarray) -> np.ndarray:
+    """``(data - model) / sigma`` per bin, with the Poisson sigma of the model.
+
+    ``sigma = sqrt(model)``: the counts a bin is expected to hold. Where the model is zero (before
+    a tail, outside the IRF's reach) ``sqrt(data)`` stands in; a bin where both are zero is 0.
+    """
+    data = np.asarray(data, dtype=float)
+    model = np.nan_to_num(np.asarray(model, dtype=float), nan=0.0, posinf=0.0, neginf=0.0)
+    var = np.where(model > 0, model, np.clip(data, 0.0, None))
+    out = np.zeros_like(data)
+    ok = var > 0
+    out[ok] = (data[ok] - model[ok]) / np.sqrt(var[ok])
+    return out
+
+
+def reduced_chi2(residuals: np.ndarray, n_free: int = 0) -> float:
+    """``sum(residuals**2) / (n - n_free)`` of the finite *residuals*; NaN with no degree of freedom."""
+    r = np.asarray(residuals, dtype=float)
+    r = r[np.isfinite(r)]
+    dof = r.size - max(0, int(n_free))
+    return float(np.sum(r * r) / dof) if dof > 0 else float("nan")
 
 
 def clamp_window(start: int, stop: int | None, n: int) -> tuple[int, int]:
@@ -95,6 +123,7 @@ def decay_curves(
     irf_range: tuple[int, int] = (-1, -1),
     data_all: np.ndarray | None = None,
     background_counts: bool = False,
+    n_free: int = 0,
 ) -> DecayCurves:
     """Window and scale the fit's data, model, IRF and background for display.
 
@@ -118,6 +147,8 @@ def decay_curves(
     background_counts : bool
         *background* is already in counts of the shown decay (its expected share): drawn as it
         is, not scaled to the data's total -- which drew a background as large as the decay.
+    n_free : int
+        Free parameters of the fit: the degrees of freedom of :attr:`DecayCurves.chi2r`.
     """
     data_full = np.asarray(data, dtype=float)
     model_full = np.asarray(model, dtype=float)
@@ -133,14 +164,15 @@ def decay_curves(
     irf_rng, _ = windowed(np.asarray(irf, dtype=np.float64), ranges)
     bg_rng, _ = windowed(np.asarray(background, dtype=np.float64), ranges)
 
-    resid = np.zeros_like(data_full, dtype=float)
-    mask = data_full > 0
-    resid[mask] = (data_full[mask] - model_full[mask]) / np.sqrt(data_full[mask])
+    resid = weighted_residuals(data_full, model_full)
     resid_rng, _ = windowed(resid, ranges)
 
     half = data_full.size // 2
     vv = clamp_window(ranges[0], ranges[1], half)
     vh = clamp_window(ranges[2], ranges[3], half)
+    resid_full = np.full(data_full.size, np.nan)
+    for lo, hi in (vv, (half + vh[0], half + vh[1])):
+        resid_full[lo:hi] = resid[lo:hi]
     start, stop = int(irf_range[0]), int(irf_range[1])
     irf_lo = max(0, start) if start >= 0 else 0
     irf_hi = min(half, stop + 1) if stop >= 0 else half
@@ -182,4 +214,6 @@ def decay_curves(
         background_full=bg_arr if background_counts else scaled(bg_arr, bg_rng),
         fit_windows=(vv, (half + vh[0], half + vh[1])),
         irf_windows=() if tail else (support(irf_lo, irf_hi, 0), support(irf_lo, irf_hi, half)),
+        residuals_full=resid_full,
+        chi2r=reduced_chi2(resid_rng, n_free),
     )

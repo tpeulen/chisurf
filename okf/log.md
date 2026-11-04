@@ -53,6 +53,7 @@
 - 2026-11-04: Data Selection's role table shows G, V_eff, tau_D, w0, s, cpm, B and IRF width in both modes with a one-word status; G is applied as computed (hand edits kept); the Calibration window is reduced to temperature/D and the fit plot; details live in the calibration report.
 - 2026-11-04: Docs for the role-table numbers and the calibration report (concept `reference_dye_calibration`, guide 13 screenshots, OKF burst resume point).
 - Shell idle after a burst search (owner: 'UI very unresponsive'): the shell redrew 20 times a second for good -- the watermark's refresh woke it every 50 ms while a tool covered the watermark, the Console polled at 10 Hz without a frame callback; Burst Selection re-read all macro times every frame (window indices, timeline span). Measured on DNA13bp_3 in EmtkShellApp + RealisticDriver: idle 20 -> 0.3 frames/s, selection frame 89 -> 36 ms, MLE frame 25 -> 21 ms (Tools list rows clipped). Guards test_emtk_shell_idle_wake.py, test_diagnostic_window.py. okf/plugins/burst.md, okf/subsystems/qt-retirement.md.
+- 2026-11-04: Burst MLE draws the weighted residuals under the decay ((data - model)/sqrt(model), linked x, zero line, chi2_r in the title); guide 21 figure 21_burst_mle_residuals.png, help, DE/FR. okf/plugins/burst.md.
 
 ## 2026-11-03
 

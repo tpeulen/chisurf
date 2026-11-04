@@ -119,14 +119,26 @@ def test_residuals_can_be_formed_from_data_and_model():
         include_model=True,
     )
 
+    from chisurf.plugins.burst.burst_mle_analysis.fit_display import (
+        reduced_chi2,
+        weighted_residuals,
+    )
+
     model = np.asarray(result.model_curve, dtype=float)
-    residuals = np.zeros_like(data)
-    mask = data > 0
-    residuals[mask] = (data[mask] - model[mask]) / np.sqrt(data[mask])
+    residuals = weighted_residuals(data, model)
+    mask = model > 0
 
     assert np.all(np.isfinite(residuals))
-    # a fit to data drawn from its own model should not be wildly biased
-    assert abs(float(np.mean(residuals[mask]))) < 1.0
+    # sigma is the model's Poisson sigma; where the model is zero the data's stands in
+    np.testing.assert_allclose(
+        residuals[mask], (data[mask] - model[mask]) / np.sqrt(model[mask])
+    )
+    assert weighted_residuals(np.array([4.0, 0.0]), np.array([0.0, 0.0])).tolist() == [2.0, 0.0]
+    # Poisson data about its own model: chi2_r near one
+    rng = np.random.default_rng(1)
+    truth = np.full(4000, 50.0)
+    assert reduced_chi2(weighted_residuals(rng.poisson(truth), truth), 0) == pytest.approx(1.0, abs=0.08)
+    assert np.isnan(reduced_chi2(np.ones(3), 3))
 
 
 #: The sources that fit, plot and export.

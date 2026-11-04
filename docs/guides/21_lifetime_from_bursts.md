@@ -166,6 +166,26 @@ shows what is fitted.
 **Min photons** (default 5) is the fewest photons a burst needs in the fit
 window to be fitted.
 
+Under the decay, on the same x axis (zoom or pan either and both follow), are the
+**weighted residuals** of the fit window of each half,
+w.res. = (data − model) / σ, with the Poisson σ the model expects, σ = √model
+(√data in a bin where the model is zero, before a tail). A good fit scatters them
+about the zero line within about ±2; a wave or a slope is a model, IRF or
+background that does not describe the decay. The plot's title gives the reduced
+chi-square of the fit windows, χ²ᵣ = Σ w.res.² / (bins − free parameters),
+about 1 for a fit at the noise. Burst MLE minimises 2I*, not χ², so χ²ᵣ is the
+check, not what is fitted.
+
+```{figure} figures/21_burst_mle_residuals.png
+:name: fig-21-burst-mle-residuals
+:width: 100%
+
+Burst MLE on DNA13bp_3 (RVZMT150, G|G, IRF from Rh110): a single lifetime
+(Fit23) to a FRET sample. The weighted residuals under the decay rise across the
+VV window and dip in VH (χ²ᵣ = 29): one lifetime with this anisotropy does not
+describe a donor-only + FRET mix.
+```
+
 The **IRF** tab is there in Simple mode too, because the fit is only as good as
 the IRF it convolves with. Its first line says where the IRF comes from. By
 default it is estimated from the photons outside the bursts, with the shape set
