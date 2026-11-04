@@ -131,3 +131,33 @@ def test_rows_are_added_from_the_context_menu_or_dragged_down_into_the_tool():
     taker.model.workspace_input_drag(PHOTONS, 10.0, 60.0, True, on_table=True)  # back on the table
     taker.model.workspace_input_drag(dict(PHOTONS, uid="p3"), 10.0, 400.0, True)  # into the tool
     assert taker.handed == [["p1"], ["p1", "p2"], ["p3"]]
+
+
+def test_a_group_is_one_folded_row_and_hands_over_its_members(monkeypatch):
+    """Files dropped together are a workspace group: the Input table shows it as one row (folded,
+    its files as children) and Use selected / Add to this tool / a drag on it hand over its files."""
+    import chisurf.core.plugin.workspace_input as wi
+
+    members = [dict(PHOTONS, uid=f"p{i}", name=f"m00{i}.spc") for i in range(3)]
+    group = {"uid": "g1", "name": "sm_dna (3)", "kind": "", "members": members}
+    spec = WorkspaceInput(kinds=["photons"], many=True)
+    assert [r["uid"] for r in workspace_rows(spec, [group, DECAY])] == ["p0", "p1", "p2"]  # flat
+    rows = workspace_rows(spec, [group, DECAY], tree=True)
+    assert [(r["uid"], r.get("parent")) for r in rows] == [
+        ("g1", ""), ("p0", "g1"), ("p1", "g1"), ("p2", "g1")
+    ]
+    assert rows[0]["group"] == 3 and "3 × Photons" in rows[0]["kind_label"]
+    options = input_section(spec)["sections"][0]["options"]
+    assert options["tree_key"] == "parent" and options["expanded_attr"] == "workspace_input_expanded"
+
+    taker = _Taker()
+    taker.model.workspace_input_plugin = "x"
+    monkeypatch.setattr(taker.model.__class__, "_workspace_input", lambda self: (None, spec))
+    monkeypatch.setattr(wi, "_api_rows", lambda: [group, DECAY])
+    shown = taker.model.workspace_input_rows()
+    assert taker.model.workspace_input_expanded == set()  # folded at first
+    taker.model.workspace_input_add(shown[0])
+    taker.model.workspace_input_selection = [shown[0], shown[2]]  # the group and one of its files
+    taker.model.workspace_input_use()
+    taker.model.workspace_input_drag(shown[0], 10.0, 400.0, True)
+    assert taker.handed == [["p0", "p1", "p2"]] * 3

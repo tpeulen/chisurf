@@ -189,13 +189,48 @@ def _api_rows() -> list[dict]:
         return []
 
 
-def workspace_rows(spec: WorkspaceInput, dtos: Iterable[dict] | None = None) -> list[dict]:
+def workspace_rows(
+    spec: WorkspaceInput, dtos: Iterable[dict] | None = None, *, tree: bool = False
+) -> list[dict]:
     """The workspace rows *spec* takes: ``uid``, ``name``, ``kind``, ``kind_label``,
-    ``experiment``, ``source`` (file name), ``address`` and ``result_of``."""
+    ``experiment``, ``source`` (file name), ``address`` and ``result_of``.
+
+    With *tree*, a group of datasets (several files dropped together) is one row (``group``:
+    its member count, no ``address``) and the members it holds that *spec* takes are its children
+    (``parent``: the group's uid) -- shown folded, as in Datasets; without, the members are listed
+    flat.
+    """
     from chisurf.core.data_kinds import KINDS
 
+    dtos = list(_api_rows() if dtos is None else dtos)
+    if tree:
+        out: list[dict] = []
+        for dto in dtos:
+            members = dto.get("members") or []
+            if len(members) > 1:
+                children = workspace_rows(spec, members)
+                if children:
+                    uid = str(dto.get("uid", ""))
+                    out.append(
+                        {
+                            "uid": uid,
+                            "name": str(dto.get("name", "")),
+                            "kind": "",
+                            "kind_label": f"🗂  {len(children)} × {children[0]['kind_label'].split('  ', 1)[-1]}",
+                            "experiment": str(dto.get("experiment", "")),
+                            "source": "",
+                            "address": "",
+                            "result_of": "",
+                            "parent": "",
+                            "group": len(children),
+                        }
+                    )
+                    out.extend({**child, "parent": uid} for child in children)
+            else:
+                out.extend(workspace_rows(spec, [dto]))
+        return out
     rows = []
-    for dto in _flatten(_api_rows() if dtos is None else dtos):
+    for dto in _flatten(dtos):
         if not (matches(spec, dto) or (spec.with_setup and dto.get("kind") == "setup")):
             continue
         address = address_of(dto)
@@ -319,6 +354,9 @@ def input_section(spec: WorkspaceInput, *, title: str = "Input") -> dict:
         "options": {
             "source": "workspace_input_rows",
             "row_key": "uid",
+            # a group of files dropped together is one folded row, its files under it
+            "tree_key": "parent",
+            "expanded_attr": "workspace_input_expanded",
             "editable": False,
             "height": 110,
             "filter": True,
@@ -423,9 +461,37 @@ class WorkspaceInputMixin:
         return spec_for(manifest(self.workspace_input_plugin), kind=self.workspace_input_kind)
 
     def workspace_input_rows(self) -> list[dict]:
-        """The workspace rows this plugin takes (a method: AutoForm calls its sources)."""
+        """The workspace rows this plugin takes, a group as one folded row (a method: AutoForm
+        calls its sources)."""
         found = self._workspace_input()
-        return workspace_rows(found[1]) if found else []
+        rows = workspace_rows(found[1], tree=True) if found else []
+        self._workspace_input_members = {
+            str(r["uid"]): [c for c in rows if c.get("parent") == r["uid"]]
+            for r in rows if r.get("group")
+        }
+        return rows
+
+    @property
+    def workspace_input_expanded(self) -> set:
+        """The groups unfolded in the Input table (folded at first)."""
+        if not hasattr(self, "_workspace_input_expanded"):
+            self._workspace_input_expanded = set()
+        return self._workspace_input_expanded
+
+    @workspace_input_expanded.setter
+    def workspace_input_expanded(self, value) -> None:
+        self._workspace_input_expanded = set(value or ())
+
+    def _workspace_input_data(self, rows: Iterable[dict]) -> list[dict]:
+        """*rows* with every group replaced by its members (a group is not data; once each)."""
+        members = getattr(self, "_workspace_input_members", {})
+        out, seen = [], set()
+        for row in rows:
+            for item in members.get(str(row.get("uid")), [row]) if row.get("group") else [row]:
+                if item.get("uid") not in seen:
+                    seen.add(item.get("uid"))
+                    out.append(item)
+        return out
 
     @property
     def workspace_input_selection(self) -> list:
@@ -446,7 +512,7 @@ class WorkspaceInputMixin:
     def workspace_input_selected(self, row: Any) -> None:
         """A row picked in a one-dataset Input section: hand it over."""
         if isinstance(row, dict) and row.get("uid"):
-            self._workspace_input_deliver([row])
+            self._workspace_input_deliver(self._workspace_input_data([row]))
 
     def _workspace_input_rows_of(self, record: Any) -> list[dict]:
         """*record*, or every selected row when it is one of them (a right click or a drag
@@ -455,8 +521,8 @@ class WorkspaceInputMixin:
             return []
         chosen = [r for r in self.workspace_input_selection if isinstance(r, dict) and r.get("uid")]
         if any(r.get("uid") == record.get("uid") for r in chosen):
-            return chosen
-        return [record]
+            return self._workspace_input_data(chosen)
+        return self._workspace_input_data([record])
 
     def workspace_input_add(self, record: Any) -> None:
         """*Add to this tool* from the Input table's context menu."""
@@ -477,6 +543,7 @@ class WorkspaceInputMixin:
     def workspace_input_use(self) -> None:
         """*Use selected* in a many-dataset Input section."""
         rows = [r for r in self.workspace_input_selection if isinstance(r, dict) and r.get("uid")]
+        rows = self._workspace_input_data(rows)
         if rows:
             self._workspace_input_deliver(rows)
 

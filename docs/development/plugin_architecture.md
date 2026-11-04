@@ -504,7 +504,9 @@ file — no input `FileDialog`, no drop hook, no MMFDB picker handing it a local
 path. It **declares** what it takes on an `accepts` entry, and the host does the
 rest — including a file dropped *on the tool*: the shell links it into the
 workspace as any drop, then feeds the rows of a kind the tool accepts to it
-(`EmtkShellApp._feed_dropped`), as if they had been dragged over from Datasets:
+(`EmtkShellApp._feed_dropped`), as if they had been dragged over from Datasets.
+A workspace group (files dropped together) is one folded row of the generated
+Input table, its files under it; using the group hands over its files:
 
 ```json
 "accepts": [
