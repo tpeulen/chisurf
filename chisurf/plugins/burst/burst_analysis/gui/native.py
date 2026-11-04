@@ -584,6 +584,10 @@ class BurstAnalysisHubApp(ToolHubApp):
         report = dict(self.context.calibration_report)
         sources = dict(getattr(getattr(data, "model", None), "sources", None) or {})
         files = [str(p) for p in self.context.raw_files]
+        # the report is the run's: the burst search the later steps read (``m.pto/<run>``)
+        from chisurf.core.fio.analysis_path import split_container_path
+
+        run = split_container_path(self.context.burst_folder)[1] if self.context.burst_folder else ""
 
         def work() -> None:
             from chisurf.core.project.analysis import container_dir
@@ -592,7 +596,7 @@ class BurstAnalysisHubApp(ToolHubApp):
 
             for path in files:
                 try:
-                    write_report(path, report, container_dir(sources.get(path, "")))
+                    write_report(path, report, container_dir(sources.get(path, "")), run=run or "")
                 except Exception:  # noqa: BLE001 - the report stays in the context
                     logging.getLogger(__name__).exception("writing the calibration report")
 

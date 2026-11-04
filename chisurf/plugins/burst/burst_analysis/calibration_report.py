@@ -146,35 +146,52 @@ def build_report(
     return json.loads(json.dumps(report, default=float))
 
 
-def write_report(source: str | Path, report: Mapping, out_dir: str | Path | None = None) -> str:
-    """Write *report* into the container of the measurement *source* (replacing the one written
-    before), derived from its photon streams; returns the container's path."""
-    from chisurf.core.fio.fluorescence.burst_container import open_measurement
+def write_report(
+    source: str | Path, report: Mapping, out_dir: str | Path | None = None, run: str = ""
+) -> str:
+    """Write *report* into the container of the measurement *source*, replacing the one written
+    before; returns the container's path.
 
+    With *run* (the burst search it calibrated, ``m.pto/<run>``'s) it is a member of that run,
+    ``<run>/burst_calibration``, derived from the run's burst table: everything one pipeline
+    made of a measurement belongs together, and a new search gets a report of its own while the
+    old run keeps its. Without one (no bursts yet) it is the container's, from the photons."""
+    from chisurf.core.fio.analysis_path import artifact_name
+    from chisurf.core.fio.fluorescence.burst_container import burst_table_name, open_measurement
+
+    name = artifact_name(run, REPORT_NAME)
     payload = json.dumps(report, indent=1, sort_keys=True).encode("utf-8")
     with open_measurement(source, out_dir, raw_data="sidecar") as m:
+        # one report per run; a container-level one is superseded by the run's
         for obj in list(m._f.objects()):
-            if getattr(obj, "name", "") == REPORT_NAME:
+            if getattr(obj, "name", "") in (name, REPORT_NAME):
                 m._f.remove(obj.uid)
+        table = burst_table_name(m, run) if run else ""
+        parent = m._f.find(table) if table else 0
         m.put_blob(
-            REPORT_NAME,
+            name,
             payload,
             artifact_kind="calibration_data",
             data_format="json",
             operation_type="calibration",
-            parameters={"schema": SCHEMA},
-            derived_from=m.instrument_uids or m.instrument_uid,
+            parameters={"schema": SCHEMA, **({"burst run": run} if run else {})},
+            derived_from=parent or m.instrument_uids or m.instrument_uid,
             mime_type="application/json",
         )
         return str(m.path)
 
 
-def read_report(container: str | Path) -> dict[str, Any]:
-    """The calibration report of a measurement's container (``{}``: none written)."""
+def read_report(container: str | Path, run: str | None = None) -> dict[str, Any]:
+    """The calibration report of a measurement's container (``{}``: none written): *run*'s, else
+    the newest written (a run's or the container's)."""
+    from chisurf.core.fio.analysis_path import artifact_name
     from chisurf.core.fio.pto import Measurement
 
+    wanted = artifact_name(run, REPORT_NAME) if run else None
+    found = None
     with Measurement.open(container) as m:
         for obj in m._f.objects():
-            if getattr(obj, "name", "") == REPORT_NAME:
-                return json.loads(m.get_blob(obj.uid).decode("utf-8"))
-    return {}
+            name = str(getattr(obj, "name", ""))
+            if (name == wanted) if wanted else (name == REPORT_NAME or name.endswith("/" + REPORT_NAME)):
+                found = obj.uid
+        return json.loads(m.get_blob(found).decode("utf-8")) if found else {}

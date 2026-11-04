@@ -9,6 +9,41 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
+**Burst MLE: G, references, the red pair, three shift parameters (2026-11-04).** Owner: "the g
+factor is not computed. i loaded rh110", "the time shifts seem all wrong", "where are the time
+shift settings? ... also in simple mode", "R|G should be calibrated on red, ie, R|R, g factor is
+for the detection side", "the shift parameters must be here! there are 3 shifts". Measured with
+`docs/guides/screenshots/guide_21_mle_shifts.py SETTINGS /Volumes/SD1TB/TP_20261031_DNA_KHM.sptw
+OUT` (RVZMT150, 80 ps, gates G 0-250 / R|R 250-500). Done:
+1. *G lost*: the hub defers a hand-over to a busy MLE step (`_resync`) and drained it only for steps
+   NOT on screen; the owner was on MLE, so G 1.436 never arrived (reference fit 309). Fixed in
+   `BurstAnalysisHubApp.render` (landed inside ec0bddcdd by the More-samples lane), and
+   `MleViewModel.set_setup` recalibrates the shifts when G/l1/l2 change. Guard:
+   `burst_analysis/tests/test_reference_after_mle.py` (demo, the owner's order). Trap: the step's
+   jobs run on a snapshot whose session comes back -- read `mle.model.session` anew each time.
+2. *One source of references*: Data Selection proposes the buffer/IRF/dye files beside a new
+   measurement into their rows (`BurstDataSelectionModel.propose_references`, `proposed`,
+   `declined`; a dye of a colour the setup lacks is skipped); the pipeline's
+   `MleViewModel.prepare_patterns` reads only `context.references()` (`None` = standalone, the
+   only folder search) and never lends a colour's reference dye to another colour.
+3. *Red pair*: `MleSession.detection_siblings` / `_reference_source` / `window_offset`: R|G takes
+   R|R's IRF (rolled by the gate offset, -250 bins), its shifts and reference fit (`calibrated_on`,
+   `offset_bins`), computed once (`_shift_cache`). Guard: `burst_mle_analysis/tests/test_shift_parameters.py`.
+4. *Shift parameters*: rows of Fit parameters (`engine.SHIFT_PARAMETERS`; `shift_edits`,
+   `set_shift`, `reset_shifts`, `shift_starts`, `fix_shift_*`; unfixed ones refined by
+   `_refine_shifts` within `SHIFT_BOUNDS`; Opt's result becomes an edit). Kept by
+   `MleNativeApp.export_settings`; a tail fit has none.
+5. *One container*: `take_photons` recorded the dataset uid after adding the file, so the first
+   container went to `container_dir("")` (`_`); the calibration report is now `<run>/burst_calibration`.
+Numbers now: G|G G 1.436, VV +0.02 / VH +0.02 bins, chi2_r 1.45; red pair G 0.629, +0.55 / +0.47,
+chi2_r **31.4** (G free 0.525: 16.8). **Next: the red reference fit.** `reference_rotation` reads
+Alexa647's rotation as 0.02 ns although VV and VH part for ~1 ns
+(`docs/guides/figures/21_reference_fits_per_detector.png`), and its tail gives 1.15 ns against the
+database's 1.0 ns -- fit rho (then check tau) in `reference_fit` first. Open: the background
+histograms are still container-level (another lane writes `<run>/background` in
+`burst_background/view_model.py`); `pixi run -e docs docs-plugins` not rerun (others' uncommitted
+catalogue edits).
+
 **4. More samples: further measurements through the tuned pipeline (2026-11-04).** Owner: "last
 step in the pipeline should be to load more samples, that are processed the same way." Done: step 4
 of the hub (`burst_analysis/more_samples.py`, window `gui/more_samples_app.py` + `more_samples.view.json`,

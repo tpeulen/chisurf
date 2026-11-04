@@ -4602,3 +4602,26 @@ guides/figures/116_more_samples_advanced.png:
     step 4 and writes this PNG.
   pages:
   - docs/guides/116_more_samples.md
+
+guides/figures/21_burst_mle_shift_rows.png:
+  caption: Burst MLE in Simple mode on DNA13bp_3, the three time shifts as rows of Fit parameters.
+  kind: screenshot
+  origin: docs/guides/screenshots/guide_21_mle_shifts.py::main
+  pages:
+  - docs/guides/21_lifetime_from_bursts.md
+  recipe: >-
+    QT_QPA_PLATFORM=offscreen python docs/guides/screenshots/guide_21_mle_shifts.py SETTINGS DATA OUT
+    with SETTINGS a settings folder holding the RVZMT150 setup and DATA the owner's
+    TP_20261031_DNA_KHM.sptw (DNA13bp_3, Rh110_thick_1, Alexa647_thick_1); the hub in Simple
+    mode, DNA13bp_3 handed in, the references proposed, the search, Burst MLE and Fit bursts;
+    the G|G frame (mle_simple_fit_parameters_GG.png).
+
+guides/figures/21_reference_fits_per_detector.png:
+  caption: The reference fits of G|G (Rh110) and of the red pair R|G, R|R (one calibration on Alexa647 in R|R's window).
+  kind: plot
+  origin: docs/guides/screenshots/guide_21_mle_shifts.py::main
+  pages:
+  - docs/guides/21_lifetime_from_bursts.md
+  recipe: >-
+    The same run as 21_burst_mle_shift_rows.png; reference_fits.png is drawn from
+    MleSession.shift_calibration (fit_data, fit_model, fit_residuals, fit_window) per detector.

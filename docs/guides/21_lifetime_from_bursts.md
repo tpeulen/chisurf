@@ -231,10 +231,19 @@ data, how it was extracted, and every setting of it (under **Advanced** there).
 Whatever you estimate there comes back to Burst MLE for that detector and is
 fitted at once; **IRF from** then says **IRF tool (tuned)**. Picking another
 source afterwards asks once before the tuned IRF is discarded. The IRF's shape,
-VH shift, clip and background levels are the tool's: Burst MLE has no fields for
-them (it takes no background level off the IRF -- every source is already free
-of it, and 0.02 of the peak cut a deconvolved IRF's tail -- and Opt can still
-search the shifts).
+clip and background levels are the tool's: Burst MLE has no fields for them (it
+takes no background level off the IRF -- every source is already free of it, and
+0.02 of the peak cut a deconvolved IRF's tail). The time shifts are the fit's:
+rows of **Fit parameters** (below).
+
+The reference dyes come from **Data Selection**, and only from there: a
+measurement brings the buffer, IRF and dye files of its folder into their rows
+(marked *found*; Rh110 to *Reference · green*, Alexa 647 to *Reference · red*), G
+and the confocal volume are computed from them and written into the setup, and
+Burst MLE reads what the rows hold -- it no longer picks files by name on its
+own. A G computed after Burst MLE opened reaches it, and its shifts are
+calibrated again with it (that hand-over was lost for the step on screen: on
+DNA13bp_3 its G stayed 1.000 and the Rh110 reference fit 309).
 
 With a reference dye in Data Selection the IRF's time shift is calibrated
 before any fit, VV and VH on their own: the dye's decay is fitted with the IRF,
@@ -245,8 +254,36 @@ count rate, so only a reference at the bursts' rates has their timing offset --
 else the bulk one; a bulk reference at a much higher rate than the bursts is
 marked ⚠ (its rate and the bursts' in the tooltip and the report). The status line then says **shift calibrated
 (Rh110)**; the shifts, the dye, the files and the lifetime's source are in its
-tooltip and in the calibration report. There is nothing to set; the IRF tool
-shows the shifts under **Advanced** and takes your own.
+tooltip and in the calibration report.
+
+The red detectors are calibrated once. Under PIE `R|G` (the red detectors gated
+on the green pulse) and `R|R` are the same detector pair, and G, the IRF's shape
+and the SPAD timing belong to the detection side: both take the calibration on
+the red reference dye in the window that sees it (`R|R`'s), `R|G`'s IRF placed at
+the green pulse by the setup's PIE windows (RVZMT150: −250 bins). Before, each was
+fitted on its own -- `R|G` on the few Alexa 647 photons the green laser excites.
+
+**Fit parameters** ends with the detector's three time shifts, in Simple mode
+too: **IRF shift VV** and **IRF shift VH** (the IRF against the VV and the VH
+data, bins) and **Shift VV/VH** (the VH decay against the VV decay, whole bins,
+applied to data, IRF and background). *Start* is the calibration (0 without a
+reference dye), *Fixed* is ticked, *Result* is what the fit used; hover a row for
+where the start came from ("calibrated on Rh110 (Rh110_thick_1.ptu) on G|G, χ²ᵣ
+1.45", or "set by hand"). Typing a start refits at once and replaces the
+calibration until **Reset shifts** (shown under the table when a shift was set);
+unticking *Fixed* lets the fit refine the shift within ±0.5 bin (±1 for Shift
+VV/VH) and fits the bursts with the refined value. The edits are kept with the
+step's settings, and the calibration report records calibrated and used values.
+A tail fit has no IRF and no shift rows.
+
+```{figure} figures/21_burst_mle_shift_rows.png
+:name: fig-21-burst-mle-shift-rows
+:width: 100%
+
+DNA13bp_3 (RVZMT150) in Simple mode, G|G after **Fit bursts**: the three shift
+rows under the model's parameters, each started at its calibration on
+Rh110_thick_1 (VV +0.02, VH +0.02 bins; Shift VV/VH 0) and fixed.
+```
 
 Then the reference dye is fitted with that IRF and **the burst model**: one
 amplitude for VV and VH, a flat background each, the shifts free, the lifetime
@@ -259,6 +296,23 @@ Rh110_thick_1 (bulk, 61 kHz) with the setup's G 1.000 it is 309 (G free: 1.428,
 χ²ᵣ 1.40); with Data Selection's G 1.436 it is 1.45. The IRF tool's **Reference
 fit** view draws it with its residuals; the calibration report keeps its χ²ᵣ,
 G and residuals.
+
+On the owner's session after these fixes (DNA13bp_3 with Rh110_thick_1 and
+Alexa647_thick_1 proposed beside it): G|G 1.436, shifts VV +0.02 / VH +0.02
+bins, reference fit χ²ᵣ 1.45 (G free 1.428: 1.40); the red pair G 0.629 (Data
+Selection's tail ratio), shifts +0.55 / +0.47 bins for `R|R` and `R|G` alike,
+reference fit χ²ᵣ 31.4 (G free 0.525: 16.8). The red reference is not described
+yet: the dye's rotation is read as 0.02 ns where its VV and VH tails part for a
+nanosecond, and its tail gives 1.15 ns against the database's 1.0 ns.
+
+```{figure} figures/21_reference_fits_per_detector.png
+:name: fig-21-reference-fits-per-detector
+:width: 100%
+
+The reference fits of the three detectors on the owner's session: G|G on
+Rh110_thick_1 (χ²ᵣ 1.45); R|G and R|R one calibration on Alexa647_thick_1 in
+R|R's window (χ²ᵣ 31.4, the rotation not yet described). Weighted residuals below.
+```
 
 ```{figure} figures/21_irf_tool_reference_fit.png
 :name: fig-21-irf-tool-reference-fit
