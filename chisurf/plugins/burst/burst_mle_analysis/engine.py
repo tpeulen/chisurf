@@ -1597,7 +1597,8 @@ class MleSession:
                 half = row.size // 2
                 name = f"{Path(path).with_suffix('').as_posix()}_{''.join(map(str, chs))}.dat"
                 write_vv_vh(name, vv=row[:half], vh=row[half:])
-        return np.sum(rows, axis=0)
+        # rates (counts per second) of several buffer files are averaged: their sum is no rate
+        return np.mean(rows, axis=0) if normalize == 3 else np.sum(rows, axis=0)
 
     def _reference_counts(self, det: str, path: Path) -> tuple[np.ndarray, np.ndarray, float, float]:
         """VV and VH counts of one reference measurement on *det*'s channels, its acquisition time

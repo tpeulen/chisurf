@@ -408,17 +408,21 @@ class MleViewModel(RunPickerMixin):
         self.session.outcome = None
         self.notify("files")
 
-    def take_bursts(self, paths, settings: dict | None = None, prepare_from=()) -> None:
+    def take_bursts(
+        self, paths, settings: dict | None = None, prepare_from=(), references: dict | None = None
+    ) -> None:
         """The pipeline's hand-over, as one background job: the new bursts replace the old (and
         their lifetimes), the workflow's setup goes on top (after the files: a container may carry
-        the setup of the search that wrote it), then the IRF and background are prepared."""
+        the setup of the search that wrote it), then the IRF and background are prepared -- from
+        the *references* Data Selection declared (``{"irf", "buffer", "reference"}`` file lists),
+        else from the measurements found beside *prepare_from*."""
         if self.session.bur_files:
             self.clear_files()
         self.add_files(paths)
         if settings:
             self.set_setup(settings)
         if prepare_from:
-            self.prepare_patterns(prepare_from)
+            self.prepare_patterns(prepare_from, references)
 
     def clear_files(self) -> None:
         self.remove_file("")
@@ -947,33 +951,92 @@ class MleViewModel(RunPickerMixin):
             )
         self.notify("fit")
 
-    def prepare_patterns(self, analysed=()) -> None:
-        """IRF and background without asking, from the measurements beside the analysed files (or
-        a folder up). The IRF of each detector comes, in this order, from a scatter measurement
-        (water, Ludox; corrected with the buffer), from a reference dye of known lifetime (Rh110,
-        Alexa647), and only then from the photons outside the bursts (a skewed Gaussian fitted to
-        their histogram). The background is the buffer measurement, else estimated from the
-        photons outside the bursts. What the pipeline does when the bursts arrive."""
-        from chisurf.core.fio.reference_files import find_reference_measurements
+    def prepare_patterns(self, analysed=(), references: dict | None = None) -> None:
+        """IRF and background without asking. The IRF of each detector comes, in this order, from
+        a scatter measurement (water, Ludox; corrected with the buffer), from a reference dye of
+        known lifetime (Rh110, Alexa647), and only then from the photons outside the bursts (a
+        skewed Gaussian fitted to their histogram). The fit's background is the photons outside
+        the bursts; a buffer measurement corrects a scatter IRF and gives an independent
+        background rate (:meth:`irf_source_text`). What the pipeline does when the bursts arrive.
+
+        The measurements are those Burst Analysis' Data Selection declared, *references*
+        (``{"buffer": [...], "irf": {detector: [...]}, "reference": {detector: [...]}}``: a
+        colour's IRF and reference dye for each of its detectors; they replace what was set
+        before, and a detector of a colour without its own IRF reads the others' files on its
+        channels); without any, those found by name beside the *analysed* files (or a folder up).
+        """
+        from chisurf.core.fio.reference_files import find_reference_measurements, reference_dye
 
         try:
-            found = (
-                find_reference_measurements(analysed)
-                if analysed
-                else {"irf": [], "dye": [], "bg": []}
-            )
+            references = dict(references or {})
+            per_det = {
+                kind: {str(d): [str(p) for p in v] for d, v in (references.get(kind) or {}).items() if v}
+                for kind in ("irf", "reference")
+            }
+            buffers = [str(p) for p in references.get("buffer") or ()]
+            declared = bool(buffers or per_det["irf"] or per_det["reference"])
             session = self.session
-            # the buffer first: a scatter IRF is corrected with it
-            for kind, paths in (("bg", found["bg"]), ("irf", found["irf"] + found["dye"])):
-                if not paths:
-                    continue
-                for det in list(session.detectors):
-                    if session.irf_files.get(det) if kind == "irf" else session.bg_files.get(det):
-                        continue  # "one for all" set it with an earlier detector
+            if declared:
+                for kind in ("bg", "irf"):  # what Data Selection declares replaces what was set
+                    for det in list(session.detectors):
+                        session.clear_pattern_files(kind, det)
+                if buffers:  # one buffer serves every detector (each reads its own channels)
+                    one, session.bg_one_for_all = session.bg_one_for_all, True
                     try:
-                        session.set_pattern_files(kind, det, list(paths))
-                    except Exception:  # noqa: BLE001 - a reference this detector cannot read
+                        session.set_pattern_files("bg", next(iter(session.detectors), ""), buffers)
+                    except Exception:  # noqa: BLE001 - a buffer the detectors cannot read
+                        pass
+                    finally:
+                        session.bg_one_for_all = one
+                # a detector of a colour without its own IRF reads every declared one on its
+                # channels (one water measurement under all lasers serves every colour)
+                fallback = sorted(
+                    {p for v in per_det["irf"].values() for p in v}
+                    | {p for v in per_det["reference"].values() for p in v if reference_dye(p)}
+                )
+                one = session.irf_one_for_all
+                session.irf_one_for_all = False  # each detector its colour's files
+                try:
+                    for det in list(session.detectors):
+                        irf = per_det["irf"].get(det, [])
+                        # a reference dye gives an IRF only when its lifetime is known (its name)
+                        dyes = [p for p in per_det["reference"].get(det, []) if reference_dye(p)]
+                        # a measured scatter first; a reference dye of known lifetime without one
+                        paths = irf or dyes or fallback
+                        if not paths:
+                            continue
+                        try:
+                            session.set_pattern_files("irf", det, list(paths))
+                        except Exception:  # noqa: BLE001 - a reference this detector cannot read
+                            continue
+                finally:
+                    session.irf_one_for_all = one
+                # say where the IRF came from: the measurement the user labelled in Data Selection
+                for det, files in session.irf_files.items():
+                    text = session.irf_source.get(det, "")
+                    if not files or not text:
                         continue
+                    if text.startswith("scatter "):
+                        session.irf_source[det] = f"the IRF measurement {text[len('scatter '):]}"
+                    else:
+                        session.irf_source[det] = f"the reference-dye measurement {text}"
+            else:
+                found = (
+                    find_reference_measurements(analysed)
+                    if analysed
+                    else {"irf": [], "dye": [], "bg": []}
+                )
+                # the buffer first: a scatter IRF is corrected with it
+                for kind, paths in (("bg", found["bg"]), ("irf", found["irf"] + found["dye"])):
+                    if not paths:
+                        continue
+                    for det in list(session.detectors):
+                        if session.irf_files.get(det) if kind == "irf" else session.bg_files.get(det):
+                            continue  # "one for all" set it with an earlier detector
+                        try:
+                            session.set_pattern_files(kind, det, list(paths))
+                        except Exception:  # noqa: BLE001 - a reference this detector cannot read
+                            continue
             if session.current_tttr() is not None:
                 session.auto_extract()  # fills what no measured file gave
                 self.auto_patterns = True
@@ -988,9 +1051,24 @@ class MleViewModel(RunPickerMixin):
         parts = [
             f"{det}: IRF from {session.irf_source.get(det, 'nowhere yet')}"
             + "; background from the photons outside the bursts"
+            + self._buffer_rate_text(det)
             for det in session.detectors
         ]
         return ". ".join(parts) + "." if parts else ""
+
+    def buffer_rate(self, det: str) -> float | None:
+        """The background rate of *det* in the buffer measurement [kHz] (``None``: no buffer)."""
+        session = self.session
+        if not session.bg_files.get(det) or det not in session.buffer_np:
+            return None
+        return float(np.sum(session.buffer_np[det])) / 1e3
+
+    def _buffer_rate_text(self, det: str) -> str:
+        rate = self.buffer_rate(det)
+        if rate is None:
+            return ""
+        names = ", ".join(Path(p).name for p in self.session.bg_files.get(det, []))
+        return f" (buffer {names}: B_{det} = {rate:.2f} kHz)"
 
     def auto_extract(self) -> None:
         """One click: binning, IRF and background from the non-burst photons, fit window, fit."""

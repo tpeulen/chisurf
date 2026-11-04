@@ -212,7 +212,7 @@ class MleNativeApp(TourTarget, ImApp):
         self.model.status_text = "Estimating IRF and background ..."
         self.job.start("auto_extract")
 
-    def prepare(self, analysed) -> bool:
+    def prepare(self, analysed, references: dict | None = None) -> bool:
         """Get the step ready without a click (the pipeline, when the bursts arrive): measured
         buffer / scatter beside the data, else IRF and background from the non-burst photons."""
         if self.job.busy:
@@ -223,9 +223,11 @@ class MleNativeApp(TourTarget, ImApp):
         import threading
 
         threading.Thread(target=engine.warm_fit_pool_quietly, name="mle-warm", daemon=True).start()
-        return bool(self.job.start("prepare_patterns", [str(p) for p in analysed]))
+        return bool(self.job.start("prepare_patterns", [str(p) for p in analysed], references))
 
-    def take_bursts(self, paths, settings: dict | None = None, prepare_from=()) -> None:
+    def take_bursts(
+        self, paths, settings: dict | None = None, prepare_from=(), references: dict | None = None
+    ) -> None:
         """The pipeline hands new bursts over: read, set up and prepared in the background (reading a
         run and its photons on the UI thread froze the window as the step opened)."""
         self.model.status_text = "Taking the bursts, preparing IRF and background ..."
@@ -235,7 +237,11 @@ class MleNativeApp(TourTarget, ImApp):
 
             threading.Thread(target=engine.warm_fit_pool_quietly, name="mle-warm", daemon=True).start()
         self._queue_job(
-            "take_bursts", [str(p) for p in paths], settings, [str(p) for p in prepare_from or ()]
+            "take_bursts",
+            [str(p) for p in paths],
+            settings,
+            [str(p) for p in prepare_from or ()],
+            references,
         )
 
     def _queue_job(self, method: str, *args) -> None:

@@ -44,6 +44,7 @@
 - 2026-11-04: the generated Input section shows a workspace group as one folded row with its files as children (workspace_rows(tree=True), tree_key parent, workspace_input_expanded); Use selected / Add to this tool / drag on a group hand over its member files.
 - 2026-11-04: Datasets carry tags (`ChiSurfAPI.tag_dataset`, RPC `dataset.tag`, `meta_data['tags']`, listed as `tags` in dataset summaries); Burst Analysis' Data Selection tags each photon stream with its role (`sample`).
 - 2026-11-04: Dye database aliases R110, R6G, A647, Alexa647, A633, ATTO655, ATTO488 (mmfdb 878bc29, packaged copy recopied with its digest) so a reference-dye file name resolves to its entry.
+- 2026-11-04: Burst MLE takes Data Selection's IRF / buffer / reference-dye files per detector (`prepare_patterns(..., references)`), names the IRF measurement and the buffer's B_<det> in its source line; several buffer files are averaged, not summed.
 
 ## 2026-11-03
 
