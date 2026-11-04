@@ -274,3 +274,68 @@ def test_the_batch_admits_samples_by_memory():
     assert ms.concurrent_samples(["a", "b", "c"], budget=7, memory=one) == 1
     assert ms.concurrent_samples(["a", "b", "c"], budget=7, memory=10 * one) == 3
     assert ms.concurrent_samples(["a", "b", "c"], budget=2, memory=10 * one) == 2
+
+
+def test_the_calibration_is_computed_once_per_batch_not_per_sample(first, tmp_path, monkeypatch):
+    """Spies on every calibration-related computation: a batch of three samples makes exactly the
+    calls a batch of one makes (the buffer read once, the dye lookups and the calibration files
+    once, no IRF derived or shift calibrated per sample), and its results are unchanged."""
+    import collections
+    import shutil
+
+    from chisurf.core.fluorescence import dyes
+    from chisurf.plugins.burst.burst_analysis import more_samples as ms
+    from chisurf.plugins.burst.burst_analysis import workflow_context
+    from chisurf.plugins.burst.burst_mle_analysis import engine
+
+    calls: collections.Counter = collections.Counter()
+
+    def spy(owner, name):
+        original = getattr(owner, name)
+
+        def counted(*args, **kwargs):
+            calls[name] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(owner, name, counted)
+
+    for name in ("pattern_histogram", "irf_pattern", "calibrate_shift", "recalibrate_shifts",
+                 "extract_irf_background", "set_pattern_files", "auto_extract"):
+        spy(engine.MleSession, name)
+    spy(dyes, "get_dye")
+    spy(workflow_context.BurstWorkflowContext, "references")
+    spy(ms, "prepare_calibration")
+
+    recipe = first["hub"].capture_recipe()
+    paths = []
+    for index in range(3):
+        target = tmp_path / f"c{index}_{Path(first['more'][index % 2]).name}"
+        shutil.copy(first["more"][index % 2], target)
+        paths.append(target)
+    reference = ms.process_more(recipe, paths[:1], workers=1, register=False)  # fit fanned out here
+    once = dict(calls)
+    calls.clear()
+    rows = ms.process_more(recipe, paths, workers=1, register=False)
+    # three samples cost no calibration call more than one (a lookup the window makes meanwhile
+    # may add to the first count, never to the second)
+    assert all(calls[name] <= once.get(name, 0) for name in calls), (once, dict(calls))
+    assert calls["prepare_calibration"] == 1 and calls["references"] == 1
+    assert once["prepare_calibration"] == 1 and once["references"] == 1
+    assert once["pattern_histogram"] == once["set_pattern_files"] == 1  # the buffer, read once
+    for name in ("irf_pattern", "calibrate_shift", "recalibrate_shifts", "extract_irf_background",
+                 "auto_extract"):
+        assert once.get(name, 0) == 0, name
+    assert all(r["status"] == "done" for r in rows)
+    assert (rows[0]["bursts"], rows[0]["tau"]) == (reference[0]["bursts"], reference[0]["tau"])
+    # the arrays every sample gets are the batch's, read-only
+    calibration = ms.prepare_calibration(recipe)
+    assert all(not a.flags.writeable for a in (*calibration.irf.values(), *calibration.buffer.values()))
+    handle, block = ms.publish_calibration(calibration)
+    try:
+        assert ms.calibration_of(handle) is calibration
+        ms._SHARED.clear()
+        again = ms.calibration_of(handle)  # as a worker reads it: once, from the shared block
+        assert again.recipe_id == calibration.recipe_id and again.key == calibration.key
+    finally:
+        block.close()
+        block.unlink()

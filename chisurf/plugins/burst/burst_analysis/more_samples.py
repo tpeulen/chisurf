@@ -323,6 +323,125 @@ class Recipe:
         return "\n".join(f"{r['part']}: {r['value']} — {r['tip']}" for r in rows)
 
 
+# -- what every sample shares ------------------------------------------------------------------- #
+@dataclass
+class Calibration:
+    """What every sample of a batch shares, computed once per batch and handed to every sample
+    read-only: the recipe (and its payload and ids), the detectors, every detector's fit settings
+    (window, shifts, model, start values), the IRF and where it came from, the shift calibration,
+    and -- when step 1 has a Buffer -- the buffer's background histogram per detector (its files
+    read once). Nothing in it depends on a sample; what does (its photons, bursts, own strict
+    background, BVA, 2CDE, H2MM, the lifetime fits) is computed per sample.
+
+    The pool's workers get it through shared memory (:func:`publish_calibration`): one copy per
+    batch, read once per worker process, never pickled into a task."""
+
+    recipe: Recipe
+    payload: dict
+    recipe_id: str
+    report_id: str
+    setup: dict
+    det_settings: dict
+    irf: dict
+    irf_source: dict
+    shift_calibration: dict
+    buffer_files: list
+    buffer: dict
+    split_by_state: bool = False
+
+    @property
+    def key(self) -> str:
+        """What identifies it in the workers' cache: the recipe and the buffer it holds."""
+        digest = hashlib.sha256(self.recipe_id.encode())
+        for det in sorted(self.buffer):
+            digest.update(det.encode() + np.ascontiguousarray(self.buffer[det]).tobytes())
+        return digest.hexdigest()[:16]
+
+
+def _read_only(array) -> np.ndarray:
+    out = np.array(array, dtype=float)
+    out.setflags(write=False)
+    return out
+
+
+def prepare_calibration(recipe: Recipe) -> Calibration:
+    """The :class:`Calibration` of *recipe*: everything calibration-related, once per batch."""
+    from chisurf.plugins.burst.burst_mle_analysis.engine import MleSession
+
+    if not recipe.ready:
+        raise ValueError("the recipe is not complete: run 3. Burst MLE on the first data first")
+    payload = recipe.to_payload()
+    mle = recipe.mle
+    buffers = [str(b) for b in recipe.references().get("buffer") or ()]
+    buffer: dict = {}
+    if buffers:
+        # the buffer's histograms at the setup's binning and channels, as Burst MLE's
+        # prepare_patterns reads them (one buffer serves every detector)
+        session = MleSession()
+        session.set_definition(recipe.setup)
+        if session.detectors:
+            session.bg_one_for_all = True
+            session.set_pattern_files("bg", next(iter(session.detectors)), buffers)
+            buffer = {d: _read_only(a) for d, a in session.buffer_np.items()}
+    return Calibration(
+        recipe=recipe,
+        payload=payload,
+        recipe_id=recipe.recipe_id,
+        report_id=recipe.calibration_report_id,
+        setup=copy.deepcopy(recipe.setup),
+        det_settings=copy.deepcopy((mle.get("settings") or {}).get("detector_settings") or {}),
+        irf={d: _read_only(v) for d, v in (mle.get("irf") or {}).items() if np.asarray(v).size},
+        irf_source=dict(mle.get("irf_source") or {}),
+        shift_calibration=copy.deepcopy(mle.get("shift_calibration") or {}),
+        buffer_files=buffers,
+        buffer=buffer,
+        split_by_state=bool(mle.get("split_by_state", False)),
+    )
+
+
+#: The calibrations this process has read from shared memory, by :attr:`Calibration.key`.
+_SHARED: dict = {}
+
+
+def publish_calibration(calibration: Calibration):
+    """Put *calibration* into one shared-memory block for the pool's workers; returns the handle
+    the tasks carry (``(key, block name, size)``) and the block (the caller closes and unlinks it
+    when the batch is done)."""
+    import pickle
+    from multiprocessing import shared_memory
+
+    blob = pickle.dumps(calibration, protocol=pickle.HIGHEST_PROTOCOL)
+    block = shared_memory.SharedMemory(create=True, size=max(1, len(blob)))
+    block.buf[: len(blob)] = blob
+    _SHARED[calibration.key] = calibration
+    return (calibration.key, block.name, len(blob)), block
+
+
+def calibration_of(handle) -> Calibration:
+    """The calibration a task names: itself, or read once per process from its shared block."""
+    if isinstance(handle, Calibration):
+        return handle
+    key, name, size = handle
+    found = _SHARED.get(key)
+    if found is not None:
+        return found
+    import pickle
+    from multiprocessing import resource_tracker, shared_memory
+
+    block = shared_memory.SharedMemory(name=name)
+    try:
+        calibration = pickle.loads(bytes(block.buf[:size]))
+    finally:
+        block.close()
+        try:  # the batch owns the block; a worker that read it must not unlink it on exit
+            resource_tracker.unregister(block._name, "shared_memory")  # noqa: SLF001
+        except Exception:  # noqa: BLE001 - nothing registered
+            pass
+    _SHARED.clear()  # one batch at a time per worker
+    _SHARED[key] = calibration
+    return calibration
+
+
 # -- one sample -------------------------------------------------------------------------------- #
 def new_sample(path: str | Path, uid: str = "") -> dict[str, Any]:
     """A sample row: queued, nothing computed yet."""
@@ -341,8 +460,7 @@ def _check(should_stop: Callable[[], bool] | None) -> None:
         raise SampleStopped("stopped")
 
 
-def search_task(setup: dict, setup_name: str, selection: dict, path: str, uid: str,
-                container_dir: str) -> str:
+def search_task(handle, path: str, uid: str, container_dir: str) -> str:
     """Burst Selection's search of one measurement through its model, in whichever process runs
     it (a worker of the shared pool): the run goes into *container_dir*, the folder of the
     measurement's analysis container (given, not derived: a worker has a session of its own).
@@ -352,6 +470,9 @@ def search_task(setup: dict, setup_name: str, selection: dict, path: str, uid: s
 
     from .workflow_context import searched_runs
 
+    calibration = calibration_of(handle)
+    setup, setup_name = calibration.setup, calibration.recipe.setup_name
+    selection = calibration.recipe.selection
     path = Path(path)
 
     try:  # said plainly here: the search's own worker reports an unreadable file as "Unknown"
@@ -379,11 +500,10 @@ def search_task(setup: dict, setup_name: str, selection: dict, path: str, uid: s
     return str(runs[0])
 
 
-def _search(recipe: Recipe, path: Path, uid: str, folder: Path, pool, should_stop) -> tuple[Path, Any]:
+def _search(handle, path: Path, uid: str, folder: Path, pool, should_stop) -> tuple[Path, Any]:
     """The search of one sample (in *pool* when given); the run and what registers it in the
     workspace (Burst Selection's files, sources and container folders)."""
-    run = _call(pool, should_stop, search_task, recipe.setup, recipe.setup_name, recipe.selection,
-                str(path), uid, str(folder))
+    run = _call(pool, should_stop, search_task, handle, str(path), uid, str(folder))
     files = [Path(path).resolve()]
     dirs = {str(files[0]): str(folder)}
     model = SimpleNamespace(files=files, sources={str(files[0]): uid} if uid else {},
@@ -472,46 +592,57 @@ def _h2mm(recipe: Recipe, run: Path) -> None:
     model.compute(force=True)
 
 
-def _fit(recipe: Recipe, run: Path, path: Path, should_stop, progress, workers=None) -> Any:
-    """Burst MLE as the hub hands bursts over -- the run read, the setup on top, the buffer of
-    the calibration files (Burst MLE's ``prepare_patterns``) -- with the recipe's IRF, shifts,
-    model and fit window, the background this measurement's own (the buffer's, else the strict
-    selection of its photons outside the bursts, judged with the recipe's IRF); fitted and
-    written into the container. The IRF is not derived again from the reference files: it is
-    the recipe's. Returns the session."""
-    from chisurf.plugins.burst.burst_mle_analysis.engine import MleSettings
-    from chisurf.plugins.burst.burst_mle_analysis.gui.model import MleViewModel
+def _fit(calibration: Calibration, run: Path, should_stop, progress, workers=None) -> Any:
+    """Burst MLE of one sample: its bursts and photons read, the batch's calibration taken as it
+    is -- setup, every detector's settings (fit window, shifts, model), the recipe's IRF, the
+    buffer's histogram -- and only what depends on the sample computed: the photons outside its
+    bursts and their strict background selection (judged with the recipe's IRF), then the fit,
+    written into the container. The same state Burst MLE reaches by hand, without deriving any
+    calibration again. Returns the session."""
+    from chisurf.core.fluorescence.burst import extract_mle_irf_background
+    from chisurf.plugins.burst.burst_mle_analysis.engine import MleSession, MleSettings
 
-    model = MleViewModel()
-    model.split_by_state = bool(recipe.mle.get("split_by_state", False))
-    model.take_bursts([str(run)], recipe.setup)
-    session = model.session
+    session = MleSession()
+    session.split_by_state = calibration.split_by_state
+    session.add_burst_files([Path(run)])
     if session.df_bursts is None:
         raise RuntimeError("Burst MLE read no bursts from the run")
-    buffers = [str(b) for b in recipe.references().get("buffer") or ()]
-    if buffers and session.detectors:  # one buffer serves every detector, as prepare_patterns does
-        one, session.bg_one_for_all = session.bg_one_for_all, True
-        try:
-            session.set_pattern_files("bg", next(iter(session.detectors)), buffers)
-        finally:
-            session.bg_one_for_all = one
+    session.set_definition(calibration.setup)  # the workflow's setup on top of the container's
+    if calibration.buffer:
+        session.bg_files = {d: [Path(p) for p in calibration.buffer_files] for d in calibration.buffer}
+        session.buffer_np = dict(calibration.buffer)
     known = set(MleSettings.__dataclass_fields__)
-    settings = (recipe.mle.get("settings") or {}).get("detector_settings") or {}
-    for det, values in settings.items():
+    for det, values in calibration.det_settings.items():
         if det in session.detectors:
             session.det_settings[det] = MleSettings(
                 **copy.deepcopy({k: v for k, v in values.items() if k in known})
             )
-    for det, irf in (recipe.mle.get("irf") or {}).items():
-        if det in session.detectors and np.asarray(irf).size:
-            session.irf_np[det] = np.asarray(irf, dtype=float)
-            source = (recipe.mle.get("irf_source") or {}).get(det, "")
+    for det, irf in calibration.irf.items():
+        if det in session.detectors:
+            session.irf_np[det] = irf
+            source = calibration.irf_source.get(det, "")
             session.irf_source[det] = f"the recipe ({source})" if source else "the recipe"
-    for det, entry in (recipe.mle.get("shift_calibration") or {}).items():
+    for det, entry in calibration.shift_calibration.items():
         if det in session.detectors:
             session.shift_calibration[det] = dict(entry)
     session.outcome = None
-    session.ensure_background()  # the photons outside the bursts, strictly selected with this IRF
+    # this sample's own: the histograms of the photons outside its bursts (what ensure_background
+    # reads -- without the IRF estimate it would make of them and throw away) and their strict
+    # selection, judged with the recipe's IRF
+    tttr = session.current_tttr()
+    index = session.burst_index_array()
+    if tttr is not None and index.size:
+        in_burst = np.zeros(len(tttr), dtype=bool)
+        in_burst[index] = True
+        patterns = extract_mle_irf_background(
+            tttr, session.detectors, micro_time_binning=session.settings.micro_time_binning,
+            mask=~in_burst, min_photons=max(2, int(session.settings.min_photons)),
+            irf_model="experimental",
+        )
+        for det, pattern in patterns.items():
+            if det in session.detectors:
+                session.bg_np[det] = np.asarray(pattern["bg"], dtype=float)
+        session.select_background()
     _check(should_stop)
     # the shared fit pool (engine.fit_pool) at the batch's size: every sample's chunks go into the
     # same processes, so a sample alone gets all of them and several share them
@@ -521,14 +652,20 @@ def _fit(recipe: Recipe, run: Path, path: Path, should_stop, progress, workers=N
     return session
 
 
-def write_recipe(source: str | Path, recipe: Recipe, out_dir: str | Path | None = None,
+def write_recipe(source: str | Path, recipe: Recipe | Calibration, out_dir: str | Path | None = None,
                  runs: Iterable[str] = ()) -> str:
-    """Write *recipe* into the container of the measurement *source* (replacing the one written
-    before), derived from its photon streams, with the runs it made; returns the container."""
+    """Write *recipe* (or a batch's :class:`Calibration` of it: its payload and ids as computed
+    once) into the container of the measurement *source* (replacing the one written before),
+    derived from its photon streams, with the runs it made; returns the container."""
     from chisurf.core.fio.fluorescence.burst_container import open_measurement
 
-    payload = {**recipe.to_payload(), "recipe_id": recipe.recipe_id,
-               "calibration_report_id": recipe.calibration_report_id, "runs": list(runs)}
+    if isinstance(recipe, Calibration):
+        base, recipe_id, report_id = recipe.payload, recipe.recipe_id, recipe.report_id
+    else:
+        base, recipe_id, report_id = (recipe.to_payload(), recipe.recipe_id,
+                                      recipe.calibration_report_id)
+    payload = {**base, "recipe_id": recipe_id, "calibration_report_id": report_id,
+               "runs": list(runs)}
     data = json.dumps(payload, indent=1, sort_keys=True).encode("utf-8")
     with open_measurement(source, out_dir, raw_data="sidecar") as m:
         for obj in list(m._f.objects()):
@@ -540,8 +677,8 @@ def write_recipe(source: str | Path, recipe: Recipe, out_dir: str | Path | None 
             artifact_kind="parameter_table",
             data_format="json",
             operation_type="analysis_run",
-            parameters={"schema": SCHEMA, "recipe_id": recipe.recipe_id,
-                        "calibration_report_id": recipe.calibration_report_id},
+            parameters={"schema": SCHEMA, "recipe_id": recipe_id,
+                        "calibration_report_id": report_id},
             derived_from=m.instrument_uids or m.instrument_uid,
             mime_type="application/json",
         )
@@ -581,6 +718,7 @@ def process_sample(
     pool: Any = None,
     workers: int | None = None,
     share: Callable[[], int] | None = None,
+    calibration: Any = None,
 ) -> dict:
     """Run the recipe's pipeline on one *sample* (a :func:`new_sample` row, updated in place):
     search, optional steps, Burst MLE, then the calibration report and the recipe into its
@@ -590,7 +728,11 @@ def process_sample(
     run in it. Then *share()* (default *workers*) says how many of its processes this sample may
     count on now: one -- many samples in flight -- and everything after the search is a single
     task of the pool; more -- few samples left -- and the stages run here, Burst MLE's chunks
-    fanned out over the pool. Without a pool, everything here and in the fit's own pool."""
+    fanned out over the pool. Without a pool, everything here and in the fit's own pool.
+
+    *calibration* is the batch's :class:`Calibration` (or its shared-memory handle,
+    :func:`publish_calibration`): computed once and given to every sample; without, it is
+    prepared here (one sample alone)."""
     from chisurf.core.project.analysis import container_dir
 
     def stage(text: str) -> None:
@@ -598,13 +740,12 @@ def process_sample(
         if on_stage is not None:
             on_stage(text)
 
-    if not recipe.ready:
-        raise ValueError("the recipe is not complete: run 3. Burst MLE on the first data first")
+    handle = calibration if calibration is not None else prepare_calibration(recipe)
     path = Path(sample["path"])
     uid = str(sample.get("uid") or "")
     folder = container_dir(uid)
     stage("searching bursts")
-    run, search = _search(recipe, path, uid, folder, pool, should_stop)
+    run, search = _search(handle, path, uid, folder, pool, should_stop)
     sample["search_model"] = search  # the caller registers the run in the workspace
     _check(should_stop)
     now = int(share() if callable(share) else (workers or 0))
@@ -612,12 +753,12 @@ def process_sample(
         # many samples in flight: everything after the search is one task of the pool (its fit
         # chunks in that worker), so the samples' stages run side by side on every core
         stage("analysing (one worker)")
-        sample.update(_call(pool, should_stop, analyse_task, recipe.to_payload(), str(run),
-                            str(path), str(folder)))
+        sample.update(_call(pool, should_stop, analyse_task, handle, str(run), str(path),
+                            str(folder)))
     else:
         # few samples left: the stages here, the fit's chunks fanned out over the pool
-        sample.update(_analyse(recipe, run, path, folder, pool=pool, workers=workers or None,
-                               should_stop=should_stop, stage=stage))
+        sample.update(_analyse(calibration_of(handle), run, path, folder, pool=pool,
+                               workers=workers or None, should_stop=should_stop, stage=stage))
     stage("")
     return sample
 
@@ -626,12 +767,13 @@ def process_sample(
 RESULT_KEYS = ("run", "container", "recipe_id", "report_id", "bursts", "tau", "E")
 
 
-def _analyse(recipe: Recipe, run: Path, path: Path, folder: Path, *, pool=None, workers=None,
-             should_stop=None, stage=None) -> dict:
+def _analyse(calibration: Calibration, run: Path, path: Path, folder: Path, *, pool=None,
+             workers=None, should_stop=None, stage=None) -> dict:
     """The stages after the search: fusion, BVA, 2CDE, Burst MLE, H2MM, then the calibration
     report and the recipe into the container. Returns :data:`RESULT_KEYS`."""
     from .calibration_report import write_report
 
+    recipe = calibration.recipe
     stage = stage or (lambda _text: None)
     if "fusion" in recipe.optional:
         stage("fusing bursts")
@@ -647,7 +789,7 @@ def _analyse(recipe: Recipe, run: Path, path: Path, folder: Path, *, pool=None, 
     def progress(done: int, total: int) -> None:
         stage(f"fitting lifetimes {done}/{total}")
 
-    session = _fit(recipe, run, path, should_stop, progress, workers)
+    session = _fit(calibration, run, should_stop, progress, workers)
     if "h2mm" in recipe.optional:
         stage("computing H2MM")
         _h2mm(recipe, run)
@@ -656,10 +798,10 @@ def _analyse(recipe: Recipe, run: Path, path: Path, folder: Path, *, pool=None, 
     if report:
         write_report(path, report, folder)
     out: dict = {
-        "container": write_recipe(path, recipe, folder, runs=[str(run)]),
+        "container": write_recipe(path, calibration, folder, runs=[str(run)]),
         "run": str(run),
-        "recipe_id": recipe.recipe_id,
-        "report_id": recipe.calibration_report_id,
+        "recipe_id": calibration.recipe_id,
+        "report_id": calibration.report_id,
     }
     _summarise(out, session)
     return out
@@ -681,7 +823,7 @@ class _InlineExecutor:
         pass
 
 
-def analyse_task(recipe_payload: dict, run: str, path: str, folder: str) -> dict:
+def analyse_task(handle, run: str, path: str, folder: str) -> dict:
     """:func:`_analyse` of one sample in a worker of the batch pool, every stage in this process
     (the fit's chunks too); returns :data:`RESULT_KEYS`."""
     from chisurf.plugins.burst.burst_mle_analysis import engine
@@ -689,8 +831,7 @@ def analyse_task(recipe_payload: dict, run: str, path: str, folder: str) -> dict
     pool_of = engine.fit_pool
     engine.fit_pool = lambda workers=None: _InlineExecutor()
     try:
-        return _analyse(Recipe.from_payload(recipe_payload), Path(run), Path(path), Path(folder),
-                        workers=1)
+        return _analyse(calibration_of(handle), Path(run), Path(path), Path(folder), workers=1)
     finally:
         engine.fit_pool = pool_of
 
@@ -956,7 +1097,8 @@ class SampleQueue:
             except Exception:  # noqa: BLE001 - a window that cannot be woken redraws later
                 pass
 
-    def _one(self, recipe: Recipe, sample: dict, pool=None, budget: int | None = None) -> None:
+    def _one(self, recipe: Recipe, sample: dict, pool=None, budget: int | None = None,
+             calibration=None) -> None:
         if self._stop.is_set():
             return
         sample.update(status="running", stage="starting", error="")
@@ -964,7 +1106,7 @@ class SampleQueue:
         try:
             process_sample(recipe, sample, should_stop=self._stop.is_set,
                            on_stage=lambda _text: self._changed(), pool=pool, workers=budget,
-                           share=None if pool is None else self.share)
+                           share=None if pool is None else self.share, calibration=calibration)
             sample["status"] = "done"
         except (SampleStopped, InterruptedError):
             sample.update(status="queued", stage="", error="Stopped before it finished; Run goes on.")
@@ -987,6 +1129,26 @@ class SampleQueue:
         memory = available_memory()
         pool = batch_pool(budget)
         self.budget = budget
+        # the calibration once for the batch, in one shared block every worker reads once
+        try:
+            calibration = prepare_calibration(recipe)
+        except Exception as exc:  # noqa: BLE001 - nothing can run: every sample says why
+            logger.warning("More samples: the calibration could not be prepared: %s", exc, exc_info=True)
+            for sample in targets:
+                sample.update(status="failed", stage="", error=f"calibration: {exc}")
+                with self._lock:
+                    self._finished.append(sample)
+            self._changed()
+            return
+        handle, block = publish_calibration(calibration)
+        try:
+            self._schedule(recipe, targets, limit, memory, pool, budget, handle)
+        finally:
+            block.close()
+            block.unlink()
+
+    def _schedule(self, recipe, targets, limit, memory, pool, budget, handle) -> None:
+        """Admit the samples into flight (cores, memory) until every one is done or Stop."""
         pending = list(targets)
         running: dict = {}
         self._in_flight = lambda: len(running)
@@ -998,7 +1160,7 @@ class SampleQueue:
                     if running and sum(running.values()) + need > memory:
                         break  # waits until a sample in flight has given its memory back
                     sample = pending.pop(0)
-                    running[threads.submit(self._one, recipe, sample, pool, budget)] = need
+                    running[threads.submit(self._one, recipe, sample, pool, budget, handle)] = need
                 if self._stop.is_set():
                     pending = []
                 if not running:

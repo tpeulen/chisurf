@@ -84,6 +84,18 @@ at 20–30, so these are lower bounds), the benchmark is described in
 | 6 demo samples (~0.6 MB, ~570 bursts each) | 6.5 s | 2.5 s (6 in flight) | 2.6× |
 | 6 synthetic samples (2 M photons, 5.5 k bursts each) | 22.4 s | 13.6 s (3 in flight: memory) | 1.6× |
 
+- **The calibration once.** Everything calibration-related is prepared once per batch
+  (`prepare_calibration`): the setup and every detector's fit settings (window, shifts, model),
+  the IRF, the shift calibration and the buffer's background histogram (its files read once),
+  the recipe's payload and ids. The workers get it from one shared-memory block, read once per
+  worker process, never pickled into a task. Per sample only what depends on the sample is
+  computed: its photons, the burst search, the photons outside its bursts and their strict
+  background selection, BVA, 2CDE, H2MM and the lifetime fits. Taken out of the per-sample path
+  by this: the dye lookups of the calibration files, a preview fit and shift recalibration when
+  the setup was applied, an IRF estimate from the outside photons that was thrown away, and the
+  buffer read — about 0.2 s of the window's process per demo sample and 0.45 s per 2 M-photon
+  sample (cProfile of the sample in the batch).
+
 The results do not depend on any of this: a batch run side by side gives the same bursts and
 lifetimes as one run sample after sample (tested). `process_more(..., workers=1)` keeps one sample
 in flight.
