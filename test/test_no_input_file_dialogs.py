@@ -47,6 +47,10 @@ CARD_DATABASE_HELPERS = {"open_database"}
 PRAGMA = "# not-input:"
 #: Files whose ``# not-input:`` dialogs are allowed for good, with the reason. Not a worklist.
 NOT_INPUT = {
+    "chisurf/plugins/core/acq/live/cmc_light/gui.py": (
+        "The CMC Light panel's own settings JSON and excitation step-sequence CSV: tool state it "
+        "saves and reloads (Save writes them, an output); measurements come from the workspace."
+    ),
     "chisurf/plugins/modelling/fret/gui/docking_card.py": (
         "Docking output directory: where the docking results are written, an output (the structures "
         "and the project or FPS plan come from the workspace)."
