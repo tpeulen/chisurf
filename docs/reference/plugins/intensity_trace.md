@@ -31,7 +31,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| File | `path` | str |  |  | The TTTR file being shown (load another with Load TTTR or drop one on the window). |
+| File | `path` | str |  |  | The photon stream being shown: pick another in the Input section (files dropped on ChiSurf are added to the workspace). |
 | Setup | `setup_name` | choice |  | choices: `setup_names` | The detector setup: which routing channels (and micro-time ranges) make each detector. 'Routing channels' bins every routing channel on its own. |
 | Min Bin | `dwell_min` | float |  | 0.0 … 90000.0 | Shortest dwell time in the histograms. |
 | Max Bin | `dwell_max` | float |  | 0.1 … 90000.0 | Longest dwell time in the histograms. |

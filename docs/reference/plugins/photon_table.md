@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: Photon Table
-description: 'Inspect the photons of a TTTR file in a table: routing channel, micro-time and macro-time, one row per photon, with navigation and a channel filter.'
+description: 'Inspect the photons of a photon stream of the Datasets workspace in a table: routing channel, micro-time and macro-time, one row per photon, with navigation and a channel filter.'
 resource: chisurf/plugins/tttr/photon_table/
 tags: [reference, plugins, photon-table, tools, photon-data, tttr]
 anchor: plugin-photon_table
@@ -11,7 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-photon_table)=
 # Photon Table
 
-Inspect the photons of a TTTR file in a table: routing channel, micro-time and macro-time, one row per photon, with navigation and a channel filter.
+Inspect the photons of a photon stream of the Datasets workspace in a table: routing channel, micro-time and macro-time, one row per photon, with navigation and a channel filter.
 
 ## Identity
 

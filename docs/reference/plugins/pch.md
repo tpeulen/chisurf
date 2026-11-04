@@ -32,7 +32,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| File | `filename` | str |  |  | The photon-stream file that is loaded. Use Load TTTR or drop a file on the window. |
+| File | `filename` | str |  |  | The photon-stream file that is loaded: the one picked in the Input section above. |
 | Channels | `channels` | str |  |  | Comma-separated routing channels whose photons are counted, for example 0,2. Empty uses all channels. |
 | Bin time | `bin_time_us` | float |  | 0.1 … 1000000.0 (step 10.0) | Width of the counting interval in microseconds. The histogram is the distribution of photon counts per interval. |
 | Micro time | `micro_time_min` | int |  | 0 … 65535 (step 1) | Lower micro-time gate (TAC channel): photons below it are not counted. |

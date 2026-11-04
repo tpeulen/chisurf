@@ -11,6 +11,7 @@
 - 2026-11-04: acquisition knowledge notes committed: okf/design/2026-10-30-acquisition-ux.md (task plan + design gates: writer priority, dock subscriptions, gap semantics) and okf/design/2026-10-30-owner-instructions.md (owner's acquisition instructions verbatim with where each landed, checkpoints to 2026-11-02), plus okf/references/craggslab-smfbox-smotter.md (NI-card ALEX/PIE recipe, Obis command set; linked from references/index.md). Frontmatter added; contents unchanged.
 - 2026-11-04: Legacy Export's 'Export burst folder' and the Metadata Editor's 'Save as…' buttons carry stable ImGui ids (###export, ###save): the test driver and guided tour find them by id whatever the (translated) label says.
 - 2026-11-04: detector-name follow-ups: Trace Browser colours G|G/R|G/R|R series again (the label was lower-cased before the lookup in DETECTOR_COLOURS, whose keys are the upper-case names; guard test_detector_series_keep_their_own_colour); FCS Filter Calculator builds every detector|role key through Detectors.key instead of repeating the f-string.
+- 2026-11-04: plugin reference pages regenerated for ten tools whose committed specs moved to workspace input (fcs_merger, intensity_trace, microtime_histogram, pch, photon_table, ptu_alex_creator, synthetic_decay, tttr_time_windows, tttr_to_pto, vv_vh_g_factor): descriptions and File/IRF/Folder cells now say the input is picked from the Datasets workspace.
 
 ## 2026-11-03
 

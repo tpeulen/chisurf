@@ -43,7 +43,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Tail stop (bin) | `tail_stop` | float |  | 0.0 … 1000000.0 (step 1.0) | Last TAC bin of the tail region. |
 | Background start (bin) | `background_start` | float |  | 0.0 … 1000000.0 (step 1.0) | First TAC bin of the signal-free region used for each channel's background (needs Background correction). |
 | Background stop (bin) | `background_stop` | float |  | 0.0 … 1000000.0 (step 1.0) | Last TAC bin of the background region (needs Background correction). |
-| VH shift (bins) | `shift` | float |  | -1000.0 … 1000.0 (step 0.1) | Shift the VH time axis by this many TAC bins, fractional bins included (the Qt tool's 'Shift Perpendicular Decay'). |
+| VH shift (bins) | `shift` | float |  | -1000.0 … 1000.0 (step 0.1) | Shift the VH time axis by this many TAC bins, fractional bins included. |
 
 ### Polarization mixing
 
@@ -61,7 +61,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| VV/VH files | `batch_files` | path_list |  |  | Queue files from disk, a folder or the database; remove or clear inputs without deleting their files. |
+| VV/VH files | `batch_files` | path_list |  |  | VV/VH decays picked in the Input section; remove or clear them without deleting their files. |
 
 ### Sample decay
 

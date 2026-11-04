@@ -53,7 +53,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| File | `input_file` | file |  |  | Path of the TTTR file to convert. Press Enter (or click elsewhere) to load it; a file dropped on the window loads too. |
+| File | `input_file` | file |  |  | The TTTR file being converted: pick it in the Input section below (files dropped on ChiSurf land in the workspace). |
 
 ### Excitation regions
 

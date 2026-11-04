@@ -30,7 +30,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Folder | `folder` | str |  |  | The folder whose curves are listed; type a path and press Enter, or drop a folder. |
+| Folder | `folder` | str |  |  | The folder of the picked curves (the merged curve is written beside them by default). |
 | Target | `output` | str |  |  | The merged curve's file (Kristine .cor: lag, G, duration and count rate, standard error); the folder's name beside the folder by default. |
 
 ## JSON-RPC methods

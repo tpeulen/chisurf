@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: TTTR→Time-Window BIDs
-description: Split TTTR files into fixed-duration time-window BID (.bst) files.
+description: Split photon streams of the workspace into fixed-duration time windows, stored as a burst run in each measurement's container (the run appears in the workspace under its stream).
 resource: chisurf/plugins/tttr/tttr_time_windows/
 tags: [reference, plugins, tttr-time-windows, file, data]
 anchor: plugin-tttr_time_windows
@@ -11,7 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-tttr_time_windows)=
 # TTTR→Time-Window BIDs
 
-Split TTTR files into fixed-duration time-window BID (.bst) files.
+Split photon streams of the workspace into fixed-duration time windows, stored as a burst run in each measurement's container (the run appears in the workspace under its stream).
 
 ## Identity
 

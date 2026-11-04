@@ -40,7 +40,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| IRF | `irf_path` | file |  |  | Optional instrument response function file (text or .npy) to convolve with the decay. Empty = ideal decay. |
+| IRF | `irf_path` | str |  |  | The instrument response the decay is convolved with, picked in the IRF input from the Datasets workspace. Empty = ideal decay; Clear IRF empties it. |
 | Noise | `shot_noise` | bool |  |  | Poisson-sample a finite-count observation (uses Photons + Seed). Off = normalized ideal pattern. |
 | Photons | `photon_count` | float |  | 1.0 … 1000000000.0 | Total photon count for the Poisson observation. |
 | Seed | `seed` | int |  | 0 … 2147483647 | Random seed for the shot-noise realization (reproducible). |

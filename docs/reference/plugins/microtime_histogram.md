@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: Histogram-Microtime
-description: Create and inspect TTTR microtime histograms.
+description: Create and inspect TTTR microtime histograms of photon streams from the Datasets workspace, with a detector setup row, optionally restricted to burst runs.
 resource: chisurf/plugins/tttr/microtime_histogram/
 tags: [reference, plugins, microtime-histogram, spectroscopy, fluorescence-decay, tttr, decay]
 anchor: plugin-microtime_histogram
@@ -11,7 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-microtime_histogram)=
 # Histogram-Microtime
 
-Create and inspect TTTR microtime histograms.
+Create and inspect TTTR microtime histograms of photon streams from the Datasets workspace, with a detector setup row, optionally restricted to burst runs.
 
 ## Identity
 
