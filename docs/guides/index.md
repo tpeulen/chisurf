@@ -37,6 +37,7 @@ saving_projects
 87_channel_definition
 33_timestamps_and_bursts
 13_burst_identification
+116_more_samples
 15_background_rates
 22_binned_photon_traces
 74_intensity_traces_and_file_tools
@@ -212,6 +213,7 @@ irf_estimation
 | [Live acquisition](65_live_acquisition.md) | `core/acq` plugin, `acq.pipeline`, `tttrlib` streaming consumers |
 | [Handling TTTR files (& Photon-HDF5)](12_handling_tttr_files.md) | `tttrlib.TTTR`, `plugins/tttr` |
 | [Photon burst identification](13_burst_identification.md) | `TTTR.burst_search`, `burst_selection` |
+| [More samples, processed the same way](116_more_samples.md) | Burst Analysis step 4 (`burst_analysis.more_samples`), `BurstWorkflow.process_more` |
 | [Multi-parameter E–S & correction factors](14_multiparameter_es.md) | `tttrlib.corrected_es`, `fret/calibration.py` |
 | [Background rates](15_background_rates.md) | `burst/background.py`, `burst_background` |
 | [FRET-FCS](16_fret_fcs.md) | FRET-FCCS models + correlator |
