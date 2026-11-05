@@ -137,7 +137,15 @@ The **Filter settings** tab holds:
 | **Channel selection** → **Detector**, **Micro-time window** | All | Detector and PIE-window gate applied before the search. |
 | **Macro time interval** | upper bound 0.15 ms, merge gap 3 | Accepted inter-photon times dT (**Use min dT** / **Use max dT**); gaps of up to **Merge gap** photons are bridged (**Fill gaps**). |
 | **Filter** → **Filter on** / **Invert**, **Min photons**, **Count-rate photons** | on / off, 60, 5 | Apply the search; **Invert** keeps the photons it rejects. |
-| **Display** | window 10 s | The count-rate trace is in kHz. The **histogram** shows the bursts of the visible window (its title gives their number); burst duration is one of its features, so there is no separate duration tab. A range set for another feature resets to the data. The visible window of the active file (**Window start**, **Window length**) and the count-rate bin width (**MCS bin width**). The decay is binned as the setup reads the micro times (its micro-time binning); the histogram's **Bins** sit in the **Histogram** panel. |
+
+The visible window is not a filter setting: **Start**, **Length** and the count-rate **Bin**
+(with the **All photons** / **Selected photons** layers) sit above the plots of the
+**Count rate**, **Inter-photon time** and **Micro-time decay** tabs, in Simple mode too
+(default: a 10 s window, 1 ms bins). The count-rate trace is in kHz. The **histogram** shows
+the bursts of the visible window (its title gives their number); burst duration is one of its
+features, so there is no separate duration tab. A range set for another feature resets to the
+data. The decay is binned as the setup reads the micro times (its micro-time binning); the
+histogram's **Bins** sit in the **Histogram** panel.
 
 The **Burst Selection** tab lists the inputs and says where results go. The destination
 follows the input: vendor files get a `bi4_bur/` folder beside them
@@ -208,6 +216,15 @@ fitted burst lifetimes in about 6 s on that file, and no single frame of the
 window takes longer than about 0.25 s. Four things make that possible:
 
 - Each step's work starts ahead of time:
+  - the burst search itself: as soon as the step knows the files, the setup and
+    the settings, Burst Selection searches in the background and writes nothing.
+    A changed setting searches again once the settings have been still for
+    0.8 s (the search of the old settings is dropped). **Next** with the same
+    settings only writes the bursts found (about 1 s on the 311 MB file instead
+    of a 12 s search); pressed while the search still runs, it waits for that
+    search instead of starting another. No blur covers the window meanwhile: a
+    line with a bar above the search settings (and in Summary) says what is
+    running, and the settings stay editable;
   - the photon file is read in the background as soon as Data Selection has it;
   - the modules the steps need are loaded in the background when the window
     opens;
@@ -263,8 +280,8 @@ The plots draw a **window of the active file**, not all of it. Ten seconds by
 default: a long measurement is millions of photons, and drawn whole it is an
 envelope with no individual burst visible in it.
 
-**Window length** (in the **Display** panel) sets the length and **Window start**
-walks it through the file; a length of 0 draws the whole file. Select another
+**Length** (above the plots) sets the length and **Start** walks it through the
+file; a length of 0 draws the whole file. Select another
 file in the file list to look at that one. The bursts of the window are previewed
 before any search has run; **Run** searches every photon of every file.
 

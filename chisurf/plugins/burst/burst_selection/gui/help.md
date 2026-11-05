@@ -7,6 +7,12 @@ downstream result changes with it.
 
 Press **Guide** for the walk-through.
 
+The plots show a **window of the active file**: set its **Start** and **Length**
+above the plots (any tab, Simple mode too). In the Burst Analysis pipeline the
+search runs **ahead**, in the background, as soon as the files, the setup and the
+settings are known: a line above the search settings shows it, and **Next**
+with the same settings only writes the bursts it found.
+
 ## How a burst is found
 
 A measurement is a long timestamp stream that is mostly background. The

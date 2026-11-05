@@ -42,6 +42,7 @@ from chisurf.plugins.emtk_layout import (
 )
 
 from .model import BurstSelectionModel
+from .speculative import SpeculativeSearch
 
 #: The parameters of each burst search that Simple mode shows (the rest are Advanced, folded
 #: under "More search parameters"); a search not listed shows its first three.
@@ -72,6 +73,18 @@ if TYPE_CHECKING:
 HERE = Path(__file__).parent
 #: Seconds without a change before the visible window is filtered again.
 DIAGNOSTICS_DELAY = 0.35
+#: Seconds between two looks at whether the settings call for a new search ahead.
+SPECULATE_EVERY = 0.25
+
+
+class _ModelClient:
+    """The model's backend client as the search ahead calls it (a test may swap the client)."""
+
+    def __init__(self, model) -> None:
+        self.model = model
+
+    def analyze_files(self, *args, **kwargs):
+        return self.model.client.analyze_files(*args, **kwargs)
 
 
 def _sections(spec: dict, *titles: str) -> list[dict]:
@@ -135,6 +148,18 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                 self.model.files.clear()  # the settings are restored, the files are step 1's
         self.on_run_done = on_run_done
         self.job = SnapshotJob(self.model)
+        #: The pipeline searches ahead (:mod:`.speculative`): while the user looks at the
+        #: settings, so Next only writes the bursts. Its progress is a line in the step, not the
+        #: blur over the window: the user keeps working while it runs.
+        self.speculation = SpeculativeSearch(_ModelClient(self.model)) if self.pipeline else None
+        self.busy_overlay = not self.pipeline
+        #: The search Next waits for (its key) before the bursts are written; ``None``: none.
+        self._commit_key: str | None = None
+        #: The key of the search the bursts on show were written from, and when the wanted
+        #: search was last looked at (every :data:`SPECULATE_EVERY` s).
+        self._stored_key: str | None = None
+        self._job_key: str | None = None
+        self._speculated_at = 0.0
         # The Input section: the workspace's photon streams (manifest ``accepts`` ``photons``).
         from chisurf.plugins.burst.workspace_io import NamedWorkspaceInput, input_spec
 
@@ -309,18 +334,111 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
     # -- actions --------------------------------------------------------------------------------------------- #
     @property
     def running(self) -> bool:
-        return bool(self.job.busy)
+        """A run is on: the search Next waits for, or the job writing (or searching) the bursts."""
+        return bool(self.job.busy) or self._commit_key is not None
 
     def run(self, force: bool = False) -> bool:
-        """Run (or, with *force*, Restart) the search over every file; ``False`` when it did not start."""
+        """Run (or, with *force*, Restart) the search over every file; ``False`` when it did not start.
+
+        In the pipeline a search of the same settings that ran ahead (:mod:`.speculative`) is
+        used: finished, only its bursts are written; still running, the run waits for it.
+        """
         if self.pipeline:  # the pipeline writes .pto only; zipped folders are Legacy Export's
             self.model.zip_output = self.model.remove_folder = False
         why = self.model.prepare_run(force=force)
         if why is not None:
             self.model.status_text = why
             return False
+        key = self.model.search_key()
+        ahead = self.model.search_ahead_request() if self.speculation is not None and not force else None
+        if ahead is not None:
+            if self.speculation.result_for(key) is None and not self.speculation.error_for(key):
+                self.speculation.want(key, self.model.files, ahead, delay_s=0.0)
+                self.speculation.tick()
+            self._commit_key = key
+            self.model.status_text = "Waiting for the search …"
+            self._commit()
+            return True
+        self.model._reuse = None
+        self._job_key = key
         self.job.start("run")
         return True
+
+    def _commit(self) -> None:
+        """Next waits for the search ahead: once it is done, write its bursts (or, when it
+        failed or is gone, search the usual way -- that run says why)."""
+        key = self._commit_key
+        if key is None or self.job.busy or self.speculation is None:
+            return
+        found = self.speculation.result_for(key)
+        if found is None and self.speculation.has(key) and not self.speculation.error_for(key):
+            return  # still searching
+        self._commit_key = None
+        self.model._reuse = found
+        self._job_key = key
+        self.job.start("run")
+
+    def _speculate(self, delay_s: float | None = None) -> None:
+        """Want the search of the current settings (it starts once they have been still)."""
+        spec = self.speculation
+        if spec is None or self.job.busy or self._commit_key is not None:
+            return
+        m = self.model
+        if not m.files or not m.detectors:
+            spec.forget()
+            return
+        if not self._background_ready():
+            return  # CUSUM's background rate lands in a moment: searching now would be searched again
+        try:
+            request = m.search_ahead_request()
+            key = m.search_key() if request is not None else None
+        except Exception:  # noqa: BLE001 - nothing to search ahead; Next searches itself
+            return
+        if request is None or key == self._stored_key:
+            return
+        spec.want(key, m.files, request, delay_s=delay_s)
+        spec.tick()
+
+    def _background_ready(self) -> bool:
+        """CUSUM/SPRT needs its background rate (prefilled from the Background tool) first."""
+        m = self.model
+        if str(m.algorithm) != "cusum_sprt":
+            return True
+        return float(m.search.background_cps or 0.0) > 0.0 and getattr(self, "_background", 1) is not None
+
+    def prefetch(self) -> None:
+        """The pipeline handed this step its files: search ahead now (no wait for still settings)."""
+        self._speculate(delay_s=0.0)
+
+    def _search_line(self) -> None:
+        """The run's progress inline: the search ahead, the wait for it, the write."""
+        spec = self.speculation
+        if spec is None:
+            return
+        fraction: float | None = None
+        if self.job.busy:
+            text = self.job.progress or self.model.status_text
+        elif self._commit_key is not None:
+            line, fraction = spec.status()
+            text = tr("Next: the bursts are written when the search is done.") + " " + line
+        else:
+            text, fraction = spec.status()
+            if text and spec.result_for(self.model.search_key() if self.model.files else "") is not None:
+                text += " " + tr("- {run} keeps them.").format(run=tr(self.model.run_word))
+        if not text:
+            return
+        im.push_text_wrap_pos(0.0)
+        im.text_disabled(text)
+        im.pop_text_wrap_pos()
+        im.set_item_tooltip(tr(
+            "The search runs in the background as soon as the files, the setup and the settings are "
+            "known, and again when a setting changes. Next uses its bursts (only writing them takes "
+            "a moment); you can go on working meanwhile."))
+        self.remember("search_ahead")
+        busy = self.job.busy or spec.running or spec.pending or self._commit_key is not None
+        if busy:
+            # unknown size (one file): the indeterminate bar
+            im.progress_bar(float(fraction) if fraction is not None else -time.monotonic() * 0.5, (-1, 4))
 
     def set_advanced(self, advanced: bool) -> None:
         """The pipeline's Simple / Advanced mode: Simple shows only the essential inputs -- the
@@ -646,6 +764,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             self.labels.measure([f["label"] for f in labelled(static + params + nested)])
             self.labels.pad(static)
         self.labels.pad(params + nested)
+        self._search_line()
         im.begin_disabled(busy)
         draw_sections(self.search_sections, target, self.form)
         self.remember("search", None)
@@ -782,6 +901,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         m = self.model
         if self.pipeline and (self.job.progress or m.status_text):  # the files tab is hidden
             im.text_wrapped(self.job.progress or m.status_text)
+            self._search_line()
             im.separator()
         if not m.has_processed and m.display_frame is None:
             im.text_wrapped(
@@ -1085,10 +1205,21 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         if self.job.poll():
             self.model.remember()
             self._diag_due = time.monotonic()
+            self._stored_key = None if self.job.error else self._job_key
             if not self.job.error:
                 self._register_runs()
             if self.on_run_done is not None and not self.job.error:
                 self.on_run_done(self.model)
+        if self.speculation is not None:
+            self._commit()
+            if time.monotonic() - self._speculated_at >= SPECULATE_EVERY:
+                self._speculated_at = time.monotonic()
+                self._speculate()
+            else:
+                self.speculation.tick()
+            spec = self.speculation
+            if spec.running or spec.pending or self._commit_key is not None:
+                ctx.request_frame_at(ctx.io.now + 0.25)
         if self.job.busy or self._diag_due is not None or self.diagnostics_running:
             ctx.request_frame_at(ctx.io.now + 0.1)
         self._diagnostics_tick()

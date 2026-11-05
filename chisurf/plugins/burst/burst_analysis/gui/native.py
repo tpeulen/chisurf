@@ -686,6 +686,9 @@ class BurstAnalysisHubApp(ToolHubApp):
             use(paths, uids)  # each file's runs go into its workspace dataset's analysis container
         elif paths and not child.model.files:
             child.model.add_paths(self.context.raw_files)
+        prefetch = getattr(child, "prefetch", None)
+        if callable(prefetch):
+            prefetch()  # search ahead now: Next then only writes the bursts
 
     def _to_fusion(self, child) -> None:
         settings = self.context.channel_settings

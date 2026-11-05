@@ -1008,9 +1008,45 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
             return str(exc)
         return None
 
+    #: A finished search of the current request that wrote nothing (run ahead of time, see
+    #: :mod:`.speculative`): :meth:`run` stores it instead of searching again.
+    _reuse: dict[str, Any] | None = None
+
+    def search_ahead_request(self) -> dict[str, Any] | None:
+        """The request a search run ahead of time makes -- :meth:`request` writing nothing --
+        or ``None`` when a run cannot be split into search and store (MMFDB archival, a
+        legacy folder or ``.bur`` tables are written by the search itself)."""
+        if not self.files or not self.detectors or not self.algorithms or self.mmfdb_output:
+            return None
+        request = self.request()
+        if list(request["settings"].get("output_formats") or []) != ["pto"]:
+            return None
+        if request["settings"].get("zip_output"):
+            return None
+        request = copy.deepcopy(request)
+        request["settings"]["output_formats"] = []
+        return request
+
+    def search_key(self) -> str:
+        """What identifies a search: the files and the request (two equal keys find the same bursts)."""
+        return json.dumps(
+            {"files": [str(p) for p in self.files], **self.request()}, sort_keys=True, default=str
+        )
+
     def run(self) -> dict[str, Any]:
-        """Search every file (worker side of the job): one backend call, per-file progress."""
+        """Search every file (worker side of the job): one backend call, per-file progress.
+
+        With :attr:`_reuse` (a search of this request that ran ahead of time) nothing is
+        searched: its bursts are written into the containers.
+        """
         paths = list(self.files)
+        reuse, self._reuse = self._reuse, None
+        if reuse is not None:
+            self.status_text = f"Writing the bursts of {len(paths)} file(s) ..."
+            self.notify("progress")
+            result = self.client.store_results(paths, reuse, **self.request())
+            self._finish(result)
+            return result
 
         def progress(done: int, total: int, path: str) -> None:
             self.status_text = f"Searched {Path(path).name} ({done}/{total})"

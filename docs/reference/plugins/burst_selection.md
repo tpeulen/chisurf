@@ -74,11 +74,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
+| Start | `window_start_s` | float |  | 0.0 … 100000.0 | Start of the visible window in the active file (s). The count rate, the inter-photon times, the decay, the preview and the histogram are computed for this slice only. |
+| Length | `window_length_s` | float |  | 0.0 … 100000.0 | Length of the visible window (s); 0 shows the whole file (slow on a large file). |
+| Bin | `trace_bin_ms` | float |  | 0.05 … 9999.0 | Bin width of the count-rate trace (ms). |
 | All photons | `show_all_photons` | bool |  |  | Draw the layers computed from every photon in the visible window. |
 | Selected photons | `show_selected_photons` | bool |  |  | Draw the layers computed from the photons the search kept. |
-| Window start (s) | `window_start_s` | float |  | 0.0 … 100000.0 | Start of the visible window in the active file. The plots and the preview are computed for this slice only. |
-| Window length | `window_length_s` | float |  | 0.0 … 100000.0 | Length of the visible window; 0 shows the whole file. |
-| MCS bin width | `trace_bin_ms` | float |  | 0.05 … 9999.0 | Bin width of the count-rate trace. |
 
 ### Histogram
 
@@ -116,6 +116,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Method | Long-running | Summary |
 | --- | --- | --- |
 | `burst_selection.jobs.analyze_files` | yes | Run burst selection analysis over TTTR files. |
+| `burst_selection.jobs.store_results` | no | Write the bursts of a search that wrote nothing (run ahead of time) into the measurements' containers. |
 | `burst_selection.results.inspect_bur` | no | Inspect a saved ChiSurf .bur file. |
 | `burst_selection.gmm.fit` | no | Fit a GMM to features extracted from a .bur file. |
 | `burst_selection.diagnostics.load` | no | Run photon filtering and burst finding for diagnostic plots. |
