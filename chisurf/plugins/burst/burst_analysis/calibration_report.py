@@ -11,9 +11,7 @@ from the measurement's photon streams, so it is found with the bursts it belongs
 
 from __future__ import annotations
 
-import hashlib
 import json
-from functools import lru_cache
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -33,22 +31,19 @@ _FIT_KEYS = (
 )
 
 
-@lru_cache(maxsize=256)
-def _sha256(path: str, size: int, mtime: float) -> str:
-    digest = hashlib.sha256()
-    with open(path, "rb") as fh:
-        for chunk in iter(lambda: fh.read(1 << 22), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
 def file_entry(path: str | Path) -> dict[str, Any]:
-    """``{"path", "name", "size", "sha256"}`` of a file (no hash when it cannot be read)."""
+    """``{"path", "name", "size", "sha256"}`` of a file (no hash when it cannot be read).
+
+    The digest is the project's (:func:`chisurf.core.project.links.file_digest`, remembered per
+    path, size and modification time): the measurement's container hashed the same file when the
+    data arrived, so the report does not read 300 MB again (0.6 s on the UI thread)."""
+    from chisurf.core.project.links import file_digest
+
     p = Path(path)
     try:
         stat = p.stat()
         return {"path": str(p), "name": p.name, "size": int(stat.st_size),
-                "sha256": _sha256(str(p), int(stat.st_size), float(stat.st_mtime))}
+                "sha256": file_digest(p)[1]}
     except OSError:
         return {"path": str(p), "name": p.name, "size": None, "sha256": None}
 

@@ -255,6 +255,54 @@ def parse_channel_list(text: str) -> list[int]:
 # ----------------------------------------------------------------------
 
 
+def correlate_masked(
+    times: np.ndarray,
+    mask_a: np.ndarray,
+    mask_b: np.ndarray,
+    n_bins: int,
+    n_casc: int,
+) -> tuple[np.ndarray, np.ndarray] | tuple[None, None]:
+    """The correlation of the photons *mask_a* selects of *times* with those *mask_b* selects.
+
+    What weighting every photon by its mask gives (``set_weights(mask_a, mask_b)`` over all of
+    *times*), bit for bit, but the correlator only walks the selected photons: a photon of
+    weight 0 adds 0.0 to every sum it enters, so it can be left out -- except the first and the
+    last, which stay in (weight 0) because the stream's span is the normalisation's time. On a
+    reference dye whose detector holds a third of the photons this is a third of the work, and
+    no full-length float weight arrays.
+
+    Parameters
+    ----------
+    times : numpy.ndarray
+        Macro times of the photons, ascending.
+    mask_a, mask_b : numpy.ndarray of bool
+        The photons of the two channels.
+    n_bins, n_casc : int
+        Bins per cascade and cascades of the multi-tau correlator.
+
+    Returns
+    -------
+    tuple
+        ``(lag ticks, G(tau))``, or ``(None, None)`` when a channel has no photon.
+    """
+    times = np.asarray(times)
+    n = times.size
+    if n == 0:
+        return None, None
+    streams = []
+    for mask in (np.asarray(mask_a, dtype=bool), np.asarray(mask_b, dtype=bool)):
+        keep = mask.copy()
+        if not keep.any():
+            return None, None
+        keep[0] = keep[-1] = True
+        index = np.flatnonzero(keep)
+        streams.append((np.ascontiguousarray(times[index]), mask[index].astype(np.float64)))
+    correlator = tttrlib.Correlator(n_bins=int(n_bins), n_casc=int(n_casc), make_fine=False)
+    correlator.set_macrotimes(streams[0][0], streams[1][0])
+    correlator.set_weights(streams[0][1], streams[1][1])
+    return np.asarray(correlator.x_axis), np.asarray(correlator.correlation, dtype=float)
+
+
 def correlate_single_burst(
     tttr: tttrlib.TTTR,
     chs_a: list[int],
@@ -291,9 +339,7 @@ def correlate_single_burst(
     if micro_b:
         m_b = np.logical_and(m_b, micro_time_mask(tttr.micro_times, micro_b))
 
-    w1 = np.array(m_a, dtype=np.float64)
-    w2 = np.array(m_b, dtype=np.float64)
-    if w1.sum() <= 0.0 or w2.sum() <= 0.0:
+    if not m_a.any() or not m_b.any():
         return None, None
 
     try:
@@ -301,6 +347,12 @@ def correlate_single_burst(
     except Exception:
         dT_ms = 1.0
 
+    if not make_fine:
+        lags, g = correlate_masked(t, m_a, m_b, n_bins, n_casc)
+        return np.asarray(lags, dtype=float) * dT_ms, g
+
+    w1 = np.array(m_a, dtype=np.float64)
+    w2 = np.array(m_b, dtype=np.float64)
     settings = {"n_bins": int(n_bins), "n_casc": int(n_casc), "make_fine": bool(make_fine)}
     correlator = tttrlib.Correlator(**settings)
     correlator.set_macrotimes(t, t)

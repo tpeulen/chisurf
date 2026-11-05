@@ -22,9 +22,11 @@ here imports a GUI toolkit.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import math
 import re
+import threading
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -402,13 +404,39 @@ def _file_type(setup: Mapping) -> str | None:
     return None if not file_type or file_type.lower() == "auto" else file_type
 
 
+#: The reads of the :func:`calibrate` running on this thread (``{path: TTTR}``), else unset.
+_READS = threading.local()
+
+
+@contextlib.contextmanager
+def _one_read_per_file():
+    """Inside, :func:`_open` reads each file once: a calibration asks for a reference dye's
+    photons per detector (its G factors), again for its confocal volume and its count rate.
+    Nothing here changes the photons it is handed. Released when the block ends."""
+    outer = getattr(_READS, "memo", None)
+    if outer is None:
+        _READS.memo = {}
+    try:
+        yield
+    finally:
+        if outer is None:
+            _READS.memo = None
+
+
 def _open(path: str | Path, setup: Mapping) -> Any:
     """The photons of *path*, read with the corrections of *setup* itself (its LUTs and channel
     shifts) -- never those of whichever setup another tool published last."""
     from chisurf.core.data_io.detector_setups import setup_lut_open_kwargs
     from chisurf.core.fio.staging import open_tttr
 
-    return open_tttr(Path(path), _file_type(setup), cache=False, **setup_lut_open_kwargs(dict(setup)))
+    memo = getattr(_READS, "memo", None)
+    key = (str(path), json.dumps(setup_lut_open_kwargs(dict(setup)), sort_keys=True, default=str))
+    if memo is not None and key in memo:
+        return memo[key]
+    tttr = open_tttr(Path(path), _file_type(setup), cache=False, **setup_lut_open_kwargs(dict(setup)))
+    if memo is not None:
+        memo[key] = tttr
+    return tttr
 
 
 def _binning(setup: Mapping) -> int:
@@ -426,7 +454,9 @@ def _gate(info: Mapping, binning: int, n_bins: int) -> tuple[int, int]:
 
 
 def _seconds(tttr: Any) -> float:
-    macro = np.asarray(tttr.macro_times)
+    from chisurf.core.fio.photon_views import photon_column
+
+    macro = photon_column(tttr, "macro_times")
     if macro.size < 2:
         return 0.0
     return float((int(macro[-1]) - int(macro[0])) * float(tttr.header.macro_time_resolution))
@@ -434,10 +464,12 @@ def _seconds(tttr: Any) -> float:
 
 def _in_gate_mask(tttr: Any, info: Mapping, binning: int, n_raw: int) -> np.ndarray:
     """Photons of *info*'s channels inside its first micro-time gate."""
+    from chisurf.core.fio.photon_views import photon_column
+
     chs = [int(c) for c in info.get("chs", [])]
-    mask = np.isin(np.asarray(tttr.routing_channels), chs)
+    mask = np.isin(photon_column(tttr, "routing_channels"), chs)
     lo, hi = _gate(info, 1, n_raw)
-    micro = np.asarray(tttr.micro_times)
+    micro = photon_column(tttr, "micro_times")
     return mask & (micro >= lo) & (micro < hi)
 
 
@@ -620,23 +652,41 @@ def diffusion_3d(tau_ms: np.ndarray, n: float, tau_d_ms: float, s: float, offset
 def _correlate(tttr: Any, info: Mapping, n_chunks: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """The mean correlation of *info*'s photons over *n_chunks* equal parts of the measurement
     and its standard error: the cross-correlation of the parallel and the perpendicular channels
-    (free of dead time and afterpulsing), else the autocorrelation of the one channel."""
-    from chisurf.plugins.burst.burst_fcs_correlator.core.algorithms import correlate_single_burst
+    (free of dead time and afterpulsing), else the autocorrelation of the one channel.
+
+    The channels' masks are made once for the whole measurement and each part is a view of the
+    arrays (no photon stream cut out per part); the correlator walks only the channels' photons
+    (:func:`..burst_fcs_correlator.core.algorithms.correlate_masked`, the same curve)."""
+    from tttrlib import micro_time_mask
+
+    from chisurf.core.fluorescence.channels import channel_mask
+    from chisurf.plugins.burst.burst_fcs_correlator.core.algorithms import correlate_masked
 
     chs = [int(c) for c in info.get("chs", [])]
     a, b = (chs[::2], chs[1::2]) if len(chs) >= 2 else (chs, chs)
     gates = [list(g) for g in (info.get("micro_time_ranges") or []) if g and len(g) >= 2]
     n = len(tttr)
+    from chisurf.core.fio.photon_views import photon_column
+
+    macro = photon_column(tttr, "macro_times")
+    routing = photon_column(tttr, "routing_channels")
+    in_gate = micro_time_mask(photon_column(tttr, "micro_times"), gates) if gates else None
+    masks = []
+    for group in (a, b):
+        mask = channel_mask(routing, group)
+        masks.append(np.logical_and(mask, in_gate) if in_gate is not None else mask)
+    dt_ms = float(tttr.header.macro_time_resolution) * 1000.0
     edges = np.linspace(0, n, max(1, int(n_chunks)) + 1).astype(int)
     curves = []
     tau = None
     for start, stop in zip(edges[:-1], edges[1:]):
         if stop - start < 1000:
             continue
-        t, g = correlate_single_burst(tttr[int(start):int(stop)], a, b, gates, gates, 8, 22, False)
-        if t is None:
+        part = slice(int(start), int(stop))
+        lags, g = correlate_masked(macro[part], masks[0][part], masks[1][part], 8, 22)
+        if lags is None:
             continue
-        tau = t
+        tau = np.asarray(lags, dtype=float) * dt_ms
         curves.append(np.asarray(g, dtype=float))
     if tau is None or not curves:
         return np.zeros(0), np.zeros(0), np.zeros(0)
@@ -851,6 +901,12 @@ def calibrate(
         *dyes*, :func:`dye_diffusion`), the ``dye`` and the ``D_source``, and its ``files``; what
         could not be computed is said in ``errors``. *progress* is told what is being computed.
     """
+    with _one_read_per_file():
+        return _calibrate(rows, setup, dyes=dyes, progress=progress)
+
+
+def _calibrate(rows, setup, *, dyes=None, progress=None) -> dict[str, Any]:
+    """:func:`calibrate`, each file read once."""
     say = progress if callable(progress) else (lambda _text: None)
     dyes = dict(dyes or {})
     groups = {g["colour"]: g for g in colour_groups(setup)}
