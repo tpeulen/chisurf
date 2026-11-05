@@ -4,6 +4,18 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Red before the nomenclature sweep (found 2026-11-05)
+
+status: open — red on the commits the sweep started from (chisurf 06a445974, ndX 4490dcd) or on HEAD without its changes:
+ChiSurf `test/fio/test_batch_run_lineage.py::test_mle_batch_rows_carry_the_run_and_two_searches_keep_two_fits`
+(no fits derived per search), `test/native_emtk/test_emtk_shell_datasets_stretch.py::test_the_tables_take_the_dock_and_the_status_one_line[size0-0.7]`
+(tables 185 of 274 px, red on HEAD 1585c3c9c without the sweep's working tree), about 20 further `test/native_emtk` shell tests
+red on both trees (MMFDB RPC timeouts in the run); ndX `tests/test_project_burst_runs.py::test_the_runs_of_an_embedded_container_are_stores_of_the_project`
+(`p.cs.pto/m000.pto: Not a directory`) and `tests/test_works_without_chisurf.py::test_overlay_curves_and_the_curve_fit`
+(the curve fit imports `chisurf.core` with ChiSurf blocked). tttrlib's
+`test_a_range_written_lo_colon_hi_is_a_gated_stream` is red until the arm64 tttrlib is built from f2f21e89e.
+ndX `test_cal1_keeps_its_numbers_in_every_mode` was red since the rate x duration background (re-pinned in ndX 5e67463: γ 0.7952).
+
 ## ndX and mmfdb tests red before the Bg_<detector> change (found 2026-11-04)
 
 status: open — not caused by it (red on ndX HEAD bd109c7 run from a `git archive` copy):
