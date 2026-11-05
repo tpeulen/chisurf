@@ -164,7 +164,8 @@ class BurstSelectionClient:
         Returns
         -------
         dict
-            *result* with ``output_paths`` and ``output_paths_by_file`` of the runs written.
+            *result* with ``output_paths`` and ``output_paths_by_file`` of the runs written (the
+            service returns only those: the bursts are *result*'s own).
 
         Raises
         ------
@@ -182,7 +183,11 @@ class BurstSelectionClient:
         if not svc_result.get("ok", True):
             err_msg = svc_result.get("error", "unknown error")
             raise RuntimeError(f"burst_selection.jobs.store_results failed: {err_msg}")
-        return svc_result.get("result", {})
+        stored = svc_result.get("result", {}) or {}
+        return {
+            **result,
+            **{key: stored[key] for key in ("output_paths", "output_paths_by_file", "warnings") if key in stored},
+        }
 
     def save_bur(self, dataframe, path: Path) -> None:
         """Save a burst DataFrame as a .bur file.

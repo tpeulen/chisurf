@@ -220,7 +220,7 @@ def store_results_handler(
     Returns
     -------
     dict
-        JSON-serializable ServiceResult: *result* with the paths written.
+        JSON-serializable ServiceResult: the paths written (no burst rows: they are *result*'s).
     """
     try:
         request = analysis_request_from_payload(

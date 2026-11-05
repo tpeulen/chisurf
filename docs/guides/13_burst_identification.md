@@ -218,10 +218,13 @@ window takes longer than about 0.25 s. Four things make that possible:
 - Each step's work starts ahead of time:
   - the burst search itself: as soon as the step knows the files, the setup and
     the settings, Burst Selection searches in the background and writes nothing.
+    The bursts it finds are on show at once (table, histogram, summary), before
+    anything is stored; CUSUM's background rate is estimated for it from the
+    file, without waiting for the settings to be drawn.
     A changed setting searches again once the settings have been still for
     0.8 s (the search of the old settings is dropped). **Next** with the same
-    settings only writes the bursts found (about 1 s on the 311 MB file instead
-    of a 12 s search); pressed while the search still runs, it waits for that
+    settings only writes the bursts found (a few seconds on the 311 MB file
+    instead of a search plus the write); pressed while the search still runs, it waits for that
     search instead of starting another. No blur covers the window meanwhile: a
     line with a bar above the search settings (and in Summary) says what is
     running, and the settings stay editable;

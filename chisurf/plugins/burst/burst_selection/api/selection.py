@@ -903,8 +903,9 @@ def store_results(request: AnalysisRequest, result: dict[str, Any]) -> AnalysisR
     keeps the result only when they go on): *result* is that search's result (its
     ``dataframes`` per file and ``metadata["alex_phase_by_file"]``), *request* the one the
     search would have run with -- same settings, now with ``output_formats`` ``["pto"]``.
-    Writes each file's run exactly as the search would have; returns the result with the
-    paths filled in.
+    Writes each file's run exactly as the search would have; returns where they went (the
+    paths, the metadata) -- *without* the burst rows, which the caller already holds: sending
+    20 000 bursts back through the service envelope took 6 s, writing them 0.3 s.
 
     Raises
     ------
@@ -930,7 +931,7 @@ def store_results(request: AnalysisRequest, result: dict[str, Any]) -> AnalysisR
         by_file[str(path)] = stored
     return AnalysisResult(
         files=request.files,
-        dataframes=frames,
+        dataframes={},
         output_paths=output_paths,
         output_paths_by_file=by_file,
         metadata=metadata,

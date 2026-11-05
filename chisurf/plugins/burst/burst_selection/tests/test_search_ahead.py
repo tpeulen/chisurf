@@ -164,3 +164,37 @@ def test_the_display_range_is_above_the_plots_in_simple_mode(step):
     drv.click_text("Count rate")
     drv.draw(2)
     assert "trace_bin_ms" in step.display_form.rects
+
+
+def test_the_bursts_found_ahead_are_shown_before_next(step):
+    """The table, histogram and summary show the bursts found ahead at once; nothing is stored."""
+    m = step.model
+    drv = Driver(step, (1200, 800))
+    step.prefetch()
+    _until(drv, lambda: step.speculation.done)
+    drv.draw(3)
+    assert m.ahead is not None and m.display_frame is not None
+    assert not m.has_processed  # the step is not done before Next stores them
+    assert "searched in" in m.status_text and "Next keeps them" in m.status_text
+    line, _ = step.speculation.status()
+    assert "(0 s)" not in line and " s." in line
+    m.min_photons = 80  # another setting: the old bursts leave the display
+    m.settings_changed()
+    step._speculate(delay_s=0.0)
+    assert m.ahead is None
+
+
+def test_cusum_background_is_estimated_without_drawing_the_settings(step):
+    """CUSUM's prefilled background rate comes from the model, so a search ahead the hub asks for
+    before the step was ever drawn does not wait for Filter settings."""
+    m = step.model
+    m.set_algorithm("cusum_sprt")
+    m.search.background_cps = 0.0
+    m._prefilled_cps = None
+    end = time.monotonic() + 60
+    while not m.sync_search_background() and time.monotonic() < end:
+        time.sleep(0.05)
+    assert m.background_estimate, "no estimate"
+    assert float(m.search.background_cps) == pytest.approx(sum(m.background_estimate.values()))
+    step.prefetch()  # no frame drawn
+    assert step.speculation.has(m.search_key())

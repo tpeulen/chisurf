@@ -34,9 +34,14 @@ longer in Filter settings. Guard: `burst_selection/tests/test_search_ahead.py`. 
   search ahead's in-memory table, before the run is written. Today MLE only starts from a written
   run (hub `_selection_done` -> `_to_mle`); it needs a public MLE hook taking `(photon file, burst
   table, setup)` -- an MLE-lane change, not done here.
-- *A CUSUM search waits for its prefilled background rate* (`_background_ready`); the estimate is
-  made only while Filter settings is drawn, so a hub `prefetch()` before the step was ever shown
-  skips CUSUM with no typed rate. Moving the estimate into the model would let it prefetch too.
+- ~~*A CUSUM search waits for the background estimate drawn with Filter settings*~~ -- done: the
+  model makes it (`sync_search_background`, from the preview's photons or the file, read once).
+  The search ahead's bursts are on show at once (`show_ahead`; dropped on a settings change).
+  Real data on `ssh home` (DNA13bp_3, the owner's CUSUM settings, 21808 bursts): search ahead
+  7.0 s, Next 3.8 s until the next step opens (store 0.3 s + the hub hand-off; the service used to
+  send the 21808 bursts back as JSON -- 6 s -- it now returns only the paths). Shots
+  `scratchpad/spec/shots_real/after_*.png`. On home `test_native_app_is_qt_free` fails only
+  because its subprocess drops `PYTHONPATH` (old tttrlib 0.27 without `as_micro_time_windows`).
 - *Drag/zoom of the plot does not move the window*: `trace_plot.py` accepts an `"x_range"` request
   in its state; wiring a pan past the window's end to `window_start_s` is the next step.
 

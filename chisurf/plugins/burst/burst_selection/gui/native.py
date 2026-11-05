@@ -91,6 +91,14 @@ def _sections(spec: dict, *titles: str) -> list[dict]:
     return [s for s in spec["sections"] if s.get("title") in titles]
 
 
+def _stretch_sliders(sections: list[dict]) -> None:
+    """Drop the field width :func:`cap_widths` gave the sliders of *sections*: a slider stretches."""
+    for sec in sections:
+        if sec.get("style") == "slider":
+            sec.pop("width", None)
+        _stretch_sliders(sec.get("sections") or [])
+
+
 def _without(sections: list[dict], attr: str) -> list[dict]:
     """*sections* with the field *attr* left out (at any depth)."""
     return [
@@ -159,6 +167,8 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         #: search was last looked at (every :data:`SPECULATE_EVERY` s).
         self._stored_key: str | None = None
         self._job_key: str | None = None
+        #: The key of the search ahead whose bursts are on show (not stored yet).
+        self._shown_key: str | None = None
         self._speculated_at = 0.0
         # The Input section: the workspace's photon streams (manifest ``accepts`` ``photons``).
         from chisurf.plugins.burst.workspace_io import NamedWorkspaceInput, input_spec
@@ -188,6 +198,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         self.filter_sections = _sections(spec, "Channel selection", "Macro time interval", "Filter")
         #: The visible window and what the plots draw: above the plots, in every mode.
         self.display_sections = _sections(spec, "Display")
+        _stretch_sliders(self.display_sections)  # the window's start takes the width there is
         self.display_form = FormState()
         self.hist_sections = _sections(spec, "Histogram")
         self.gmm_table = _sections(spec, "GMM")
@@ -275,7 +286,6 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
 
     def _guide_steps(self) -> list:
         """The tour: in the pipeline, without the steps that point into a dock it hides."""
-        import json
 
         steps = json.loads((HERE / "guide.json").read_text(encoding="utf-8"))
         listed = steps.get("steps", steps) if isinstance(steps, dict) else steps
@@ -387,7 +397,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         if not m.files or not m.detectors:
             spec.forget()
             return
-        if not self._background_ready():
+        if not m.sync_search_background():
             return  # CUSUM's background rate lands in a moment: searching now would be searched again
         try:
             request = m.search_ahead_request()
@@ -396,15 +406,16 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             return
         if request is None or key == self._stored_key:
             return
+        if m.ahead is not None and key != self._shown_key:
+            m.drop_ahead()  # the bursts on show are the old settings'
+            self._shown_key = None
+            self._diag_due = time.monotonic()  # the window's preview again, for the new settings
         spec.want(key, m.files, request, delay_s=delay_s)
         spec.tick()
-
-    def _background_ready(self) -> bool:
-        """CUSUM/SPRT needs its background rate (prefilled from the Background tool) first."""
-        m = self.model
-        if str(m.algorithm) != "cusum_sprt":
-            return True
-        return float(m.search.background_cps or 0.0) > 0.0 and getattr(self, "_background", 1) is not None
+        found = spec.result_for(key)
+        if found is not None and key != self._shown_key and not m.has_processed:
+            m.show_ahead(found, spec.seconds_for(key))
+            self._shown_key = key
 
     def prefetch(self) -> None:
         """The pipeline handed this step its files: search ahead now (no wait for still settings)."""
@@ -421,10 +432,12 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         elif self._commit_key is not None:
             line, fraction = spec.status()
             text = tr("Next: the bursts are written when the search is done.") + " " + line
+        elif self._stored_key is not None and spec.has(self._stored_key) and not spec.pending:
+            return  # the bursts searched ahead are stored: Summary says so
         else:
             text, fraction = spec.status()
             if text and spec.result_for(self.model.search_key() if self.model.files else "") is not None:
-                text += " " + tr("- {run} keeps them.").format(run=tr(self.model.run_word))
+                text += " " + tr("{run} keeps them.").format(run=tr(self.model.run_word))
         if not text:
             return
         im.push_text_wrap_pos(0.0)
@@ -810,61 +823,22 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         essential = sorted((p for p in params if p.get("attr") in names), key=lambda p: names.index(p["attr"]))
         return essential, [p for p in params if p.get("attr") not in names]
 
-    def _selecting_detectors(self) -> dict:
-        """The detectors the bursts are selected on: the one picked in Channel selection, else all."""
-        m = self.model
-        detectors = {
-            str(name): {"chs": [int(c) for c in (d or {}).get("chs", [])],
-                        "micro_time_ranges": [list(r) for r in (d or {}).get("micro_time_ranges") or []]}
-            for name, d in (m.detectors or {}).items()
-            if (d or {}).get("chs")
-        }
-        picked = getattr(m, "detector", None)
-        return {picked: detectors[picked]} if picked in detectors else detectors
-
     def _cusum_background(self) -> None:
-        """CUSUM/SPRT: search the photons of the selecting detectors, its background prefilled with
-        their Background-tool estimate (summed) -- refilled when the file or detectors change,
-        until the user types a rate of their own."""
-        from chisurf.core.fluorescence.burst.tttrlib_search import SEARCH_DETECTORS
-
-        m = self.model
-        if str(m.algorithm) != "cusum_sprt":
-            return
-        detectors = self._selecting_detectors()
-        if m.parameters.get(SEARCH_DETECTORS) != detectors:
-            m.parameters[SEARCH_DETECTORS] = detectors
-            m.settings_changed()
-        tttr = (m.diagnostic or {}).get("tttr")
-        if tttr is None or not detectors:
-            return
-        key = (id(tttr), len(tttr), json.dumps(detectors, sort_keys=True))
-        if getattr(self, "_background_key", None) != key:
-            self._background_key, self._background = key, None
-            self._estimate_background(tttr, detectors, key)
-        found = self._background
-        if found is None:
+        """CUSUM/SPRT's background rate (the model prefills it, :meth:`.model.BurstSelectionModel.sync_search_background`);
+        while its estimate is being made, look again in a moment."""
+        if not self.model.sync_search_background():
             ctx = get_current_context()
-            ctx.request_frame_at(ctx.io.now + 0.1)  # the estimate lands in a thread: look again
-            return
-        total = sum(found.values())
-        typed = float(m.search.background_cps or 0.0)
-        prefilled = getattr(self, "_prefilled_cps", None)
-        if total > 0 and (typed <= 0 or (prefilled is not None and abs(typed - prefilled) < 1e-6)):
-            if abs(typed - total) > 1e-6:
-                m.search.background_cps = total
-                m.settings_changed()
-            self._prefilled_cps = total
+            ctx.request_frame_at(ctx.io.now + 0.1)
 
     def _background_hint(self) -> None:
         """Advanced: where the prefilled background rate comes from, per detector."""
         m = self.model
-        found = getattr(self, "_background", None)
+        found = m.background_estimate
         if str(m.algorithm) != "cusum_sprt" or not found:
             return
         shares = ", ".join(f"{name} {cps / 1e3:.2f}" for name, cps in sorted(found.items()))
         typed = float(m.search.background_cps or 0.0)
-        own = getattr(self, "_prefilled_cps", None)
+        own = m._prefilled_cps
         source = (tr("the Background tool's estimate") if own is not None and abs(typed - own) < 1e-6
                   else tr("typed; the Background tool estimates {:.2f}").format(sum(found.values()) / 1e3))
         im.push_text_wrap_pos(0.0)
@@ -876,22 +850,6 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             "routing channels is fitted to the tail of its inter-photon times in one shared window, as "
             "the Background tool does; the search tests against the sum. Type a rate to use that "
             "instead."))
-
-    def _estimate_background(self, tttr, detectors: dict, key) -> None:
-        """The Background tool's per-detector estimate of *tttr*, in a thread (~1 s on 300 MB)."""
-        import threading
-
-        from chisurf.core.fluorescence.burst.tttrlib_search import detector_backgrounds_cps
-
-        def work() -> None:
-            try:
-                found = detector_backgrounds_cps(tttr, detectors)
-            except Exception:  # noqa: BLE001 - no prefill rather than a broken panel
-                found = None
-            if getattr(self, "_background_key", None) == key:
-                self._background = found
-
-        threading.Thread(target=work, name="background-estimate", daemon=True).start()
 
     def _detectors(self, box=None) -> None:
         self.remember("detectors", box)

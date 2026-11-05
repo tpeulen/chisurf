@@ -117,10 +117,17 @@ class SpeculativeSearch:
             return f"The search ahead failed: {s.error}", None
         meta = (s.result or {}).get("metadata") or {}
         return (
-            f"Searched ahead: {meta.get('n_bursts', 0)} bursts in {meta.get('n_files', 0)} file(s) "
-            f"({s.finished - s.started:.0f} s)",
+            f"Searched ahead: {meta.get('n_bursts', 0)} bursts in {meta.get('n_files', 0)} file(s), "
+            f"in {s.finished - s.started:.1f} s.",
             1.0,
         )
+
+    def seconds_for(self, key: str) -> float | None:
+        """How long the finished search of *key* took (``None``: not that search, or not done)."""
+        s = self.current
+        if s is None or s.key != key or s.finished is None:
+            return None
+        return s.finished - s.started
 
     # -- what the window tells ------------------------------------------------------------------- #
     def want(self, key: str, files, request: dict, *, now: float | None = None, delay_s: float | None = None) -> None:

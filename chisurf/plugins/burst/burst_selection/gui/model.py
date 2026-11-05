@@ -1011,6 +1011,126 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
     #: A finished search of the current request that wrote nothing (run ahead of time, see
     #: :mod:`.speculative`): :meth:`run` stores it instead of searching again.
     _reuse: dict[str, Any] | None = None
+    #: The search ahead whose bursts are on show (not stored yet): its result, ``None`` if none.
+    ahead: dict[str, Any] | None = None
+
+    # -- the search's background rate (CUSUM/SPRT) ------------------------------------------------ #
+    #: The Background tool's estimate ``{detector: cps}`` for :attr:`_background_key`; ``None``
+    #: while it is being made (or before one was asked for).
+    _background: dict[str, float] | None = None
+    _background_key: tuple | None = None
+    #: The rate this model prefilled (``None``: the rate on show was typed, or restored).
+    _prefilled_cps: float | None = None
+
+    def selecting_detectors(self) -> dict:
+        """The detectors the bursts are selected on: the one picked in Channel selection, else all."""
+        detectors = {
+            str(name): {"chs": [int(c) for c in (d or {}).get("chs", [])],
+                        "micro_time_ranges": [list(r) for r in (d or {}).get("micro_time_ranges") or []]}
+            for name, d in (self.detectors or {}).items()
+            if (d or {}).get("chs")
+        }
+        picked = getattr(self, "detector", None)
+        return {picked: detectors[picked]} if picked in detectors else detectors
+
+    @property
+    def background_estimate(self) -> dict[str, float] | None:
+        """The Background tool's per-detector estimate the search's rate was prefilled from."""
+        return self._background
+
+    def sync_search_background(self) -> bool:
+        """CUSUM/SPRT: search the photons of the selecting detectors, its background rate
+        prefilled with their Background-tool estimate (summed) -- refilled when the file or the
+        detectors change, until the user types a rate of their own. The estimate is made on a
+        thread from the active file (the preview's photons when they are read, else the file),
+        so it is there before the step was ever drawn.
+
+        Returns whether the search may run with the rate it has (``False`` while the estimate
+        that will replace it is still being made).
+        """
+        from chisurf.core.fluorescence.burst.tttrlib_search import SEARCH_DETECTORS
+
+        if str(self.algorithm) != "cusum_sprt":
+            return True
+        detectors = self.selecting_detectors()
+        if self.parameters.get(SEARCH_DETECTORS) != detectors:
+            self.parameters[SEARCH_DETECTORS] = detectors
+            self.settings_changed()
+        path = self.active_file
+        if path is None or not detectors:
+            return True
+        key = (str(path), json.dumps(detectors, sort_keys=True))
+        if self._background_key != key:
+            self._background_key, self._background = key, None
+            self._estimate_background(path, detectors, key)
+        typed = float(self.search.background_cps or 0.0)
+        found = self._background
+        if found is None:
+            # a rate of the user's own (typed, or restored) is not replaced: search with it
+            return typed > 0 and self._prefilled_cps is None
+        total = sum(found.values())
+        prefilled = self._prefilled_cps
+        if total > 0 and (typed <= 0 or (prefilled is not None and abs(typed - prefilled) < 1e-6)):
+            if abs(typed - total) > 1e-6:
+                self.search.background_cps = total
+                self.settings_changed()
+            self._prefilled_cps = total
+        return True
+
+    def _estimate_background(self, path, detectors: dict, key) -> None:
+        """The Background tool's per-detector estimate of *path*, on a thread (~1 s on 300 MB)."""
+        from chisurf.core.fluorescence.burst.tttrlib_search import detector_backgrounds_cps
+
+        def work() -> None:
+            try:
+                diag = self.diagnostic or {}
+                tttr = diag.get("tttr") if str(diag.get("path")) == str(path) else None
+                if tttr is None:
+                    tttr = self._open_tttr.get(str(path))
+                if tttr is None:  # read as the preview reads it, and kept for it (read once)
+                    from ..api.io import load_tttr
+
+                    tttr = self._open_tttr.setdefault(str(path), load_tttr(str(path)))
+                found = detector_backgrounds_cps(tttr, detectors)
+            except Exception:  # noqa: BLE001 - no prefill rather than a broken step
+                found = {}
+            if self._background_key == key:
+                self._background = found
+
+        threading.Thread(target=work, name="background-estimate", daemon=True).start()
+
+    # -- the bursts of the search ahead on show ---------------------------------------------------- #
+    def show_ahead(self, result: dict[str, Any], seconds: float | None = None) -> None:
+        """Show the bursts a search ahead found (table, histogram, summary) before they are
+        stored; nothing is written and the step is not done until Next stores them."""
+        if self.has_processed:
+            return
+        self.ahead = result
+        dataframes = result.get("dataframes", {}) or {}
+        self.frames_by_file = {}
+        for path in self.files:
+            rows = dataframes.get(str(path))
+            self.frames_by_file[str(path)] = store_from_rows(rows) if rows else new_store()
+        self.preview = False
+        self._refresh_display_frame()
+        meta = dict(result.get("metadata") or {})
+        took = f", searched in {seconds:.1f} s" if seconds is not None else ""
+        self.status_text = (
+            f"{meta.get('n_bursts', 0)} bursts in {meta.get('n_files', len(self.files))} file(s)"
+            f"{took}; {meta.get('n_selected', 0)} of {meta.get('n_photons', 0)} photons selected. "
+            f"{self.run_word} keeps them."
+        )
+        self.notify("updated")
+
+    def drop_ahead(self) -> None:
+        """The settings changed: the bursts of the old search ahead leave the display."""
+        if self.ahead is None:
+            return
+        self.ahead = None
+        if not self.has_processed:
+            self.frames_by_file = {}
+            self.display_frame = None
+        self.notify("updated")
 
     def search_ahead_request(self) -> dict[str, Any] | None:
         """The request a search run ahead of time makes -- :meth:`request` writing nothing --
@@ -1062,6 +1182,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
 
     def _finish(self, result: dict[str, Any]) -> None:
         self.result = result
+        self.ahead = None
         dataframes = result.get("dataframes", {}) or {}
         self.frames_by_file = {}
         for path in self.files:
@@ -1315,7 +1436,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         diag["path"] = path
         self._open_tttr[str(path)] = diag["tttr"]
         self.diagnostic = diag
-        if not self.has_processed:
+        if not self.has_processed and self.ahead is None:  # the search ahead's bursts stay on show
             self._preview(diag)
         return diag
 
