@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import functools
 import hashlib
 import threading
 from collections import OrderedDict
@@ -302,25 +303,45 @@ def polarised_kernels(
     both halves) gives the plain exponential to both.
     """
     n, dt = int(n), float(dt_ns)
-    # A photon's bin minus its pulse's bin is the delay binned with a triangle, not a point:
-    # both instants fall anywhere in their bins. Sampling the decay at the bin starts instead
-    # overweights bin 0 -- at 64 ps bins and a 0.2 ns rotation that put the IRF 70 ps late.
-    oversample = 32
-    u = (np.arange(n * oversample) + 0.5) / oversample  # delays in bins
+    decay = _binned_exponential(n, dt, 1.0 / float(tau_ns))
+    if rho_ns is None or rho_ns <= 0:
+        return decay.copy(), decay.copy()
+    rotating = float(r0) * _binned_exponential(n, dt, 1.0 / float(tau_ns) + 1.0 / float(rho_ns))
+    return decay + 2.0 * rotating, decay - rotating
+
+
+#: Sub-bins of :func:`_binned_exponential`'s delays.
+_OVERSAMPLE = 32
+
+
+@functools.lru_cache(maxsize=8)
+def _delay_grid(n: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """The sub-bin delays of :func:`_binned_exponential` on *n* bins: delays (in bins), their
+    bins and the fraction into them (read-only, shared)."""
+    u = (np.arange(n * _OVERSAMPLE) + 0.5) / _OVERSAMPLE  # delays in bins
     left = np.floor(u).astype(int)
     frac = u - left
+    for a in (u, left, frac):
+        a.flags.writeable = False
+    return u, left, frac
 
-    def binned(rate: float) -> np.ndarray:
-        f = np.exp(-rate * u * dt) * (dt / oversample)
-        out = np.bincount(left, weights=f * (1.0 - frac), minlength=n + 1)
-        out[1:] += np.bincount(left, weights=f * frac, minlength=n + 1)[:-1]
-        return out[:n]
 
-    decay = binned(1.0 / float(tau_ns))
-    if rho_ns is None or rho_ns <= 0:
-        return decay, decay.copy()
-    rotating = float(r0) * binned(1.0 / float(tau_ns) + 1.0 / float(rho_ns))
-    return decay + 2.0 * rotating, decay - rotating
+@functools.lru_cache(maxsize=64)
+def _binned_exponential(n: int, dt: float, rate: float) -> np.ndarray:
+    """``exp(-rate t)`` binned like photon delays on *n* bins of *dt* (read-only, shared: the
+    rotation's search asks for the dye's plain decay at every rotation it tries).
+
+    A photon's bin minus its pulse's bin is the delay binned with a triangle, not a point: both
+    instants fall anywhere in their bins. Sampling the decay at the bin starts instead
+    overweights bin 0 -- at 64 ps bins and a 0.2 ns rotation that put the IRF 70 ps late.
+    """
+    u, left, frac = _delay_grid(n)
+    f = np.exp(-rate * u * dt) * (dt / _OVERSAMPLE)
+    out = np.bincount(left, weights=f * (1.0 - frac), minlength=n + 1)
+    out[1:] += np.bincount(left, weights=f * frac, minlength=n + 1)[:-1]
+    out = out[:n]
+    out.flags.writeable = False
+    return out
 
 
 def richardson_lucy(
@@ -347,30 +368,81 @@ def richardson_lucy(
     chi-square ``<= 1``, or stops improving (less than 0.1 % over 50 iterations),
     at most *max_iterations*: ~100 iterations for an IRF ten bins wide, ~700 for one of three.
     """
-    y = np.clip(np.asarray(data, dtype=float), 0.0, None)
+    y = np.asarray(data, dtype=float)
     m = np.ones_like(y) if mask is None else np.asarray(mask, dtype=float)
-    k = np.asarray(kernel, dtype=float)
-    k = k / k.sum()
-    kf = np.fft.rfft(k, y.size)
+    return _richardson_lucy_rows(
+        [y], [kernel], [m], iterations=iterations, floors=[floor],
+        observed=[observed], max_iterations=max_iterations,
+    )[0]
+
+
+def _richardson_lucy_rows(
+    data: Sequence[np.ndarray],
+    kernels: Sequence[np.ndarray],
+    masks: Sequence[np.ndarray],
+    *,
+    iterations: int | None,
+    floors: Sequence[float],
+    observed: Sequence[np.ndarray | None],
+    max_iterations: int = MAX_ITERATIONS,
+) -> list[np.ndarray]:
+    """:func:`richardson_lucy` of several rows of one length at once, each its own kernel, mask,
+    floor and stop: one FFT call per step for all of them (a row of 500 bins costs the FFT's
+    call more than its arithmetic). Each row's numbers are those it gives alone -- the batched
+    transform is the row transform, every other operation is per element or per row -- and a
+    row that stopped is no longer updated."""
+    n = int(np.size(data[0]))
+    y = np.clip(np.vstack([np.asarray(d, dtype=float) for d in data]), 0.0, None)
+    m = np.vstack([np.asarray(mk, dtype=float) for mk in masks])
+    k = np.zeros((len(kernels), n))
+    for i, kern in enumerate(kernels):
+        kern = np.asarray(kern, dtype=float)
+        kern = kern / kern.sum()
+        k[i, : min(n, kern.size)] = kern[:n]  # what rfft(kernel, n) transforms: cut or padded
+    kf = np.fft.rfft(k, n)
     kt = np.conj(kf)  # correlation: the kernel reversed in time
-    norm = np.fft.irfft(np.fft.rfft(m) * kt, y.size)
+    norm = np.fft.irfft(np.fft.rfft(m) * kt, n)
     norm = np.where(norm > 1e-12, norm, 1.0)
-    x = np.full_like(y, max(float((y * m).sum()) / max(float(m.sum()), 1.0), 1e-12))
-    inside = m > 0
-    counts = (y + floor if observed is None else np.asarray(observed, dtype=float))[inside]
+    rows = y.shape[0]
+    x = np.empty_like(y)
+    for i in range(rows):
+        x[i] = max(float((y[i] * m[i]).sum()) / max(float(m[i].sum()), 1.0), 1e-12)
+    inside = [m[i] > 0 for i in range(rows)]
+    floors = [float(f) for f in floors]
+    counts = [
+        (y[i] + floors[i] if observed[i] is None else np.asarray(observed[i], dtype=float))[inside[i]]
+        for i in range(rows)
+    ]
     target = 1.0  # a looser target (1 + sqrt(2/n)) stopped a three-bin IRF at TV 0.13 for 0.09
-    history: list[float] = []
+    history: list[list[float]] = [[] for _ in range(rows)]
+    active = np.arange(rows)
+    model = None  # the forward model of the active rows' x, when the stop test made it
     for it in range(1, int(iterations or max_iterations) + 1):
-        model = np.maximum(np.fft.irfft(np.fft.rfft(x) * kf, y.size), 1e-12)
-        x = x * np.fft.irfft(np.fft.rfft(m * y / model) * kt, y.size) / norm
-        np.clip(x, 0.0, None, out=x)
+        xa, ya, ma = x[active], y[active], m[active]
+        if model is None:
+            model = np.fft.irfft(np.fft.rfft(xa) * kf[active], n)
+        model = np.maximum(model, 1e-12)
+        xa = xa * np.fft.irfft(np.fft.rfft(ma * ya / model) * kt[active], n) / norm[active]
+        np.clip(xa, 0.0, None, out=xa)
+        x[active] = xa
+        model = None
         if iterations is None and it % 10 == 0:
-            fit = np.fft.irfft(np.fft.rfft(x) * kf, y.size)[inside] + floor
-            chi2r = float(np.mean((counts - fit) ** 2 / np.maximum(fit, 1.0)))
-            history.append(chi2r)
-            if chi2r <= target or (len(history) > 5 and history[-6] - chi2r < 1e-3 * chi2r):
-                break
-    return x
+            fit = np.fft.irfft(np.fft.rfft(xa) * kf[active], n)  # the next step's model, too
+            keep = []
+            for j, i in enumerate(active):
+                f = fit[j][inside[i]] + floors[i]
+                chi2r = float(np.mean((counts[i] - f) ** 2 / np.maximum(f, 1.0)))
+                h = history[i]
+                h.append(chi2r)
+                if not (chi2r <= target or (len(h) > 5 and h[-6] - chi2r < 1e-3 * chi2r)):
+                    keep.append(j)
+            if len(keep) < active.size:
+                active = active[keep]
+                fit = fit[keep]
+                if not active.size:
+                    break
+            model = fit
+    return [x[i] for i in range(rows)]
 
 
 def reference_irf(
@@ -393,34 +465,69 @@ def reference_irf(
     part of the IRF: on a simulated Rh110 it cut 0.16 ns off the IRF's centre and biased a
     2.5 ns sample to 2.67 ns.
     """
-    raw = np.asarray(counts, dtype=float)
-    lo, hi = _window(raw.size, window)
-    floor = float(np.quantile(raw[lo:hi], floor_quantile))
-    y = np.clip(raw - floor, 0.0, None)
-    # a gate that shows no decay (a green dye in the red detectors after the red pulse) has no
-    # IRF to give: its strongest peak must stand clear of the noise, as a scatter's must
-    # (measured against the gate's median: against the low floor quantile pure noise stands up)
-    level = float(np.median(raw[lo:hi]))
-    i, j = _peak_support(raw - level, np.sqrt(np.clip(raw, 1.0, None)), lo, hi, 2.0)
-    if j - i < 2 or float((raw[i:j] - level).sum()) < 5.0 * np.sqrt(max(float(raw[i:j].sum()), 1.0)):
-        return np.zeros_like(raw)
-    mask = np.zeros(raw.size)
-    mask[lo:hi] = 1.0
-    x = richardson_lucy(
-        y * mask, kernel[: raw.size], mask=mask, iterations=iterations, floor=floor, observed=raw
-    )
-    if not x[lo:hi].any():
-        return np.zeros_like(raw)
-    peak = lo + int(np.argmax(x[lo:hi]))
-    level = float(trim) * x[peak]
-    i = j = peak
-    while i > lo and x[i - 1] > level:
-        i -= 1
-    while j < hi - 1 and x[j + 1] > level:
-        j += 1
-    out = np.zeros_like(x)
-    out[i : j + 1] = x[i : j + 1]
-    return out * (float(y[lo:hi].sum()) / max(float(out.sum()), 1e-12))
+    return _reference_irfs([counts], [kernel], window=window, floor_quantile=floor_quantile,
+                           iterations=iterations, trim=trim)[0]
+
+
+def _reference_irfs(
+    counts: Sequence[np.ndarray],
+    kernels: Sequence[np.ndarray],
+    *,
+    window: tuple[int, int] | None = None,
+    floor_quantile: float = 0.1,
+    iterations: int | None = None,
+    trim: float = REFERENCE_TRIM,
+) -> list[np.ndarray]:
+    """:func:`reference_irf` of several decays (one length, one gate), deconvolved together
+    (:func:`_richardson_lucy_rows`)."""
+    prepared = []  # (raw, y, floor, mask) of each row that shows a decay, else None
+    for c in counts:
+        raw = np.asarray(c, dtype=float)
+        lo, hi = _window(raw.size, window)
+        floor = float(np.quantile(raw[lo:hi], floor_quantile))
+        y = np.clip(raw - floor, 0.0, None)
+        # a gate that shows no decay (a green dye in the red detectors after the red pulse) has no
+        # IRF to give: its strongest peak must stand clear of the noise, as a scatter's must
+        # (measured against the gate's median: against the low floor quantile pure noise stands up)
+        level = float(np.median(raw[lo:hi]))
+        i, j = _peak_support(raw - level, np.sqrt(np.clip(raw, 1.0, None)), lo, hi, 2.0)
+        if j - i < 2 or float((raw[i:j] - level).sum()) < 5.0 * np.sqrt(max(float(raw[i:j].sum()), 1.0)):
+            prepared.append(None)
+            continue
+        mask = np.zeros(raw.size)
+        mask[lo:hi] = 1.0
+        prepared.append((raw, y, floor, mask))
+    todo = [r for r, p in enumerate(prepared) if p is not None]
+    solved = dict(zip(todo, _richardson_lucy_rows(
+        [prepared[r][1] * prepared[r][3] for r in todo],
+        [np.asarray(kernels[r])[: prepared[r][0].size] for r in todo],
+        [prepared[r][3] for r in todo],
+        iterations=iterations,
+        floors=[prepared[r][2] for r in todo],
+        observed=[prepared[r][0] for r in todo],
+    ))) if todo else {}
+    out_rows = []
+    for r, p in enumerate(prepared):
+        if p is None:
+            out_rows.append(np.zeros_like(np.asarray(counts[r], dtype=float)))
+            continue
+        raw, y, _floor, _mask = p
+        lo, hi = _window(raw.size, window)
+        x = solved[r]
+        if not x[lo:hi].any():
+            out_rows.append(np.zeros_like(raw))
+            continue
+        peak = lo + int(np.argmax(x[lo:hi]))
+        level = float(trim) * x[peak]
+        i = j = peak
+        while i > lo and x[i - 1] > level:
+            i -= 1
+        while j < hi - 1 and x[j + 1] > level:
+            j += 1
+        out = np.zeros_like(x)
+        out[i : j + 1] = x[i : j + 1]
+        out_rows.append(out * (float(y[lo:hi].sum()) / max(float(out.sum()), 1e-12)))
+    return out_rows
 
 
 def _aligned_distance(a: np.ndarray, b: np.ndarray, dt_ns: float) -> float:
@@ -453,34 +560,71 @@ def reference_rotation(
     is returned. Recovers 0.12 / 0.20 / 0.40 ns within 0.04 ns on simulated Rh110, also with the
     VH response shifted and 10 % wider.
     """
+    return _reference_rotations(vv, vh, dt_ns, tau_ns, [r0], window=window, bounds_ns=bounds_ns)[0]
+
+
+def _reference_rotations(
+    vv: np.ndarray,
+    vh: np.ndarray,
+    dt_ns: float,
+    tau_ns: float,
+    r0s: Sequence[float],
+    *,
+    window: tuple[int, int] | None = None,
+    bounds_ns: tuple[float, float] = (0.02, 3.0),
+) -> list[float]:
+    """:func:`reference_rotation` at each initial anisotropy of *r0s*: the searches run side by
+    side (:func:`_golden_lockstep`), every rotation they try at a step deconvolved in one batch."""
     n = len(vv)
 
-    def mismatch(log_rho: float) -> float:
-        kv, kh = polarised_kernels(n, dt_ns, tau_ns, float(np.exp(log_rho)), r0)
-        return _aligned_distance(
-            reference_irf(vv, kv, window=window, iterations=100),
-            reference_irf(vh, kh, window=window, iterations=100),
-            dt_ns,
-        )
+    def mismatches(points: Sequence[tuple[int, float]]) -> list[float]:
+        kernels = []
+        for search, log_rho in points:
+            kernels.extend(polarised_kernels(n, dt_ns, tau_ns, float(np.exp(log_rho)), r0s[search]))
+        irfs = _reference_irfs([vv, vh] * len(points), kernels, window=window, iterations=100)
+        return [_aligned_distance(irfs[2 * p], irfs[2 * p + 1], dt_ns) for p in range(len(points))]
 
-    return float(np.exp(_golden(mismatch, np.log(bounds_ns[0]), np.log(bounds_ns[1]), 0.03)))
+    found = _golden_lockstep(mismatches, len(r0s), np.log(bounds_ns[0]), np.log(bounds_ns[1]), 0.03)
+    return [float(np.exp(v)) for v in found]
 
 
 def _golden(f, a: float, b: float, tol: float) -> float:
     """The minimum of the unimodal *f* on ``[a, b]`` by golden-section search, to *tol*."""
+    return _golden_lockstep(lambda points: [f(x) for _s, x in points], 1, a, b, tol)[0]
+
+
+def _golden_lockstep(f_many, searches: int, a: float, b: float, tol: float) -> list[float]:
+    """*searches* golden-section searches on ``[a, b]`` to *tol* (:func:`_golden`'s), stepped
+    together: ``f_many([(search, x), ...])`` gives the value of each search's function at its
+    point, so each step's evaluations are made in one call. Each search takes exactly the steps it
+    takes alone."""
     g = (np.sqrt(5.0) - 1.0) / 2.0
-    c, d = b - g * (b - a), a + g * (b - a)
-    fc, fd = f(c), f(d)
-    while b - a > tol:
-        if fc < fd:
-            b, d, fd = d, c, fc
-            c = b - g * (b - a)
-            fc = f(c)
-        else:
-            a, c, fc = c, d, fd
-            d = a + g * (b - a)
-            fd = f(d)
-    return 0.5 * (a + b)
+    lo, hi = [a] * searches, [b] * searches
+    c = [b - g * (b - a)] * searches
+    d = [a + g * (b - a)] * searches
+    first = f_many([(s, c[s]) for s in range(searches)] + [(s, d[s]) for s in range(searches)])
+    fc, fd = list(first[:searches]), list(first[searches:])
+    while True:
+        moving = [s for s in range(searches) if hi[s] - lo[s] > tol]
+        if not moving:
+            break
+        asks = []
+        for s in moving:
+            if fc[s] < fd[s]:
+                hi[s], d[s], fd[s] = d[s], c[s], fc[s]
+                c[s] = hi[s] - g * (hi[s] - lo[s])
+                asks.append((s, c[s], "c"))
+            else:
+                lo[s], c[s], fc[s] = c[s], d[s], fd[s]
+                d[s] = lo[s] + g * (hi[s] - lo[s])
+                asks.append((s, d[s], "d"))
+        values = f_many([(s, x) for s, x, _w in asks])
+        for (s, _x, which), v in zip(asks, values):
+            if which == "c":
+                fc[s] = v
+            else:
+                fd[s] = v
+    return [0.5 * (lo[s] + hi[s]) for s in range(searches)]
 
 
 #: The initial anisotropies tried, below the ideal :data:`R0`, when a reference dye does not fit
@@ -629,10 +773,16 @@ def _irf_from_reference(
     if two:
         from_data = rho_ns is None
 
-        def deconvolved(r0_: float, rho_: float | None):
-            rho_ = reference_rotation(vv, vh, dt_ns, tau_ns, window=window, r0=r0_) if rho_ is None else rho_
-            kv_, kh_ = polarised_kernels(vv.size, dt_ns, tau_ns, rho_, r0_)
-            return rho_, [reference_irf(vv, kv_, window=window), reference_irf(vh, kh_, window=window)]
+        def deconvolved(r0s: Sequence[float], rho_: float | None) -> list:
+            """``(rho, [VV IRF, VH IRF])`` at each initial anisotropy of *r0s*, the rotation from
+            the data unless given: the searches side by side, the deconvolutions in one batch."""
+            rhos = (_reference_rotations(vv, vh, dt_ns, tau_ns, r0s, window=window)
+                    if rho_ is None else [rho_] * len(r0s))
+            kernels = []
+            for r0_, rho_s in zip(r0s, rhos):
+                kernels.extend(polarised_kernels(vv.size, dt_ns, tau_ns, rho_s, r0_))
+            irfs = _reference_irfs([vv, vh] * len(r0s), kernels, window=window)
+            return [(rho_s, irfs[2 * t : 2 * t + 2]) for t, rho_s in enumerate(rhos)]
 
         def quality(r0_: float, rho_: float, parts_) -> float:
             if not all(np.any(p) for p in parts_):
@@ -640,15 +790,14 @@ def _irf_from_reference(
             return reference_fit([vv, vh], [_normalised(p) for p in parts_], dt_ns, tau_ns=tau_ns,
                                  rho_ns=rho_, r0=r0_, g_factor=g_factor, window=window).chi2r
 
-        rho_ns, parts = deconvolved(r0, rho_ns)
+        rho_ns, parts = deconvolved([r0], rho_ns)[0]
         if from_data and g_factor is not None:
             fit_chi2r = quality(r0, rho_ns, parts)
             if fit_chi2r > 2.0:
                 trials = [(fit_chi2r, r0, rho_ns, parts)]
-                for step in R0_STEPS:
-                    if step < r0:
-                        rho_s, parts_s = deconvolved(step, None)
-                        trials.append((quality(step, rho_s, parts_s), step, rho_s, parts_s))
+                steps = [step for step in R0_STEPS if step < r0]
+                for step, (rho_s, parts_s) in zip(steps, deconvolved(steps, None) if steps else []):
+                    trials.append((quality(step, rho_s, parts_s), step, rho_s, parts_s))
                 fit_chi2r, r0, rho_ns, parts = min(trials, key=lambda t: t[0])
         if from_data:
             rotation = f", rotation {rho_ns:.2f} ns" + ("" if r0 == R0 else f", r0 {r0:.2f}") + " from the data"
