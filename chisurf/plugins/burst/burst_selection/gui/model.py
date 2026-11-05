@@ -51,6 +51,9 @@ from .adapter import PROXIMITY_RATIO_COLUMN, UI_COLUMNS, burst_rows_for_display
 
 #: Bump in the same change that alters what this tool computes.
 ALGORITHM_VERSION = 1
+#: Detector fields no burst search reads: two requests that differ only in them find the same
+#: bursts (:meth:`BurstSelectionModel.search_key`).
+SEARCH_BLIND = ("g_factor", "g_factor_decay_uuid", "g_factor_calibration_id")
 
 #: Advanced Gaussian-mixture settings.
 DEFAULT_GMM_SETTINGS: dict[str, Any] = {
@@ -1144,9 +1147,22 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         return request
 
     def search_key(self) -> str:
-        """What identifies a search: the files and the request (two equal keys find the same bursts)."""
+        """What identifies a search: the files and the request (two equal keys find the same bursts).
+
+        A detector's G factor (and the record of where it came from, :data:`SEARCH_BLIND`) is not
+        part of it: no search, filter or burst summary reads it. The pipeline calibrates G from
+        the reference dyes while the search ahead runs, and with G in the key that search was
+        thrown away and run again (a whole search, 5-10 s on 12 M photons) for the same bursts.
+        The run that is stored still records the G of the request it is stored with.
+        """
+        request = self.request()
+        request["detectors"] = {
+            name: {k: v for k, v in (info or {}).items() if k not in SEARCH_BLIND}
+            if isinstance(info, dict) else info
+            for name, info in (request.get("detectors") or {}).items()
+        }
         return json.dumps(
-            {"files": [str(p) for p in self.files], **self.request()}, sort_keys=True, default=str
+            {"files": [str(p) for p in self.files], **request}, sort_keys=True, default=str
         )
 
     def run(self) -> dict[str, Any]:

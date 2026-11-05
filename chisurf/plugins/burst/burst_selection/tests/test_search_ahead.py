@@ -152,6 +152,40 @@ def test_a_setting_changed_after_the_search_ahead_searches_again(step):
     assert step.speculation.result_for(m.search_key())["metadata"]["n_bursts"] < 198
 
 
+def test_a_g_factor_calibrated_after_the_search_ahead_keeps_its_bursts(step, monkeypatch):
+    """The pipeline writes the reference dye's G into the setup while the search ahead runs: no
+    search reads G, so the search is kept (not run again) and Next stores it with the new G."""
+    import copy
+
+    m = step.model
+    drv = Driver(step, (1200, 800))
+    step.prefetch()
+    _until(drv, lambda: step.speculation.done)
+    first = m.search_key()
+    calibrated = copy.deepcopy(SETUP)
+    calibrated["detectors"]["G|G"]["g_factor"] = 1.43
+    calibrated["detectors"]["R|G"]["g_factor"] = 0.63
+    step.apply_setup(calibrated)
+    m.settings_changed()
+    step._speculate(delay_s=0.0)
+    assert m.search_key() == first and not step.speculation.pending
+    assert step.speculation.result_for(first) is not None
+
+    def no_search(*_args, **_kwargs):
+        raise AssertionError("a G factor made the step search again")
+
+    monkeypatch.setattr(m.client, "analyze_files", no_search)
+    assert step.run_step() is not False
+    _until(drv, lambda: not step.running)
+    assert not step.job.error, step.job.error
+    assert m.n_bursts == 198
+    assert m.request()["detectors"]["G|G"]["g_factor"] == 1.43  # what the run is stored with
+    moved = copy.deepcopy(calibrated)
+    moved["detectors"]["R|G"]["chs"] = [8]
+    step.apply_setup(moved)
+    assert m.search_key() != first  # a channel is read by the search
+
+
 def test_the_display_range_is_above_the_plots_in_simple_mode(step):
     drv = Driver(step, (1200, 800))
     drv.draw(3)
