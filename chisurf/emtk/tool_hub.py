@@ -426,8 +426,11 @@ class ToolHubApp(ImApp):
 
     def _shared_setup_changed(self, settings):
         """Deliver a complete private definition once per revision to every opened child."""
-        # LUT arrays must retain all values: their truncated repr is not an identity.
-        signature = json.dumps(settings, sort_keys=True, default=lambda value: value.tolist())
+        # LUT arrays must retain all values: their truncated repr is not an identity. The
+        # setup's micro-time previews enter by fingerprint (1.3 MB of JSON a call otherwise).
+        from chisurf.core.setup_channel_definition import setup_signature
+
+        signature = setup_signature(settings)
         for role, editors in self._hosted.items():
             if self._setup_handed.get(role) == signature:
                 continue

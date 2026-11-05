@@ -1983,7 +1983,9 @@ class ChannelDefinitionWidget:
 
     def hosted_changed(self, settings):
         """Deliver a private copy, or defer it while this child is read-only."""
-        self._hosted_pending = copy.deepcopy(settings)
+        from chisurf.core.setup_channel_definition import copy_setup
+
+        self._hosted_pending = copy_setup(settings)
         self._poll_hosted()
 
     def _poll_hosted(self):
@@ -1992,9 +1994,11 @@ class ChannelDefinitionWidget:
             return
         if callable(self._hosted_can_apply) and not self._hosted_can_apply():
             return
+        from chisurf.core.setup_channel_definition import copy_setup
+
         pending = self._hosted_pending
         if callable(self._own_on_changed):
-            self._own_on_changed(copy.deepcopy(pending))
+            self._own_on_changed(copy_setup(pending))
         self._hosted_pending = None
 
     def _hosted_setup_name(self):

@@ -24,6 +24,69 @@ CONFIG = store.SetupTypeConfig(
 ORDER_KEY = "_order"
 
 
+#: The per-channel micro-time histograms a setup keeps of the file it was last read with
+#: (``{"file_path", "channels": {ch: [counts]}}``, ~0.7 MB of JSON each on a 40-channel setup).
+#: Display data, replaced whole when a file is read (:meth:`ChannelDefinition.read_tttr`) and
+#: never edited in place -- so a copy of a setup shares them: deep-copying their ~160 000 floats
+#: cost 0.1-0.5 s a copy, and the burst workflow copies its setup dozens of times.
+PREVIEW_KEYS = ("_microtime_per_channel_decay", "_raw_microtime_per_channel_decay")
+
+
+def copy_setup(data):
+    """A deep copy of the setup *data* that shares its read-only :data:`PREVIEW_KEYS`.
+
+    Parameters
+    ----------
+    data : dict or None
+        A detector setup.
+
+    Returns
+    -------
+    dict
+        Every other key deep-copied, as :func:`copy.deepcopy` would.
+    """
+    return {
+        key: value if key in PREVIEW_KEYS else copy.deepcopy(value)
+        for key, value in (data or {}).items()
+    }
+
+
+def _preview_fingerprint(preview):
+    """What identifies a preview: its file and a digest of each channel's counts (~5 ms for a
+    40-channel setup, against ~100 ms to write them out as JSON)."""
+    import hashlib
+
+    if not isinstance(preview, dict):
+        return preview
+    channels = preview.get("channels") or {}
+    out = {}
+    for ch, counts in channels.items():
+        try:
+            data = np.asarray(counts, dtype=np.float64).tobytes()
+        except (TypeError, ValueError):
+            data = repr(counts).encode()
+        out[str(ch)] = hashlib.blake2b(data, digest_size=16).hexdigest()
+    return {"file_path": preview.get("file_path", ""), "channels": out}
+
+
+def setup_signature(value) -> str:
+    """A JSON signature of *value* (a setup, or anything) that tells two revisions apart.
+
+    The :data:`PREVIEW_KEYS` of a setup enter as their fingerprint (file, a digest per channel)
+    instead of 1.3 MB of JSON per call. Arrays enter by value.
+    """
+    if isinstance(value, dict) and any(key in value for key in PREVIEW_KEYS):
+        value = {
+            key: _preview_fingerprint(item) if key in PREVIEW_KEYS else item
+            for key, item in value.items()
+        }
+    return json.dumps(
+        value,
+        sort_keys=True,
+        default=lambda item: item.tolist() if hasattr(item, "tolist") else str(item),
+    )
+
+
 def _with_order(data):
     data = dict(data)
     data[ORDER_KEY] = {
@@ -59,7 +122,7 @@ def _save_row(db, name, data, user_id=None, is_public=None):
 
 def _row_data(row, db):
     configuration = store.json_loads(row.get("configuration_json"))
-    data = _restore_order(copy.deepcopy(configuration.get("setup_data") or configuration))
+    data = _restore_order(copy_setup(configuration.get("setup_data") or configuration))
     if row.get("is_public") is not None:
         data["_is_public"] = bool(row["is_public"])
     if row.get("created_by_user_id") is not None:
@@ -73,7 +136,7 @@ def with_detector_names(data: dict) -> tuple[dict, bool]:
     detector table and the optical configuration -- and whether anything changed."""
     from chisurf.core.fluorescence import detector_names as dn
 
-    out = copy.deepcopy(data or {})
+    out = copy_setup(data)
     detectors = out.get("detectors") or {}
     renamed = dn.canonical_detectors(detectors)
     changed = list(renamed) != list(detectors)
@@ -133,7 +196,7 @@ class ChannelDefinition:
             self.on_changed(self.get_settings())
 
     def get_settings(self):
-        result = copy.deepcopy(self.data)
+        result = copy_setup(self.data)
         reading = result["tttr_reading"]
         reading["effective_micro_time_resolution"] = float(
             reading.get("micro_time_resolution", 0)

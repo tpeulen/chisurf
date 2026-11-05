@@ -157,7 +157,8 @@ class BackgroundController:
         snapshot.channels_provider = lambda: detectors
         from chisurf.core.setup_channel_definition import ChannelDefinition
 
-        snapshot._input_settings = copy.deepcopy(self.channel_definition.model.get_settings())
+        # get_settings is a private copy already (its previews shared, never edited)
+        snapshot._input_settings = self.channel_definition.model.get_settings()
         reading = ChannelDefinition(snapshot._input_settings)
         snapshot.tttr_provider = lambda path: reading.open_tttr(path, cancel_cb=self._cancel.is_set)
         snapshot._observers = []

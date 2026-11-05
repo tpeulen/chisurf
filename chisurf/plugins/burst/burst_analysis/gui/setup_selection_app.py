@@ -12,7 +12,6 @@ This replaced a 2178-line hand-written duplicate of that editor. Nothing here im
 
 from __future__ import annotations
 
-import copy
 from pathlib import Path
 from typing import Any, Callable
 
@@ -21,7 +20,7 @@ from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
-from chisurf.core.setup_channel_definition import ChannelDefinition
+from chisurf.core.setup_channel_definition import ChannelDefinition, copy_setup
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.setup_step import SetupStepApp
 
@@ -137,7 +136,7 @@ class BurstSetupSelectionApp(SetupStepApp):
         if name and self.select_setup(name):
             return
         if settings.get("detectors") or settings.get("windows"):
-            self.page.load_definition(copy.deepcopy(settings))
+            self.page.load_definition(copy_setup(settings))
             self.open_last_used = False
 
     # -- frame --------------------------------------------------------------------------------------------- #

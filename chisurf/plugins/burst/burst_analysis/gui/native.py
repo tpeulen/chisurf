@@ -210,7 +210,10 @@ def _warm_steps() -> None:
 
 
 def _signature(value: Any) -> str:
-    return json.dumps(value, sort_keys=True, default=str)
+    """What tells two hand-offs apart; a setup's micro-time previews by fingerprint."""
+    from chisurf.core.setup_channel_definition import setup_signature
+
+    return setup_signature(value)
 
 
 class BurstAnalysisHubApp(ToolHubApp):

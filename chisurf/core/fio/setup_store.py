@@ -190,7 +190,8 @@ def load_mmfdb_setups(
         elif not (is_pub or owner == user_id):
             continue
         if row_to_data:
-            setups[row["name"]] = row_to_data(row, db)
+            # the configuration parsed once: a setup's JSON is ~1.3 MB (its micro-time previews)
+            setups[row["name"]] = row_to_data({**row, "configuration_json": cfg}, db)
         else:
             sd = cfg.get("setup_data", {})
             if isinstance(sd, dict):
