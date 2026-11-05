@@ -32,7 +32,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Pol | `polarized` | bool |  |  | Stack parallel and perpendicular detector-routing channels for anisotropy-aware filter computation. |
+| Pol | `polarized` | bool |  |  | Stack VV and VH detector-routing channels for anisotropy-aware filter computation. |
 | AP | `fit_background` | bool |  |  | Add and reject a constant afterpulse and dark-count nuisance filter. |
 | IRF | `scatter_irf` | bool |  |  | Add and reject the detector's measured or synthetic IRF as a scattered-light nuisance filter. |
 | Global (stacked) detectors | `stacked` | bool |  |  | Global (stacked) multi-detector filters: use the inter-detector relative species brightness in one global filter solve. |

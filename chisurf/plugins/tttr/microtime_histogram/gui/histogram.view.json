@@ -70,14 +70,14 @@
             {
               "type": "value",
               "attr": "parallel_text",
-              "label": "Parallel",
+              "label": "VV",
               "kind": "str",
               "description": "Comma-separated routing channels of the parallel (VV) stream; choosing a detector fills them."
             },
             {
               "type": "value",
               "attr": "perpendicular_text",
-              "label": "Perpendicular",
+              "label": "VH",
               "kind": "str",
               "description": "Comma-separated routing channels of the perpendicular (VH) stream; empty when polarization resolution is off."
             }

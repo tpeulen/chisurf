@@ -23,9 +23,9 @@ def cli() -> None:
     "--irf-file", "-i", required=True, type=click.Path(exists=True), help="Path to IRF PTU file."
 )
 @click.option("--output-dir", "-o", default="", help="Output directory.")
-@click.option("--channels-p", default="0", help="Parallel detector channels (comma-separated).")
+@click.option("--channels-p", default="0", help="VV routing channels (comma-separated).")
 @click.option(
-    "--channels-s", default="2", help="Perpendicular detector channels (comma-separated)."
+    "--channels-s", default="2", help="VH routing channels (comma-separated)."
 )
 @click.option("--mt-start", default=0, type=int, help="Micro-time start bin.")
 @click.option("--mt-stop", default=256, type=int, help="Micro-time stop bin.")

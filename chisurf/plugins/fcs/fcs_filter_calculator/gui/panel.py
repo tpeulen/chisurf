@@ -148,7 +148,7 @@ class FilterPanel:
 
     def range_line(self) -> str:
         lo, hi = self.m._fit_bounds
-        return f"Fit range: {lo}-{hi} TAC bins"
+        return f"Fit range: {lo}:{hi} TAC bins"
 
     def enabled(self, name: str) -> bool:
         running = self.app.job.running
@@ -387,7 +387,7 @@ class FilterPanel:
             "== Mixed decay ==",
             f"source: {m.total_label or 'none'}",
             f"bins: {m._current_n_bins()}   bin width: {m._pattern_bin_width_ns():.6g} ns   micro-time binning: x{m._micro_time_binning}",
-            f"global fit range: {lo}-{hi} bins",
+            f"global fit range: {lo}:{hi} bins",
             f"detectors: {', '.join(m.detectors.selected)}",
             "",
             "== Components ==",

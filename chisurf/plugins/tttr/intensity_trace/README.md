@@ -15,7 +15,7 @@ changes, molecular interactions, and reaction kinetics at the single-molecule le
 - Transition probability matrix visualization and analysis
 - Exponential fitting of dwell time distributions
 - Interactive visualization with adjustable parameters
-- Support for multi-channel data analysis (donor/acceptor channels)
+- Support for multi-channel data analysis (e.g. G|G / R|G)
 
 ## Workflow
 

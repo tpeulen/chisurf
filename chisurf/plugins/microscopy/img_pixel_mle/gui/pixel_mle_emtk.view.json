@@ -63,15 +63,15 @@
           "type": "value",
           "attr": "channels_parallel_text",
           "kind": "str",
-          "label": "Parallel channels (∥)",
-          "description": "Space-separated routing channels forming the parallel (VV) detection."
+          "label": "VV channels",
+          "description": "Space-separated routing channels forming the VV detection."
         },
         {
           "type": "value",
           "attr": "channels_perpendicular_text",
           "kind": "str",
-          "label": "Perpendicular channels (⊥)",
-          "description": "Space-separated routing channels forming the perpendicular (VH) detection."
+          "label": "VH channels",
+          "description": "Space-separated routing channels forming the VH detection."
         },
         {
           "type": "value",
@@ -428,7 +428,7 @@
         {
           "type": "panel",
           "title": "IRF preparation",
-          "description": "Trim the measured IRF below its peak fraction and align the parallel/perpendicular responses by fractional micro-time bins before reconvolution.",
+          "description": "Trim the measured IRF below its peak fraction and align the VV/VH responses by fractional micro-time bins before reconvolution.",
           "n_col": 2,
           "collapsed": true,
           "sections": [
@@ -447,7 +447,7 @@
               "type": "value",
               "attr": "shift_sp",
               "kind": "float",
-              "label": "Shift ∥",
+              "label": "Shift VV",
               "decimals": 3,
               "minimum": -1000.0,
               "maximum": 1000.0,
@@ -458,7 +458,7 @@
               "type": "value",
               "attr": "shift_ss",
               "kind": "float",
-              "label": "Shift ⊥",
+              "label": "Shift VH",
               "decimals": 3,
               "minimum": -1000.0,
               "maximum": 1000.0,
@@ -507,7 +507,7 @@
               "type": "value",
               "attr": "bg_p",
               "kind": "float",
-              "label": "bg ∥",
+              "label": "bg VV",
               "decimals": 3,
               "minimum": 0.0,
               "maximum": 1000000.0,
@@ -518,7 +518,7 @@
               "type": "value",
               "attr": "bg_s",
               "kind": "float",
-              "label": "bg ⊥",
+              "label": "bg VH",
               "decimals": 3,
               "minimum": 0.0,
               "maximum": 1000000.0,

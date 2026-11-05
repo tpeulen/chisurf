@@ -99,7 +99,7 @@
                             "description": "Enable the yellow detection channel (parallel + perpendicular)."
                         }
                     ],
-                    "description": "Detection colours the simulated setup records; each adds a parallel and a perpendicular channel."
+                    "description": "Detection colours the simulated setup records; each adds a VV and a VH channel."
                 },
                 {
                     "type": "custom",

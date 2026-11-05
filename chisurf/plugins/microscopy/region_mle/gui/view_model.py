@@ -181,7 +181,7 @@ class RegionMleViewModel(MleObserverMixin):
     # ── scalar settings bindings (AutoForm value/choice/toggle sections) ──
     @property
     def detector_chs_text(self) -> str:
-        """Detector channels as a space-separated string (even=∥, odd=⊥)."""
+        """Detector channels as a space-separated string (even=VV, odd=VH)."""
         return " ".join(str(c) for c in self.settings.detector_chs)
 
     @detector_chs_text.setter

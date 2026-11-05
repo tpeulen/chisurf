@@ -34,8 +34,8 @@ a detector, this report says why.
   would put photons under the wrong colour, and the MFD fit refuses it.
 
 The channel definition comes from the analysis manifest, or is inferred from
-the photons by reproducing the count columns exactly. An acceptor-excitation
-detector is a micro-time window on the acceptor channels; no detector name
+the photons by reproducing the count columns exactly. R|R (acceptor
+excitation) is a micro-time window on the routing channels of R|G; no detector name
 can say which window.
 
 Press **Guide** for the walk-through.

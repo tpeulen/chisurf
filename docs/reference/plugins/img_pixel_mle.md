@@ -34,8 +34,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | CLSM imaging files | `sel_files` | path_list |  |  | Confocal (CLSM) TTTR image file(s) to analyse. Drag-drop to add. |
 | IRF file | `sel_irf_files` | path_list |  |  | IRF TTTR measurement (the first file is used). |
-| Parallel channels (∥) | `channels_parallel_text` | str |  |  | Space-separated routing channels forming the parallel (VV) detection. |
-| Perpendicular channels (⊥) | `channels_perpendicular_text` | str |  |  | Space-separated routing channels forming the perpendicular (VH) detection. |
+| VV channels | `channels_parallel_text` | str |  |  | Space-separated routing channels forming the VV detection. |
+| VH channels | `channels_perpendicular_text` | str |  |  | Space-separated routing channels forming the VH detection. |
 | Fit start | `micro_time_start` | int |  | 0 … 1000000 | Fit-window start on the binned micro-time axis. |
 | Fit stop | `micro_time_stop` | int |  | 1 … 1000000 | Fit-window stop on the binned micro-time axis. |
 | Micro-time binning | `micro_time_binning` | int |  | 1 … 100000 | Integer down-binning of the micro-time axis before fitting. |
@@ -47,8 +47,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Threshold | `irf_threshold` | float |  | 0.0 … 1.0 | Fraction of the IRF maximum below which bins are zeroed. |
-| Shift ∥ | `shift_sp` | float |  | -1000.0 … 1000.0 | Parallel-channel sub-bin IRF shift. |
-| Shift ⊥ | `shift_ss` | float |  | -1000.0 … 1000.0 | Perpendicular-channel sub-bin IRF shift. |
+| Shift VV | `shift_sp` | float |  | -1000.0 … 1000.0 | Parallel-channel sub-bin IRF shift. |
+| Shift VH | `shift_ss` | float |  | -1000.0 … 1000.0 | Perpendicular-channel sub-bin IRF shift. |
 
 ### Fit flags
 
@@ -62,8 +62,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Subtract | `use_bg` | bool |  |  | Subtract a flat background from the fit window. |
-| bg ∥ | `bg_p` | float |  | 0.0 … 1000000.0 | Parallel background counts spread over the fit window. |
-| bg ⊥ | `bg_s` | float |  | 0.0 … 1000000.0 | Perpendicular background counts spread over the fit window. |
+| bg VV | `bg_p` | float |  | 0.0 … 1000000.0 | Parallel background counts spread over the fit window. |
+| bg VH | `bg_s` | float |  | 0.0 … 1000000.0 | Perpendicular background counts spread over the fit window. |
 
 ### Performance
 
@@ -76,8 +76,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Parallel channels (∥) | `channels_parallel_text` | str |  |  | Space-separated routing channels forming the parallel (VV) detection. |
-| Perpendicular channels (⊥) | `channels_perpendicular_text` | str |  |  | Space-separated routing channels forming the perpendicular (VH) detection. |
+| VV channels | `channels_parallel_text` | str |  |  | Space-separated routing channels forming the VV detection. |
+| VH channels | `channels_perpendicular_text` | str |  |  | Space-separated routing channels forming the VH detection. |
 | Fit start | `micro_time_start` | int |  | 0 … 1000000 | Fit-window start on the binned micro-time axis. |
 | Fit stop | `micro_time_stop` | int |  | 1 … 1000000 | Fit-window stop on the binned micro-time axis. |
 | Micro-time binning | `micro_time_binning` | int |  | 1 … 100000 | Integer down-binning of the micro-time axis before fitting. |

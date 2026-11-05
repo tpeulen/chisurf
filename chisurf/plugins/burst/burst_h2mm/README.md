@@ -80,7 +80,7 @@ segments, so everything after it works one level down: step *7. Burst segment
 MLE* fits a lifetime per burst *and* state from its Viterbi assignment.
 
 **Standalone GUI** — launch the H2MM app, pick a folder of `.bur` files, set the
-donor/acceptor detectors and the state range, then **Run**.
+donor (G|G) and acceptor (R|G) detectors and the state range, then **Run**.
 
 **CLI**
 

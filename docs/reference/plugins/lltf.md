@@ -52,7 +52,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Rotations | `n_rotations` | int |  | 1 … 3 (step 1) | Rotational correlation times in r(t) = Σ b_j exp(−t/ρ_j); the lifetimes are counted separately (Number of Lifetimes / Find Optimal). |
 | Residual anisotropy r∞ | `fit_r_inf` | bool |  |  | Add an anisotropy that does not decay (hindered rotation); r0 is then Σ b_j + r∞. |
 | Override calibration | `override_calibration` | bool |  |  | Off: G, l1 and l2 come from the data (a vv_vh footer, the TTTR reader's anisotropy panel), else from the configuration's polarization_parameter; after a fit the greyed fields show the values used. On: the three values below are used. |
-| G-factor | `g_factor` | float |  | 0.01 … 10.0 (step 0.01) | G = S∥/S⊥, the parallel/perpendicular detection sensitivity ratio; it divides the VH channel. The VV/VH G-Factor Calculator measures it. |
+| G-factor | `g_factor` | float |  | 0.01 … 10.0 (step 0.01) | G = S_VV/S_VH, the VV/VH detection sensitivity ratio; it divides the VH channel. The VV/VH G-Factor Calculator measures it. |
 | l1 | `l1` | float |  | 0.0 … 0.3 (step 0.001) | Schaffer polarization mixing of the VV channel (high-aperture objective); 0 for an ideal polarizer. |
 | l2 | `l2` | float |  | 0.0 … 0.3 (step 0.001) | Schaffer polarization mixing of the VH channel; 0 for an ideal polarizer. |
 

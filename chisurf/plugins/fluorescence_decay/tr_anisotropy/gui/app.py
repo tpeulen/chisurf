@@ -247,7 +247,7 @@ class AnisotropyApp(ImApp):
         im.set_item_tooltip(
             tr(
                 "Pick the polarized curves in the Datasets workspace: named IRF/prompt for the "
-                "response and VH/perp for the perpendicular channel, else in the order IRF VV, "
+                "response and VH for the VH channel, else in the order IRF VV, "
                 "IRF VH, data VV, data VH. Drop files on the ChiSurf window to add them."
             )
         )
@@ -506,7 +506,7 @@ def _role(name: str) -> tuple[str, str]:
 def receive_decays(app: AnisotropyApp, payload: dict) -> None:
     """Hand-off receiver (manifest ``accepts`` ``decays``): the polarized IRF and decay curves.
 
-    A curve's name places it (IRF/prompt -> the response, VH/perp -> the perpendicular channel);
+    A curve's name places it (IRF/prompt -> the response, VH -> the VH channel);
     the rest fill the empty roles in the order IRF VV, IRF VH, data VV, data VH (IRF, data for
     stacked VV/VH files). A curve read into the session is written as two columns (time, counts)
     for the reader, which then reads its first column as time.

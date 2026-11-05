@@ -25,7 +25,7 @@
     },
     {
       "title": "Which detector is which",
-      "text": "The donor and acceptor detectors come from the setup defined here, and this is the definition <b>nothing downstream re-checks</b>.<br/><br/>Swap them and you still get a complete, plausible BVA plot — with the population mirrored about E = ½ — and no statistic anywhere reports it. Set it against the hardware once, and confirm it on a sample whose answer you already know.",
+      "text": "Which detectors play donor and acceptor (G|G and R|G) comes from the setup defined here, and this is the definition <b>nothing downstream re-checks</b>.<br/><br/>Swap them and you still get a complete, plausible BVA plot — with the population mirrored about E = ½ — and no statistic anywhere reports it. Set it against the hardware once, and confirm it on a sample whose answer you already know.",
       "target": {
         "tab": "Channel Definitions"
       }

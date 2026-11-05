@@ -339,7 +339,7 @@ class BurstBrowserGui:
             ("Full Range", 0.0, 1.0),
         ]
         for i, (name, r_min, r_max) in enumerate(presets):
-            if im.button(f"Region: {name} [{r_min:.2f}-{r_max:.2f}]", (avail_w, 22.0)):
+            if im.button(f"Region: {name} [{r_min:.2f}:{r_max:.2f}]", (avail_w, 22.0)):
                 self.track("region_presets")
                 self.model.e_min, self.model.e_max = r_min, r_max
                 self.model.refresh()

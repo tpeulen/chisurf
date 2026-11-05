@@ -66,7 +66,7 @@ plugin code from `chisurf.core` or writing MMFDB rows directly.
 
 The plugin uses a multi-step process for burst selection:
 
-1. **Channel Definition**: Users define detector channels for donor (green) and acceptor (red) fluorescence.
+1. **Channel Definition**: Users define the routing channels of G|G (donor) and R|G (FRET acceptor).
 2. **Photon Filtering**: The `WizardTTTRPhotonFilter` component filters photons based on user-defined parameters.
 3. **Burst Identification**: Photon bursts are identified using time-window and photon count thresholds.
 4. **File Processing**: The plugin processes TTTR files and generates .bur files containing burst information.
@@ -81,8 +81,8 @@ PR = N_red / (N_red + N_green)
 ```
 
 Where:
-- N_red is the number of photons detected in the acceptor (red) channel
-- N_green is the number of photons detected in the donor (green) channel
+- N_red is the number of photons detected on R|G
+- N_green is the number of photons detected on G|G
 
 This ratio is a measure of FRET efficiency and ranges from 0 (no FRET) to 1 (high FRET).
 

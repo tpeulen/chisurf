@@ -402,7 +402,7 @@ class PchModel:
         lines = [
             "ε: molecular brightness  ⟨N⟩: molecules in volume",
             "",
-            f"Region: {fit_low}–{fit_high}",
+            f"Region: {fit_low}:{fit_high}",
         ]
         for i in range(fr.n_components):
             lines.append(

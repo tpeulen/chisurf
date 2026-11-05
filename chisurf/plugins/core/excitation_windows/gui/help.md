@@ -8,7 +8,7 @@ needs -- and checks the windows a detector setup already has against the data.
 * **PIE / nsALEX** (the lasers alternate within one sync period): every excitation pulse is a
   *rising edge* in the micro-time decays. Two pulses give the windows **prompt** (donor
   excitation) and **delayed** (acceptor excitation); the detectors tell which is which, because
-  under the acceptor pulse the donor detector is dark. More pulses (a sync divider, three lasers)
+  under the acceptor pulse G|G is dark. More pulses (a sync divider, three lasers)
   get one window per pulse.
 * **µs-ALEX** (the lasers alternate over microseconds): the alternation period and phase from the
   macro times; the windows are phases of the period.

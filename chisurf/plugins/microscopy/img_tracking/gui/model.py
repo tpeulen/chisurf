@@ -137,7 +137,7 @@ class TrackingModel(EmtkModelMixin, ImgTrackingViewModel):
             {
                 "track": int(r["track"]),
                 "length": int(r["length"]),
-                "frames": f"{r['first']}–{r['last']}",
+                "frames": f"{r['first']}:{r['last']}",
                 "net": float(r["net"]),
             }
             for r in self.result.tracks_table()[:500]

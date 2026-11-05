@@ -49,13 +49,13 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Mode | `polarization` | choice |  | choices: vm, vv/vh | Detection mode. VM: magic angle — the decay carries no anisotropy. VV/VH: parallel and perpendicular channels generated with the rotation spectrum below; both share one photon budget when Noise is on. |
+| Mode | `polarization` | choice |  | choices: vm, vv/vh | Detection mode. VM: magic angle — the decay carries no anisotropy. VV/VH: VV and VH channels generated with the rotation spectrum below; both share one photon budget when Noise is on. |
 
 ### VV/VH detection corrections
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| g | `g_factor` | float |  | 0.001 … 100.0 | Parallel/perpendicular detection sensitivity ratio G. The perpendicular channel records 1/G of what an equally sensitive one would. |
+| g | `g_factor` | float |  | 0.001 … 100.0 | G = S_VV/S_VH, the VV/VH detection sensitivity ratio. The VH channel records 1/G of what an equally sensitive one would. |
 | l1 | `l1` | float |  | -10.0 … 10.0 | Polarization mixing factor of the parallel (VV) channel. |
 | l2 | `l2` | float |  | -10.0 … 10.0 | Polarization mixing factor of the perpendicular (VH) channel. |
 

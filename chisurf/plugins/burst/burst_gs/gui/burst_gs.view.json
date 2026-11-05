@@ -32,16 +32,16 @@
                 {
                   "type": "value",
                   "attr": "donor_channels",
-                  "label": "Donor channels",
+                  "label": "G|G channels",
                   "kind": "str",
-                  "description": "Routing channels counted as donor photons, comma separated. This is colour 0."
+                  "description": "Routing channels of G|G, counted as donor photons, comma separated. This is colour 0."
                 },
                 {
                   "type": "value",
                   "attr": "acceptor_channels",
-                  "label": "Acceptor channels",
+                  "label": "R|G channels",
                   "kind": "str",
-                  "description": "Routing channels counted as acceptor photons, comma separated. This is colour 1. Photons in neither list — acceptor-excitation photons, for instance — are dropped."
+                  "description": "Routing channels of R|G, counted as acceptor photons, comma separated. This is colour 1. Photons in neither list — acceptor-excitation photons, for instance — are dropped."
                 },
                 {
                   "type": "value",

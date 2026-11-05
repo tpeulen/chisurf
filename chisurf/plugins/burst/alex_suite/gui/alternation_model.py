@@ -548,7 +548,7 @@ class AlexAlternationModel:
             self._publish(windows)
         self._write_detail(self.result["period"], self.result["confidence"], windows)
         self.status_text = (
-            f"Gates {windows['green'][0]}–{windows['green'][1]} and {windows['red'][0]}–{windows['red'][1]}"
+            f"Gates {windows['green'][0]}:{windows['green'][1]} and {windows['red'][0]}:{windows['red'][1]}"
             + (f" published as “{SETUP_NAME}”. Press Next." if self.converted else " set.")
         )
 
@@ -557,7 +557,7 @@ class AlexAlternationModel:
         g_lo, g_hi = windows["green"]
         r_lo, r_hi = windows["red"]
         self.detail_text = (
-            f"Period {period}{self._micro_suffix} · green {g_lo:.0f}–{g_hi:.0f} · red {r_lo:.0f}–{r_hi:.0f} · "
+            f"Period {period}{self._micro_suffix} · green {g_lo:.0f}:{g_hi:.0f} · red {r_lo:.0f}:{r_hi:.0f} · "
             f"contrast {confidence:.0f}×"
         )
 
@@ -583,7 +583,7 @@ class AlexAlternationModel:
         )
         self.detail_note = (
             f"Alternation period {period} macro-time units{self._micro_suffix}. Donor-excitation gate "
-            f"{g_lo:.0f}–{g_hi:.0f}, acceptor-excitation gate {r_lo:.0f}–{r_hi:.0f} (both trimmed at the laser rise "
+            f"{g_lo:.0f}:{g_hi:.0f}, acceptor-excitation gate {r_lo:.0f}:{r_hi:.0f} (both trimmed at the laser rise "
             f"and fall). Contrast {confidence:.0f}× — {verdict}.{channels}"
         )
 

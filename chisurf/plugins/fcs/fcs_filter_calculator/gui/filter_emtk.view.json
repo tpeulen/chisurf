@@ -87,7 +87,7 @@
       "attr": "polarized",
       "label": "Pol",
       "call": "edited",
-      "description": "Stack parallel and perpendicular detector-routing channels for anisotropy-aware filter computation."
+      "description": "Stack VV and VH detector-routing channels for anisotropy-aware filter computation."
      },
      {
       "type": "toggle",

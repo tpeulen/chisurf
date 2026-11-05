@@ -119,7 +119,7 @@ class WindowCheckMixin:
             # the first finding is the warning line itself
             [f"[{i.severity}] {i.message}" for i in check.issues
              if i.message not in self.window_check_text]
-            + [tr("Detected: ") + ", ".join(f"{k} {v[0]}–{v[1]}{unit}"
+            + [tr("Detected: ") + ", ".join(f"{k} {v[0]}:{v[1]}{unit}"
                                            for k, v in check.proposal.items())]
         )
 
@@ -163,7 +163,7 @@ class WindowCheckMixin:
         self.alex_windows_override = {k: (v[0] * tick, v[1] * tick) for k, v in windows.items()}
         self.status_text = tr("ALEX period and windows from the data")
         self.status_detail = f"{self.alex_period_us:.2f} µs; " + ", ".join(
-            f"{k} {v[0] * 1e6:.1f}–{v[1] * 1e6:.1f} µs" for k, v in self.alex_windows_override.items()
+            f"{k} {v[0] * 1e6:.1f}:{v[1] * 1e6:.1f} µs" for k, v in self.alex_windows_override.items()
         )
 
     def _take_windows(self, windows: dict, resolution_s: float, gates: dict | None = None) -> None:
@@ -175,7 +175,7 @@ class WindowCheckMixin:
         self.window_override_label = tr("windows from the data")
         self.status_text = tr("Windows from the data")
         self.status_detail = ", ".join(
-            f"{k} {v[0]}–{v[1]}" for k, v in self.window_override.items()
+            f"{k} {v[0]}:{v[1]}" for k, v in self.window_override.items()
         )
 
     # -- from a measurement ----------------------------------------------------------------------

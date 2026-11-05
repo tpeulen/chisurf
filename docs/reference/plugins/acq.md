@@ -133,7 +133,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Excitation | `sim_scheme` | choice |  | choices: `scheme_options` | How the simulated sample is excited: PIE (a green and a red pulse per period, so stoichiometry is measured) or two colour (the green laser only). |
-| Population 1: E | `sim_e_low` | float |  | 0.0 … 1.0 (step 0.05) | FRET efficiency of the first simulated population. Each molecule carries donor and acceptor; its photons are split into donor and acceptor channel by this E. |
+| Population 1: E | `sim_e_low` | float |  | 0.0 … 1.0 (step 0.05) | FRET efficiency of the first simulated population. Each molecule carries donor and acceptor; its photons are split between G\|G and R\|G by this E. |
 | Population 2: E | `sim_e_high` | float |  | 0.0 … 1.0 (step 0.05) | FRET efficiency of the second simulated population. |
 | Stoichiometry S | `sim_s` | float |  | 0.1 … 0.9 (step 0.05) | Stoichiometry of both populations: the share of donor-excited photons in all photons of a molecule (0.5 = equally bright under both lasers). |
 | Concentration | `sim_concentration` | float |  | 0.1 … 20.0 (step 0.5) | Molecules of each population in the simulation box. Higher means more bursts per second, and more coincident molecules. |
@@ -157,14 +157,14 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Brightness spread | `real_brightness_cv` | float |  | 0 … 1 (step 0.05) | Molecule-to-molecule brightness spread (coefficient of variation): broadens burst sizes and the clusters. |
 | Diffusion (µm²/s) | `real_diffusion_um2_per_s` | float |  | 1 … 1000 (step 10) | Translational diffusion coefficient; with the focus it sets the burst duration (80 µm²/s ≈ a 30 kDa protein). |
 | γ | `real_gamma` | float |  | 0.1 … 5 (step 0.05) | Detection-efficiency × quantum-yield ratio of acceptor to donor. γ ≠ 1 shifts raw E; the corrected E uses it. |
-| α (leakage) | `real_alpha` | float |  | 0 … 0.5 (step 0.01) | Donor emission leaking into the acceptor channel: raises raw E, most visibly for donor-only molecules. |
+| α (leakage) | `real_alpha` | float |  | 0 … 0.5 (step 0.01) | Donor emission leaking into R\|G: raises raw E, most visibly for donor-only molecules. |
 | δ (direct exc.) | `real_delta` | float |  | 0 … 0.5 (step 0.01) | Direct excitation of the acceptor by the donor laser (relative to its own laser): raises raw E. |
 | Donor lifetime (ns) | `real_tau_donor_ns` | float |  | 0.5 … 10 (step 0.1) | Donor lifetime without FRET; a FRET population decays with τ_D (1 − E). |
 | Acceptor lifetime (ns) | `real_tau_acceptor_ns` | float |  | 0.5 … 10 (step 0.1) | Acceptor lifetime: decay of the directly excited acceptor and the delay of sensitised emission. |
 | IRF FWHM (ns) | `real_irf_fwhm_ns` | float |  | 0 … 2 (step 0.05) | Instrument response width, with a small exponential tail and per-detector timing jitter. |
-| Background donor (kHz) | `real_background_donor_khz` | float |  | 0 … 20 (step 0.1) | Uncorrelated background of the donor detector (dark counts, ambient light), flat in micro time. |
-| Background acceptor (kHz) | `real_background_acceptor_khz` | float |  | 0 … 20 (step 0.1) | Uncorrelated background of the acceptor detector. |
-| Scatter (kHz) | `real_scatter_donor_khz` | float |  | 0 … 20 (step 0.1) | Scattered and Raman light of the donor laser in the donor detector: prompt window, instrument response only. |
+| Background donor (kHz) | `real_background_donor_khz` | float |  | 0 … 20 (step 0.1) | Bg_G\|G: uncorrelated background of G\|G (dark counts, ambient light), flat in micro time. |
+| Background acceptor (kHz) | `real_background_acceptor_khz` | float |  | 0 … 20 (step 0.1) | Bg_R\|G: uncorrelated background of R\|G. |
+| Scatter (kHz) | `real_scatter_donor_khz` | float |  | 0 … 20 (step 0.1) | Scattered and Raman light of the donor laser on G\|G: prompt window, instrument response only. |
 | Afterpulsing | `real_afterpulse_probability` | float |  | 0 … 0.1 (step 0.001) | Probability that a detection repeats on the same detector shortly after (detector afterpulsing). |
 | Dead time (ns) | `real_dead_time_ns` | float |  | 0 … 500 (step 5) | Detector dead time: a photon arriving within it after another is lost (count-rate saturation). |
 | Acceptor bleaching (/ms) | `real_acceptor_bleach_per_ms` | float |  | 0 … 5 (step 0.01) | Acceptor photobleaching rate at the focus centre: bursts end as donor only — tails towards high S and low E. |
@@ -300,7 +300,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | Time per point (s) | `point_time_s` | float |  | 0.1 … 3600.0 (step 1.0) | The longest a point is recorded. |
 | Until bleached | `until_bleached` | bool |  |  | End a point early once its molecule has bleached: the count rate stays down near the background (the threshold is drawn in the trace). |
-| Background (kHz) | `bleach_background_kcps` | float |  | 0.0 … 10000.0 (step 0.5) | The count rate without a molecule, which the bleach rule's threshold sits above (0: the simulator's background, else none). |
+| Bg (kHz) | `bleach_background_kcps` | float |  | 0.0 … 10000.0 (step 0.5) | The count rate without a molecule, which the bleach rule's threshold sits above (0: the simulator's background, else none). |
 
 ### Survey
 

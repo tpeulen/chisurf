@@ -33,8 +33,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Container | `file_type` | choice |  | choices: `file_type_options` | TTTR container type of the raw files, or Auto to detect it. |
-| Donor channels | `donor_channels` | str |  |  | Routing channels counted as donor photons, comma separated. This is colour 0. |
-| Acceptor channels | `acceptor_channels` | str |  |  | Routing channels counted as acceptor photons, comma separated. This is colour 1. Photons in neither list — acceptor-excitation photons, for instance — are dropped. |
+| G\|G channels | `donor_channels` | str |  |  | Routing channels of G\|G, counted as donor photons, comma separated. This is colour 0. |
+| R\|G channels | `acceptor_channels` | str |  |  | Routing channels of R\|G, counted as acceptor photons, comma separated. This is colour 1. Photons in neither list — acceptor-excitation photons, for instance — are dropped. |
 | Macro-time tick [ns] | `macro_time_resolution_ns` | float |  | 0.0 … 1000000.0 | Seconds per macro-time tick, in nanoseconds. Zero reads it from the file header. Every fitted rate is proportional to this, so a wrong value rescales the whole answer silently. |
 | Min photons/burst | `min_photons` | int |  | 2 … 10000 | Bursts with fewer photons are dropped. A burst too short to show a spread of interphoton gaps contributes nothing to the kinetics and only costs time. |
 | Max bursts | `max_bursts` | int |  | 0 … 1000000 | Keep at most this many bursts; 0 uses all of them. Lower it for a quick first look. |

@@ -228,7 +228,7 @@ class SimulationSettingsModel:
     #: Per-species molecules / diffusion (one entry per species).
     species_M: list = field(default_factory=lambda: [50.0])
     species_D: list = field(default_factory=lambda: [3.0])
-    #: Per-species brightness q, flattened species×6 (G∥,G⊥,R∥,R⊥,Y∥,Y⊥ per species).
+    #: Per-species brightness q, flattened species×6 (G VV, G VH, R VV, R VH, Y VV, Y VH per species).
     species_q: list = field(default_factory=lambda: [50.0, 50.0, 0.0, 0.0, 0.0, 0.0])
 
     #: Detection colours, in the order their brightness slots are stored.
@@ -401,7 +401,7 @@ class SimulationSettingsModel:
         q_bg, ch_conversion = self._enabled_channel_layout()
         n_channels = len(q_bg)
         n_species = max(1, int(self.n_species))
-        # Per-species brightness from the 6-slot store (G∥,G⊥,R∥,R⊥,Y∥,Y⊥),
+        # Per-species brightness from the 6-slot store (G VV, G VH, R VV, R VH, Y VV, Y VH),
         # filtered to the enabled channels.
         enabled_slots: list[int] = []
         for ci, color in enumerate(("green", "red", "yellow")):

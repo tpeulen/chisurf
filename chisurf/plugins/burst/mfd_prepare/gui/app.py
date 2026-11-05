@@ -114,7 +114,7 @@ class MfdPreparePanel:
                 "label": "Micro-time window",
                 "width": 140,
                 "editable": False,
-                "description": "Micro-time window of the detector in channels; an acceptor-excitation detector is a window on the acceptor channels.",
+                "description": "Micro-time window of the detector in channels; R|R is a micro-time window on the routing channels of R|G.",
             },
             {
                 "key": "empty",

@@ -39,8 +39,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Detector | `detector` | choice |  | choices: `detector_options` | Detector of the setup whose interleaved routing channels (parallel, perpendicular, parallel, ...) and G-factor are used. |
-| Parallel | `parallel_text` | str |  |  | Comma-separated routing channels of the parallel (VV) stream; choosing a detector fills them. |
-| Perpendicular | `perpendicular_text` | str |  |  | Comma-separated routing channels of the perpendicular (VH) stream; empty when polarization resolution is off. |
+| VV | `parallel_text` | str |  |  | Comma-separated routing channels of the parallel (VV) stream; choosing a detector fills them. |
+| VH | `perpendicular_text` | str |  |  | Comma-separated routing channels of the perpendicular (VH) stream; empty when polarization resolution is off. |
 | Polarization resolved | `polarized` | bool |  |  | Switch the current ordered routes between alternating VV/VH and one unpolarized stream. Manual channel edits update the working detector definition; time step, G-factor and shifts are retained. |
 
 ### Reading and gates

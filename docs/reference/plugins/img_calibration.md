@@ -36,10 +36,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Conv stop | `sel_conv_stop` | int |  | 0 … 1000000 | Convolution/fit window stop (micro-time channel). Drag the blue region. |
 | IRF start | `sel_irf_start` | int |  | 0 … 1000000 | IRF window start (separate from the conv window). Drag the green region. |
 | IRF stop | `sel_irf_stop` | int |  | 0 … 1000000 | IRF window stop (separate from the conv window). Drag the green region. |
-| Background VV (∥) | `sel_bg_vv` | float |  | 0.0 … 1000000.0 | Parallel-channel background subtracted from the VV IRF (0 = auto baseline). |
-| Background VH (⊥) | `sel_bg_vh` | float |  | 0.0 … 1000000.0 | Perpendicular-channel background subtracted from the VH IRF (0 = auto baseline). |
-| Shift VV (∥, ch) | `sel_shift_vv` | float |  | -100000.0 … 100000.0 (step 1.0) | Circular (wrap-around) shift of the VV IRF, in micro-time channels. |
-| Shift VH (⊥, ch) | `sel_shift_vh` | float |  | -100000.0 … 100000.0 (step 1.0) | Circular (wrap-around) shift of the VH IRF, in micro-time channels. |
+| Bg VV | `sel_bg_vv` | float |  | 0.0 … 1000000.0 | Parallel-channel background subtracted from the VV IRF (0 = auto baseline). |
+| Bg VH | `sel_bg_vh` | float |  | 0.0 … 1000000.0 | Perpendicular-channel background subtracted from the VH IRF (0 = auto baseline). |
+| Shift VV (ch) | `sel_shift_vv` | float |  | -100000.0 … 100000.0 (step 1.0) | Circular (wrap-around) shift of the VV IRF, in micro-time channels. |
+| Shift VH (ch) | `sel_shift_vh` | float |  | -100000.0 … 100000.0 (step 1.0) | Circular (wrap-around) shift of the VH IRF, in micro-time channels. |
 
 ## Theory and workflow
 

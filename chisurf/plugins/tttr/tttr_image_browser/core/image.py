@@ -425,7 +425,7 @@ def render_mosaic_array(
                 if ab not in seen:
                     seen.add(ab)
                     uniq_mtrs.append(ab)
-            mtr_txt = ";".join(f"{a}-{b}" for (a, b) in uniq_mtrs)
+            mtr_txt = ";".join(f"{a}:{b}" for (a, b) in uniq_mtrs)
 
             parts = [str(name)]
             if mtr_txt:

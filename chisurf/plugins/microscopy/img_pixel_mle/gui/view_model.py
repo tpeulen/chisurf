@@ -249,8 +249,8 @@ class PixelMleViewModel(MleObserverMixin):
     def apply_setup_settings(self, payload: dict) -> None:
         """Adopt detector channels, micro-time range and polarisation corrections.
 
-        Even routing channels are taken as parallel (∥), odd channels as
-        perpendicular (⊥); the first detector's micro-time range sets the fit
+        Even routing channels are taken as VV, odd channels as
+        VH; the first detector's micro-time range sets the fit
         window, and its G-factor / l1 / l2 mixing corrections are carried into
         the fit (previously dropped, so the fit silently ran at g=1, l1=l2=0).
         """
@@ -342,7 +342,7 @@ class PixelMleViewModel(MleObserverMixin):
 
     @property
     def channels_parallel_text(self) -> str:
-        """Parallel (∥) routing channels as a space-separated string."""
+        """VV routing channels as a space-separated string."""
         return " ".join(str(c) for c in self.settings.detector_chs_p)
 
     @channels_parallel_text.setter
@@ -351,7 +351,7 @@ class PixelMleViewModel(MleObserverMixin):
 
     @property
     def channels_perpendicular_text(self) -> str:
-        """Perpendicular (⊥) routing channels as a space-separated string."""
+        """VH routing channels as a space-separated string."""
         return " ".join(str(c) for c in self.settings.detector_chs_s)
 
     @channels_perpendicular_text.setter
@@ -471,7 +471,7 @@ class PixelMleViewModel(MleObserverMixin):
         if not self.results:
             return (
                 "<i>Add confocal (CLSM) TTTR image file(s) and an IRF, set the "
-                "parallel/perpendicular channels and fit window, pick a fit "
+                "VV/VH channels and fit window, pick a fit "
                 "model, then press <b>Run</b>. Each pixel is fitted by "
                 "Poisson-MLE and the τ map is shown.</i>"
             )
@@ -502,13 +502,13 @@ class PixelMleViewModel(MleObserverMixin):
         if int(self.settings.micro_time_stop) <= int(self.settings.micro_time_start):
             return False, "Empty micro-time fit window."
         if not self.settings.detector_chs_p or not self.settings.detector_chs_s:
-            return False, "Both parallel and perpendicular channels are required."
+            return False, "Both VV and VH channels are required."
         if int(self.settings.micro_time_binning) < 1 or int(self.settings.min_photons) < 1:
             return False, "Binning and minimum photons must be positive."
         if float(self.settings.g_factor) <= 0:
             return False, "G factor must be positive."
         if set(self.settings.detector_chs_p) & set(self.settings.detector_chs_s):
-            return False, "Parallel and perpendicular channels must be distinct."
+            return False, "VV and VH channels must be distinct."
         return True, ""
 
     def run(self) -> None:

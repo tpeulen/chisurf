@@ -6,7 +6,7 @@ the efficiency means anything outside your own setup:
 
 | factor | symbol | what it removes |
 |---|---|---|
-| leakage | α | donor emission detected in the acceptor channel |
+| leakage | α | donor emission detected on R|G |
 | direct excitation | δ | acceptor excited by the donor laser |
 | detection | γ | different detection efficiency **and** quantum yield of the two dyes |
 | excitation flux | β | different green/red excitation power (stoichiometry only) |

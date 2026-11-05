@@ -616,7 +616,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
     def window_text(self) -> str:
         ranges = self.microtime_ranges
         return "Micro-time: " + (
-            "; ".join(f"{a}-{b}" for a, b in ranges) if ranges else "full decay (unfiltered)"
+            "; ".join(f"{a}:{b}" for a, b in ranges) if ranges else "full decay (unfiltered)"
         )
 
     def apply_setup_defaults(self, params: dict[str, Any]) -> None:
@@ -1305,7 +1305,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         warning = diag_mod.gate_mismatch_warning(diag["tttr"], self.detectors)
         self._check_windows(diag["tttr"])
         self.status_text = (
-            f"Preview of {self.window_start_s:.1f}-{end:.1f} s: {len(start_stop)} burst(s). "
+            f"Preview of {self.window_start_s:.1f}:{end:.1f} s: {len(start_stop)} burst(s). "
             "These are the bursts of the visible window only; "
             f"press {self.run_word} to search every photon and write the table."
             + (f" Warning: {warning}" if warning else "")

@@ -60,7 +60,7 @@
                   "label": "µt A",
                   "kind": "str",
                   "placeholder": "e.g. 0-100;200-300",
-                  "description": "Semicolon-separated microtime ranges for channel A: start-end;start-end."
+                  "description": "Semicolon-separated microtime ranges for channel A: start:end;start:end."
                 },
                 {
                   "type": "value",
@@ -68,7 +68,7 @@
                   "label": "µt B",
                   "kind": "str",
                   "placeholder": "e.g. 50-150;250-350",
-                  "description": "Semicolon-separated microtime ranges for channel B: start-end;start-end."
+                  "description": "Semicolon-separated microtime ranges for channel B: start:end;start:end."
                 }
               ]
             },

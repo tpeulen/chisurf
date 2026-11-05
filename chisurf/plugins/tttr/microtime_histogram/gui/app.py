@@ -696,8 +696,8 @@ class HistogramApp(TourTarget, ImApp):
     def draw_plot(self, box):
         flags = [
             ("log_y", "Log counts", "Use a positive logarithmic intensity axis."),
-            ("show_vv", "VV", "Show or hide the cumulative parallel decay."),
-            ("show_vh", "VH", "Show or hide the cumulative perpendicular decay."),
+            ("show_vv", "VV", "Show or hide the cumulative VV decay."),
+            ("show_vh", "VH", "Show or hide the cumulative VH decay."),
             ("show_combined", "VV + 2G VH", "Show or hide the combined decay."),
         ]
         for i, (attr, label, tip) in enumerate(flags):

@@ -475,9 +475,9 @@ class CorrelatorSettingsModel:
         mta = da.get("micro_time_ranges", []) or []
         mtb = db.get("micro_time_ranges", []) or []
         if mta:
-            self.microtime_range_a = ";".join(f"{a}-{b}" for a, b in mta)
+            self.microtime_range_a = ";".join(f"{a}:{b}" for a, b in mta)
         if mtb:
-            self.microtime_range_b = ";".join(f"{a}-{b}" for a, b in mtb)
+            self.microtime_range_b = ";".join(f"{a}:{b}" for a, b in mtb)
         corr = dict(self._fcs_preset_corr)
         pc = pair.get("correlator")
         if isinstance(pc, dict):
@@ -523,7 +523,7 @@ def apply_channel_key(model: CorrelatorSettingsModel, side: str, key: str) -> No
                 uniq.append(c)
     setattr(model, "channel_a" if side == "a" else "channel_b", ",".join(str(c) for c in uniq))
     segs = [
-        f"{int(r[0])}-{int(r[1])}"
+        f"{int(r[0])}:{int(r[1])}"
         for r in (e.get("micro_time_range") for e in entries)
         if isinstance(r, (list, tuple)) and len(r) >= 2
     ]

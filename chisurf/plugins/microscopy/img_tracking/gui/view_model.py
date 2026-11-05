@@ -312,7 +312,7 @@ class ImgTrackingViewModel:
             {
                 "track": str(row["track"]),
                 "length": str(row["length"]),
-                "frames": f"{row['first']}–{row['last']}",
+                "frames": f"{row['first']}:{row['last']}",
                 "net": f"{row['net']:.2f}",
             }
             for row in rows

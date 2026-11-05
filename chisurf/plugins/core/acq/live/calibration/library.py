@@ -428,16 +428,16 @@ def _polarization_reference() -> workflow.StepSpec:
         goal="The detection polarisation factor G, from a fast-rotating reference dye",
         instructions=(
             "Measure Rh110 dilute in water with the polarisation-resolved detection "
-            "(parallel and perpendicular channels) and enter the background-corrected "
+            "(VV and VH channels) and enter the background-corrected "
             "steady-state counts of the two channels. A fast-rotating dye has anisotropy "
-            "r = 0, which fixes G = (I_par/I_perp)(1-r)/(1+2r); if you know your "
+            "r = 0, which fixes G = (I_VV/I_VH)(1-r)/(1+2r); if you know your "
             "reference's true anisotropy under your conditions, enter it instead of 0 -- "
             "the assumption is yours to make and is recorded with the result."
         ),
         inputs=[
-            _num("i_par", "Parallel channel counts", "counts",
+            _num("i_par", "VV channel counts", "counts",
                  describe="background-corrected steady-state"),
-            _num("i_perp", "Perpendicular channel counts", "counts"),
+            _num("i_perp", "VH channel counts", "counts"),
             _num("r_assumed", "Assumed true anisotropy", "1", required=False, default=0.0,
                  describe="0 for a fast-rotating reference; verify for YOUR dye and conditions"),
             _txt("sample", "Sample", "dye, solvent, temperature"),

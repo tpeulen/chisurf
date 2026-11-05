@@ -1025,14 +1025,14 @@ class GFactorModel:
                 {
                     "quantity": "Background VV",
                     "value": f"{float(self.result.get('bg_parallel_avg', 0.0)):.5g}",
-                    "tooltip": "Mean background counts per bin in parallel channel.",
+                    "tooltip": "Mean background counts per bin in the VV channel.",
                 }
             )
             rows.append(
                 {
                     "quantity": "Background VH",
                     "value": f"{float(self.result.get('bg_perpendicular_avg', 0.0)):.5g}",
-                    "tooltip": "Mean background counts per bin in perpendicular channel.",
+                    "tooltip": "Mean background counts per bin in the VH channel.",
                 }
             )
         if self.manual_g:
@@ -1103,9 +1103,9 @@ class GFactorModel:
             r_inf = r.get("r_inf")
             reg = ""
             if "region_start" in r and "region_stop" in r:
-                reg = f"{r['region_start']}-{r['region_stop']}"
+                reg = f"{r['region_start']}:{r['region_stop']}"
             elif "region_min" in r and "region_max" in r:
-                reg = f"{r['region_min']:.1f}-{r['region_max']:.1f}"
+                reg = f"{r['region_min']:.1f}:{r['region_max']:.1f}"
             rows.append(
                 {
                     "file": Path(path).name,

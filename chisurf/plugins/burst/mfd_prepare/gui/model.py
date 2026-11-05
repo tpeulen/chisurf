@@ -151,7 +151,7 @@ class MfdPrepareModel:
                     "detector": name,
                     "channels": ", ".join(str(c) for c in definition.get("channels", []))
                     or f"({origin})",
-                    "window": ", ".join(f"{int(a)}-{int(b)}" for a, b in windows)
+                    "window": ", ".join(f"{int(a)}:{int(b)}" for a, b in windows)
                     or ("all" if definition else ""),
                     "empty": int(empty.get(name, 0)),
                     "agreement": float(agreement.get(name, float("nan"))),

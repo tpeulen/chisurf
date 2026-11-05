@@ -3,7 +3,7 @@
   "steps": [
     {
       "title": "One lifetime per region, and none of them found here",
-      "text": "This tool fits a <b>single fluorescence lifetime per region</b> by Poisson maximum likelihood — the 2I* estimator, on the parallel and perpendicular decays together.<br/><br/>It does <b>not</b> segment. The regions come from the <b>Spot Finder</b>, or from a saved label image. That separation is deliberate: a fit that finds its own regions cannot be shown what it is about to fit, which is exactly how a tuned preview and the run that followed it stopped agreeing.<br/><br/>Seven steps, about two minutes.",
+      "text": "This tool fits a <b>single fluorescence lifetime per region</b> by Poisson maximum likelihood — the 2I* estimator, on the VV and VH decays together.<br/><br/>It does <b>not</b> segment. The regions come from the <b>Spot Finder</b>, or from a saved label image. That separation is deliberate: a fit that finds its own regions cannot be shown what it is about to fit, which is exactly how a tuned preview and the run that followed it stopped agreeing.<br/><br/>Seven steps, about two minutes.",
       "target": {}
     },
     {

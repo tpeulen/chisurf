@@ -119,7 +119,7 @@ class PhotonTableViewModel(WorkspaceInputMixin):
         if not count:
             return "no records"
         last = min(count, self.first_index + self.rows_per_page)
-        return f"records {self.first_index:,}–{last:,}"
+        return f"records {self.first_index:,}:{last:,}"
 
     def channel_labels(self) -> list[list]:
         """``[value, label]`` of the channel choice: All channels, then each used channel."""

@@ -33,8 +33,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | Ch A | `channel_a` | str |  |  | Comma or space-separated detector routing channels for channel A. |
 | Ch B | `channel_b` | str |  |  | Comma or space-separated detector routing channels for channel B. |
-| µt A | `microtime_range_a` | str |  |  | Semicolon-separated microtime ranges for channel A: start-end;start-end. |
-| µt B | `microtime_range_b` | str |  |  | Semicolon-separated microtime ranges for channel B: start-end;start-end. |
+| µt A | `microtime_range_a` | str |  |  | Semicolon-separated microtime ranges for channel A: start:end;start:end. |
+| µt B | `microtime_range_b` | str |  |  | Semicolon-separated microtime ranges for channel B: start:end;start:end. |
 
 ### Correlation Settings
 

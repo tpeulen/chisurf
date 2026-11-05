@@ -148,7 +148,7 @@ def _rebin(rate: np.ndarray, factor: int) -> np.ndarray:
 
 
 _STREAM_HEX = {"DD": "#28a03c", "DA": "#b8860b", "AA": "#d2372d"}
-_STREAM_NAME = {"DD": "DD (green)", "DA": "DA (yellow)", "AA": "AA (red)"}
+_STREAM_NAME = {"DD": "DD (G|G)", "DA": "DA (R|G)", "AA": "AA (R|R)"}
 
 
 def _draw_example_trace(fig, r: int, session) -> None:
@@ -320,10 +320,10 @@ def build_pdf_report(session) -> bytes:
         scatters.append((e, tg, "Tg-Tr vs E", "E", "Tg-Tr (ms)", "#1f4e8c"))
     if tau_g is not None:
         scatters.append(
-            (tau_g, e, "E vs tau_D (static FRET)", "Tau green (ns)", "E (frac.)", "#7a1f1f")
+            (tau_g, e, "E vs Tau (G|G) (static FRET)", "Tau (G|G) (ns)", "E (frac.)", "#7a1f1f")
         )
     if r_g is not None and tau_g is not None:
-        scatters.append((tau_g, r_g, "r vs tau_D", "Tau green (ns)", "anisotropy", "#1f6e4a"))
+        scatters.append((tau_g, r_g, "r vs Tau (G|G)", "Tau (G|G) (ns)", "anisotropy", "#1f6e4a"))
     if has_bursts:  # the half-width cell beside the density carries the sizes
         hists = hists  # size drawn in the block below
     n_diag = len(scatters) + len(hists)

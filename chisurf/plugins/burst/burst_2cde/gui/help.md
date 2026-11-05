@@ -51,12 +51,13 @@ literature should use. Gaussian estimates the rate more accurately and depends
 far less on where it is evaluated — the Laplace kernel, sampled *at* the photon
 positions, always sits on its own peak and over-estimates the rate.
 
-**Donor / acceptor channels** are the physical detector routing channels. Get
+**G|G / R|G routing channels** are the physical detector routing channels of
+the donor and the FRET acceptor. Get
 them backwards and the analysis still completes and still looks plausible.
 
 The excitation windows come from the burst run's recorded setup. FRET-2CDE
 uses the donor-excitation window on each detector; ALEX-2CDE compares both
-detectors in that window with the acceptor detector in the acceptor-excitation
+detectors in that window with R|R, the acceptor in the acceptor-excitation
 window. ALEX-2CDE requires separated windows and reports an error when they
 are missing. A setup's recorded micro-time channel width is used to convert
 the windows when the measurement has a different binning.

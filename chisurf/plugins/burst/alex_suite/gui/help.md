@@ -68,7 +68,7 @@ filled in.
   in — come back and check it.
 
 The old *channel flip* checkbox is gone because the answer is in the data: under
-acceptor excitation the donor detector sees essentially nothing, whatever the
+acceptor excitation G|G sees essentially nothing, whatever the
 sample's FRET efficiency or labelling. On the calibration file this was built
 against, the donor is routing channel **1** and is 5 % as bright under acceptor
 excitation — a flipped assignment that the old program needed a checkbox for.
@@ -91,8 +91,8 @@ H2MM segmentation and burst fusion — and brought back, with no conversion.
 ## The three things worth doing carefully
 
 **The alternation must look right.** Step 3 plots the folded phase for each
-detector. You should see two plateaus with a gap between them, and the donor
-detector brighter in one of them, the acceptor detector in the other. If the two
+detector. You should see two plateaus with a gap between them, and G|G
+brighter in one of them, R|G in the other. If the two
 curves track each other, the period is wrong or the channels are swapped; the
 "contrast" number below the button says the same thing (under ~50 is suspicious).
 

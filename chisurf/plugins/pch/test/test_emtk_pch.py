@@ -155,7 +155,7 @@ def test_actions_change_state_and_report_errors(tmp_path):
     model.fit_now()
     before = model.results_text
     model.set_region(0, 12)
-    assert "Region: 0–12" in model.results_text and model.results_text != before
+    assert "Region: 0:12" in model.results_text and model.results_text != before
 
 
 # 3. spec and model agree

@@ -29,10 +29,10 @@ The page reads the photons to find out how the measurement was made. Every guess
   - PIE / nsALEX: two laser pulses within each period, seen as two separate rises in the micro-time histogram.
   - µsALEX: lasers alternating every few to hundreds of microseconds. The alternation shows either in the micro time, or only as a periodic count rate, which is then folded at its period.
   - cw: a single excitation.
-- Donor and acceptor detectors.
-  - *ALEX/PIE*: the donor detectors are the ones that go dark while the acceptor laser is on.
+- Which detectors are G|G and R|G.
+  - *ALEX/PIE*: G|G is the detector that goes dark while the acceptor laser is on.
   - *cw*: channels of one colour rise and fall together from burst to burst. The donor colour is the one with bursts of its colour alone (donor-only molecules); the acceptor is only excited through FRET.
-- Polarization. Two channels per colour count as parallel and perpendicular, the brighter one taken as parallel. A G factor far from 1 can swap them, so check.
+- Polarization. Two channels per colour count as VV and VH, the brighter one taken as VV. A G factor far from 1 can swap them, so check.
 - Unassigned channels. A channel that counts as fast outside bursts as inside them carries no single-molecule signal: dark counts, scatter, a marker line, an unused detector. It is left out, with a warning.
 
 Lines starting with ! are warnings: something the data could not settle. Check them.
@@ -100,7 +100,7 @@ Auto-calibrate:
 # Settings
 
 - Burst search: all-photon sliding window. A burst is where m consecutive photons arrive within T, and it is kept when it has at least *Min photons*. 2CDE τ is the kernel width of the 2CDE filters. V_eff only enters the concentration estimate.
-- Channels: donor and acceptor routing channels, comma separated, with polarization parallel first. With ALEX/PIE, the donor- and acceptor-excitation windows are given as start-stop. Re-detect goes back to what the data say.
+- Channels: routing channels of G|G and R|G, comma separated, with polarization VV first. With ALEX/PIE, the donor- and acceptor-excitation windows are given as start:stop. Re-detect goes back to what the data say.
 
 # Privacy: everything stays on this machine
 

@@ -69,12 +69,12 @@ def prepare(folder: str, no_photons: bool, report_only: bool):
 @click.option(
     "--green",
     default="",
-    help="Donor detector name; empty takes the detector whose role is donor (G|G).",
+    help="Detector in the donor role (G|G); empty takes the setup's donor-role detector.",
 )
 @click.option(
     "--red",
     default="",
-    help="FRET acceptor detector name; empty takes the detector whose role is acceptor (R|G).",
+    help="Detector in the FRET-acceptor role (R|G); empty takes the setup's acceptor-role detector.",
 )
 @click.option(
     "--n-ratio-bins",

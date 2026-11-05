@@ -55,7 +55,7 @@ def _warnings(path, setup) -> list[str]:
 def test_wrong_windows_are_reported(demo):
     warnings = _warnings(demo, wrong_setup())
     assert len(warnings) == 1 and "PIE windows do not match" in warnings[0], warnings
-    assert warnings[0].startswith(demo.name) and "prompt 50–1613" in warnings[0]
+    assert warnings[0].startswith(demo.name) and "prompt 50:1613" in warnings[0]
 
 
 def test_matching_windows_say_nothing(demo):

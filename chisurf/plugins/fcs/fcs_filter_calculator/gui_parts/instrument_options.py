@@ -16,7 +16,7 @@ _VIEW = pathlib.Path(__file__).with_name("instrument_options.view.json")
 #: Field name → default value. These are the instrument constants the plugin uses.
 DEFAULTS: dict[str, float | bool] = {
     # Hellenkamp 2018 nomenclature, matching ``fret.species_decay.Crosstalk``.
-    "alpha": 0.0,  # donor leakage into the acceptor (red) channel
+    "alpha": 0.0,  # donor leakage into R|G
     "beta": 1.0,  # excitation-flux ratio (acceptor vs donor laser)
     "gamma": 1.0,  # detection / quantum-yield correction
     "delta": 0.0,  # direct acceptor excitation by the donor laser

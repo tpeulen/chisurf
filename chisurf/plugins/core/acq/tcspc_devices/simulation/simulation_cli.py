@@ -369,7 +369,7 @@ def main() -> None:
     show_default=False,
     help=(
         "Number of FRET states (>= 2). When >0, configures an N-state CW "
-        "FRET/FCS system with donor (green) and acceptor (red) brightness "
+        "FRET/FCS system with donor (G|G) and acceptor (R|G) brightness "
         "gradient and symmetric nearest-neighbor exchange between states. "
         "Assumes N_channels=6 with [G_P, G_S, R_P, R_S, Y_P, Y_S]."
     ),

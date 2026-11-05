@@ -52,7 +52,8 @@ def _ints(text: str) -> list[int]:
 
 
 def _window(text: str) -> tuple[int, int]:
-    a, b = str(text).split("-", 1)
+    """A window ``start:stop`` (the older ``start-stop`` too) as ``(start, stop)``."""
+    a, b = str(text).replace(":", "-").split("-", 1)
     return int(a), int(b)
 
 
@@ -319,9 +320,9 @@ class Session:
         self.donor_channels = ", ".join(map(str, e.donor_channels))
         self.acceptor_channels = ", ".join(map(str, e.acceptor_channels))
         win = {w.name: w for w in e.windows}
-        self.donor_window = f"{win['donor'].start}-{win['donor'].stop}" if "donor" in win else ""
+        self.donor_window = f"{win['donor'].start}:{win['donor'].stop}" if "donor" in win else ""
         self.acceptor_window = (
-            f"{win['acceptor'].start}-{win['acceptor'].stop}" if "acceptor" in win else ""
+            f"{win['acceptor'].start}:{win['acceptor'].stop}" if "acceptor" in win else ""
         )
 
     def _experiment_from_settings(self) -> Experiment:

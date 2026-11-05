@@ -51,7 +51,7 @@
                   "attr": "column_i_dd",
                   "label": "I_DD (donor)",
                   "options_source": "column_names",
-                  "description": "Donor signal under donor excitation — the donor detector G|G. Auto-detected from the column names; counts and count rates both work as long as every channel uses the same unit. Type to filter the list.",
+                  "description": "Donor signal under donor excitation — G|G. Auto-detected from the column names; counts and count rates both work as long as every channel uses the same unit. Type to filter the list.",
                   "editable": true
                 },
                 {
@@ -192,7 +192,7 @@
                   "label": "Bg_G|G (kHz)",
                   "kind": "float",
                   "decimals": 4,
-                  "description": "Background rate of the donor detector G|G (I_DD), kHz. Uncorrected background biases low-efficiency populations most."
+                  "description": "Bg_G|G, the background rate of G|G (I_DD), kHz. Uncorrected background biases low-efficiency populations most."
                 },
                 {
                   "type": "value",

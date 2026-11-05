@@ -178,8 +178,8 @@ Internally, the 6 detection channels are ordered as::
 
 We treat:
 
-- Channels 0–1 (G_P, G_S) as **donor (green)**.
-- Channels 2–3 (R_P, R_S) as **acceptor (red)**.
+- Channels 0:1 (G_P, G_S) as the donor, **G|G**.
+- Channels 2:3 (R_P, R_S) as the FRET acceptor, **R|G**.
 
 ### Step 1 – generate a base JSON for N FRET states
 

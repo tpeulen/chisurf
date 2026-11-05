@@ -544,7 +544,7 @@ class LaserSettingsMixin:
         self.window_override = dict(patch["windows"])
         self.window_override_label = tr("windows from the laser")
         self.status_text = tr("Windows from the laser")
-        self.status_detail = ", ".join(f"{k} {v[0]}–{v[1]}" for k, v in patch["windows"].items())
+        self.status_detail = ", ".join(f"{k} {v[0]}:{v[1]}" for k, v in patch["windows"].items())
         return True
 
     def use_proposed_windows(self) -> bool:
@@ -554,7 +554,7 @@ class LaserSettingsMixin:
         self.window_override_label = tr("windows from the measurement")
         self.status_text = tr("Windows from the measurement")
         self.status_detail = ", ".join(
-            f"{k} {v[0]}–{v[1]}" for k, v in self.window_override.items()
+            f"{k} {v[0]}:{v[1]}" for k, v in self.window_override.items()
         )
         return True
 

@@ -108,7 +108,7 @@ def test_a_zoomed_tile_shows_its_whole_label(app, photon_folder):
         drv.wheel(cx, cy, 1)
     full = [t[5] for t in drv.draw(1).texts if str(t[5]).startswith("G|G")]
     assert (
-        len(short) < len("G|G  |  mt: 0-4095  |  ch: 0,1") and full and len(full[0]) >= len(short)
+        len(short) < len("G|G  |  mt: 0:4095  |  ch: 0,1") and full and len(full[0]) >= len(short)
     )
 
 

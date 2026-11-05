@@ -59,7 +59,7 @@ the value the run used.
 fixed photon count, which is the right choice when the count rate varies strongly
 across a burst.
 
-**Donor and acceptor detectors** come from the detector setup on the *Channel
+**Donor (G|G) and acceptor (R|G)** come from the detector setup on the *Channel
 Definitions* tab. Get them backwards and the analysis still completes.
 
 ## Before believing the result

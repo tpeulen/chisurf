@@ -78020,6 +78020,404 @@ Trouvé à côté de {measurement} par son nom et placé dans cette ligne ; dép
             <source>The dye as fitted: lifetime {tau:.2f} ns, rotation {rho:.2f} ns, r0 {r0:.2f}.</source>
             <translation>Le colorant tel qu'ajusté : durée de vie {tau:.2f} ns, rotation {rho:.2f} ns, r0 {r0:.2f}.</translation>
         </message>
+        <message>
+            <source>**Instrument / calibration parameters** are pre-populated from the selected setup (the setup picker at the top) and used by the auto-fit and the FRET-species decays.
+
+- **α, β, γ, δ** — the Hellenkamp correction factors: α donor leakage into R|G, β the excitation-flux ratio of the acceptor to the donor laser (**1** for a balanced setup — 0 switches the acceptor-excitation channel off entirely), γ the detection/quantum-yield correction, δ direct acceptor excitation by the donor laser. Measure them with the *Accurate FRET* tool and store them on the setup; they are read back here.
+- **G, l₁, l₂** — polarization calibration (G-factor detection ratio and the two mixing factors) used when *Pol* is on so anisotropy and lifetimes are fit together.
+- **R₀** — Förster radius (Å).
+- **Laser period** — enables periodic (wrap-around) convolution.</source>
+            <translation>Les **paramètres d'instrument / de calibration** sont pré-remplis à partir du montage sélectionné (le sélecteur de montage en haut) et utilisés par l'ajustement automatique et les déclins des espèces FRET.
+
+- **α, β, γ, δ** — les facteurs de correction de Hellenkamp : α la fuite du donneur dans R|G, β le rapport des flux d'excitation du laser accepteur sur celui du donneur (**1** pour un montage équilibré — 0 désactive entièrement la voie d'excitation de l'accepteur), γ la correction de détection / rendement quantique, δ l'excitation directe de l'accepteur par le laser du donneur. Mesurez-les avec l'outil *Accurate FRET* et enregistrez-les sur le montage ; ils sont relus ici.
+- **G, l₁, l₂** — la calibration en polarisation (rapport de détection du facteur G et les deux facteurs de mélange), utilisée lorsque *Pol* est actif afin d'ajuster ensemble l'anisotropie et les durées de vie.
+- **R₀** — rayon de Förster (Å).
+- **Période laser** — active la convolution périodique (circulaire).</translation>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load example&lt;/b&gt; adds a simulated photon stream with exactly &lt;b&gt;12 planted bursts&lt;/b&gt; of about 200 photons, 60 % of them on R|G, and selects the matching detectors. Your own measurements are dropped on the ChiSurf window and appear in the &lt;b&gt;Input&lt;/b&gt; section (pick them and press &lt;b&gt;Use selected&lt;/b&gt;, or use &lt;i&gt;Open in…&lt;/i&gt; on a Datasets row); the runs a search finds come back as their children in the Datasets view.</source>
+            <translation>&lt;b&gt;Charger l’exemple&lt;/b&gt; ajoute un flux de photons simulé avec exactement &lt;b&gt;12 bursts insérés&lt;/b&gt; d’environ 200 photons, dont 60 % sur R|G, et sélectionne les détecteurs correspondants. Vos propres mesures se déposent sur la fenêtre ChiSurf et apparaissent dans la section &lt;b&gt;Entrée&lt;/b&gt; (choisissez-les et appuyez sur &lt;b&gt;Utiliser la sélection&lt;/b&gt;, ou utilisez &lt;i&gt;Ouvrir dans…&lt;/i&gt; sur une ligne de Datasets) ; les exécutions trouvées par une recherche reviennent comme leurs enfants dans la vue Datasets.</translation>
+        </message>
+        <message>
+            <source>A measurement file holds the VV decay followed by the VH decay. Pick it in the &lt;b&gt;Input&lt;/b&gt; section, which lists the decays of the Datasets workspace (drop a VV/VH file on the ChiSurf window to add it); both decays and r(t) appear at once.</source>
+            <translation>Un fichier de mesure contient le déclin VV suivi du déclin VH. Choisissez-le dans la section &lt;b&gt;Entrée&lt;/b&gt;, qui liste les déclins de l'espace de travail Datasets (déposez un fichier VV/VH sur la fenêtre ChiSurf pour l'ajouter) ; les deux déclins et r(t) apparaissent aussitôt.</translation>
+        </message>
+        <message>
+            <source>Acceptor (R|G)</source>
+            <translation>Accepteur (R|G)</translation>
+        </message>
+        <message>
+            <source>Acceptor-excitation window, 'start:stop' in micro-time channels (for µsALEX: in alternation-phase ticks).</source>
+            <translation>Fenêtre d'excitation de l'accepteur, 'start:stop' en voies de micro-temps (pour µsALEX : en ticks de phase d'alternance).</translation>
+        </message>
+        <message>
+            <source>Acquire photons in the VV and VH channels to calculate G.</source>
+            <translation>Acquérir des photons dans les voies VV et VH pour calculer G.</translation>
+        </message>
+        <message>
+            <source>Arriving with µs-ALEX data, this step ran the &lt;b&gt;ALEX Creator&lt;/b&gt;'s conversion: it found the period, the two laser gates and which detector is the donor, folded the alternation into the micro-time (one &lt;code&gt;.pto&lt;/code&gt; container beside your file) and wrote the setup. PIE data is left alone.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Check the plot&lt;/b&gt;: two plateaus, G|G brighter in one, R|G in the other. That crossover is what the old channel-flip checkbox was guessing at. The gates are editable here and as bands on the plot. The Creator's window (Tools → Photon data) converts files by hand, in any format.</source>
+            <translation>Une fois arrivées les données µs-ALEX, cette étape a exécuté la conversion du &lt;b&gt;Créateur ALEX&lt;/b&gt; : elle a trouvé la période, les deux portes laser et le détecteur donneur, replié l'alternance dans le micro-temps (un conteneur &lt;code&gt;.pto&lt;/code&gt; à côté de votre fichier) et écrit la configuration. Les données PIE sont laissées intactes.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Vérifiez le tracé&lt;/b&gt; : deux paliers, G|G plus brillant dans l'un, R|G dans l'autre. Ce croisement est ce que la vieille case d'inversion de voies devinait. Les portes sont modifiables ici et sous forme de bandes sur le tracé. La fenêtre du Créateur (Outils → Données de photons) convertit les fichiers à la main, dans n'importe quel format.</translation>
+        </message>
+        <message>
+            <source>Background rates Bg_G|G and Bg_R|G (kHz) added to the burst photons.</source>
+            <translation>Taux de fond Bg_G|G et Bg_R|G (kHz), ajoutés aux photons du burst.</translation>
+        </message>
+        <message>
+            <source>Bg (kHz)</source>
+            <translation>Bg (kHz)</translation>
+        </message>
+        <message>
+            <source>Bg VH</source>
+            <translation>Bg VH</translation>
+        </message>
+        <message>
+            <source>Bg VV</source>
+            <translation>Bg VV</translation>
+        </message>
+        <message>
+            <source>Bg_G|G, the background rate of G|G (I_DD), kHz. Uncorrected background biases low-efficiency populations most.</source>
+            <translation>Bg_G|G, le taux de fond de G|G (I_DD), kHz. Un bruit de fond non corrigé biaise surtout les populations de faible efficacité.</translation>
+        </message>
+        <message>
+            <source>Bg_G|G: uncorrelated background of G|G (dark counts, ambient light), flat in micro time.</source>
+            <translation>Bg_G|G : fond non corrélé de G|G (coups d'obscurité, lumière ambiante), plat en micro-temps.</translation>
+        </message>
+        <message>
+            <source>Bg_R|G: uncorrelated background of R|G.</source>
+            <translation>Bg_R|G : fond non corrélé de R|G.</translation>
+        </message>
+        <message>
+            <source>Blue (B|B)</source>
+            <translation>Bleu (B|B)</translation>
+        </message>
+        <message>
+            <source>Channel shift of the VH decay relative to the VV decay.</source>
+            <translation>Décalage de voie du déclin VH par rapport au déclin VV.</translation>
+        </message>
+        <message>
+            <source>Channel-mixing correction l1 of the VV channel (high-aperture objectives).</source>
+            <translation>Correction de mélange de voies l1 de la voie VV (objectifs à grande ouverture).</translation>
+        </message>
+        <message>
+            <source>Channel-mixing correction l2 of the VH channel.</source>
+            <translation>Correction de mélange de voies l2 de la voie VH.</translation>
+        </message>
+        <message>
+            <source>Detected from the data: alternating when a micro-time (PIE) or macro-time (µsALEX) window leaves G|G dark.</source>
+            <translation>Détecté à partir des données : alterné lorsqu’une fenêtre de micro-temps (PIE) ou de macro-temps (µsALEX) laisse G|G dans le noir.</translation>
+        </message>
+        <message>
+            <source>Detection colours the simulated setup records; each adds a VV and a VH channel.</source>
+            <translation>Couleurs de détection enregistrées par le montage simulé ; chacune ajoute une voie VV et une voie VH.</translation>
+        </message>
+        <message>
+            <source>Detection mode. VM: magic angle — the decay carries no anisotropy. VV/VH: VV and VH channels generated with the rotation spectrum below; both share one photon budget when Noise is on.</source>
+            <translation>Mode de détection. VM : angle magique — le déclin ne porte pas d'anisotropie. VV/VH : voies VV et VH générées avec le spectre de rotation ci-dessous ; elles partagent un seul budget de photons lorsque le bruit est activé.</translation>
+        </message>
+        <message>
+            <source>Detection-path polarization mixing for the VH channel. Small: ~0–0.05 (typical ~0.04).</source>
+            <translation>Mélange de polarisation du chemin de détection pour la voie VH. Faible : ~0–0,05 (typique ~0,04).</translation>
+        </message>
+        <message>
+            <source>Detection-path polarization mixing for the VV channel (objective/optics depolarization). Small: ~0–0.05 (typical ~0.03).</source>
+            <translation>Mélange de polarisation du chemin de détection pour la voie VV (dépolarisation objectif/optique). Faible : ~0–0,05 (typique ~0,03).</translation>
+        </message>
+        <message>
+            <source>Detector of the FRET-acceptor signal in the .bur tables (empty: R|G). Its channel definition is checked against the count columns before it is used.</source>
+            <translation>Détecteur du signal de l'accepteur FRET dans les tables .bur (vide : R|G). Sa définition de voie est vérifiée par rapport aux colonnes de comptage avant utilisation.</translation>
+        </message>
+        <message>
+            <source>Detector of the donor signal in the .bur tables (empty: G|G). Its counts and observation span drive the proximity ratio, and its mean micro time is the lifetime axis.</source>
+            <translation>Détecteur du signal du donneur dans les tables .bur (vide : G|G). Ses comptages et son étendue d'observation pilotent le rapport de proximité, et son micro-temps moyen est l'axe des durées de vie.</translation>
+        </message>
+        <message>
+            <source>Detector that plays the FRET acceptor (R|G by default), its photons are stream 1. Swapping donor and acceptor still converges and looks plausible: check the assignment.</source>
+            <translation>Détecteur qui joue l'accepteur FRET (R|G par défaut) ; ses photons forment le flux 1. Permuter donneur et accepteur converge toujours et semble plausible : vérifiez l'attribution.</translation>
+        </message>
+        <message>
+            <source>Detector that plays the donor (G|G by default), its photons are stream 0: apparent FRET E = A/(A+D). Define detectors in the Detector setup window.</source>
+            <translation>Détecteur qui joue le donneur (G|G par défaut) ; ses photons forment le flux 0 : FRET apparent E = A/(A+D). Définissez les détecteurs dans la fenêtre Configuration des détecteurs.</translation>
+        </message>
+        <message>
+            <source>Detectors of the burst tables that play donor and FRET acceptor (G|G and R|G by default).</source>
+            <translation>Détecteurs des tables de bursts qui jouent le donneur et l'accepteur FRET (G|G et R|G par défaut).</translation>
+        </message>
+        <message>
+            <source>Donor (G|G)</source>
+            <translation>Donneur (G|G)</translation>
+        </message>
+        <message>
+            <source>Donor emission leaking into R|G.</source>
+            <translation>Émission du donneur fuyant dans R|G.</translation>
+        </message>
+        <message>
+            <source>Donor emission leaking into R|G: raises raw E, most visibly for donor-only molecules.</source>
+            <translation>Émission du donneur fuyant dans R|G : augmente l'E brut, surtout visible pour les molécules donneur seul.</translation>
+        </message>
+        <message>
+            <source>Donor signal under donor excitation — G|G. Auto-detected from the column names; counts and count rates both work as long as every channel uses the same unit. Type to filter the list.</source>
+            <translation>Signal du donneur sous excitation du donneur — G|G. Détecté automatiquement à partir des noms de colonnes ; les comptages et les taux de comptage fonctionnent tant que chaque voie utilise la même unité. Saisissez pour filtrer la liste.</translation>
+        </message>
+        <message>
+            <source>Donor-excitation window, 'start:stop' in micro-time channels (for µsALEX: in alternation-phase ticks).</source>
+            <translation>Fenêtre d'excitation du donneur, 'start:stop' en voies de micro-temps (pour µsALEX : en ticks de phase d'alternance).</translation>
+        </message>
+        <message>
+            <source>FRET efficiency of the first simulated population. Each molecule carries donor and acceptor; its photons are split between G|G and R|G by this E.</source>
+            <translation>Efficacité FRET de la première population simulée. Chaque molécule porte un donneur et un accepteur ; ses photons sont répartis entre G|G et R|G selon cet E.</translation>
+        </message>
+        <message>
+            <source>G = S_VV/S_VH, the VV/VH detection sensitivity ratio.</source>
+            <translation>G = S_VV/S_VH, le rapport de sensibilité de détection VV/VH.</translation>
+        </message>
+        <message>
+            <source>G = S_VV/S_VH, the VV/VH detection sensitivity ratio. The VH channel records 1/G of what an equally sensitive one would.</source>
+            <translation>G = S_VV/S_VH, le rapport de sensibilité de détection VV/VH. La voie VH enregistre 1/G de ce qu'enregistrerait une voie aussi sensible.</translation>
+        </message>
+        <message>
+            <source>G = S_VV/S_VH, the VV/VH detection sensitivity ratio; it divides the VH channel. The VV/VH G-Factor Calculator measures it.</source>
+            <translation>G = S_VV/S_VH, le rapport de sensibilité de détection VV/VH ; il divise la voie VH. Le calculateur de facteur G VV/VH le mesure.</translation>
+        </message>
+        <message>
+            <source>G = S_VV/S_VH, the VV/VH detection sensitivity ratio; weights VH in the VM sum and is attached to a VV/VH pair for the fit.</source>
+            <translation>G = S_VV/S_VH, le rapport de sensibilité de détection VV/VH ; pondère VH dans la somme VM et est attaché à une paire VV/VH pour l'ajustement.</translation>
+        </message>
+        <message>
+            <source>Green (G|G)</source>
+            <translation>Vert (G|G)</translation>
+        </message>
+        <message>
+            <source>G|G channels</source>
+            <translation>Voies G|G</translation>
+        </message>
+        <message>
+            <source>Micro-time ranges for the acceptor row (R|G by default): start:end; separate multiple ranges with ';'.</source>
+            <translation>Plages de micro-temps de la ligne accepteur (R|G par défaut) : start:end ; séparez plusieurs plages par « ; ».</translation>
+        </message>
+        <message>
+            <source>Micro-time ranges for the donor row (G|G by default): start:end; separate multiple ranges with ';'.</source>
+            <translation>Plages de micro-temps de la ligne donneur (G|G par défaut) : start:end ; séparez plusieurs plages par « ; ».</translation>
+        </message>
+        <message>
+            <source>Micro-time ranges of each detector: start:end; separate multiple ranges with ';'.</source>
+            <translation>Plages de micro-temps de chaque détecteur : start:end ; séparez plusieurs plages par « ; ».</translation>
+        </message>
+        <message>
+            <source>Photons (G|G)</source>
+            <translation>Photons (G|G)</translation>
+        </message>
+        <message>
+            <source>Pick the polarized curves in the Datasets workspace: named IRF/prompt for the response and VH for the VH channel, else in the order IRF VV, IRF VH, data VV, data VH. Drop files on the ChiSurf window to add them.</source>
+            <translation>Choisissez les courbes polarisées dans l'espace de travail Datasets : nommées IRF/prompt pour la réponse et VH pour la voie VH, sinon dans l'ordre IRF VV, IRF VH, données VV, données VH. Déposez des fichiers sur la fenêtre ChiSurf pour les ajouter.</translation>
+        </message>
+        <message>
+            <source>Polarization mixing correction l1 of the VV channel.</source>
+            <translation>Correction de mélange de polarisation l1 de la voie VV.</translation>
+        </message>
+        <message>
+            <source>Polarization mixing correction l2 of the VH channel.</source>
+            <translation>Correction de mélange de polarisation l2 de la voie VH.</translation>
+        </message>
+        <message>
+            <source>Red (R|G)</source>
+            <translation>Rouge (R|G)</translation>
+        </message>
+        <message>
+            <source>Routing channel indices of the VV and VH polarization detectors.</source>
+            <translation>Indices des voies de routage des détecteurs de polarisation VV et VH.</translation>
+        </message>
+        <message>
+            <source>Routing channels of G|G, comma separated; with polarization: VV first, then VH.</source>
+            <translation>Voies de routage de G|G, séparées par des virgules ; avec polarisation : VV d’abord, puis VH.</translation>
+        </message>
+        <message>
+            <source>Routing channels of G|G, counted as donor photons, comma separated. This is colour 0.</source>
+            <translation>Voies de routage de G|G, comptées comme photons donneur, séparées par des virgules. C'est la couleur 0.</translation>
+        </message>
+        <message>
+            <source>Routing channels of R|G, comma separated; with polarization: VV first, then VH.</source>
+            <translation>Voies de routage de R|G, séparées par des virgules ; avec polarisation : VV d’abord, puis VH.</translation>
+        </message>
+        <message>
+            <source>Routing channels of R|G, counted as acceptor photons, comma separated. This is colour 1. Photons in neither list — acceptor-excitation photons, for instance — are dropped.</source>
+            <translation>Voies de routage de R|G, comptées comme photons accepteur, séparées par des virgules. C'est la couleur 1. Les photons absents des deux listes — par exemple ceux de l'excitation de l'accepteur — sont écartés.</translation>
+        </message>
+        <message>
+            <source>Routing channels of the B|B row, comma separated.</source>
+            <translation>Voies d'acheminement de la ligne B|B, séparées par des virgules.</translation>
+        </message>
+        <message>
+            <source>Routing channels of the G|G row, comma separated.</source>
+            <translation>Voies d'acheminement de la ligne G|G, séparées par des virgules.</translation>
+        </message>
+        <message>
+            <source>Routing channels of the R|G row, comma separated.</source>
+            <translation>Voies d'acheminement de la ligne R|G, séparées par des virgules.</translation>
+        </message>
+        <message>
+            <source>Routing channels of the acceptor row (R|G by default), comma separated.</source>
+            <translation>Voies d'acheminement de la ligne accepteur (R|G par défaut), séparées par des virgules.</translation>
+        </message>
+        <message>
+            <source>Routing channels of the donor row (G|G by default), comma separated.</source>
+            <translation>Voies d'acheminement de la ligne donneur (G|G par défaut), séparées par des virgules.</translation>
+        </message>
+        <message>
+            <source>Routing channels that define G|G and R|G.</source>
+            <translation>Canaux de routage définissant G|G et R|G.</translation>
+        </message>
+        <message>
+            <source>R|G channels</source>
+            <translation>Voies R|G</translation>
+        </message>
+        <message>
+            <source>Scattered and Raman light of the donor laser on G|G: prompt window, instrument response only.</source>
+            <translation>Lumière diffusée et Raman du laser donneur sur G|G : fenêtre prompt, réponse instrumentale uniquement.</translation>
+        </message>
+        <message>
+            <source>Semicolon-separated microtime ranges for channel A: start:end;start:end.</source>
+            <translation>Plages de micro-temps séparées par des points-virgules pour la voie A : start:end;start:end.</translation>
+        </message>
+        <message>
+            <source>Semicolon-separated microtime ranges for channel B: start:end;start:end.</source>
+            <translation>Plages de micro-temps séparées par des points-virgules pour la voie B : start:end;start:end.</translation>
+        </message>
+        <message>
+            <source>Shift VH</source>
+            <translation>Décalage VH</translation>
+        </message>
+        <message>
+            <source>Shift VH (ch)</source>
+            <translation>Décalage VH (voie)</translation>
+        </message>
+        <message>
+            <source>Shift VV</source>
+            <translation>Décalage VV</translation>
+        </message>
+        <message>
+            <source>Shift VV (ch)</source>
+            <translation>Décalage VV (voie)</translation>
+        </message>
+        <message>
+            <source>Space-separated routing channels forming the VH detection.</source>
+            <translation>Voies de routage séparées par des espaces formant la détection VH.</translation>
+        </message>
+        <message>
+            <source>Space-separated routing channels forming the VV detection.</source>
+            <translation>Voies de routage séparées par des espaces formant la détection VV.</translation>
+        </message>
+        <message>
+            <source>Space-separated routing channels; even = VV, odd = VH.</source>
+            <translation>Voies de routage séparées par des espaces ; pair = VV, impair = VH.</translation>
+        </message>
+        <message>
+            <source>Stack VV and VH detector-routing channels for anisotropy-aware filter computation.</source>
+            <translation>Empiler les voies de routage de détecteur VV et VH pour un calcul de filtre tenant compte de l'anisotropie.</translation>
+        </message>
+        <message>
+            <source>Steady-state anisotropy r (Ströhl et al. 2018, DOI 10.1088/2050-6120/aa872e)
+r = (I_VV - G*I_VH) / ((1 - 3*l2)*I_VV + (2 - 3*l1)*G*I_VH)
+Lifetime τ: Poisson log-linear tail fit ({detail})</source>
+            <translation>Anisotropie stationnaire r (Ströhl et al. 2018, DOI 10.1088/2050-6120/aa872e)
+r = (I_VV - G*I_VH) / ((1 - 3*l2)*I_VV + (2 - 3*l1)*G*I_VH)
+Durée de vie τ : ajustement log-linéaire de Poisson de la queue ({detail})</translation>
+        </message>
+        <message>
+            <source>TAC range start:end used to calculate the G factor from the loaded decays.</source>
+            <translation>Plage TAC start:end utilisée pour calculer le facteur G à partir des déclins chargés.</translation>
+        </message>
+        <message>
+            <source>The detector of the setup the FRET-acceptor photons are read from (R|G by default): its channels and micro-time ranges fill the row.</source>
+            <translation>Le détecteur de la configuration dont sont lus les photons de l'accepteur FRET (R|G par défaut) : ses voies et plages de micro-temps remplissent la ligne.</translation>
+        </message>
+        <message>
+            <source>The detector of the setup the blue photons are read from (B|B by default): its channels fill the row.</source>
+            <translation>Le détecteur de la configuration dont sont lus les photons bleus (B|B par défaut) : ses voies remplissent la ligne.</translation>
+        </message>
+        <message>
+            <source>The detector of the setup the donor photons are read from (G|G by default): its channels and micro-time ranges fill the row.</source>
+            <translation>Le détecteur de la configuration dont sont lus les photons du donneur (G|G par défaut) : ses voies et plages de micro-temps remplissent la ligne.</translation>
+        </message>
+        <message>
+            <source>The detector of the setup the green photons are read from (G|G by default): its channels fill the row.</source>
+            <translation>Le détecteur de la configuration dont sont lus les photons verts (G|G par défaut) : ses voies remplissent la ligne.</translation>
+        </message>
+        <message>
+            <source>The detector of the setup the red photons are read from (R|G by default): its channels fill the row.</source>
+            <translation>Le détecteur de la configuration dont sont lus les photons rouges (R|G par défaut) : ses voies remplissent la ligne.</translation>
+        </message>
+        <message>
+            <source>The donor (G|G) and FRET-acceptor (R|G) detectors of the photon stream.</source>
+            <translation>Les détecteurs donneur (G|G) et accepteur FRET (R|G) du flux de photons.</translation>
+        </message>
+        <message>
+            <source>The excitation periods of the three-colour PIE cycle: the blue pulse is seen by all three detectors, the green pulse by G|G and R|G.</source>
+            <translation>Les périodes d'excitation du cycle PIE à trois couleurs : l'impulsion bleue est vue par les trois détecteurs, l'impulsion verte par G|G et R|G.</translation>
+        </message>
+        <message>
+            <source>The file has VV and VH swapped: exchange the VV and VH channels consistently across the calculation and the plots.</source>
+            <translation>Le fichier a VV et VH permutés : échangez les voies VV et VH de façon cohérente dans le calcul et les tracés.</translation>
+        </message>
+        <message>
+            <source>The polarized IRF and decay curves: named IRF/prompt for the response and VH for the VH channel, else in the order IRF VV, IRF VH, data VV, data VH (IRF then data for stacked VV/VH files).</source>
+            <translation>Les courbes IRF et de déclin polarisées : nommées IRF/prompt pour la réponse et VH pour la voie VH, sinon dans l'ordre IRF VV, IRF VH, données VV, données VH (IRF puis données pour les fichiers VV/VH empilés).</translation>
+        </message>
+        <message>
+            <source>This tool fits a &lt;b&gt;single fluorescence lifetime per region&lt;/b&gt; by Poisson maximum likelihood — the 2I* estimator, on the VV and VH decays together.&lt;br/&gt;&lt;br/&gt;It does &lt;b&gt;not&lt;/b&gt; segment. The regions come from the &lt;b&gt;Spot Finder&lt;/b&gt;, or from a saved label image. That separation is deliberate: a fit that finds its own regions cannot be shown what it is about to fit, which is exactly how a tuned preview and the run that followed it stopped agreeing.&lt;br/&gt;&lt;br/&gt;Seven steps, about two minutes.</source>
+            <translation>Cet outil ajuste une &lt;b&gt;seule durée de vie de fluorescence par région&lt;/b&gt; par maximum de vraisemblance de Poisson — l'estimateur 2I*, sur les déclins VV et VH ensemble.&lt;br/&gt;&lt;br/&gt;Il ne &lt;b&gt;segmente&lt;/b&gt; pas. Les régions viennent du &lt;b&gt;Chercheur de spots&lt;/b&gt;, ou d'une image d'étiquettes enregistrée. Cette séparation est délibérée : un ajustement qui trouve ses propres régions ne peut pas se voir montrer ce qu'il s'apprête à ajuster, ce qui est précisément la façon dont un aperçu réglé et l'exécution qui a suivi ont cessé de concorder.&lt;br/&gt;&lt;br/&gt;Sept étapes, environ deux minutes.</translation>
+        </message>
+        <message>
+            <source>Three colours: B|B, G|G and R|G (by default). Their micro-time windows are the excitation periods of the PIE cycle, below.</source>
+            <translation>Trois couleurs : B|B, G|G et R|G (par défaut). Leurs fenêtres de micro-temps sont les périodes d'excitation du cycle PIE, ci-dessous.</translation>
+        </message>
+        <message>
+            <source>Threshold and VV/VH shifts in channels applied to the measured IRF before fitting.</source>
+            <translation>Seuil et décalages VV/VH en canaux, appliqués à l’IRF mesurée avant l’ajustement.</translation>
+        </message>
+        <message>
+            <source>Trim the measured IRF below its peak fraction and align the VV/VH responses by fractional micro-time bins before reconvolution.</source>
+            <translation>Découpez la FRI mesurée sous sa fraction de crête et alignez les réponses VV/VH par fractions de cases de micro-temps avant la reconvolution.</translation>
+        </message>
+        <message>
+            <source>Two colours: a donor row (G|G by default) and a FRET-acceptor row (R|G by default), each with its routing channels and its own photon-selection window.</source>
+            <translation>Deux couleurs : une ligne donneur (G|G par défaut) et une ligne accepteur FRET (R|G par défaut), chacune avec ses voies d'acheminement et sa propre fenêtre de sélection de photons.</translation>
+        </message>
+        <message>
+            <source>Untick &lt;b&gt;Simulate&lt;/b&gt; and pick a &lt;b&gt;burst run&lt;/b&gt; in the &lt;b&gt;Input&lt;/b&gt; section: the runs of the measurement containers in the workspace, each under its photon stream in the Datasets view. Files dropped on the ChiSurf window are added there; &lt;i&gt;Open in…&lt;/i&gt; on a Datasets row, or dragging the row onto this tool, does the same. Then check the G|G / R|G channel lists.&lt;br/&gt;&lt;br/&gt;Two checks before believing the result: &lt;b&gt;does the BIC clearly fall&lt;/b&gt; when you add a state (if not, do not add it), and &lt;b&gt;does the H2MM cross-check agree&lt;/b&gt;? H2MM fits the same photons in discrete time and shares no likelihood with this — agreement is real evidence.&lt;br/&gt;&lt;br/&gt;The &lt;b&gt;?&lt;/b&gt; button has the long version.</source>
+            <translation>Décochez &lt;b&gt;Simuler&lt;/b&gt; et choisissez une &lt;b&gt;exécution de bursts&lt;/b&gt; dans la section &lt;b&gt;Entrée&lt;/b&gt; : les exécutions des conteneurs de mesure de l'espace de travail, chacune sous son flux de photons dans la vue Datasets. Les fichiers déposés sur la fenêtre ChiSurf y sont ajoutés ; &lt;i&gt;Ouvrir dans…&lt;/i&gt; sur une ligne de Datasets, ou glisser la ligne sur cet outil, fait de même. Vérifiez ensuite les listes de voies G|G / R|G.&lt;br/&gt;&lt;br/&gt;Deux vérifications avant de croire le résultat : &lt;b&gt;le BIC baisse-t-il nettement&lt;/b&gt; lorsque vous ajoutez un état (sinon, ne l'ajoutez pas), et &lt;b&gt;la contre-vérification H2MM concorde-t-elle&lt;/b&gt; ? H2MM ajuste les mêmes photons en temps discret et ne partage aucune vraisemblance avec celui-ci — la concordance est une vraie preuve.&lt;br/&gt;&lt;br/&gt;Le bouton &lt;b&gt;?&lt;/b&gt; donne la version longue.</translation>
+        </message>
+        <message>
+            <source>VH ch</source>
+            <translation>VH voie</translation>
+        </message>
+        <message>
+            <source>VH channels</source>
+            <translation>Voies VH</translation>
+        </message>
+        <message>
+            <source>VV and VH channels generated from the rotation spectrum.</source>
+            <translation>Voies VV et VH générées à partir du spectre de rotation.</translation>
+        </message>
+        <message>
+            <source>VV ch</source>
+            <translation>VV voie</translation>
+        </message>
+        <message>
+            <source>VV channels</source>
+            <translation>Voies VV</translation>
+        </message>
+        <message>
+            <source>Which detectors play donor and acceptor (G|G and R|G) comes from the setup defined here, and this is the definition &lt;b&gt;nothing downstream re-checks&lt;/b&gt;.&lt;br/&gt;&lt;br/&gt;Swap them and you still get a complete, plausible BVA plot — with the population mirrored about E = ½ — and no statistic anywhere reports it. Set it against the hardware once, and confirm it on a sample whose answer you already know.</source>
+            <translation>Les détecteurs qui jouent le donneur et l'accepteur (G|G et R|G) proviennent de la configuration définie ici, et c'est la définition que &lt;b&gt;rien en aval ne revérifie&lt;/b&gt;.&lt;br/&gt;&lt;br/&gt;Si vous les permutez, vous obtenez tout de même un tracé BVA complet et plausible — avec la population réfléchie autour de E = ½ — et aucune statistique ne le signale nulle part. Réglez-la une fois par rapport au matériel, et confirmez-la sur un échantillon dont vous connaissez déjà la réponse.</translation>
+        </message>
+        <message>
+            <source>micro-time channel (VV | VH)</source>
+            <translation>voie de micro-temps (VV | VH)</translation>
+        </message>
+        <message>
+            <source>start:end</source>
+            <translation>start:end</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

@@ -1,8 +1,8 @@
 # Region MLE
 
 Fits a **single fluorescence lifetime per region** by Poisson maximum
-likelihood — tttrlib's `Fit23`, the Maus-2001 2I\* estimator — on the parallel
-and perpendicular decays together.
+likelihood — tttrlib's `Fit23`, the Maus-2001 2I\* estimator — on the VV
+and VH decays together.
 
 It does not segment. The regions come from the **Spot Finder**, from a saved
 label image, or from regions handed over in memory, and the fit answers for

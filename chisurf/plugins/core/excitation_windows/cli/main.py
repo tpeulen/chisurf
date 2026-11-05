@@ -25,7 +25,7 @@ def _windows_lines(det: dict) -> list[str]:
     ns = det.get("windows_ns") or {}
     unit = "ticks" if det.get("domain") == "macro" else "ch"
     return [
-        f"  {name:10s} {lo:6d}–{hi:<6d} {unit}   {ns[name][0]:8.2f}–{ns[name][1]:.2f} ns"
+        f"  {name:10s} {lo:6d}:{hi:<6d} {unit}   {ns[name][0]:8.2f}:{ns[name][1]:.2f} ns"
         for name, (lo, hi) in (det.get("windows") or {}).items()
     ]
 

@@ -325,12 +325,12 @@ class FilterResultMFD:
         return self.filters_par.shape[1]
 
     def to_channel_filters(self, par_channels, perp_channels) -> dict:
-        """Map parallel/perpendicular routing channels to their filter matrices.
+        """Map VV/VH routing channels to their filter matrices.
 
         Returns a ``{routing_channel: (n_species, n_bins)}`` table for the
-        channel-aware correlator: parallel detectors get ``filters_par``,
-        perpendicular detectors get ``filters_perp`` (mirroring PAM's per-photon
-        par/perp filter application).
+        channel-aware correlator: VV detectors get ``filters_par``,
+        VH detectors get ``filters_perp`` (mirroring PAM's per-photon
+        VV/VH filter application).
         """
         table = {int(ch): self.filters_par[: self.n_species] for ch in par_channels}
         table.update({int(ch): self.filters_perp[: self.n_species] for ch in perp_channels})
@@ -528,7 +528,7 @@ def compute_filters_mfd(
         raise ValueError("total_decay_par and total_decay_perp must be 1D arrays")
 
     if total_par.size != total_perp.size:
-        raise ValueError("Parallel and perpendicular decays must have the same size.")
+        raise ValueError("VV and VH decays must have the same size.")
 
     species_par = [np.asarray(s, dtype=float) for s in species_decays_par]
     species_perp = [np.asarray(s, dtype=float) for s in species_decays_perp]

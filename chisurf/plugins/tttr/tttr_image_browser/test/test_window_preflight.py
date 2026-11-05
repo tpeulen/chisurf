@@ -50,7 +50,7 @@ def donor_only(tmp_path_factory):
 def test_a_gate_that_hides_a_pulse_is_reported(demo):
     lines = gate_warnings(demo, NARROW)
     assert len(lines) == 1 and lines[0].startswith("Detector gates do not match"), lines
-    assert "R|G" in lines[0] and "prompt 50–1613" in lines[0]
+    assert "R|G" in lines[0] and "prompt 50:1613" in lines[0]
 
 
 def test_gates_that_hold_the_pulses_say_nothing_whatever_the_windows(demo):

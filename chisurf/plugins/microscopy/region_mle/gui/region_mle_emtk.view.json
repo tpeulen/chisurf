@@ -23,7 +23,7 @@
             {"type": "custom", "key": "region_list", "target": "regions", "title": "Analysis region",
              "description": "Restricts which of the detected regions are fitted — one cell, one illuminated patch, a field with the bright edge cropped off. Draw one, or load a saved region, a mask or a segmentation; several combine by the rule below. Empty = the whole frame."},
             {"type": "value", "attr": "detector_chs_text", "kind": "str", "label": "Detector channels",
-             "description": "Space-separated routing channels; even = parallel (∥), odd = perpendicular (⊥)."},
+             "description": "Space-separated routing channels; even = VV, odd = VH."},
             {"type": "value", "attr": "mtr_start", "kind": "int", "label": "Fit start", "minimum": 0, "maximum": 1000000,
              "description": "Fit-window start on the binned micro-time axis."},
             {"type": "value", "attr": "mtr_stop", "kind": "int", "label": "Fit stop", "minimum": 1, "maximum": 1000000,
@@ -82,7 +82,7 @@
          "description": "Browse the detected regions; the canvas marks the selected one and the panel shows its Fit23 result."},
         {"type": "custom", "key": "decay_panel", "target": "current_region_curves",
          "title": "Decay",
-         "options": {"x_label": "micro-time channel (∥ | ⊥)"},
+         "options": {"x_label": "micro-time channel (VV | VH)"},
          "description": "VV/VH decay of the selected region with the fitted Fit23 model, the IRF and the background overlaid, and the weighted residuals above sharing the time axis — the same panel the burst-wise MLE draws."}
       ]
     }

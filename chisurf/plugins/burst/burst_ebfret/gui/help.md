@@ -11,7 +11,7 @@ walks you through one analysis.
 ## The window
 
 **Time Series** (top) shows the current series: the signal
-`E = acceptor / (donor + acceptor)` above, donor (green) and acceptor (red)
+`E = acceptor / (donor + acceptor)` above, donor (G|G) and acceptor (R|G)
 below. Once analysed, the **Viterbi path** — the most likely state per frame —
 is drawn over both, coloured by state. The dashed stretches are frames outside
 the crop range.

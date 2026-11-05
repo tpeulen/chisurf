@@ -376,7 +376,7 @@ class AlexApp(TourTarget, ImApp):
                 self.error(
                     ValueError(
                         tr("Measured period is outside the Period range")
-                        + f": {period} ({low}–{high})"
+                        + f": {period} ({low}:{high})"
                     )
                 )
                 return

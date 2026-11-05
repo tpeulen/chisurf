@@ -25,12 +25,12 @@ def cli() -> None:
 @click.option("--region-min", type=float, required=True, help="Tail match region min channel.")
 @click.option("--region-max", type=float, required=True, help="Tail match region max channel.")
 @click.option(
-    "--shift", type=float, default=0.0, show_default=True, help="Perpendicular decay shift."
+    "--shift", type=float, default=0.0, show_default=True, help="VH decay shift."
 )
 @click.option("--use-bg", is_flag=True, help="Enable background subtraction.")
 @click.option("--bg-min", type=float, default=None, help="Background region min channel.")
 @click.option("--bg-max", type=float, default=None, help="Background region max channel.")
-@click.option("--flip", is_flag=True, help="Swap parallel and perpendicular decays.")
+@click.option("--flip", is_flag=True, help="Swap the VV and VH decays.")
 def calculate(
     vv_vh_file: str,
     region_min: float,

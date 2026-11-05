@@ -1,5 +1,5 @@
 {
-  "_comment": "Pixel-wise FLIM MLE tool. AutoForm over PixelMleViewModel: an Analysis dock (CLSM + IRF file lists, parallel/perpendicular channels, fit window, IRF prep, background, engine + worker threads, Run button) plus a result dock showing the fitted lifetime (tau) map. The fit-model combo + per-model parameter rows are injected by PixelMleViewModel.view_spec (fit23/24/25); each pixel is fitted by Poisson MLE through the shared fit2x harness.",
+  "_comment": "Pixel-wise FLIM MLE tool. AutoForm over PixelMleViewModel: an Analysis dock (CLSM + IRF file lists, VV/VH channels, fit window, IRF prep, background, engine + worker threads, Run button) plus a result dock showing the fitted lifetime (tau) map. The fit-model combo + per-model parameter rows are injected by PixelMleViewModel.view_spec (fit23/24/25); each pixel is fitted by Poisson MLE through the shared fit2x harness.",
   "sections": [
     {
       "type": "dock_area",
@@ -20,10 +20,10 @@
             {"type": "custom", "key": "path_list", "target": "sel_irf_files", "title": "IRF file",
              "options": {"add_folders": false, "dialog_filter": "Photon data (*.pto *.ptu *.ht3 *.spc *.pt3);;All files (*)"},
              "description": "IRF TTTR measurement (the first file is used)."},
-            {"type": "value", "attr": "channels_parallel_text", "kind": "str", "label": "Parallel channels (∥)",
-             "description": "Space-separated routing channels forming the parallel (VV) detection."},
-            {"type": "value", "attr": "channels_perpendicular_text", "kind": "str", "label": "Perpendicular channels (⊥)",
-             "description": "Space-separated routing channels forming the perpendicular (VH) detection."},
+            {"type": "value", "attr": "channels_parallel_text", "kind": "str", "label": "VV channels",
+             "description": "Space-separated routing channels forming the VV detection."},
+            {"type": "value", "attr": "channels_perpendicular_text", "kind": "str", "label": "VH channels",
+             "description": "Space-separated routing channels forming the VH detection."},
             {"type": "value", "attr": "micro_time_start", "kind": "int", "label": "Fit start", "minimum": 0, "maximum": 1000000,
              "description": "Fit-window start on the binned micro-time axis."},
             {"type": "value", "attr": "micro_time_stop", "kind": "int", "label": "Fit stop", "minimum": 1, "maximum": 1000000,
@@ -34,12 +34,12 @@
              "description": "Pixels with fewer photons in the fit window are not fitted."},
             {"type": "value", "attr": "roi_path", "kind": "file", "label": "Region",
              "description": "Optional region confining the fit to part of the frame — regions saved in CLSM Draw (.json), a Cellpose segmentation (_seg.npy), a label image or a binary mask. Leave empty to fit the whole frame."},
-            {"type": "panel", "description": "Threshold and parallel/perpendicular shifts in channels applied to the measured IRF before fitting.", "title": "IRF preparation", "n_col": 2, "collapsed": true, "sections": [
+            {"type": "panel", "description": "Threshold and VV/VH shifts in channels applied to the measured IRF before fitting.", "title": "IRF preparation", "n_col": 2, "collapsed": true, "sections": [
               {"type": "value", "attr": "irf_threshold", "kind": "float", "label": "Threshold", "decimals": 3, "minimum": 0.0, "maximum": 1.0,
                "description": "Fraction of the IRF maximum below which bins are zeroed."},
-              {"type": "value", "attr": "shift_sp", "kind": "float", "label": "Shift ∥", "decimals": 3, "minimum": -1000.0, "maximum": 1000.0,
+              {"type": "value", "attr": "shift_sp", "kind": "float", "label": "Shift VV", "decimals": 3, "minimum": -1000.0, "maximum": 1000.0,
                "description": "Parallel-channel sub-bin IRF shift."},
-              {"type": "value", "attr": "shift_ss", "kind": "float", "label": "Shift ⊥", "decimals": 3, "minimum": -1000.0, "maximum": 1000.0,
+              {"type": "value", "attr": "shift_ss", "kind": "float", "label": "Shift VH", "decimals": 3, "minimum": -1000.0, "maximum": 1000.0,
                "description": "Perpendicular-channel sub-bin IRF shift."}
             ]},
             {"type": "panel", "description": "Optional fit terms such as the 2I* criterion and scatter treatment.", "title": "Fit flags", "n_col": 2, "collapsed": true, "sections": [
@@ -48,9 +48,9 @@
             ]},
             {"type": "panel", "description": "Background decays subtracted from the signal, per polarization.", "title": "Background", "n_col": 2, "collapsed": true, "sections": [
               {"type": "toggle", "attr": "use_bg", "label": "Subtract", "description": "Subtract a flat background from the fit window."},
-              {"type": "value", "attr": "bg_p", "kind": "float", "label": "bg ∥", "decimals": 3, "minimum": 0.0, "maximum": 1000000.0,
+              {"type": "value", "attr": "bg_p", "kind": "float", "label": "bg VV", "decimals": 3, "minimum": 0.0, "maximum": 1000000.0,
                "description": "Parallel background counts spread over the fit window."},
-              {"type": "value", "attr": "bg_s", "kind": "float", "label": "bg ⊥", "decimals": 3, "minimum": 0.0, "maximum": 1000000.0,
+              {"type": "value", "attr": "bg_s", "kind": "float", "label": "bg VH", "decimals": 3, "minimum": 0.0, "maximum": 1000000.0,
                "description": "Perpendicular background counts spread over the fit window."}
             ]},
             {"type": "panel", "description": "Compute engine and number of parallel workers for the per-pixel fits.", "title": "Performance", "n_col": 2, "collapsed": true, "sections": [

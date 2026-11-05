@@ -207,9 +207,9 @@ def test_run_is_greyed_and_says_why_until_everything_is_given(app, drv, files):
     assert m.can_run()[1] == "Empty micro-time fit window."
     m.micro_time_start, m.micro_time_stop = 0, 250
     m.channels_parallel_text = ""
-    assert m.can_run()[1] == "Both parallel and perpendicular channels are required."
+    assert m.can_run()[1] == "Both VV and VH channels are required."
     m.channels_parallel_text, m.channels_perpendicular_text = "0 1", "1"
-    assert m.can_run()[1] == "Parallel and perpendicular channels must be distinct."
+    assert m.can_run()[1] == "VV and VH channels must be distinct."
 
 
 # ── 2. the file lists ───────────────────────────────────────────────────────────────────────────────────── #
@@ -634,8 +634,8 @@ def test_the_spec_has_the_files_the_window_the_settings_and_run():
         "Threads",
         "2I* (P+2S)",
         "BIFL scatter",
-        "Parallel channels (∥)",
-        "Perpendicular channels (⊥)",
+        "VV channels",
+        "VH channels",
     } <= emtk, sorted(emtk)
 
 

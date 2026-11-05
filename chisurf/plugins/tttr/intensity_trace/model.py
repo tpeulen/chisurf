@@ -157,7 +157,7 @@ class IntensityTraceModel:
             return [str(name) for name in detectors]
         if used_channels is None and self.available:
             return list(self.available)
-        # before a file is read: routing channels 0-7
+        # before a file is read: routing channels 0:7
         return [f"routing_{c}" for c in (used_channels if used_channels is not None else range(8))]
 
     def load(self, path: str | pathlib.Path) -> bool:

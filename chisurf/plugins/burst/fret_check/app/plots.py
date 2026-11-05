@@ -194,7 +194,7 @@ def draw_bursts(s, p) -> None:
 #: Stream colours of the example trace: donor-detector green, the acceptor
 #: detector under donor excitation yellow, the acceptor-excitation stream red.
 STREAM_COLOUR = {"DD": (40, 160, 60, 255), "DA": (235, 190, 30, 255), "AA": (210, 55, 45, 255)}
-STREAM_LABEL = {"DD": "DD (green)", "DA": "DA (yellow)", "AA": "AA (red)"}
+STREAM_LABEL = {"DD": "DD (G|G)", "DA": "DA (R|G)", "AA": "AA (R|R)"}
 
 
 def _trace_sides(rates) -> tuple[list[str], list[str]]:

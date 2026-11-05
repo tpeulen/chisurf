@@ -338,7 +338,7 @@ class TraceBrowserModel(WorkspaceInputMixin, WindowsPreflightMixin):
                     mtrs = dinfo.get("micro_time_ranges", []) or []
                     # Build range text
                     rng_txt = ";".join(
-                        f"{int(a)}-{int(b)}"
+                        f"{int(a)}:{int(b)}"
                         for (a, b) in mtrs
                         if isinstance(a, (int, float)) and isinstance(b, (int, float))
                     )

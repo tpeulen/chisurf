@@ -211,7 +211,7 @@ class SimulationSetupModel(SimulationSettingsModel):
         out = []
         for color in self.enabled_colors():
             base = self._CHANNEL_COLORS.index(color) * 2
-            for k, mark in enumerate(("∥", "⊥")):
+            for k, mark in enumerate(("VV", "VH")):
                 out.append((color, base + k, f"{_COLOR_ABBR[color]} {mark}"))
         return out
 
@@ -235,7 +235,7 @@ class SimulationSetupModel(SimulationSettingsModel):
             },
         ]
         for color, slot, header in self._q_columns():
-            pol = "parallel" if slot % 2 == 0 else "perpendicular"
+            pol = "VV" if slot % 2 == 0 else "VH"
             cols.append(
                 {
                     "key": f"q{slot}",

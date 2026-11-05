@@ -4,7 +4,7 @@ This tool is deprecated: use the VV/VH G-Factor plugin and the reader-integrated
 workflow instead. It stays for existing data.
 
 It computes the fluorescence anisotropy decay r(t) = (VV - g VH) / (VV + 2 g VH) from a file that
-holds the parallel decay (VV) followed by the perpendicular decay (VH), and the residual
+holds the VV decay followed by the VH decay, and the residual
 anisotropy r∞ as the mean of r(t) over a region.
 
 ## Settings

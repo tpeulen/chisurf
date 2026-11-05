@@ -39,7 +39,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| I_DD (donor) | `column_i_dd` | choice |  | choices: `column_names` | Donor signal under donor excitation — the donor detector G\|G. Auto-detected from the column names; counts and count rates both work as long as every channel uses the same unit. Type to filter the list. |
+| I_DD (donor) | `column_i_dd` | choice |  | choices: `column_names` | Donor signal under donor excitation — G\|G. Auto-detected from the column names; counts and count rates both work as long as every channel uses the same unit. Type to filter the list. |
 | I_DA (FRET) | `column_i_da` | choice |  | choices: `column_names` | Acceptor signal under donor excitation — the 'red' FRET channel. It still contains donor leakage and directly excited acceptor; removing those is what alpha and delta do. Type to filter the list. |
 | I_AA (acceptor) | `column_i_aa` | choice |  | choices: `column_names` | Acceptor signal under acceptor excitation (ALEX/PIE) — the R\|R channel. Optional, but without it there is no stoichiometry: donor-only and acceptor-only bursts can then not be found automatically and every burst is assumed to be doubly labelled. Type to filter the list. |
 | Donor lifetime | `column_tau_f` | choice |  | choices: `column_names` | Per-burst fluorescence-averaged donor lifetime in presence of the acceptor (ns). Optional, and powerful: it puts every burst on the E-tau plot, lets the static FRET line determine gamma from a single population, and turns the off-line offset into a dynamics test. Type to filter the list. |
@@ -66,9 +66,9 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| B_G\|G (kHz) | `background_dd` | float |  |  | Background rate of the donor detector G\|G (I_DD), kHz. Uncorrected background biases low-efficiency populations most. |
-| B_R\|G (kHz) | `background_da` | float |  |  | Background rate of the FRET detector R\|G (I_DA), kHz. |
-| B_R\|R (kHz) | `background_aa` | float |  |  | Background rate of the acceptor-excitation detector R\|R (I_AA), kHz. |
+| Bg_G\|G (kHz) | `background_dd` | float |  |  | Bg_G\|G, the background rate of G\|G (I_DD), kHz. Uncorrected background biases low-efficiency populations most. |
+| Bg_R\|G (kHz) | `background_da` | float |  |  | Background rate of the FRET detector R\|G (I_DA), kHz. |
+| Bg_R\|R (kHz) | `background_aa` | float |  |  | Background rate of the acceptor-excitation detector R\|R (I_AA), kHz. |
 
 ### Optics prior (light path)
 

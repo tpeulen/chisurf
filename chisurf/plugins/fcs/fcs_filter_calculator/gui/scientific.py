@@ -589,7 +589,7 @@ class ScientificOperations:
         if include_background and result.get("background"):
             nuis.append(f"bkg {result['background']:.3g}")
         nuis_note = " [" + ", ".join(nuis) + "]" if nuis else ""
-        msg = f"Auto-fit [{fit_lo}–{stop}]: {n_species} {label} (χ²ᵣ={result['chi2_reduced']:.3g}{irf_note}) — {parts}{nuis_note}."
+        msg = f"Auto-fit [{fit_lo}:{stop}]: {n_species} {label} (χ²ᵣ={result['chi2_reduced']:.3g}{irf_note}) — {parts}{nuis_note}."
         self._update_status(msg)
         if hasattr(self, "lbl_autofit_status"):
             pass

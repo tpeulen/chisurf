@@ -60,7 +60,7 @@ def _convert(bid, windows):
 def test_wrong_windows_are_reported(pie_bid):
     warnings = _convert(pie_bid, WRONG)
     assert len(warnings) == 1 and "PIE windows do not match" in warnings[0], warnings
-    assert "prompt 50–1613" in warnings[0]
+    assert "prompt 50:1613" in warnings[0]
 
 
 def test_matching_windows_say_nothing(pie_bid):

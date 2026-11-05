@@ -48,7 +48,7 @@
         {"type": "toggle", "attr": "override_calibration", "label": "Override calibration",
          "description": "Off: G, l1 and l2 come from the data (a vv_vh footer, the TTTR reader's anisotropy panel), else from the configuration's polarization_parameter; after a fit the greyed fields show the values used. On: the three values below are used."},
         {"type": "value", "attr": "g_factor", "label": "G-factor", "kind": "float", "style": "spin", "minimum": 0.01, "maximum": 10.0, "step": 0.01, "decimals": 4,
-         "description": "G = S∥/S⊥, the parallel/perpendicular detection sensitivity ratio; it divides the VH channel. The VV/VH G-Factor Calculator measures it."},
+         "description": "G = S_VV/S_VH, the VV/VH detection sensitivity ratio; it divides the VH channel. The VV/VH G-Factor Calculator measures it."},
         {"type": "value", "attr": "l1", "label": "l1", "kind": "float", "style": "spin", "minimum": 0.0, "maximum": 0.3, "step": 0.001, "decimals": 4,
          "description": "Schaffer polarization mixing of the VV channel (high-aperture objective); 0 for an ideal polarizer."},
         {"type": "value", "attr": "l2", "label": "l2", "kind": "float", "style": "spin", "minimum": 0.0, "maximum": 0.3, "step": 0.001, "decimals": 4,

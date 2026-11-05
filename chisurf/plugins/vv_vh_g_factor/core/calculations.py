@@ -48,7 +48,7 @@ def compute_rt(
     perp : array-like
         Perpendicular (VH) intensities.
     g_factor : float
-        Tail ratio VV/VH; multiplies the perpendicular signal.
+        Tail ratio VV/VH; multiplies the VH signal.
     l1 : float, optional
         L1 correction factor.
     l2 : float, optional
@@ -114,7 +114,7 @@ def compute_background_levels(
     shifted_time_axis: np.ndarray,
     bg_region_bounds: list[float] | tuple[float, float],
 ) -> tuple[float, float]:
-    """Compute the mean background level of parallel and perpendicular channels.
+    """Compute the mean background level of the VV and VH channels.
 
     Parameters
     ----------
@@ -123,9 +123,9 @@ def compute_background_levels(
     perp_raw : np.ndarray
         Raw perpendicular (VH) intensities.
     time_axis : np.ndarray
-        Time axis for the parallel channel.
+        Time axis for the VV channel.
     shifted_time_axis : np.ndarray
-        Time axis shifted for the perpendicular channel.
+        Time axis shifted for the VH channel.
     bg_region_bounds : tuple/list of float
         The [bg_min, bg_max] bounds.
 
@@ -414,9 +414,9 @@ def solve_linked_l_from_steady_state(
     Parameters
     ----------
     sp : float
-        Sum of parallel channel counts (background corrected).
+        Sum of VV channel counts (background corrected).
     ss : float
-        Sum of perpendicular channel counts (background corrected).
+        Sum of VH channel counts (background corrected).
     g_factor : float
         Detector tail ratio VV/VH.
     r_target : float
@@ -458,9 +458,9 @@ def compute_steady_state_anisotropy(
     Parameters
     ----------
     sp : float
-        Sum of parallel channel counts (background corrected).
+        Sum of VV channel counts (background corrected).
     ss : float
-        Sum of perpendicular channel counts (background corrected and time-shifted).
+        Sum of VH channel counts (background corrected and time-shifted).
     g_factor : float
         Detector sensitivity ratio VV/VH.
     l1 : float, optional

@@ -3,6 +3,7 @@
 ## 2026-11-05
 
 - Nomenclature, core: burst window columns are written | lo:hi (burst_features.yaml; tttrlib f2f21e89e writes and reads lo:hi, lo-hi of older tables still read via detector_names.RANGE); detector_names.guess_burst_columns maps lo:hi for a tttrlib built before; PDA micro-time ranges, the G-factor gate and the excitation-window texts read a-b and write a:b; VV / VH, G|G / R|G and Bg_<detector> in core descriptions, docstrings and messages. New concept okf/references/nomenclature.md (names, read-side renames, guard, where to pick up).
+- Nomenclature, plugins: labels, tooltips, help, guides and READMEs name detectors G|G / R|G / R|R (role pickers 'Donor (G|G)' / 'Acceptor (R|G)'), Bg_<detector> and 'Bg (kHz)', VV / VH (img_pixel_mle, img_calibration, region_mle, microtime_histogram, synthetic_decay, lltf, tr_anisotropy, vv_vh_*), start:end ranges (fret_check, fcs_correlator writers; parsers still read a-b); 96 new DE/FR catalogue strings; plugin reference pages regenerated.
 
 ## 2026-11-04
 

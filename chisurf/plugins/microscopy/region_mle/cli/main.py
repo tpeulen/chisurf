@@ -24,7 +24,7 @@ def cli() -> None:
 @click.option("--irf-file", "-i", required=True, type=click.Path(exists=True), help="IRF PTU file.")
 @click.option("--output-dir", "-o", default="", help="Override output directory for the joint TSV.")
 @click.option(
-    "--detector-chs", default="0,1", help="Detector channels (comma-separated; even=∥, odd=⊥)."
+    "--detector-chs", default="0,1", help="Detector channels (comma-separated; even=VV, odd=VH)."
 )
 @click.option(
     "--micro-time-range", default="0,256", help="Fit window on the binned axis as 'start,stop'."

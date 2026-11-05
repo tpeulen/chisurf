@@ -24,7 +24,7 @@
 columns:
   - {column: alpha,          factor: alpha, term: _flr_fret_calibration_parameters.alpha,
      units: dimensionless,
-     description: "Donor emission detected in the acceptor channel (leakage)."}
+     description: "Donor emission detected on R|G (leakage)."}
   - {column: alpha_sd,       factor: alpha_sd, term: _flr_fret_calibration_parameters.alpha_sd,
      units: dimensionless,
      description: "Standard deviation of alpha, when the calibration bootstrapped one."}

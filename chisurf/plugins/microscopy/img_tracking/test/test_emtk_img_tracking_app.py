@@ -277,7 +277,7 @@ def test_the_tracks_table_lists_the_true_net_displacements(app, drv, truth):
     rows = m.track_table_rows()
     assert len(rows) == 6
     for row in rows:
-        assert row["length"] == 40 and row["frames"] == "0–39"
+        assert row["length"] == 40 and row["frames"] == "0:39"
         frames, positions = m.result.tracks.track(row["track"])
         (y0, x0), (y1, x1) = positions[0], positions[-1]
         assert row["net"] == pytest.approx(true_net(truth, y0, x0, y1, x1), abs=1.0)

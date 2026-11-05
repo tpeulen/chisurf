@@ -447,8 +447,8 @@ def detect_experiment(data) -> Experiment:
         exp.donor_pol = _pol_order(data, exp.donor_channels)
         exp.acceptor_pol = _pol_order(data, exp.acceptor_channels)
         exp.warnings.append(
-            f"polarization guessed: donor par/perp {exp.donor_pol}, acceptor par/perp "
-            f"{exp.acceptor_pol} (brighter = parallel; a G factor far from 1 can swap them)"
+            f"polarization guessed: donor VV/VH {exp.donor_pol}, acceptor VV/VH "
+            f"{exp.acceptor_pol} (brighter = VV; a G factor far from 1 can swap them)"
         )
     elif len(exp.donor_channels) > 2 or len(exp.acceptor_channels) > 2:
         exp.warnings.append(

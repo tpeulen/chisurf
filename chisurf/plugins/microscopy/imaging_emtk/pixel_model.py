@@ -395,7 +395,7 @@ class PixelModelMixin(WindowsPreflightMixin, EmtkModelMixin, _Host):
                 "window": name,
                 "channels": ", ".join(str(c) for c in d.get("chs", [])),
                 "micro_time_ranges": ", ".join(
-                    f"{r[0]}-{r[1]}" for r in (d.get("micro_time_ranges") or [])
+                    f"{r[0]}:{r[1]}" for r in (d.get("micro_time_ranges") or [])
                 ),
             }
             for name, d in self._windows().items()

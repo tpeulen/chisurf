@@ -32,8 +32,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Donor detector | `donor` | choice |  | choices: `detector_names` | Detector of the donor photons (stream 0): apparent FRET E = A/(A+D). Define detectors in the Detector setup window. |
-| Acceptor detector | `acceptor` | choice |  | choices: `detector_names` | Detector of the acceptor photons (stream 1). Swapping donor and acceptor still converges and looks plausible: check the assignment. |
+| Donor (G\|G) | `donor` | choice |  | choices: `detector_names` | Detector that plays the donor (G\|G by default), its photons are stream 0: apparent FRET E = A/(A+D). Define detectors in the Detector setup window. |
+| Acceptor (R\|G) | `acceptor` | choice |  | choices: `detector_names` | Detector that plays the FRET acceptor (R\|G by default), its photons are stream 1. Swapping donor and acceptor still converges and looks plausible: check the assignment. |
 | Aex detector | `aex` | choice |  | choices: `aex_options` | Optional third stream (usALEX / PIE): acceptor photons under acceptor excitation. Gives every state a stoichiometry. |
 
 ### Model selection

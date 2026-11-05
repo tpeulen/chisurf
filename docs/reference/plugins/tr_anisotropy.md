@@ -63,8 +63,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | g-factor | `g_factor` | float |  | 0.001 … 100.0 (step 0.01) | Detection-efficiency ratio between the VV and VH channels; it scales the anisotropy as a whole. |
-| l1 | `l1` | float |  | -10.0 … 10.0 (step 0.01) | Channel-mixing correction l1 of the parallel channel (high-aperture objectives). |
-| l2 | `l2` | float |  | -10.0 … 10.0 (step 0.01) | Channel-mixing correction l2 of the perpendicular channel. |
+| l1 | `l1` | float |  | -10.0 … 10.0 (step 0.01) | Channel-mixing correction l1 of the VV channel (high-aperture objectives). |
+| l2 | `l2` | float |  | -10.0 … 10.0 (step 0.01) | Channel-mixing correction l2 of the VH channel. |
 
 ### Lifetime spectrum
 

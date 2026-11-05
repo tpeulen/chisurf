@@ -4,8 +4,8 @@
 with scanner markers, parallel photons on routing channel 0, perpendicular on channel 2): the left
 half of the image decays with :data:`DEMO` ``tau_left_ns`` and the right half with
 ``tau_right_ns``. Photon arrival times are the sum of a Gaussian instrument response (the second
-file records it alone) and an exponential decay, and each photon goes to the parallel or the
-perpendicular detector with the probabilities of the model the fit uses
+file records it alone) and an exponential decay, and each photon goes to the VV or the
+VH detector with the probabilities of the model the fit uses
 (``r(t) = r0 exp(-t/rho)``, ``I_VV = F(1 + 2r)/3``, ``I_VH = F(1 - r)/3``; the demo is isotropic,
 ``r0 = 0``, and "Load example" sets the fit's start anisotropy to match), so the fitted lifetime
 map has a known answer: two plateaus at the two simulated lifetimes. Nothing here is a measurement.

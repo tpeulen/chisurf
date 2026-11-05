@@ -53,7 +53,7 @@
         "HydraHarp 400 in HT3 mode (Info file: reading routine 'PQ TH3R', laser rep.",
         "15.62 ns). Eight detection channels: 2 colours (green, red) x 2 polarizations x",
         "2 detectors per colour and polarization (dead-time-free); photons on routing",
-        "channels 0-7 in every Split_*.ht3."
+        "channels 0:7 in every Split_*.ht3."
       ],
       "setup_id": "singlem-2014-hydraharp-8ch",
       "channels": [

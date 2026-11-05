@@ -3709,21 +3709,21 @@ class RecordApp(ImApp):
         tau_str = f"τ ≈ {tau_life:.2f} ns" if tau_life is not None else "τ: —"
         g_str = f"G = {g:.3f}"
 
-        im.text(f"  {r_str}  ({r_app_str})  ·  {tau_str}  ·  {g_str}  ·  I_∥={i_par:.0f}, I_⊥={i_perp:.0f}")
+        im.text(f"  {r_str}  ({r_app_str})  ·  {tau_str}  ·  {g_str}  ·  I_VV={i_par:.0f}, I_VH={i_perp:.0f}")
         im.set_item_tooltip(
             tr("Steady-state anisotropy r (Ströhl et al. 2018, DOI 10.1088/2050-6120/aa872e)\n"
-               "r = (I_par - G*I_perp) / ((1 - 3*l2)*I_par + (2 - 3*l1)*G*I_perp)\n"
+               "r = (I_VV - G*I_VH) / ((1 - 3*l2)*I_VV + (2 - 3*l1)*G*I_VH)\n"
                "Lifetime τ: Poisson log-linear tail fit ({detail})").format(detail=life_detail or "idle")
         )
 
         if im.tree_node_ex(tr("Calibration helper: G-factor & l1/l2 (Ströhl et al. 2018)##pol_helper"), im.TreeNodeFlags.DEFAULT_OPEN):
             im.text_wrapped(tr("Calibrate G from a rotating reference dye (e.g. Rhodamine 110 in water, assumed r = 0)."))
             im.set_next_item_width(80.0)
-            _, model.pol_par_channel = im.input_int(tr("Parallel ch (∥)"), model.pol_par_channel)
+            _, model.pol_par_channel = im.input_int(tr("VV ch"), model.pol_par_channel)
             im.same_line()
             im.set_next_item_width(80.0)
-            _, model.pol_perp_channel = im.input_int(tr("Perp ch (⊥)"), model.pol_perp_channel)
-            im.set_item_tooltip(tr("Routing channel indices for parallel and perpendicular polarization detection."))
+            _, model.pol_perp_channel = im.input_int(tr("VH ch"), model.pol_perp_channel)
+            im.set_item_tooltip(tr("Routing channel indices of the VV and VH polarization detectors."))
 
             _, model.pol_ref_r = im.input_float(tr("Assumed reference r"), model.pol_ref_r, step=0.01, fmt="%.3f")
             im.set_item_tooltip(tr("Assumed true anisotropy of reference dye (-0.5 < r < 1.0; 0 for fast rotation)."))
@@ -3744,7 +3744,7 @@ class RecordApp(ImApp):
                     model.status_detail = tr("G-factor calibrated: {g:.3f}").format(g=val)
             if not can_calc:
                 im.end_disabled()
-                im.set_item_tooltip(tr("Acquire photons in parallel and perpendicular channels to calculate G."))
+                im.set_item_tooltip(tr("Acquire photons in the VV and VH channels to calculate G."))
             im.same_line()
             _, model.pol_g_factor = im.input_float(tr("Active G"), model.pol_g_factor, step=0.01, fmt="%.3f")
             im.tree_pop()

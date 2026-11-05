@@ -61,12 +61,12 @@
           "type": "choice",
           "attr": "polarization",
           "label": "Mode",
-          "descriptions": ["Magic-angle decay; carries no anisotropy.", "Parallel and perpendicular channels generated from the rotation spectrum."],
+          "descriptions": ["Magic-angle decay; carries no anisotropy.", "VV and VH channels generated from the rotation spectrum."],
           "options": ["vm", "vv/vh"],
           "labels": ["VM (magic angle)", "VV/VH (polarized)"],
           "style": "radio",
           "rebuild_on_change": true,
-          "description": "Detection mode. VM: magic angle — the decay carries no anisotropy. VV/VH: parallel and perpendicular channels generated with the rotation spectrum below; both share one photon budget when Noise is on."
+          "description": "Detection mode. VM: magic angle — the decay carries no anisotropy. VV/VH: VV and VH channels generated with the rotation spectrum below; both share one photon budget when Noise is on."
         },
         {
           "type": "panel",
@@ -76,7 +76,7 @@
           "collapsed": true,
           "collapsed_when": {"attr": "polarization", "equals": "vm"},
           "sections": [
-            {"type": "value", "attr": "g_factor", "label": "g", "kind": "float", "minimum": 0.001, "maximum": 100.0, "decimals": 4, "description": "Parallel/perpendicular detection sensitivity ratio G. The perpendicular channel records 1/G of what an equally sensitive one would."},
+            {"type": "value", "attr": "g_factor", "label": "g", "kind": "float", "minimum": 0.001, "maximum": 100.0, "decimals": 4, "description": "G = S_VV/S_VH, the VV/VH detection sensitivity ratio. The VH channel records 1/G of what an equally sensitive one would."},
             {"type": "value", "attr": "l1", "label": "l1", "kind": "float", "minimum": -10.0, "maximum": 10.0, "decimals": 4, "description": "Polarization mixing factor of the parallel (VV) channel."},
             {"type": "value", "attr": "l2", "label": "l2", "kind": "float", "minimum": -10.0, "maximum": 10.0, "decimals": 4, "description": "Polarization mixing factor of the perpendicular (VH) channel."}
           ]

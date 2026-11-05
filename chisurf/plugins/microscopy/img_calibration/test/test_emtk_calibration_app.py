@@ -294,7 +294,7 @@ def test_draws_empty_and_populated(spc, size, monkeypatch):
     app = _loaded(spc)
     try:
         strings = _draw(app, size).strings
-        assert {"Conv start", "Background VV (∥)", "Apply →", "IRF files (this detector)"} <= set(
+        assert {"Conv start", "Bg VV", "Apply →", "IRF files (this detector)"} <= set(
             strings
         )
         cut = []

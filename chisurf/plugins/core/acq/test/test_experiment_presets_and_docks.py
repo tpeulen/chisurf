@@ -273,8 +273,8 @@ def test_polarization_dock_helper_channels(tmp_path):
         ui.click_text("> Calibration helper: G-factor & l1/l2 (Ströhl et al. 2018)")
         ui.draw(2)
         strings = " ".join(ui.strings())
-        assert "Parallel ch (∥)" in strings
-        assert "Perp ch (⊥)" in strings
+        assert "VV ch" in strings
+        assert "VH ch" in strings
     finally:
         app.close()
 

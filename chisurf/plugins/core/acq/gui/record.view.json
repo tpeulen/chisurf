@@ -133,7 +133,7 @@
                 "attr": "source_kind",
                 "not_equals": "simulator"
               },
-              "description": "FRET efficiency of the first simulated population. Each molecule carries donor and acceptor; its photons are split into donor and acceptor channel by this E."
+              "description": "FRET efficiency of the first simulated population. Each molecule carries donor and acceptor; its photons are split between G|G and R|G by this E."
             },
             {
               "type": "value",
@@ -387,7 +387,7 @@
           "decimals": 3,
           "style": "spin",
           "call": "realism_edited",
-          "description": "Donor emission leaking into the acceptor channel: raises raw E, most visibly for donor-only molecules."
+          "description": "Donor emission leaking into R|G: raises raw E, most visibly for donor-only molecules."
         },
         {
           "type": "value",
@@ -452,7 +452,7 @@
           "decimals": 2,
           "style": "spin",
           "call": "realism_edited",
-          "description": "Uncorrelated background of the donor detector (dark counts, ambient light), flat in micro time."
+          "description": "Bg_G|G: uncorrelated background of G|G (dark counts, ambient light), flat in micro time."
         },
         {
           "type": "value",
@@ -465,7 +465,7 @@
           "decimals": 2,
           "style": "spin",
           "call": "realism_edited",
-          "description": "Uncorrelated background of the acceptor detector."
+          "description": "Bg_R|G: uncorrelated background of R|G."
         },
         {
           "type": "value",
@@ -478,7 +478,7 @@
           "decimals": 2,
           "style": "spin",
           "call": "realism_edited",
-          "description": "Scattered and Raman light of the donor laser in the donor detector: prompt window, instrument response only."
+          "description": "Scattered and Raman light of the donor laser on G|G: prompt window, instrument response only."
         },
         {
           "type": "value",
@@ -1625,7 +1625,7 @@
               "type": "value",
               "kind": "float",
               "attr": "bleach_background_kcps",
-              "label": "Background (kHz)",
+              "label": "Bg (kHz)",
               "minimum": 0.0,
               "maximum": 10000.0,
               "step": 0.5,

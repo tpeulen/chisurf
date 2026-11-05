@@ -32,7 +32,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Flip VV/VH | `flip` | bool |  |  | The file has VV and VH swapped: exchange the parallel and perpendicular channels consistently across the calculation and the plots. |
+| Flip VV/VH | `flip` | bool |  |  | The file has VV and VH swapped: exchange the VV and VH channels consistently across the calculation and the plots. |
 | Background correction | `background` | bool |  |  | Subtract separate channel means of the background region before matching the tails. |
 
 ### Tail matching

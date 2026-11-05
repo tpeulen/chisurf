@@ -11,16 +11,16 @@
         {
           "type": "choice",
           "attr": "donor",
-          "label": "Donor detector",
+          "label": "Donor (G|G)",
           "options_source": "detector_names",
-          "description": "Detector of the donor photons (stream 0): apparent FRET E = A/(A+D). Define detectors in the Detector setup window."
+          "description": "Detector that plays the donor (G|G by default), its photons are stream 0: apparent FRET E = A/(A+D). Define detectors in the Detector setup window."
         },
         {
           "type": "choice",
           "attr": "acceptor",
-          "label": "Acceptor detector",
+          "label": "Acceptor (R|G)",
           "options_source": "detector_names",
-          "description": "Detector of the acceptor photons (stream 1). Swapping donor and acceptor still converges and looks plausible: check the assignment."
+          "description": "Detector that plays the FRET acceptor (R|G by default), its photons are stream 1. Swapping donor and acceptor still converges and looks plausible: check the assignment."
         },
         {
           "type": "choice",

@@ -5,7 +5,7 @@ This plugin implements Burst Variance Analysis for single-molecule FRET experime
 ## Features
 
 - Load burst data from previous burst analysis
-- Configure BVA parameters (donor/acceptor channels, micro-time ranges, etc.)
+- Configure BVA parameters (G|G / R|G routing channels, micro-time ranges, etc.)
 - Compute BVA metrics for each burst
 - Visualize results with static FRET line for comparison
 - Save results to files for further analysis
@@ -33,7 +33,7 @@ can identify molecules undergoing conformational changes during the observation 
 1. Launch the plugin from the ChiSurf menu: Single-Molecule > Burst-Variance Analysis
 2. Load burst data from previous burst analysis
 3. Configure analysis parameters:
-   - Select donor and acceptor channels
+   - Select the routing channels of G|G (donor) and R|G (acceptor)
    - Define micro-time ranges
    - Set binning parameters
 4. Compute BVA metrics for each burst

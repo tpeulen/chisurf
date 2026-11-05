@@ -100,7 +100,7 @@ instrument would see it:
 **f_VH(t) = f_VM(t) · (1 − (1 − 3·l₂)·r(t)) / g**
 
 The corrections are the ones the fit stack uses: **g** is the
-parallel/perpendicular detection sensitivity ratio (the perpendicular channel
+VV/VH detection sensitivity ratio (the VH channel
 records 1/g of what an equally sensitive one would), and **l₁**, **l₂** are the
 polarization mixing factors of the two channels.
 

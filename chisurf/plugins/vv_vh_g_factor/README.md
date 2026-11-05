@@ -69,7 +69,7 @@ The g-factor is calculated as the ratio of the parallel to perpendicular intensi
 
 g = I_parallel / I_perpendicular
 
-In the tail region of a fluorescence decay, where rotational diffusion has randomized the orientation of the fluorophores, the theoretical anisotropy should be zero. Any deviation from zero is due to the different detection efficiencies of the parallel and perpendicular channels, which is what the g-factor corrects for.
+In the tail region of a fluorescence decay, where rotational diffusion has randomized the orientation of the fluorophores, the theoretical anisotropy should be zero. Any deviation from zero is due to the different detection efficiencies of the VV and VH channels, which is what the g-factor corrects for.
 
 ## Requirements
 

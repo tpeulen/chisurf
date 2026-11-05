@@ -36,7 +36,7 @@ def prepare_irf(
     threshold:
         Default fraction of the maximum below which bins are zeroed.
     shift:
-        Integer relative shift of the perpendicular channel.
+        Integer relative shift of the VH channel.
     shift_sp, shift_ss:
         Sub-bin (fractional) shifts applied to each channel independently.
     threshold_vv, threshold_vh:

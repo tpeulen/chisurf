@@ -634,7 +634,7 @@ def push_unmixed_columns_to_ndx(
     """Inject stable-/shuffle-unmixed per-source photon columns into ndxplorer.
 
     ndxplorer's native FRET pipeline is a scalar linear correction
-    (``Fr = Sr - Br - alpha*Sg``) with no matrix inversion or positivity
+    (``Fr = Sr - Bg_R|G - alpha*Sg``) with no matrix inversion or positivity
     constraint, so with strong spectral overlap it can produce negative,
     noise-amplified signals. This reads the per-burst measured photon counts from
     ``ndx.data_source`` and spectrally **un-mixes** them with the light-path

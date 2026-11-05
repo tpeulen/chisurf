@@ -58,13 +58,13 @@ properties and dynamics.
 2. View the currently selected setup displayed at the top of the tab
    - Use the setup selection dropdown to quickly switch between different setups without going back to the Detector Setup tab
 3. Use the detector selection dropdown to choose between detectors (green, red)
-   - Selecting a detector automatically updates the parallel/perpendicular channels and g-factor
+   - Selecting a detector automatically updates the VV/VH channels and G factor
 4. Configure histogram parameters:
    - File type, binning, and time resolution (dt) are automatically set based on the detector setup
      - Note: For SPC files, microtime resolution is not automatically updated to preserve file-specific settings
    - Channel information is automatically populated from the Detector Setup tab
    - Channels are handled in interleaved format (parallel/perpendicular alternating) for compatibility with MLE burst plugin
-   - Adjust timeshift values for parallel and perpendicular channels if needed
+   - Adjust timeshift values for the VV and VH channels if needed
 5. For single-molecule analysis, queue the measurements' `.pto` burst containers
    - A folder expands to every `.pto` in it for batch processing
    - The plugin will automatically search for corresponding TTTR files with progress indicators

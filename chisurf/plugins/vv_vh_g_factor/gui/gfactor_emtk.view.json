@@ -174,7 +174,7 @@
               "type": "toggle",
               "attr": "flip",
               "label": "Flip VV/VH",
-              "description": "The file has VV and VH swapped: exchange the parallel and perpendicular channels consistently across the calculation and the plots."
+              "description": "The file has VV and VH swapped: exchange the VV and VH channels consistently across the calculation and the plots."
             },
             {
               "type": "toggle",

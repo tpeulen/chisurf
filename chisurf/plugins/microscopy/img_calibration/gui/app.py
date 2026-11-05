@@ -325,7 +325,7 @@ class CalibrationApp(TourTarget, ImApp):
             ):
                 start, stop = data[name]
                 tag_names, tag_color = tags.setdefault(stop, ([], color))
-                tag_names.append(("Fit", "IRF", "BG")[index])
+                tag_names.append(("Fit", "IRF", "Background")[index])
                 a = implot.drag_line_x(index * 2, start, color, 2)
                 b = implot.drag_line_x(index * 2 + 1, stop, color, 2)
                 if a.modified or b.modified:

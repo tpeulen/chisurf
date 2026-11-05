@@ -134,7 +134,7 @@ def tail_lifetime_ns(hist, bin_ns, *, start_ns, stop_ns) -> tuple[float | None, 
     tau = -1.0 / slope
     return (
         float(tau),
-        f"counts-weighted log-linear tail fit over {start:g}-{stop:g} ns "
+        f"counts-weighted log-linear tail fit over {start:g}:{stop:g} ns "
         "(first-order estimate; a reconvolution-fit value can be entered alongside)",
     )
 
@@ -156,15 +156,15 @@ def background_rate_khz(*, photons, acquisition_time_s) -> tuple[float | None, s
 def g_factor(*, i_par, i_perp, r_assumed) -> tuple[float | None, str]:
     """G from a reference with known anisotropy, using background-corrected intensities.
 
-    The convention corrects the perpendicular channel (Ströhl et al.,
+    The convention corrects the VH channel (Ströhl et al.,
     DOI: 10.1088/2050-6120/aa872e, Eq. 1). This alone does not calibrate
     high-NA polarization mixing or establish that the reference is appropriate.
     """
     par, perp, r = _number(i_par), _number(i_perp), _number(r_assumed)
     if perp is None or perp <= 0:
-        return None, "the perpendicular intensity must be positive"
+        return None, "the VH intensity must be positive"
     if par is None or par <= 0:
-        return None, "the parallel intensity must be positive"
+        return None, "the VV intensity must be positive"
     if r is None:
         return None, "set the assumed true anisotropy of the reference (0 for fast rotation)"
     if not -0.5 < r < 1.0:

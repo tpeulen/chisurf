@@ -146,21 +146,21 @@
                         "cw",
                         "ALEX / PIE"
                     ],
-                    "description": "Detected from the data: alternating when a micro-time (PIE) or macro-time (µsALEX) window leaves the donor detectors dark."
+                    "description": "Detected from the data: alternating when a micro-time (PIE) or macro-time (µsALEX) window leaves G|G dark."
                 },
                 {
                     "type": "value",
                     "attr": "donor_channels",
                     "label": "Donor",
                     "kind": "str",
-                    "description": "Routing channels of the donor detectors, comma separated; with polarization: parallel first, then perpendicular."
+                    "description": "Routing channels of G|G, comma separated; with polarization: VV first, then VH."
                 },
                 {
                     "type": "value",
                     "attr": "acceptor_channels",
                     "label": "Acceptor",
                     "kind": "str",
-                    "description": "Routing channels of the acceptor detectors, comma separated; with polarization: parallel first, then perpendicular."
+                    "description": "Routing channels of R|G, comma separated; with polarization: VV first, then VH."
                 },
                 {
                     "type": "value",
@@ -171,7 +171,7 @@
                         "attr": "excitation",
                         "equals": "cw"
                     },
-                    "description": "Donor-excitation window, 'start-stop' in micro-time channels (for µsALEX: in alternation-phase ticks)."
+                    "description": "Donor-excitation window, 'start:stop' in micro-time channels (for µsALEX: in alternation-phase ticks)."
                 },
                 {
                     "type": "value",
@@ -182,7 +182,7 @@
                         "attr": "excitation",
                         "equals": "cw"
                     },
-                    "description": "Acceptor-excitation window, 'start-stop' in micro-time channels (for µsALEX: in alternation-phase ticks)."
+                    "description": "Acceptor-excitation window, 'start:stop' in micro-time channels (for µsALEX: in alternation-phase ticks)."
                 },
                 {
                     "type": "button_row",
@@ -309,7 +309,7 @@
                     "minimum": 0.0,
                     "maximum": 1.0,
                     "decimals": 3,
-                    "description": "Donor emission leaking into the acceptor detectors."
+                    "description": "Donor emission leaking into R|G."
                 },
                 {
                     "type": "value",

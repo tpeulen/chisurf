@@ -7,7 +7,7 @@ the acquisition time (last macro time x the header's macro-time resolution) and 
 micro-time channel count.
 
 The table lists every record, markers too, so it counts *records*: the first column is
-``Record``, the page field ``First record``, the range line ``records 0–200``. A ``Kind``
+``Record``, the page field ``First record``, the range line ``records 0:200``. A ``Kind``
 column (photon / pixel / line start / line stop / frame / marker, marker kinds coloured),
 a ``Kind`` filter beside ``Channel`` and a per-kind count line sit in the summary; Copy
 visible writes a ``kind`` column. This sample has no markers, so its summary reads
@@ -122,7 +122,7 @@ def test_rows_equal_tttrlib_for_the_same_file(sample, reference):
         assert r["macro"] == pytest.approx(float(reference["macro"][i]) * reference["res"] * 1e3)
     assert len(m.rows) == 200
     assert m.table.used_channels == [0, 1, 8, 9]
-    assert m.range_text == "records 0–200"
+    assert m.range_text == "records 0:200"
     assert {r["kind"] for r in m.rows} == {"photon"}  # the sample holds no markers
     assert m.kinds_text == "Records: photon 183,657"
 
@@ -139,7 +139,7 @@ def test_filtered_rows_equal_tttrlib(sample, reference):
     assert {r["channel"] for r in m.rows} == {9}
     m.set_first(1000)
     assert [r["idx"] for r in m.rows] == [int(i) for i in expected[1000:1200]]
-    assert m.range_text == "records 1,000–1,200"
+    assert m.range_text == "records 1,000:1,200"
 
 
 @needs_sample
