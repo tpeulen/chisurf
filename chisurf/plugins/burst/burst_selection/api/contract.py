@@ -19,6 +19,7 @@ PLUGIN_ID = "burst_selection"
 CONTRACT_VERSION = "2.0.0"
 
 METHOD_ANALYZE_FILES = "burst_selection.jobs.analyze_files"
+METHOD_STORE_RESULTS = "burst_selection.jobs.store_results"
 METHOD_INSPECT_BUR = "burst_selection.results.inspect_bur"
 METHOD_FIT_GMM = "burst_selection.gmm.fit"
 METHOD_LOAD_DIAGNOSTICS = "burst_selection.diagnostics.load"
@@ -26,6 +27,7 @@ METHOD_DESCRIBE_CONTRACT = "burst_selection.contract.describe"
 
 CANONICAL_METHODS = (
     METHOD_ANALYZE_FILES,
+    METHOD_STORE_RESULTS,
     METHOD_INSPECT_BUR,
     METHOD_FIT_GMM,
     METHOD_LOAD_DIAGNOSTICS,

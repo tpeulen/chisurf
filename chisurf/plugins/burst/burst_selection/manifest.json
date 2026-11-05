@@ -104,6 +104,12 @@
       ]
     },
     {
+      "name": "burst_selection.jobs.store_results",
+      "summary": "Write the bursts of a search that wrote nothing (run ahead of time) into the measurements' containers.",
+      "params_schema": "api.contract#/inputs/AnalyzeFiles",
+      "result_schema": "api.contract#/outputs/ServiceResult"
+    },
+    {
       "name": "burst_selection.results.inspect_bur",
       "summary": "Inspect a saved ChiSurf .bur file.",
       "params_schema": "api.contract#/inputs/InspectBur",

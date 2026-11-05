@@ -52,13 +52,14 @@ class TestBurstSelectionManifest:
     def test_manifest_has_rpc_methods(self):
         manifest = load_manifest(_MANIFEST_PATH)
         assert manifest is not None
-        assert len(manifest.rpc_methods) == 5
+        assert len(manifest.rpc_methods) == 6
 
     def test_manifest_rpc_method_names(self):
         manifest = load_manifest(_MANIFEST_PATH)
         assert manifest is not None
         names = [m.name for m in manifest.rpc_methods]
         assert "burst_selection.jobs.analyze_files" in names
+        assert "burst_selection.jobs.store_results" in names
         assert "burst_selection.results.inspect_bur" in names
         assert "burst_selection.gmm.fit" in names
 

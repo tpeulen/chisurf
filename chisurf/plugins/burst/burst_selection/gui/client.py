@@ -146,6 +146,44 @@ class BurstSelectionClient:
             raise RuntimeError(f"burst_selection.jobs.analyze_files failed: {err_msg}")
         return svc_result.get("result", {})
 
+    def store_results(
+        self, file_paths: list[Path], result: dict[str, Any], **request: Any
+    ) -> dict[str, Any]:
+        """Write the bursts of a search that wrote nothing into the measurements' containers.
+
+        Parameters
+        ----------
+        file_paths : list of Path
+            The files the search ran over.
+        result : dict
+            That search's result (:meth:`analyze_files` with an empty ``output_formats``).
+        **request
+            The request (``settings``, ``windows``, ``detectors``, ``container_dirs``, ...) of
+            :meth:`analyze_files`, its ``output_formats`` now ``["pto"]``.
+
+        Returns
+        -------
+        dict
+            *result* with ``output_paths`` and ``output_paths_by_file`` of the runs written.
+
+        Raises
+        ------
+        RuntimeError
+            If the RPC call returned an error, with the error message.
+        """
+        params: dict[str, Any] = {"files": [str(p) for p in file_paths], "result": result}
+        for key, value in request.items():
+            if value is None or key in ("mmfdb", "progress_callback"):
+                continue
+            if key == "container_dirs":
+                value = {str(k): str(v) for k, v in value.items()}
+            params[key] = value
+        svc_result = self._client.call("burst_selection.jobs.store_results", params)
+        if not svc_result.get("ok", True):
+            err_msg = svc_result.get("error", "unknown error")
+            raise RuntimeError(f"burst_selection.jobs.store_results failed: {err_msg}")
+        return svc_result.get("result", {})
+
     def save_bur(self, dataframe, path: Path) -> None:
         """Save a burst DataFrame as a .bur file.
 

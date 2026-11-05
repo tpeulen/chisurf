@@ -17,6 +17,7 @@ from ..api.contract import (
     METHOD_FIT_GMM,
     METHOD_INSPECT_BUR,
     METHOD_LOAD_DIAGNOSTICS,
+    METHOD_STORE_RESULTS,
     analysis_request_from_payload,
     contract_descriptor,
     service_success,
@@ -25,7 +26,7 @@ from ..api.features import extract_features, fit_gmm
 from ..api.io import load_tttr
 from ..api.mmfdb import BurstMMFDBPipeline, registration_result_to_payload
 from ..api.models import AnalysisSettings
-from ..api.selection import analyze_request
+from ..api.selection import analyze_request, store_results
 from ..api.serialization import settings_from_dict
 from ..api.stats import summarize_dataframes
 
@@ -67,6 +68,10 @@ def register_services(
         ),
     )
     dispatcher.register(
+        METHOD_STORE_RESULTS,
+        lambda params: store_results_handler(**params),
+    )
+    dispatcher.register(
         METHOD_INSPECT_BUR,
         lambda params: inspect_bur_handler(**params),
     )
@@ -88,6 +93,7 @@ def list_methods() -> dict[str, str]:
     """Return the Burst Selection RPC method catalogue."""
     return {
         METHOD_ANALYZE_FILES: "Run burst selection analysis over TTTR files.",
+        METHOD_STORE_RESULTS: "Write a finished search's bursts into the measurements' containers.",
         METHOD_INSPECT_BUR: "Inspect a saved ChiSurf .bur file.",
         METHOD_FIT_GMM: "Fit a GMM to features extracted from a .bur file.",
         METHOD_LOAD_DIAGNOSTICS: "Run photon filtering and burst finding for diagnostic plots.",
@@ -181,6 +187,56 @@ def analyze_files_handler(
             result.mmfdb_artifacts = registration_result_to_payload(registration)
             result.warnings.extend(registration.warnings)
         return service_success(result)
+    except Exception as exc:
+        from chisurf.server.services import OPERATION_FAILED, service_error
+
+        return service_error(str(exc), error_code=OPERATION_FAILED)
+
+
+def store_results_handler(
+    files: list[str],
+    result: dict[str, Any],
+    filetype: str | None = None,
+    windows: dict[str, list[int]] | None = None,
+    detectors: dict[str, dict[str, Any]] | None = None,
+    settings: dict[str, Any] | None = None,
+    output_dir: str | None = None,
+    container_dirs: dict[str, str] | None = None,
+    selected_setup: str | None = None,
+    legacy_parameters: dict[str, Any] | None = None,
+    **_ignored: Any,
+) -> dict[str, Any]:
+    """Write the bursts of a finished search that wrote nothing into the containers.
+
+    Parameters
+    ----------
+    files : list of str
+        TTTR file paths (the search's).
+    result : dict
+        The search's result (``analyze_files`` with an empty ``output_formats``).
+    filetype, windows, detectors, settings, output_dir, container_dirs, selected_setup, legacy_parameters
+        The request the search ran with, its ``output_formats`` now ``["pto"]``.
+
+    Returns
+    -------
+    dict
+        JSON-serializable ServiceResult: *result* with the paths written.
+    """
+    try:
+        request = analysis_request_from_payload(
+            {
+                "files": files,
+                "filetype": filetype,
+                "windows": windows or {},
+                "detectors": detectors or {},
+                "settings": settings or {},
+                "output_dir": output_dir,
+                "container_dirs": container_dirs or {},
+                "selected_setup": selected_setup,
+                "legacy_parameters": legacy_parameters or {},
+            }
+        )
+        return service_success(store_results(request, result))
     except Exception as exc:
         from chisurf.server.services import OPERATION_FAILED, service_error
 

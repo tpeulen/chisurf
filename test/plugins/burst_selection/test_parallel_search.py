@@ -53,7 +53,11 @@ def test_parallel_and_sequential_batches_agree(tmp_path, monkeypatch):
     )
 
     assert progress == [1, 2, 3]
-    assert parallel.metadata == serial.metadata
+    def by_name(meta):  # the per-file ALEX phase is keyed by each batch's own paths
+        return {**meta, "alex_phase_by_file": {
+            Path(k).name: v for k, v in meta["alex_phase_by_file"].items()}}
+
+    assert by_name(parallel.metadata) == by_name(serial.metadata)
     for s, p in zip(serial_files, parallel_files):
         assert parallel.dataframes[p] == serial.dataframes[s]
         assert Path(parallel.output_paths_by_file[p]["output_folder"]).name == Path(

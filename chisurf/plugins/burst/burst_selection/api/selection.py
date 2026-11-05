@@ -834,8 +834,6 @@ def _search_file(
     """Search one file of *request* and store its bursts; the result and where they went."""
     store = "pto" in request.settings.output_formats
     out_dir = request.container_dirs.get(str(path)) or request.output_dir
-    # A project's analysis container links the photons; the project decides whether the photon
-    # dataset itself is linked or embedded.
     raw_data = "sidecar" if str(path) in request.container_dirs else "embed"
     # A new container hashes (or embeds) the whole photon file -- 1.5 s for 300 MB, outside the
     # GIL -- so it is made while the search runs rather than after it.
@@ -857,31 +855,87 @@ def _search_file(
     table = result.__dict__.pop("_table", None)
     stored: dict[str, str] = {}
     if store:
-        parameters = {**to_jsonable(request.settings),
-                      "micro_time_windows": request.windows,
-                      "detectors": request.detectors,
-                      "alex_phase": result.metadata.get("alex_phase", {})}
-        # A search with other settings is a new analysis ("... (2)"), never hidden under
-        # the run of the same name; the same settings again replace that run.
-        run = new_run_name(path, legacy_output_folder_name(request.settings), parameters, out_dir)
-        container = write_container(
+        stored = _store_file(
             path,
+            request,
             # the search's own table: rebuilding it from the rows cost 0.6 s per file
             table if table is not None else store_from_rows(result.dataframes.get(str(path), [])),
-            parameters=parameters,
-            algorithm=_selection_algorithm(request.settings),
-            out_dir=out_dir,
-            raw_data=raw_data,
-            # Named the way the folder layout names its directory, so a container holding
-            # several analyses of one measurement is addressed exactly as a folder of them
-            # is: `m000.pto/countrate_All 0.1500#60`.
-            run=run,
+            result.metadata.get("alex_phase", {}),
         )
-        stored["pto"] = container
-        # The path a downstream step is pointed at. It reads like a folder because that is
-        # the point; `burst_tree` resolves it.
-        stored["output_folder"] = f"{container}/{run}" if run else container
     return result, stored
+
+
+def _store_file(path, request: AnalysisRequest, table, alex_phase: dict) -> dict[str, str]:
+    """Write one file's burst *table* into its measurement container as a run; where it went."""
+    out_dir = request.container_dirs.get(str(path)) or request.output_dir
+    # A project's analysis container links the photons; the project decides whether the photon
+    # dataset itself is linked or embedded.
+    raw_data = "sidecar" if str(path) in request.container_dirs else "embed"
+    parameters = {**to_jsonable(request.settings),
+                  "micro_time_windows": request.windows,
+                  "detectors": request.detectors,
+                  "alex_phase": alex_phase or {}}
+    # A search with other settings is a new analysis ("... (2)"), never hidden under
+    # the run of the same name; the same settings again replace that run.
+    run = new_run_name(path, legacy_output_folder_name(request.settings), parameters, out_dir)
+    container = write_container(
+        path,
+        table,
+        parameters=parameters,
+        algorithm=_selection_algorithm(request.settings),
+        out_dir=out_dir,
+        raw_data=raw_data,
+        # Named the way the folder layout names its directory, so a container holding
+        # several analyses of one measurement is addressed exactly as a folder of them
+        # is: `m000.pto/countrate_All 0.1500#60`.
+        run=run,
+    )
+    # The path a downstream step is pointed at. It reads like a folder because that is
+    # the point; `burst_tree` resolves it.
+    return {"pto": container, "output_folder": f"{container}/{run}" if run else container}
+
+
+def store_results(request: AnalysisRequest, result: dict[str, Any]) -> AnalysisResult:
+    """Write the bursts of a search that wrote nothing into the measurements' containers.
+
+    The second half of :func:`analyze_request`, for a search run ahead of time with an empty
+    ``output_formats`` (the pipeline searches while the user still looks at the settings, and
+    keeps the result only when they go on): *result* is that search's result (its
+    ``dataframes`` per file and ``metadata["alex_phase_by_file"]``), *request* the one the
+    search would have run with -- same settings, now with ``output_formats`` ``["pto"]``.
+    Writes each file's run exactly as the search would have; returns the result with the
+    paths filled in.
+
+    Raises
+    ------
+    ValueError
+        When *request* asks for anything but containers (a legacy folder or ``.bur`` tables
+        are written by the search itself), or a file of *request* has no bursts in *result*.
+    """
+    formats = list(request.settings.output_formats)
+    if formats != ["pto"] or request.legacy_output:
+        raise ValueError("only containers can be written after the search; search again instead")
+    frames = dict(result.get("dataframes") or {})
+    metadata = dict(result.get("metadata") or {})
+    phases = dict(metadata.get("alex_phase_by_file") or {})
+    output_paths: dict[str, str] = {}
+    by_file: dict[str, dict[str, str]] = {}
+    for path in request.files:
+        rows = frames.get(str(path))
+        if rows is None:
+            raise ValueError(f"the search has no bursts of {Path(path).name}")
+        stored = _store_file(path, request, store_from_rows(rows), phases.get(str(path), {}))
+        for key, value in stored.items():
+            output_paths.setdefault(key, value)
+        by_file[str(path)] = stored
+    return AnalysisResult(
+        files=request.files,
+        dataframes=frames,
+        output_paths=output_paths,
+        output_paths_by_file=by_file,
+        metadata=metadata,
+        warnings=list(result.get("warnings") or []),
+    )
 
 
 def _prepare_container(path, out_dir, raw_data: str):
@@ -960,6 +1014,8 @@ def analyze_request(
         "n_bursts": 0,
         "n_selected": 0,
         "n_photons": 0,
+        # what a later :func:`store_results` records with each file's run
+        "alex_phase_by_file": {},
     }
     # A measurement that is already a container gets **no folder at all**. The
     # container holds the photons and every result computed from them, which is
@@ -1005,6 +1061,7 @@ def analyze_request(
         warnings.extend(result.warnings or [])
         for key in ("n_bursts", "n_selected", "n_photons"):
             metadata[key] += int(result.metadata.get(key, 0))
+        metadata["alex_phase_by_file"][str(path)] = result.metadata.get("alex_phase", {}) or {}
 
     workers = _search_workers(request, legacy_output_folder)
     if workers > 1:

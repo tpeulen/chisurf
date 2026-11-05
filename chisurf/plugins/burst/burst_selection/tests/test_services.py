@@ -12,6 +12,7 @@ from chisurf.plugins.burst.burst_selection.api.contract import (
     METHOD_FIT_GMM,
     METHOD_INSPECT_BUR,
     METHOD_LOAD_DIAGNOSTICS,
+    METHOD_STORE_RESULTS,
 )
 from chisurf.plugins.burst.burst_selection.api.models import AnalysisResult
 from chisurf.plugins.burst.burst_selection.backend import services as backend_services
@@ -54,6 +55,7 @@ def test_register_burst_selection_services() -> None:
     register_burst_selection_services(dispatcher)
     assert dispatcher.names == [
         METHOD_ANALYZE_FILES,
+        METHOD_STORE_RESULTS,
         METHOD_INSPECT_BUR,
         METHOD_FIT_GMM,
         METHOD_LOAD_DIAGNOSTICS,

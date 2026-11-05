@@ -10,6 +10,7 @@ from ..api.contract import (
     METHOD_FIT_GMM,
     METHOD_INSPECT_BUR,
     METHOD_LOAD_DIAGNOSTICS,
+    METHOD_STORE_RESULTS,
 )
 from ..backend.services import (
     analyze_files_handler,
@@ -17,6 +18,7 @@ from ..backend.services import (
     diagnostics_handler,
     fit_gmm_handler,
     inspect_bur_handler,
+    store_results_handler,
 )
 
 
@@ -24,6 +26,7 @@ def _dispatch(method: str, params: dict[str, Any]) -> dict[str, Any]:
     """Dispatch a dedicated ZMQ method call to the shared backend handler."""
     handlers = {
         METHOD_ANALYZE_FILES: lambda payload: analyze_files_handler(**payload),
+        METHOD_STORE_RESULTS: lambda payload: store_results_handler(**payload),
         METHOD_INSPECT_BUR: lambda payload: inspect_bur_handler(**payload),
         METHOD_FIT_GMM: lambda payload: fit_gmm_handler(**payload),
         METHOD_LOAD_DIAGNOSTICS: lambda payload: diagnostics_handler(**payload),
