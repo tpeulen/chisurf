@@ -25,6 +25,11 @@ extraction's.
 
 from __future__ import annotations
 
+import copy
+import dataclasses
+import hashlib
+import threading
+from collections import OrderedDict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -483,6 +488,33 @@ def _golden(f, a: float, b: float, tol: float) -> float:
 R0_STEPS = (0.3, 0.25, 0.2, 0.15, 0.1)
 
 
+#: How many reference IRFs :func:`irf_from_reference` keeps (a hand-over needs one per dye and
+#: detector pair; the oldest goes first).
+REFERENCE_CACHE_SIZE = 32
+_reference_cache: OrderedDict[tuple, IrfResult] = OrderedDict()
+_reference_locks: dict[tuple, threading.Lock] = {}
+_reference_guard = threading.Lock()
+
+
+def _reference_key(vv, vh, dt_ns, kwargs: dict) -> tuple:
+    """What an IRF of :func:`irf_from_reference` is a function of: the counts' content (not the
+    arrays' identity -- each hand-over histograms the reference again) and every argument."""
+
+    def digest(a) -> tuple:
+        if a is None:
+            return ()
+        a = np.ascontiguousarray(a, dtype=float)
+        return a.shape, hashlib.sha1(a.tobytes()).hexdigest()
+
+    return (digest(vv), digest(vh), float(dt_ns), tuple(sorted(
+        (k, tuple(v) if isinstance(v, (list, tuple)) else v) for k, v in kwargs.items())))
+
+
+def _copied(result: IrfResult) -> IrfResult:
+    return dataclasses.replace(result, irf=np.array(result.irf, dtype=float, copy=True),
+                               info=copy.deepcopy(result.info))
+
+
 def irf_from_reference(
     vv: np.ndarray,
     vh: np.ndarray | None,
@@ -499,6 +531,53 @@ def irf_from_reference(
     tau_how: str = "given",
 ) -> IrfResult:
     """The IRF from the decay of a reference dye with one known lifetime.
+
+    The extraction (:func:`_irf_from_reference`: the rotation's search, the deconvolutions and
+    the reference fits, seconds per dye) is a function of its inputs alone, so its result is kept
+    by their content: a hand-over that histograms the same reference with the same setup, gate
+    and binning again (Burst MLE prepares ahead of Next and again at it; a new setup re-reads the
+    references) gets the same IRF back without extracting it again. Concurrent calls with the
+    same inputs extract once. Each caller gets its own copy.
+    """
+    kwargs = dict(tau_ns=tau_ns, listed_tau_ns=listed_tau_ns, rho_ns=rho_ns, window=window,
+                  name=name, dye=dye, r0=r0, g_factor=g_factor, tau_how=tau_how)
+    key = _reference_key(vv, vh, dt_ns, kwargs)
+    with _reference_guard:
+        lock = _reference_locks.setdefault(key, threading.Lock())
+    with lock:  # the same inputs on another thread: wait for its IRF rather than extract twice
+        with _reference_guard:
+            got = _reference_cache.get(key)
+            if got is not None:
+                _reference_cache.move_to_end(key)
+        if got is None:
+            got = _irf_from_reference(vv, vh, dt_ns, **kwargs)
+            with _reference_guard:
+                _reference_cache[key] = _copied(got)
+                while len(_reference_cache) > REFERENCE_CACHE_SIZE:
+                    _reference_cache.popitem(last=False)
+    with _reference_guard:
+        if _reference_locks.get(key) is lock and not lock.locked():
+            _reference_locks.pop(key, None)
+    return _copied(got)
+
+
+def _irf_from_reference(
+    vv: np.ndarray,
+    vh: np.ndarray | None,
+    dt_ns: float,
+    *,
+    tau_ns: float | None = None,
+    listed_tau_ns: float | None = None,
+    rho_ns: float | None = None,
+    window: tuple[int, int] | None = None,
+    name: str = "reference dye",
+    dye: str = "",
+    r0: float = R0,
+    g_factor: float | None = None,
+    tau_how: str = "given",
+) -> IrfResult:
+    """The IRF from the decay of a reference dye with one known lifetime (uncached; the public
+    entry is :func:`irf_from_reference`).
 
     Parameters
     ----------
