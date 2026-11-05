@@ -101,4 +101,7 @@ def test_no_overlapping_texts_and_clear_pictograms(ui):
 def test_the_plots_get_the_larger_part_of_the_window_and_have_axes(ui):
     shown = ui.last.strings
     assert "Time (ns)" in shown and "Counts" in shown and "Data" in shown and "Fit" in shown
-    assert "Decay and fit" in shown and "Weighted residuals" in shown
+    # one plot: the weighted residuals in a strip above the decay, on its time axis
+    assert "Decay and fit" in shown and "w.res." in shown
+    strip, data = ui.app.decay_view.rects["wres"], ui.app.decay_view.rects["data"]
+    assert strip[1] + strip[3] <= data[1] and strip[0] == data[0]

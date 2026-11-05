@@ -33,6 +33,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.emtk.regions import RegionControls
+from chisurf.emtk.residual_plot import ResidualPlot, Residuals
 from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .model import RegionMleModel
@@ -104,7 +105,8 @@ class RegionMleApp(ImApp):
         self._view_key: Any = None
         self._view: dict[str, Any] = {}
         self._decay_key: Any = None
-        self._decay_xlim = [0.0, 1.0]
+        #: The decay under its weighted residuals (one x-axis, symmetric strip).
+        self._decay_view = ResidualPlot("region_decay")
         self.help_window = EmTkHelpWindow(
             title="Region MLE — Help", resource=HERE / "help.md", owner=self
         )
@@ -399,48 +401,44 @@ class RegionMleApp(ImApp):
             return
         n = len(curves.channels)
         key = (id(curves), n)
-        if key != self._decay_key:
-            self._decay_key = key
-            self._decay_xlim[:] = [-0.5, n - 0.5]
-        height = max(120.0, im.get_content_region_avail()[1] - 6.0)
+        new_region = key != self._decay_key
+        self._decay_key = key
         x_label = section.get("options", {}).get("x_label", "channel")
-        if implot.begin_aligned_plots("decay_aligned"):
-            if implot.begin_plot(
-                "##decay_residuals", (-1.0, height * 0.30), implot.FLAGS_NO_LEGEND
-            ):
-                implot.setup_axes("", "Residuals")
-                implot.setup_axis_links(implot.AXIS_X1, self._decay_xlim)
-                lo, hi = curves.residual_ylim
-                implot.setup_axis_limits(implot.AXIS_Y1, float(lo), float(hi), implot.COND_ONCE)
-                implot.plot_line(
-                    "residuals",
-                    np.asarray(curves.channels, float),
-                    np.asarray(curves.residuals, float),
-                )
-                implot.end_plot()
-            self.item_rects["Decay"] = state.rects["current_region_curves"] = im.get_item_rect()
-            im.set_item_tooltip(
-                tr(
-                    "Weighted residuals of the fit; a systematic trend lines up with the channel below."
-                )
-            )
-            if implot.begin_plot("##decay", (-1.0, height * 0.68)):
-                implot.setup_axes(x_label, "Intensity")
-                implot.setup_legend(implot.LOCATION_NORTH_EAST)
-                implot.setup_axis_links(implot.AXIS_X1, self._decay_xlim)
-                implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
-                lo, hi = curves.decay_ylim
-                implot.setup_axis_limits(implot.AXIS_Y1, float(lo), float(hi), implot.COND_ONCE)
-                x = np.asarray(curves.channels, float)
-                implot.plot_scatter("Data (VV|VH)", x, np.asarray(curves.data, float))
-                implot.plot_line("Model (fit)", x, np.asarray(curves.model, float))
-                for name, values in (("IRF", curves.irf), ("Background", curves.background)):
-                    if values is not None:
-                        implot.plot_line(
-                            name, np.arange(len(values), dtype=float), np.asarray(values, float)
-                        )
-                implot.end_plot()
-            implot.end_aligned_plots()
+        x = np.asarray(curves.channels, float)
+
+        def draw_data():
+            lo, hi = curves.decay_ylim  # a new region opens at its own decay's range
+            cond = implot.COND_ALWAYS if new_region else implot.COND_ONCE
+            implot.setup_axis_limits(implot.AXIS_Y1, float(lo), float(hi), cond)
+            implot.plot_scatter("Data (VV|VH)", x, np.asarray(curves.data, float))
+            implot.plot_line("Model (fit)", x, np.asarray(curves.model, float))
+            for name, values in (("IRF", curves.irf), ("Background", curves.background)):
+                if values is not None:
+                    implot.plot_line(
+                        name, np.arange(len(values), dtype=float), np.asarray(values, float)
+                    )
+
+        # residual range as the MLE display's (robust 99th percentile, at least +-5 sigma)
+        self._decay_view.draw(
+            draw_data,
+            [Residuals("residuals", x, curves.residuals)],
+            x_extent=(-0.5, n - 0.5),
+            key=key,
+            size=(-1.0, max(120.0, im.get_content_region_avail()[1] - 6.0)),
+            x_label=x_label,
+            y_label="Intensity",
+            wres_label="w.res.",
+            log_y=True,
+            legend=implot.LOCATION_NORTH_EAST,
+            percentile=99.0,
+            minimum=5.0,
+            fit_y=False,
+            wres_tooltip=tr(
+                "Weighted residuals of the fit; a systematic trend lines up with the channel below."
+            ),
+        )
+        rect = self._decay_view.rects.get("wres")
+        self.item_rects["Decay"] = state.rects["current_region_curves"] = rect
 
     # ── file dialogs ───────────────────────────────────────────────────
     def _request_dialog(self, kind: str) -> None:

@@ -17,6 +17,7 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.emtk.residual_plot import ResidualPlot, Residuals
 from chisurf.plugins.emtk_layout import window_size
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
@@ -116,6 +117,8 @@ class FilterApp(TourTarget, ImApp):
             owner=self,
             wait_for_controls=True,
         )
+        #: The decays and their reconstructions under the weighted residuals (one x-axis).
+        self.reconstruction_view = ResidualPlot("reconstruction")
         self.docks = DockManager(
             Split(
                 "h",
@@ -125,7 +128,7 @@ class FilterApp(TourTarget, ImApp):
                     "v",
                     0.35,
                     Region("filters"),
-                    Split("v", 0.65, Region("reconstruction"), Region("residuals")),
+                    Region("reconstruction"),  # under its weighted residuals
                 ),
             )
         )
@@ -137,7 +140,6 @@ class FilterApp(TourTarget, ImApp):
             ("instrument", "Instrument", self.draw_instrument, "controls"),
             ("info", "Info", self.draw_info, "controls"),
             ("filters", "Lifetime filters", self.draw_filters, "filters"),
-            ("residuals", "Weighted residuals", self.draw_residuals, "residuals"),
             ("reconstruction", "Reconstruction", self.draw_reconstruction, "reconstruction"),
         ):
             self.docks.add_window(key, title, draw, dock=dock)
@@ -639,9 +641,9 @@ class FilterApp(TourTarget, ImApp):
             implot.end_plot()
 
     def draw_reconstruction(self, box):
-        if implot.begin_plot("##reconstruction", im.get_content_region_avail()):
-            implot.setup_axes("TAC bin", "Counts")
-            implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
+        """The measured decays and their reconstructions under the weighted residuals."""
+
+        def draw_data():
             peaks = [
                 float(np.nanmax(getattr(entry["result"], attr)))
                 for entry in self.model.results()
@@ -654,12 +656,8 @@ class FilterApp(TourTarget, ImApp):
                 signature = (self.model._current_n_bins(), round(max(peaks), 3))
                 if signature != getattr(self, "_recon_signature", None):
                     self._recon_signature = signature
-                    implot.setup_axes_limits(
-                        0,
-                        self.model._current_n_bins(),
-                        1,
-                        max(max(peaks) * 1.2, 2),
-                        implot.COND_ALWAYS,
+                    implot.setup_axis_limits(
+                        implot.AXIS_Y1, 1, max(max(peaks) * 1.2, 2), implot.COND_ALWAYS
                     )
             for entry in self.model.results():
                 for role in ("", "par", "perp"):
@@ -688,28 +686,38 @@ class FilterApp(TourTarget, ImApp):
             right = implot.drag_line_x(102, float(hi))
             if not self.editing_blocked and (left.modified or right.modified):
                 self.model._fit_bounds = (max(0, int(left.value)), max(1, int(right.value)))
-            implot.end_plot()
-        im.set_item_tooltip(
-            tr(
-                "Drag the vertical lines to edit the fitted TAC range; Compute applies the new range."
-            )
+            if implot.is_plot_hovered():
+                im.set_tooltip(
+                    tr(
+                        "Drag the vertical lines to edit the fitted TAC range; Compute applies the new range."
+                    )
+                )
+
+        residuals = []
+        for entry in self.model.results():
+            for role in ("", "par", "perp"):
+                values = getattr(
+                    entry["result"], "weighted_residuals" + (f"_{role}" if role else ""), None
+                )
+                if values is not None:
+                    # each decay's residuals on that decay's own TAC bins
+                    residuals.append(
+                        Residuals(f"{entry['detector']} {role}", np.arange(len(values)), values)
+                    )
+        n_bins = self.model._current_n_bins()
+        self.reconstruction_view.draw(
+            draw_data,
+            residuals,
+            x_extent=(0.0, float(n_bins)),
+            key=n_bins,
+            x_label="TAC bin",
+            y_label="Counts",
+            wres_label="w.res.",
+            log_y=True,
+            fit_y=False,
+            wres_tooltip=tr("Weighted residuals (measured - reconstruction) / sigma."),
         )
 
-    def draw_residuals(self, box):
-        if implot.begin_plot("##residuals", im.get_content_region_avail()):
-            # the dock is titled "Weighted residuals"; the axis says the unit, and stays short
-            # enough for the short panel (the long label ran off it)
-            implot.setup_axes("TAC bin", "Residual / σ")
-            for entry in self.model.results():
-                for role in ("", "par", "perp"):
-                    values = getattr(
-                        entry["result"], "weighted_residuals" + (f"_{role}" if role else ""), None
-                    )
-                    if values is not None:
-                        self.plot_line(
-                            f"{entry['detector']} {role}", np.arange(len(values)), values
-                        )
-            implot.end_plot()
 
     def render(self):
         self.job.poll()

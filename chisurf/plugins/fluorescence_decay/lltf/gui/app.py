@@ -30,6 +30,7 @@ from chisurf.core.plugin.workspace_input import (
     spec_for,
 )
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.emtk.residual_plot import ResidualPlot, Residuals
 from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .model import LLTFModel
@@ -111,6 +112,12 @@ class _Input(WorkspaceInputMixin):
     workspace_input_plugin = "lltf"
 
 
+def _extent(time) -> tuple | None:
+    """``(first, last)`` of a time axis, the x range the decay and its residuals open at."""
+    t = np.asarray(time, dtype=float)
+    return (float(t[0]), float(t[-1])) if t.size > 1 else None
+
+
 def _input_spec() -> dict:
     """The generated Input section of the manifest's ``accepts[].from_workspace``."""
     manifest = Path(__file__).resolve().parents[1] / "manifest.json"
@@ -131,6 +138,8 @@ class LLTFApp(TourTarget, ImApp):
         self.file_window = None
         self.file_action = ""
         self.item_rects = {}
+        #: The decay and its fit under the weighted residuals (one x-axis).
+        self.decay_view = ResidualPlot("lltf_decay")
         self.arrays = None
         spec = json.loads((Path(__file__).parent / "lltf.view.json").read_text(encoding="utf-8"))
         self.window_size = window_size(spec, (1100, 720))
@@ -398,10 +407,11 @@ class LLTFApp(TourTarget, ImApp):
             )
 
     def polarized_plots(self, a):
-        """VV and VH with their fits, both channels' weighted residuals, and r(t) data against fit."""
+        """VV and VH with their joint fit under both channels' weighted residuals; r(t) data
+        against fit."""
         tips = {
-            "VV and VH": "Both channels and their joint fit, log scale, with the analysis range.",
-            "Weighted residuals": "Weighted residuals of VV and VH over the analysis range.",
+            "VV and VH": "Both channels and their joint fit, log scale, with the analysis range; "
+            "their weighted residuals above, on the same time axis.",
             "r(t)": "Anisotropy of the data and of the fit (both reconvolved, Schaffer-corrected).",
         }
         if im.begin_tab_bar("lltf_plot_tabs"):
@@ -409,13 +419,9 @@ class LLTFApp(TourTarget, ImApp):
                 opened = im.begin_tab_item(title)
                 self.item_rects[title] = im.get_item_rect()  # the tour points at r(t)
                 if opened:
-                    if implot.begin_plot(title, size=(-1.0, -1.0)):
-                        y_label = {"VV and VH": "Counts", "r(t)": "r(t)"}.get(
-                            title, "Weighted residual"
-                        )
-                        implot.setup_axes("Time (ns)", y_label)
-                        if title == "VV and VH":
-                            implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
+                    if title == "VV and VH":
+
+                        def draw_data():
                             for name, x, y in [
                                 ("VV", a["time"], a["vv"]),
                                 ("VH", a["time"], a["vh"]),
@@ -424,14 +430,25 @@ class LLTFApp(TourTarget, ImApp):
                             ]:
                                 implot.plot_line(name, x, np.where(np.asarray(y) > 0, y, np.nan))
                             self._range_lines(a)
-                        elif title == "r(t)":
-                            implot.setup_axis_limits(implot.AXIS_Y1, -0.1, 0.5)
-                            implot.plot_line("r(t) data", a["r_time"], a["r_data"])
-                            implot.plot_line("r(t) fit", a["r_time"], a["r_model"])
-                        else:
-                            implot.plot_line("VV", a["model_time"], a["residuals_vv"])
-                            implot.plot_line("VH", a["model_time"], a["residuals_vh"])
-                            self._range_lines(a)
+
+                        self.decay_view.draw(
+                            draw_data,
+                            [
+                                Residuals("VV", a["model_time"], a["residuals_vv"]),
+                                Residuals("VH", a["model_time"], a["residuals_vh"]),
+                            ],
+                            x_extent=_extent(a["time"]),
+                            key=id(a),
+                            x_label="Time (ns)",
+                            y_label="Counts",
+                            log_y=True,
+                            wres_tooltip=tr("Weighted residuals of VV and VH over the analysis range."),
+                        )
+                    elif implot.begin_plot(title, size=(-1.0, -1.0)):
+                        implot.setup_axes("Time (ns)", "r(t)")
+                        implot.setup_axis_limits(implot.AXIS_Y1, -0.1, 0.5)
+                        implot.plot_line("r(t) data", a["r_time"], a["r_data"])
+                        implot.plot_line("r(t) fit", a["r_time"], a["r_model"])
                         implot.end_plot()
                     im.end_tab_item()
                 im.set_item_tooltip(tr(tip))
@@ -445,35 +462,28 @@ class LLTFApp(TourTarget, ImApp):
         if a.get("polarized"):
             self.polarized_plots(a)
             return
-        if im.begin_tab_bar("lltf_plot_tabs"):
-            for title in ("Decay and fit", "Weighted residuals"):
-                if im.begin_tab_item(title):
-                    if implot.begin_plot(title, size=(-1.0, -1.0)):
-                        implot.setup_axes(
-                            "Time (ns)",
-                            "Counts" if title == "Decay and fit" else "Weighted residual",
-                        )
-                        if title == "Decay and fit":
-                            implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
-                            for name, x, y in [
-                                ("Data", a["time"], a["decay"]),
-                                ("Fit", a["model_time"], a["fit"]),
-                                ("IRF (scaled)", a["irf_time"], a["irf"]),
-                            ]:
-                                implot.plot_line(name, x, np.where(np.asarray(y) > 0, y, np.nan))
-                        else:
-                            implot.plot_line("Weighted residuals", a["model_time"], a["residuals"])
-                        for index, value in enumerate(a["range"]):
-                            implot.drag_line_x(
-                                index,
-                                value,
-                                flags=implot.DRAG_TOOL_FLAGS_NO_INPUTS
-                                | implot.DRAG_TOOL_FLAGS_NO_FIT,
-                            )
-                        implot.end_plot()
-                    im.end_tab_item()
-                    im.set_item_tooltip("Show " + title.lower() + " and the analysis range.")
-            im.end_tab_bar()
+
+        def draw_data():
+            for name, x, y in [
+                ("Data", a["time"], a["decay"]),
+                ("Fit", a["model_time"], a["fit"]),
+                ("IRF (scaled)", a["irf_time"], a["irf"]),
+            ]:
+                implot.plot_line(name, x, np.where(np.asarray(y) > 0, y, np.nan))
+            self._range_lines(a)
+
+        self.decay_view.draw(
+            draw_data,
+            [Residuals("Weighted residuals", a["model_time"], a["residuals"])],
+            x_extent=_extent(a["time"]),
+            key=id(a),
+            title="Decay and fit",
+            x_label="Time (ns)",
+            y_label="Counts",
+            log_y=True,
+            wres_tooltip=tr("Weighted residuals of the fit over the analysis range."),
+        )
+        self.item_rects["Decay and fit"] = self.decay_view.rects.get("data", tuple(box))
 
     def restore_settings(self, settings):
         self.model.restore_preferences(settings)

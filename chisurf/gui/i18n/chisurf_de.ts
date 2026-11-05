@@ -78280,6 +78280,30 @@ Lebensdauer τ: Poisson-log-linearer Fit des Abklingendes ({detail})</translatio
             <source>start:end</source>
             <translation>start:end</translation>
         </message>
+        <message>
+            <source>Weighted residuals of the fit over the analysis range.</source>
+            <translation>Gewichtete Residuen der Anpassung über den Analysebereich.</translation>
+        </message>
+        <message>
+            <source>Weighted residuals of VV and VH over the analysis range.</source>
+            <translation>Gewichtete Residuen von VV und VH über den Analysebereich.</translation>
+        </message>
+        <message>
+            <source>Both channels and their joint fit, log scale, with the analysis range; their weighted residuals above, on the same time axis.</source>
+            <translation>Beide Kanäle und ihre gemeinsame Anpassung, logarithmisch, mit dem Analysebereich; darüber ihre gewichteten Residuen auf derselben Zeitachse.</translation>
+        </message>
+        <message>
+            <source>Weighted residuals (data - fit) / sigma over the fit range.</source>
+            <translation>Gewichtete Residuen (Daten - Anpassung) / Sigma über den Anpassungsbereich.</translation>
+        </message>
+        <message>
+            <source>Weighted residuals (measured - reconstruction) / sigma.</source>
+            <translation>Gewichtete Residuen (gemessen - Rekonstruktion) / Sigma.</translation>
+        </message>
+        <message>
+            <source>A reference dye's decay is fitted here with the IRF extracted from it, its lifetime fixed: estimate an IRF with the Reference dye source.</source>
+            <translation>Hier wird der Zerfall eines Referenzfarbstoffs mit dem daraus extrahierten IRF angepasst, seine Lebensdauer fest: ein IRF mit der Quelle Referenzfarbstoff schätzen.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

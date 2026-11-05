@@ -20,7 +20,7 @@ Press **Guide** in the tool for a five-step walk through the buttons.
 :name: fig-maxent-decay-window
 :width: 100%
 
-The MaxEnt window after a run on a synthetic two-lobe decay (1.1 and 3.6 ns). **Left**, the actions (Run MEM, L-curve, Sample, Save), the data buttons (Refresh, Load decay, IRF file, Clear IRF, Prior, Donor, JSON) and the settings forms; **right**, the decay with fit, IRF and fit range, the recovered distribution, the weighted residuals and the L-curve of a sweep, whose corner (green diamond) the sweep has written into ν — the status line says so; press Run MEM to use it. The mouse wheel zooms every plot and a drag on the box in the decay plot moves the fit range.
+The MaxEnt window after a run on a synthetic two-lobe decay (1.1 and 3.6 ns). **Left**, the actions (Run MEM, L-curve, Sample, Save), the data buttons (Refresh, Load decay, IRF file, Clear IRF, Prior, Donor, JSON) and the settings forms; **right**, the decay with fit, IRF and fit range under its weighted residuals (one time axis), the recovered distribution and the L-curve of a sweep, whose corner (green diamond) the sweep has written into ν — the status line says so; press Run MEM to use it. The mouse wheel zooms every plot and a drag on the box in the decay plot moves the fit range.
 ```
 
 ```{figure} figures/maxent_native_amplitudes.png

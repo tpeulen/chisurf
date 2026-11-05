@@ -670,16 +670,19 @@ def test_the_plots_are_dragged_and_zoomed_by_pointer(drv):
 def test_the_fit_range_lines_of_the_reconstruction_plot_are_dragged(drv):
     painter = drv.draw(3)
     lo, hi = model(drv)._fit_bounds
-    # the plot's x axis runs 0..256 over the plot width: find the reconstruction window's plot area from the tick labels
+    # the plot's x axis runs 0..256 over the plot width: find the reconstruction plot's area from
+    # the tick labels under it (the residual strip above carries none)
+    _x, top, _w, height = drv.app.reconstruction_view.rects["data"]
+    bottom = top + height
     xs = [
         (t[0] + t[2] / 2, float(t[5]))
         for t in painter.texts
-        if t[5] in ("0", "50", "100", "150", "200", "250") and 560 < t[1] < 580
+        if t[5] in ("0", "50", "100", "150", "200", "250") and bottom < t[1] < bottom + 24
     ]
     assert len(xs) >= 4
     (x0, v0), (x1, v1) = xs[0], xs[-1]
     px = lambda v: x0 + (v - v0) * (x1 - x0) / (v1 - v0)  # noqa: E731
-    y = 430.0
+    y = top + height / 2
     drv.drag((px(hi), y), (px(200), y))
     drv.settle()
     assert 190 <= model(drv)._fit_bounds[1] <= 210 and model(drv)._fit_bounds[0] == lo

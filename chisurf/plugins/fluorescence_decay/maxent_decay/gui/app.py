@@ -21,6 +21,7 @@ from emtk.i18n import mark, tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.residual_plot import ResidualPlot, Residuals
 from chisurf.plugins.emtk_layout import (
     LabelColumn,
     action_button,
@@ -74,6 +75,8 @@ class MaxentApp(ImApp):
         self.file_action = ""
         self.item_rects = {}
         self.plot_info = {}
+        #: The measured decay and the MEM fit under the weighted residuals.
+        self.decay_view = ResidualPlot("mem_decay")
         self.last_dir = ""
         self.edit_settings = False
         self.settings_text = ""
@@ -96,19 +99,20 @@ class MaxentApp(ImApp):
                 "h",
                 0.38,
                 Region("controls"),
+                # the decay under its weighted residuals (one x-axis), the distribution and
+                # the L-curve beside it
                 Split(
-                    "v",
-                    0.6,
-                    Split("h", 0.55, Region("decay"), Region("distribution")),
-                    Split("h", 0.55, Region("residuals"), Region("lcurve")),
+                    "h",
+                    0.58,
+                    Region("decay"),
+                    Split("v", 0.55, Region("distribution"), Region("lcurve")),
                 ),
             )
         )
         for key, title, draw in [
             ("controls", "MEM controls", self.controls),
-            ("decay", "Decay, fit and IRF", self.decay_plot),
+            ("decay", "Decay, fit and residuals", self.decay_plot),
             ("distribution", "Distribution", self.distribution_plot),
-            ("residuals", "Residuals", self.residuals_plot),
             ("lcurve", "L-curve plot", self.lcurve_plot),
         ]:
             self.docks.add_window(key, title, draw, dock=key, closable=False)
@@ -322,10 +326,11 @@ class MaxentApp(ImApp):
         self.edit_settings = True
 
     def decay_plot(self, box):
+        """The measured decay, IRF and MEM fit under the fit's weighted residuals."""
         m = self.model
-        if implot.begin_plot("Measured decay and MEM fit", size=(-1.0, -1.0)):
-            implot.setup_axes("Time (ns)", "Counts")
-            implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
+        arrays = m.arrays() if m.decay is not None else None
+
+        def draw_data():
             if m.decay is not None:
                 implot.plot_line("Observed", m.time, np.where(m.decay > 0, m.decay, np.nan))
                 lamp = m.lamp()
@@ -339,7 +344,6 @@ class MaxentApp(ImApp):
                         m.time,
                         np.where(scaled >= floor, scaled, np.nan),
                     )
-                arrays = m.arrays()
                 if arrays:
                     implot.plot_line(
                         "MEM fit",
@@ -374,7 +378,20 @@ class MaxentApp(ImApp):
                         "left": implot.plot_to_pixels(float(m.time[low]), mid),
                         "right": implot.plot_to_pixels(float(m.time[high]), mid),
                     }
-            implot.end_plot()
+
+        time = np.asarray(m.time, dtype=float) if m.decay is not None else np.zeros(0)
+        self.decay_view.draw(
+            draw_data,
+            [Residuals("Residuals", arrays["time"], arrays["wres"])] if arrays else [],
+            x_extent=(float(time[0]), float(time[-1])) if time.size > 1 else None,
+            key=(id(m.decay), id(m.result)),
+            title="Measured decay and MEM fit",
+            x_label="Time (ns)",
+            y_label="Counts",
+            wres_label="w.res.",
+            log_y=True,
+            wres_tooltip=tr("Weighted residuals (data - fit) / sigma over the fit range."),
+        )
 
     def distribution_plot(self, box):
         arrays = self.model.arrays()
@@ -401,14 +418,6 @@ class MaxentApp(ImApp):
                     ("p_hi", "84 percentile"),
                 ):
                     implot.plot_line(label, stats["axis"], stats[key])
-            implot.end_plot()
-
-    def residuals_plot(self, box):
-        arrays = self.model.arrays()
-        if implot.begin_plot("Weighted residuals", size=(-1.0, -1.0)):
-            implot.setup_axes("Time (ns)", "Residual / sigma")
-            if arrays:
-                implot.plot_line("Residuals", arrays["time"], arrays["wres"])
             implot.end_plot()
 
     def lcurve_plot(self, box):

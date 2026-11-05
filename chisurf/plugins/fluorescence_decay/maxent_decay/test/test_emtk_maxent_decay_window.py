@@ -472,8 +472,7 @@ def test_run_gives_the_solver_result_and_draws_all_four_plots(fitted):
         "Lifetime (ns)",
         "Amplitude",
         "MEM",
-        "Residual / sigma",
-        "Residuals",
+        "w.res.",
         "Chi-square",
         "Solution norm",
     ):

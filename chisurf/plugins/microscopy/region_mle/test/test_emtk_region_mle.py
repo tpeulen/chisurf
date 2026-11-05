@@ -213,7 +213,7 @@ def test_app_draws_empty_and_populated(workdir, size):
     assert "4 region(s) in 1 file(s)" in seen["analysis"]
     assert "spot_demo_mixture.ptu" in seen["analysis"]
     assert "Region 1" in seen["regions"] and "Colormap" in seen["regions"]
-    assert "micro-time channel" in seen["decay"] and "Residuals" in seen["decay"]
+    assert "micro-time channel" in seen["decay"] and "w.res." in seen["decay"]
 
 
 # 5. the workflow through the UI path

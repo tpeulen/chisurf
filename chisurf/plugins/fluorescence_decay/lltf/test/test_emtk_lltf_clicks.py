@@ -392,9 +392,7 @@ def test_export_result_json_writes_the_fit(fitted, tmp_path):
 
 def test_the_plot_tabs_and_the_wheel(fitted):
     assert fitted.shown("Decay and fit") and fitted.shown("Time (ns)")
-    fitted.press_text("Weighted residuals")
-    assert fitted.shown("Weighted residual")
-    fitted.press_text("Decay and fit")
+    assert fitted.shown("w.res."), "the residual strip sits above the decay, not in a tab"
     x, y, w, h = (
         fitted.app.item_rects["Decay and fit"]
         if "Decay and fit" in fitted.app.item_rects

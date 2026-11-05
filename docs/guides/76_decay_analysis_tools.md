@@ -105,8 +105,9 @@ range. The *Results* summary reports that the optimizer converged.
 ```
 
 The window has three docks: the inputs and options on the left, *Information*,
-*Analysis Output* and *Results* top right, the decay with its fit and the
-weighted residuals below.
+*Analysis Output* and *Results* top right, the decay with its fit below, under a
+strip of its weighted residuals on the same time axis (VV/VH: both channels'
+residuals over the *VV and VH* plot; *r(t)* is the second tab).
 
 A fit that ends without converging still writes its numbers. The JSON records
 `optimizer_status`, `converged`, `optimizer_message` and `optimizer_source`, and

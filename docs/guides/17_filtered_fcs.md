@@ -81,9 +81,9 @@ put it in the Datasets workspace first. The window has a **Sources** tab, a **Da
 - **Data** — what the tool reads, picked from the Datasets workspace: the **Mixed decay**
   (photon streams or decay curves, several at once), a **Measured pattern** (reference decays
   added as a component), the **IRF of the selected detector**, and a saved **Project**;
-- **Lifetime filters**, **Weighted residuals**, **Reconstruction / decay** —
-  the filters per component and detector, the residuals of the non-negative
-  unmixing, and data vs. reconstruction;
+- **Lifetime filters** and **Reconstruction** — the filters per component and
+  detector, and data vs. reconstruction under a strip of the unmixing's weighted
+  residuals on the same TAC axis;
 - **Info** (per-detector fit ranges, a text summary), **Instrument** (below),
   **Auto-fit** (**Type** lifetime or FRET species, **Components / states**,
   **Lifetime min/max**, **Fit + filters**, and the fitted model's

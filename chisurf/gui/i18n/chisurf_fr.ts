@@ -78418,6 +78418,30 @@ Durée de vie τ : ajustement log-linéaire de Poisson de la queue ({detail})</t
             <source>start:end</source>
             <translation>start:end</translation>
         </message>
+        <message>
+            <source>Weighted residuals of the fit over the analysis range.</source>
+            <translation>Résidus pondérés de l'ajustement sur la plage d'analyse.</translation>
+        </message>
+        <message>
+            <source>Weighted residuals of VV and VH over the analysis range.</source>
+            <translation>Résidus pondérés de VV et VH sur la plage d'analyse.</translation>
+        </message>
+        <message>
+            <source>Both channels and their joint fit, log scale, with the analysis range; their weighted residuals above, on the same time axis.</source>
+            <translation>Les deux canaux et leur ajustement commun, en échelle logarithmique, avec la plage d'analyse ; au-dessus, leurs résidus pondérés sur le même axe temporel.</translation>
+        </message>
+        <message>
+            <source>Weighted residuals (data - fit) / sigma over the fit range.</source>
+            <translation>Résidus pondérés (données - ajustement) / sigma sur la plage d'ajustement.</translation>
+        </message>
+        <message>
+            <source>Weighted residuals (measured - reconstruction) / sigma.</source>
+            <translation>Résidus pondérés (mesure - reconstruction) / sigma.</translation>
+        </message>
+        <message>
+            <source>A reference dye's decay is fitted here with the IRF extracted from it, its lifetime fixed: estimate an IRF with the Reference dye source.</source>
+            <translation>Le déclin d'un colorant de référence est ajusté ici avec l'IRF qui en est extraite, sa durée de vie fixée : estimer une IRF avec la source Colorant de référence.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>
