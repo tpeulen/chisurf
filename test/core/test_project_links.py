@@ -135,11 +135,13 @@ def fake_ptolib(monkeypatch):
     return calls
 
 
-def test_with_ptolib_links_the_hash_and_the_search_are_ptolibs(tmp_path, fake_ptolib):
+def test_with_ptolib_links_the_search_is_ptolibs_and_the_hash_the_same(tmp_path, fake_ptolib):
+    """The sha256 is the standard library's (ptolib's digest, six times faster: 0.3 s against
+    1.8 s for a 311 MB measurement); the candidate search stays ptolib's."""
     assert links.ptolib_links()
     original = _file(tmp_path / "data" / "m.bin", b"z" * 10)
     link = links.add_link(str(original))
-    assert "sha256_file(m.bin)" in fake_ptolib and link["sha256"] == _sha(b"z" * 10)
+    assert "sha256_file(m.bin)" not in fake_ptolib and link["sha256"] == _sha(b"z" * 10)
     link["object"] = "m.bin"
     project = _file(tmp_path / "p.cs.pto", b"container")
     original.unlink()

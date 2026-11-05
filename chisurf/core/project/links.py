@@ -14,8 +14,9 @@ matches is reported (:class:`Resolution`), never silently replaced by a differen
 the project container also carries it as a ptolib link object (``pto.link.*`` tags) — or, once
 embedded, the target's bytes with a ``pto.packed.*`` record — so ptolib's tools and readers see the
 same thing (``pto verify``, ``pto locate``, a ``project.cs.pto/<object>`` address). Where the
-installed tttrlib exposes ptolib's links (:func:`ptolib_links`), hashing (``sha256_file``) and the
-candidate search (``PtoFile.find_link_candidates``) use them; an older tttrlib falls back to the
+installed tttrlib exposes ptolib's links (:func:`ptolib_links`) and the candidate search
+(``PtoFile.find_link_candidates``) use them (the sha256 is the standard library's: the same digest
+as ptolib's ``sha256_file``, six times faster); an older tttrlib falls back to the
 Python implementations here. The semantics are ptolib's either way: the recorded path (relative to
 the project's folder), then the same name beside the project; size on every open, sha256 on
 demand; a mismatch is reported, never silently replaced.
@@ -64,7 +65,8 @@ LINK_SCHEME = "chisurf.file-link.v1"
 #: writer with the container's streaming ``add_file``; every supported tttrlib has it).
 EMBED_AVAILABLE = True
 
-_CHUNK = 1 << 20
+#: Bytes read per step while hashing.
+_HASH_CHUNK = 1 << 22
 
 
 class LinkError(ValueError):
@@ -111,7 +113,7 @@ def _digest_key(path: str | os.PathLike) -> tuple[str, int, int]:
 def file_digest(
     path: str | os.PathLike, progress=None, *, fresh: bool = False
 ) -> tuple[int, str]:
-    """Return ``(size_bytes, sha256 hex)`` of *path*, streamed in 1 MiB chunks.
+    """Return ``(size_bytes, sha256 hex)`` of *path*, streamed in 4 MiB chunks.
 
     Remembered process-wide by path, size and modification time (at most 4096 files), so an
     unchanged file is hashed once; *fresh* reads the file even so (an integrity check).
@@ -137,23 +139,22 @@ def file_digest(
 def _hash_file(path: str | os.PathLike, progress=None) -> tuple[int, str]:
     """Read *path* and return ``(size_bytes, sha256 hex)`` (what :func:`file_digest` remembers).
 
-    Without *progress*, ptolib's ``sha256_file`` does the reading where the installed tttrlib has it.
+    The standard library's SHA-256 (OpenSSL, the GIL released per chunk) into one reused buffer:
+    the digest ptolib's ``sha256_file`` gives, six times faster -- 0.3 s against 1.8 s for the
+    311 MB of DNA13bp_3 on home -- and every new burst measurement's container hashes its photon
+    file once, while the user waits on the Data step.
     """
-    if progress is None and ptolib_links():
-        sha256 = str(_tttrlib().sha256_file(str(path)))
-        if sha256:
-            return Path(path).stat().st_size, sha256
-    # FALLBACK (2026-10-26): the Python digest for a tttrlib without ptolib links; delete with the
-    # relock that pins a tttrlib exposing them (known-issues "Code ahead of the pins").
     digest = hashlib.sha256()
     size = 0
-    with open(path, "rb") as handle:
+    buffer = bytearray(_HASH_CHUNK)
+    view = memoryview(buffer)
+    with open(path, "rb", buffering=0) as handle:
         while True:
-            chunk = handle.read(_CHUNK)
-            if not chunk:
+            n = handle.readinto(buffer)
+            if not n:
                 break
-            size += len(chunk)
-            digest.update(chunk)
+            digest.update(view[:n])
+            size += n
             if progress is not None:
                 progress(size)
     return size, digest.hexdigest()
@@ -176,7 +177,7 @@ def add_link(
     """Make the link record of *address* (a file, a member of a container file, or an MMFDB object).
 
     The size and sha256 are those of the file on disk (the container, for a member), computed once
-    (ptolib's ``sha256_file`` where available, :func:`file_digest`). An ``mmfdb://`` address cannot
+    (:func:`file_digest`). An ``mmfdb://`` address cannot
     be hashed here: its *size* and *sha256* come from the artifact's metadata
     (:mod:`chisurf.core.project.remote_links`).
     """
