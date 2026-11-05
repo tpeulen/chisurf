@@ -164,16 +164,18 @@ class MleViewModel(RunPickerMixin):
                 tttrs._cache = dict(value._cache)
                 tttrs.read_kwargs = copy.deepcopy(value.read_kwargs)
                 setattr(session, key, tttrs)
-            elif key == "df_bursts":
-                # Shared, not copied: no job writes into the burst table (a new table replaces it),
-                # and copying it column by column cost 0.27 s on the UI thread at every job start.
+            elif key in ("df_bursts", "burst_results"):
+                # Shared, not copied: no job writes into the burst table or into a batch's rows (a
+                # new table or list replaces them, ``attach_run`` builds new rows). Copying the
+                # table cost 0.27 s and the 65 k fitted rows 1-16 s of the UI thread at every
+                # job start.
                 setattr(session, key, value)
             else:
                 setattr(session, key, copy.deepcopy(value))
         session.tttrs.paths = session.tttr_paths
         snapshot.session = session
         snapshot._observers = []
-        snapshot.burst_results = copy.deepcopy(self.burst_results)
+        snapshot.burst_results = self.burst_results  # shared, as the session's (above)
         snapshot._snapshot_running = threading.Event()
         snapshot._source_snapshot_running = self._snapshot_running
         return snapshot
@@ -532,6 +534,7 @@ class MleViewModel(RunPickerMixin):
         session = self.session
         session.burst_results = self.burst_results  # the rows to rename are the ones shown
         if session.ahead_key == str(key) and session.attach_run(runs):
+            self.burst_results = session.burst_results  # the renamed rows (new ones)
             if self.burst_results:
                 self.held_fingerprint = session.batch_fingerprint()
                 self._write_results()

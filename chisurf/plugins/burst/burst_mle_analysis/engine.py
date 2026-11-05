@@ -1501,9 +1501,13 @@ class MleSession:
         self.tttr_paths.clear()
         self.tttr_paths.update(paths)  # the same LazyTTTRs: its photons are cached by file
         self.bur_files = [by_stem[p.stem][2] for p in self.bur_files]
-        for row in self.burst_results:
-            if str(row.get("First File")) in renamed:
-                row["First File"] = renamed[str(row["First File"])]
+        # new rows, never the held ones edited: a job's copy shares the rows with the window
+        # (``MleViewModel.__copy__``), and a dropped job must leave them as they were
+        self.burst_results = [
+            dict(row, **{"First File": renamed[str(row.get("First File"))]})
+            if str(row.get("First File")) in renamed else row
+            for row in self.burst_results
+        ]
         if self.burst_results:
             self.batch_files_snapshot = self.measurement_files()
         self.ahead_key = ""
@@ -1984,9 +1988,10 @@ class MleSession:
         tttr = self.current_tttr()
         from chisurf.core.fluorescence.burst import fused_pipeline
 
+        outside_hist = None
         if fused_pipeline.enabled():  # histograms of the photons outside the bursts, natively
-            patterns = fused_pipeline.session_outside_patterns(
-                self, tttr, self.detectors, irf_model=self.settings.irf_model)
+            patterns, outside_hist = fused_pipeline.session_outside_patterns(
+                self, tttr, self.detectors, irf_model=self.settings.irf_model, with_histograms=True)
         else:
             idx = self.burst_index_array()
             in_burst = np.zeros(len(tttr), dtype=bool)
@@ -2007,7 +2012,11 @@ class MleSession:
                 bg = np.asarray(pat["bg"], dtype=float)
                 half = bg.size // 2
                 candidates = self.irf_candidates.setdefault(det, {})
-                photons = self._background_prompt_photons(tttr, det, ~in_burst)
+                photons = (
+                    fused_pipeline.gated_photons(outside_hist, self.detectors[det])
+                    if outside_hist is not None
+                    else self._background_prompt_photons(tttr, det, ~in_burst)
+                )
                 if photons > 0 and irf.any():
                     candidates["outside"] = (
                         irf,

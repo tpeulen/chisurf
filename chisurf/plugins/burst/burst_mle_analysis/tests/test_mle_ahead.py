@@ -60,6 +60,8 @@ def test_fitted_ahead_then_attached_is_the_run_read_and_fitted(inputs, tmp_path)
         ahead.export_results()  # no run to write into yet
     strict = ahead._memo_key()
     assert ahead.attach_run([run])
+    assert ahead.burst_results is not got, "the rows fitted ahead are renamed as new rows"
+    got = ahead.burst_results
     assert not ahead.ahead_key and ahead.bur_files == [run]
     assert ahead._memo_key() != strict and ahead.__dict__["_memo_cache"]["key"] == ahead._memo_key()
     assert len(got) == len(want) > 0
@@ -124,8 +126,22 @@ def test_the_app_fits_ahead_and_writes_after_next(inputs):  # noqa: F811
         _run_jobs(app)
         assert app.model.burst_results, (app.job.error, app.model.status_text)
         assert not written, "nothing is written before the run exists"
+        held = app.model.burst_results
+        named = [row.get("First File") for row in held]
+        # a job's copy shares the fitted rows (no copy of 65 k rows on the UI thread) ...
+        import copy as _copy
+
+        snapshot = _copy.copy(app.model)
+        assert snapshot.burst_results is held and snapshot.session.burst_results is app.model.session.burst_results
+        app.model.release_snapshot()
         assert app.attach_ahead([run])
         _run_jobs(app)
+        # ... so attaching builds new rows and never renames the held ones
+        assert [row.get("First File") for row in held] == named
+        assert app.model.burst_results is not held
+        assert app.model.burst_results is app.model.session.burst_results
+        assert len(app.model.burst_results) == len(held)
+        assert [row.get("First File") for row in app.model.burst_results] != named
     finally:
         engine.MleSession.export_results = real
     assert written and written[0] > 0, app.model.status_text
