@@ -188,11 +188,14 @@ def burst_table(result, file_name: str, detectors: dict, windows: dict,
     Walks ``burst_features.yaml`` exactly as the Python summary does: the declaration names the
     columns, the native result holds their values.
     """
+    import pathlib
+
     from chisurf.core.datastore import store_from_arrays
     from chisurf.core.fio.fluorescence.burst import burst_feature_declaration
     from chisurf.core.fluorescence import detector_names as dn
 
     n = len(result)
+    file_name = pathlib.Path(file_name).name  # as generate_burst_dataframe writes it
     declaration = burst_feature_declaration()
     cols, values, text = [], [], []
     for group in declaration["groups"]:
@@ -667,13 +670,35 @@ def outside_histograms(tttr, first, last, channels) -> dict:
     return {int(c): h[k] for k, c in enumerate(result.histogram_channels())}
 
 
-def session_outside_patterns(session, tttr, detectors: dict, *, irf_model: str) -> dict:
+def gated_photons(histograms: dict, info: dict) -> int:
+    """Photons a histogram set counts on a detector's channels inside its gates (half-open, raw
+    channels; no gates: every channel) -- ``MleSession._background_prompt_photons`` of a mask."""
+    total = 0
+    gates = _gates(info.get("micro_time_ranges"))
+    for c in info.get("chs", []):
+        h = histograms.get(int(c))
+        if h is None:
+            continue
+        if not gates:
+            total += int(np.sum(h))
+            continue
+        inside = np.zeros(h.size, dtype=bool)
+        for lo, hi in gates:
+            inside[max(0, lo):max(0, min(hi, h.size))] = True
+        total += int(np.sum(h[inside]))
+    return total
+
+
+def session_outside_patterns(session, tttr, detectors: dict, *, irf_model: str,
+                             with_histograms: bool = False):
     """``extract_mle_irf_background(tttr, detectors, mask=~in_burst, irf_model=...)`` of the
-    session's current file, from native histograms of the photons outside its bursts."""
+    session's current file, from native histograms of the photons outside its bursts; with
+    *with_histograms* also those histograms (``{channel: counts}``)."""
     from chisurf.core.fluorescence.burst import extract_mle_irf_background
 
     first, last = _burst_runs(session)
     chs = {int(c) for d in detectors.values() for c in d.get("chs", [])}
     hist = outside_histograms(tttr, first, last, chs)
-    return extract_mle_irf_background(tttr, detectors, micro_time_binning=session.settings.micro_time_binning,
-                                      histograms=hist, irf_model=irf_model)
+    patterns = extract_mle_irf_background(tttr, detectors, micro_time_binning=session.settings.micro_time_binning,
+                                          histograms=hist, irf_model=irf_model)
+    return (patterns, hist) if with_histograms else patterns

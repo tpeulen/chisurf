@@ -111,12 +111,7 @@ def _same(a, b):
         dict(),
         dict(p2s=False),
         dict(bifl=True),
-        pytest.param(dict(p2s=False, bifl=True), marks=pytest.mark.xfail(
-            strict=False,
-            reason="tttrlib fit23 (soft BIFL + Poisson objective) carries the previous fit's gamma "
-            "in thread_local state into the next fit's first gradient: the per-burst result "
-            "depends on which fits ran before it on that thread, in the old process path as in "
-            "this one (okf/references/known-issues.md)")),
+        dict(p2s=False, bifl=True),
         dict(background=False, window=False),
         dict(mirror=True),
         dict(shift=3),

@@ -106,10 +106,12 @@ def test_search_and_table_equal_the_python_path(algorithm):
     settings = _settings(algorithm)
     selected = apply_photon_filters(tttr, settings.photon_filter, burst_detection=settings.burst_detection)
     ref = drop_short_bursts(find_bursts(selected, max_gap=3), 30)
-    table = generate_burst_dataframe(ref, "sim.ptu", tttr, WINDOWS, DETECTORS)
+    # a full path: the table names the file only (`First File`), on both paths
+    name = "/data/run/sim.ptu"
+    table = generate_burst_dataframe(ref, name, tttr, WINDOWS, DETECTORS)
 
     fused = fused_pipeline.search_and_summarize(tttr, settings, {"detectors": DETECTORS, "windows": WINDOWS},
-                                                "sim.ptu")
+                                                name)
     assert fused is not None
     start_stop, got, result = fused
     assert len(ref) > 100
@@ -204,3 +206,35 @@ def test_unfused_configurations_fall_back():
     settings = _settings()
     settings.photon_filter.channels = [0]
     assert fused_pipeline.search_config(tttr, settings, DETECTORS, WINDOWS) is None
+
+
+def test_session_outside_patterns_and_gated_photons_equal_the_mask_path():
+    """What ``extract_irf_background`` takes in fused mode: the patterns and their histograms
+    (``with_histograms``), and the photon count of ``_background_prompt_photons`` from them."""
+    import types
+
+    from tttrlib import micro_time_mask
+
+    from chisurf.core.fluorescence.burst import extract_mle_irf_background
+    from chisurf.core.fluorescence.channels import channel_mask
+
+    tttr = _stream(seed=6)
+    first, last = _bursts(tttr)
+    inside = np.zeros(len(tttr), dtype=bool)
+    for a, b in zip(first, last):
+        inside[a:b + 1] = True
+    session = types.SimpleNamespace(
+        burst_index_array=lambda: np.flatnonzero(inside),
+        settings=types.SimpleNamespace(micro_time_binning=2),
+    )
+    patterns, hist = fused_pipeline.session_outside_patterns(
+        session, tttr, DETECTORS, irf_model="experimental", with_histograms=True)
+    ref = extract_mle_irf_background(tttr, DETECTORS, micro_time_binning=2, mask=~inside,
+                                     irf_model="experimental")
+    routing, micro = np.asarray(tttr.routing_channels), np.asarray(tttr.micro_times)
+    for det, info in DETECTORS.items():
+        np.testing.assert_array_equal(patterns[det]["bg"], ref[det]["bg"], err_msg=det)
+        sel = ~inside & channel_mask(routing, info["chs"]) & micro_time_mask(micro, info["micro_time_ranges"])
+        assert fused_pipeline.gated_photons(hist, info) == int(sel.sum()), det
+    assert fused_pipeline.session_outside_patterns(session, tttr, DETECTORS, irf_model="experimental").keys() \
+        == patterns.keys()

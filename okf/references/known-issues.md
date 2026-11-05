@@ -30,22 +30,54 @@ lane of the rho / shift-parameter changes; re-pin with the rejected rule and the
 
 ## tttrlib fit23 with soft BIFL and the Poisson objective depends on the fit before it (found 2026-11-05)
 
-status: open — tttrlib's to fix. `DecayFit23::fit` (`modules/spectroscopy/decay/src/DecayFit23.cpp`)
-calls `fit_signals.compute_signal_and_background` **before** `correct_input` sets this fit's
-gamma, so `Bexpected = gamma * B` is computed with the gamma the *previous* fit on that thread
-ended at (`fit_signals` / `fit_corrections` are `thread_local`); with soft BIFL and the plain
-Poisson objective (2I*: P+2S off) the analytic gradient `decay23_gradient` reads that stale
-`Bexpected`. A burst's result therefore depends on which bursts were fitted before it on the
-same thread: on 70 synthetic bursts 1-2 of them differ (tau 1.9506 vs 1.9457 ns) between one
-`Fit2x.fit` per burst and `fit_many`, and between thread layouts. On DNA13bp_3 (21 808 bursts x
-3 detectors, `ssh home`) the former process pool gave 23 rows differently at 8 and at 4 workers
-(its chunks moved with the count), and the threads differ from it in ~3 800 rows (the fit
-before a burst is now the same detector's previous burst, then the previous detector's):
-neither is the burst's own answer. The default (P+2S on, BIFL
-off) and every other option are path-independent and bit-identical
-(`burst_mle_analysis/tests/test_fit_many_equivalence.py`, whose `p2s=False,bifl=True` case is
-an `xfail` until this is fixed). Fix: set the gamma (`fit_corrections.set_gamma` of the
-sanitised `x[1]`) before `compute_signal_and_background` in `fit()`, then drop the xfail.
+status: fixed in tttrlib (2026-11-05, `b493a510d`, after a partial `887dc5aaa`). The xfail is
+removed from `burst_mle_analysis/tests/test_fit_many_equivalence.py`.
+
+**What was wrong.** It was more than the order in `fit()`. With soft BIFL and P+2S off, fit23
+takes the exact-gradient path, and `decay23_cost` subtracted the soft-BIFL term as a constant
+read from the thread_local `fit_signals.Bexpected`. `Bexpected = gamma * B` follows gamma, so
+the gradient scored with whatever gamma the last objective call, or the previous burst on that
+thread, had left, and it had no gamma derivative of the term. The same audit found two more
+leaks, fixed in the same commit:
+
+- **fit25 with soft BIFL** used `log(Bexpected)` taken before any gamma was set. That was the
+  previous fit's final gamma, and gamma 0 (the term off) for a thread's first fit.
+- **fit26** normalised the problem's IRF and background in place, so later rows of a batch
+  renormalised them by an ulp each.
+
+**Measured** on DNA13bp_3 (21 808 bursts × 3 detectors = 65 424 rows), with `run_batch`
+(Python fit path) compared row by row against 1 thread:
+
+| Option | 4 threads before → after | 8 threads before → after | shuffled order before → after |
+|---|---:|---:|---:|
+| soft BIFL, P+2S off (fit23) | 95 → 0 | 88 → 0 | 13 356 → 0 |
+| fit25, soft BIFL | 802 → 0 | 754 → 0 | 25 491 → 0 |
+| default; soft BIFL with P+2S on | 0 → 0 | 0 → 0 | 0 → 0 |
+
+The fix changes the soft-BIFL results themselves: 29 831 rows (fit23) and 27 140 rows (fit25)
+against the 1-thread result from before. Those results had depended on fit history. The
+soft-BIFL fit23 batch is ~20 % slower at 1 thread (125 → 149 s), since the corrected gradient
+takes more iterations.
+
+**Re-derive** on home with `~/bp/fitorder.py OUT.pkl WORKERS [shuffle]` (a copy of
+`perf_bench/mlefm/equiv_real.py` with thread count, burst shuffling and un-shuffling) and
+`~/bp/compare2.py A B`. The identity column `First File` must be left out of the comparison: it
+names each run's own work directory. The guard is tttrlib's
+`test/python/decayfit/test_fit2x_order_independence.py`.
+
+## tttrlib fit24's soft-BIFL term is never applied (found 2026-11-05)
+
+status: open — tttrlib's to fix.
+
+- `DecayFit24::correct_input` never sets `fit_corrections.gamma`, so
+  `Bexpected = gamma * B` stays 0.
+- The term in its objective is guarded by `Bexpected > 0`, so a fit24 with soft BIFL is the
+  fit24 without it.
+- This is deterministic (no order dependence), but the flag does nothing. ChiSurf's MLE
+  offers fit24, and soft BIFL is off by default.
+- Fix: `set_gamma(xm[1])` in `correct_input`, and recompute `Bexpected` at the objective's
+  gamma as fit25 now does. Then decide whether its `Bgamma*log(Bexpected)` form is the
+  intended likelihood (fit23 uses `Bexpected*log(Bexpected)`).
 
 ## Burst MLE "IRF tool" reported hanging; not reproduced (found 2026-11-05)
 
