@@ -357,13 +357,20 @@ class MleViewModel(RunPickerMixin):
         )
 
     def inspected_file_name(self) -> str:
-        """Name of the measurement the inspected burst belongs to (its ``First File``), or an empty string."""
+        """Name of the measurement the inspected burst belongs to (its ``First File``), or an empty string.
+
+        Drawn every frame under the inspected burst: kept per (burst, table)."""
         table = self.session.df_bursts
         if table is None or not 0 <= int(self.nav_burst) < self.n_bursts:
             return ""
-        if "First File" not in engine.column_names(table):
-            return ""
-        return Path(str(table["First File"][int(self.nav_burst)])).name
+        held = self.__dict__.get("_inspected_name")
+        if held is not None and held[0] is table and held[1] == int(self.nav_burst):
+            return held[2]
+        name = ""
+        if "First File" in engine.column_names(table):
+            name = Path(str(table["First File"][int(self.nav_burst)])).name
+        self._inspected_name = (table, int(self.nav_burst), name)
+        return name
 
     @property
     def n_bursts(self) -> int:
@@ -1526,11 +1533,30 @@ class MleViewModel(RunPickerMixin):
 
     # -- inspected burst ------------------------------------------------------------------------------------- #
     def inspected_burst(self) -> dict[str, np.ndarray]:
+        """Per detector, the VV | VH histogram of burst :attr:`nav_burst` (the Inspected burst tab).
+
+        The tab is drawn every frame; the histogram is made once per burst, table, photon streams
+        and detector windows (a new burst search, fit window or binning makes it again): slicing
+        the photon stream and converting the burst table's columns each frame made every frame
+        after a fit of 80 000 bursts slow."""
         n = self.n_bursts
         if n == 0:
             return {}
         self.nav_burst = max(0, min(int(self.nav_burst), n - 1))
-        return self.session.inspect_burst(self.nav_burst)
+        session = self.session
+        windows = tuple(
+            (det, json.dumps(info.get("chs", [])), json.dumps(info.get("micro_time_ranges")),
+             session.settings_of(det).micro_time_start, session.settings_of(det).micro_time_stop,
+             session.settings_of(det).micro_time_binning)
+            for det, info in session.detectors.items()
+        )
+        held = self.__dict__.get("_inspected")
+        if (held is not None and held[0] is session.df_bursts and held[1] is session.tttrs
+                and held[2] == (int(self.nav_burst), windows)):
+            return held[3]
+        data = session.inspect_burst(self.nav_burst)
+        self._inspected = (session.df_bursts, session.tttrs, (int(self.nav_burst), windows), data)
+        return data
 
     # -- settings file --------------------------------------------------------------------------------------- #
     def save_settings(self, path: str | Path) -> None:

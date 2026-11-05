@@ -28,6 +28,10 @@ import typing
 
 #: chisurf's own registrations: category -> {key: entry}, in registration order.
 _LOCAL: dict[str, dict[str, dict]] = {}
+#: The merged registry and what it was merged from (:func:`_merged_cached`): windows ask for it
+#: every frame, and merging deep-copies every extended entry.
+_MERGED: tuple[typing.Any, dict] | None = None
+_MERGED_LOCK = threading.Lock()
 
 
 @functools.cache
@@ -90,7 +94,9 @@ def prefetch() -> bool:
 
 def refresh() -> None:
     """Forget the cached compiled registries (after a plugin loaded, say)."""
+    global _MERGED
     _compiled.cache_clear()
+    _MERGED = None
 
 
 def register(category: str, key: str, entry: typing.Mapping[str, typing.Any]) -> dict:
@@ -107,6 +113,7 @@ def register(category: str, key: str, entry: typing.Mapping[str, typing.Any]) ->
 
     Returns the entry as registered. Raises ``ValueError`` on a duplicate key.
     """
+    global _MERGED
     table = _LOCAL.setdefault(category, {})
     if key in table:
         raise ValueError(f"{category} {key!r} is already registered")
@@ -115,6 +122,7 @@ def register(category: str, key: str, entry: typing.Mapping[str, typing.Any]) ->
     e.setdefault("capability", category)
     e.setdefault("provider", "chisurf")
     table[key] = e
+    _MERGED = None
     return e
 
 
@@ -167,10 +175,25 @@ def registry(category: str | None = None):
     An unknown category is an empty dict, so a caller can test availability
     without catching.
     """
-    root = _merged()
+    root = _merged_cached()
     if category is None:
+        return {name: dict(table) for name, table in root.items()}
+    return dict(root.get(category, {}))
+
+
+def _merged_cached() -> dict[str, dict[str, dict]]:
+    """:func:`_merged`, made again only when a registration or :func:`refresh` changed what it is
+    made of (the compiled registries are read once per process). The tables handed out are
+    copies; the entries are shared, as the compiled ones always were."""
+    global _MERGED
+    compiled = _compiled()
+    with _MERGED_LOCK:
+        held = _MERGED
+        if held is not None and held[0] is compiled:
+            return held[1]
+        root = _merged()
+        _MERGED = (compiled, root)
         return root
-    return root.get(category, {})
 
 
 def resolve(category: str, name: str) -> str:

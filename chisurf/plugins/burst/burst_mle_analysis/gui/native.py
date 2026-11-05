@@ -1051,7 +1051,8 @@ class MleNativeApp(TourTarget, ImApp):
         if implot.begin_plot("Inspected burst", (-1, -1)):
             implot.setup_axes("Micro-time window (channels, VV then VH)", "Photons")
             for det, hist in data.items():
-                implot.plot_line(det, list(range(hist.size)), hist)
+                # one line per detector, its x the channel index (an array, not a list built each frame)
+                implot.plot_line(det, np.arange(hist.size, dtype=float), hist)
             implot.end_plot()
         origin = self.model.inspected_file_name()
         im.text(f"burst {self.model.nav_burst} of {bursts}" + (f" - {origin}" if origin else ""))

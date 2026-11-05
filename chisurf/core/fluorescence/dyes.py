@@ -208,11 +208,14 @@ def get_dye(name: str) -> dict[str, Any] | None:
     dict or None
         Detached scientific entry, or None for an unknown species.
     """
-    dyes = reference_dyes()
-    if name in dyes:
-        return dyes[name]
-    canonical = (_ALIASES or {}).get(_normalized(name))
-    return dyes.get(canonical) if canonical is not None else None
+    global _CACHE, _ALIASES
+    if _CACHE is None:
+        _CACHE, _ALIASES = _load()
+    # one entry detached, not the whole table: a lookup runs per word of a file name, per frame
+    # (copying every dye each time cost ~3 ms a call)
+    key = name if name in _CACHE else (_ALIASES or {}).get(_normalized(name))
+    entry = _CACHE.get(key) if key is not None else None
+    return copy.deepcopy(entry) if entry is not None else None
 
 
 def diffusion_coefficient_25C(name: str) -> float:
