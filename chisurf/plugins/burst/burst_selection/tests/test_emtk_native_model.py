@@ -110,7 +110,10 @@ def test_every_burst_row_counts_the_photons_of_its_span(hermetic):
 
     # the run is named after its search, detector, dT max (ms) and minimum photons
     assert Path(mine["output_paths"]["output_folder"]).name == "sliding_window_All 0.1500#60"
-    by_name = {Path(k).name: v for k, v in mine["dataframes"].items()}
+    # in process the search hands its tables over (no rows); the GUI reads them as they are
+    from chisurf.core.datastore import rows_from_table
+
+    by_name = {Path(k).name: rows_from_table(v) for k, v in m.frames_by_file.items()}
     assert by_name.keys() == {"m000.spc", "m001.spc"}
     counts = []
     for name, rows in by_name.items():

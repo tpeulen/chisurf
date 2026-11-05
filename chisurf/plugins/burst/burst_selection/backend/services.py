@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from chisurf.core.datastore import rows_from_table
 
 from ..api.contract import (
+    IN_PROCESS,
     METHOD_ANALYZE_FILES,
     METHOD_DESCRIBE_CONTRACT,
     METHOD_FIT_GMM,
@@ -117,6 +118,7 @@ def analyze_files_handler(
     mmfdb_db: MMFDBClientBase | None = None,
     mmfdb_session: SessionContext | None = None,
     progress_callback: Callable[[int, int, str], None] | None = None,
+    in_process: object = None,
 ) -> dict[str, Any]:
     """Run Burst Selection analysis over TTTR files.
 
@@ -150,11 +152,16 @@ def analyze_files_handler(
         Called as ``progress_callback(done, total, path)`` after each file --
         an in-process-only convenience (see :func:`..api.selection.analyze_request`),
         never part of the JSON-RPC parameter contract.
+    in_process : object, optional
+        :data:`..api.contract.IN_PROCESS` from a client in this process: the burst tables are
+        returned as they are (:data:`..api.contract.RESULT_TABLES`) instead of as rows -- the
+        rows cost 1.9 M objects and 12 s on 21 808 bursts. Anything else (a remote caller) gets
+        the rows. MMFDB archival registers the rows, so it gets them either way.
 
     Returns
     -------
     dict
-        JSON-serializable ServiceResult.
+        JSON-serializable ServiceResult (with :data:`..api.contract.RESULT_TABLES` in process).
 
     """
     try:
@@ -174,11 +181,13 @@ def analyze_files_handler(
                 "mmfdb": mmfdb or {},
             }
         )
-        result = (
-            analyze_request(request, progress_callback=progress_callback)
-            if progress_callback is not None
-            else analyze_request(request)
-        )
+        keep_tables = in_process is IN_PROCESS and not request.mmfdb.enabled
+        options: dict[str, Any] = {}
+        if progress_callback is not None:
+            options["progress_callback"] = progress_callback
+        if keep_tables:
+            options["keep_tables"] = True
+        result = analyze_request(request, **options)
         if request.mmfdb.enabled:
             registration = BurstMMFDBPipeline(
                 db=mmfdb_db,
@@ -186,7 +195,7 @@ def analyze_files_handler(
             ).register_run(request, result)
             result.mmfdb_artifacts = registration_result_to_payload(registration)
             result.warnings.extend(registration.warnings)
-        return service_success(result)
+        return service_success(result, tables=keep_tables)
     except Exception as exc:
         from chisurf.server.services import OPERATION_FAILED, service_error
 

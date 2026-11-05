@@ -1106,11 +1106,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         if self.has_processed:
             return
         self.ahead = result
-        dataframes = result.get("dataframes", {}) or {}
-        self.frames_by_file = {}
-        for path in self.files:
-            rows = dataframes.get(str(path))
-            self.frames_by_file[str(path)] = store_from_rows(rows) if rows else new_store()
+        self.frames_by_file = self._result_frames(result)
         self.preview = False
         self._refresh_display_frame()
         meta = dict(result.get("metadata") or {})
@@ -1183,16 +1179,7 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
     def _finish(self, result: dict[str, Any]) -> None:
         self.result = result
         self.ahead = None
-        dataframes = result.get("dataframes", {}) or {}
-        self.frames_by_file = {}
-        for path in self.files:
-            frame = None
-            for key in (str(path), str(path.resolve()), path.name):
-                rows = dataframes.get(key)
-                if rows:
-                    frame = store_from_rows(rows)
-                    break
-            self.frames_by_file[str(path)] = frame if frame is not None else new_store()
+        self.frames_by_file = self._result_frames(result)
         meta = dict(result.get("metadata") or {})
         self.has_processed = bool(self.frames_by_file)
         self._result_fingerprint = self._fingerprint if self.has_processed else None
@@ -1205,6 +1192,31 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
             + (f" Output: {meta['output_folder']}" if meta.get("output_folder") else "")
             + (f" Warnings: {'; '.join(map(str, warnings))}" if warnings else "")
         )
+
+    def _result_frames(self, result: dict[str, Any]) -> dict[str, Any]:
+        """``{file: burst table}`` of a search's *result*, an empty table for a file without bursts.
+
+        A search in this process hands its tables over as they are (``result["tables"]``, see
+        :data:`..api.contract.RESULT_TABLES`); a remote one sends rows, rebuilt into a table here
+        (2 s for 21 808 bursts, plus the 12 s their serialisation took).
+        """
+        from ..api.contract import RESULT_TABLES
+
+        tables = result.get(RESULT_TABLES) or {}
+        dataframes = result.get("dataframes") or {}
+        frames: dict[str, Any] = {}
+        for path in self.files:
+            frame = None
+            for key in (str(path), str(Path(path).resolve()), Path(path).name):
+                if tables.get(key) is not None:
+                    frame = tables[key]
+                    break
+                rows = dataframes.get(key)
+                if rows:
+                    frame = store_from_rows(rows)
+                    break
+            frames[str(path)] = frame if frame is not None else new_store()
+        return frames
 
     @property
     def n_bursts(self) -> int:

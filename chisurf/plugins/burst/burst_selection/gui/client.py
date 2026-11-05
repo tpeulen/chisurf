@@ -105,7 +105,9 @@ class BurstSelectionClient:
         -------
         dict
             Analysis result with keys: ``files``, ``dataframes``,
-            ``metadata``, ``output_paths``.
+            ``metadata``, ``output_paths``. Through an ``InProcessClient`` also
+            ``tables`` (``{file: burst table}``, :data:`..api.contract.RESULT_TABLES`): those
+            files' bursts are the tables themselves and their ``dataframes`` rows are not built.
 
         Raises
         ------
@@ -140,6 +142,11 @@ class BurstSelectionClient:
             params["mmfdb"] = mmfdb
         if progress_callback is not None:
             params["progress_callback"] = progress_callback
+        if isinstance(self._client, InProcessClient):
+            # the burst tables come back as they are, not as rows (12 s of 21 808 bursts)
+            from ..api.contract import IN_PROCESS
+
+            params["in_process"] = IN_PROCESS
         svc_result = self._client.call("burst_selection.jobs.analyze_files", params)
         if not svc_result.get("ok", True):
             err_msg = svc_result.get("error", "unknown error")

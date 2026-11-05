@@ -25,6 +25,27 @@ METHOD_FIT_GMM = "burst_selection.gmm.fit"
 METHOD_LOAD_DIAGNOSTICS = "burst_selection.diagnostics.load"
 METHOD_DESCRIBE_CONTRACT = "burst_selection.contract.describe"
 
+#: The key of a service result that holds the burst tables themselves, ``{file: table}`` --
+#: handed over only in process (an :class:`~chisurf.core.plugin.client.InProcessClient`), where
+#: a table needs no serialisation. Its files' rows are then not in ``dataframes``. A remote
+#: (ZMQ) caller never gets it: its result carries the rows, as the contract describes.
+RESULT_TABLES = "tables"
+
+
+class _InProcess:
+    """The marker of an in-process call (see :data:`IN_PROCESS`)."""
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "IN_PROCESS"
+
+
+#: Passed as the ``in_process`` parameter by a client that calls the services in its own
+#: process: the result may then hold live objects (:data:`RESULT_TABLES`). An object, not a
+#: flag, so that no JSON-RPC request can ask for a result that cannot be sent back.
+IN_PROCESS = _InProcess()
+
 CANONICAL_METHODS = (
     METHOD_ANALYZE_FILES,
     METHOD_STORE_RESULTS,
@@ -119,13 +140,27 @@ def _mmfdb_context_from_payload(payload: dict[str, Any]) -> MMFDBContext:
     return context
 
 
-def service_success(result: AnalysisResult | dict[str, Any]) -> dict[str, Any]:
-    """Wrap an API result in the standard JSON-RPC service envelope."""
+def service_success(
+    result: AnalysisResult | dict[str, Any], *, tables: bool = False
+) -> dict[str, Any]:
+    """Wrap an API result in the standard JSON-RPC service envelope.
+
+    Parameters
+    ----------
+    result : AnalysisResult or dict
+        The API result.
+    tables : bool
+        In-process callers only: the result's burst tables (``result._tables`` of
+        :func:`.selection.analyze_request` with ``keep_tables``) go into the envelope as they are,
+        under :data:`RESULT_TABLES`; nothing else of the payload changes.
+    """
     payload = (
         analysis_result_to_payload(result)
         if isinstance(result, AnalysisResult)
         else to_jsonable(result)
     )
+    if tables:
+        payload[RESULT_TABLES] = dict(getattr(result, "_tables", None) or {})
     return {"ok": True, "result": payload}
 
 

@@ -40,6 +40,7 @@ from .io import (
     write_container,
     zip_output_folder,
 )
+from .contract import RESULT_TABLES
 from .models import (
     AnalysisRequest,
     AnalysisResult,
@@ -614,6 +615,7 @@ def analyze_file(
     output_dir: str | Path | None = None,
     mti_output_dir: str | Path | None = None,
     macro_time_resolution: float | None = None,
+    rows: bool = True,
 ) -> AnalysisResult:
     """Run burst selection for one TTTR file.
 
@@ -637,6 +639,10 @@ def analyze_file(
         Legacy analysis directory where the ``Info/*.mti`` sidecar is written.
     macro_time_resolution : float, optional
         Macro-time resolution override for output durations.
+    rows : bool
+        ``False``: the result's ``dataframes`` stay empty and the burst table is only on
+        ``result._table`` -- for an in-process caller that keeps the table (21 808 bursts as
+        row dictionaries are 1.9 M objects, and rebuilding the table from them 2 s).
 
     Returns
     -------
@@ -760,7 +766,7 @@ def analyze_file(
 
     result = AnalysisResult(
         files=[str(path)],
-        dataframes={str(path): rows_from_table(df)},
+        dataframes={str(path): rows_from_table(df)} if rows else {},
         metadata={
             "n_photons": int(len(tttr)),
             "n_selected": int(np.count_nonzero(selected)),
@@ -830,8 +836,13 @@ def _search_file(
     bur_output_dir,
     legacy_output_folder: Path | None,
     macro_time_resolution: float | None,
+    keep_table: bool = False,
 ) -> tuple[AnalysisResult, dict[str, str]]:
-    """Search one file of *request* and store its bursts; the result and where they went."""
+    """Search one file of *request* and store its bursts; the result and where they went.
+
+    With *keep_table* the result carries no rows: its table stays on ``result._table`` (an
+    in-process caller only -- a table does not cross a process boundary).
+    """
     store = "pto" in request.settings.output_formats
     out_dir = request.container_dirs.get(str(path)) or request.output_dir
     raw_data = "sidecar" if str(path) in request.container_dirs else "embed"
@@ -848,11 +859,12 @@ def _search_file(
             output_dir=bur_output_dir,
             mti_output_dir=legacy_output_folder if legacy_output_folder is not None else None,
             macro_time_resolution=macro_time_resolution,
+            rows=not keep_table,
         )
     finally:
         if preparing is not None:
             preparing.join()
-    table = result.__dict__.pop("_table", None)
+    table = getattr(result, "_table", None) if keep_table else result.__dict__.pop("_table", None)
     stored: dict[str, str] = {}
     if store:
         stored = _store_file(
@@ -905,7 +917,9 @@ def store_results(request: AnalysisRequest, result: dict[str, Any]) -> AnalysisR
     search would have run with -- same settings, now with ``output_formats`` ``["pto"]``.
     Writes each file's run exactly as the search would have; returns where they went (the
     paths, the metadata) -- *without* the burst rows, which the caller already holds: sending
-    20 000 bursts back through the service envelope took 6 s, writing them 0.3 s.
+    20 000 bursts back through the service envelope took 6 s, writing them 0.3 s. An in-process
+    search hands its tables over as they are (``result["tables"]``, see
+    :data:`.contract.RESULT_TABLES`); they are written without a detour through rows.
 
     Raises
     ------
@@ -917,15 +931,19 @@ def store_results(request: AnalysisRequest, result: dict[str, Any]) -> AnalysisR
     if formats != ["pto"] or request.legacy_output:
         raise ValueError("only containers can be written after the search; search again instead")
     frames = dict(result.get("dataframes") or {})
+    tables = dict(result.get(RESULT_TABLES) or {})
     metadata = dict(result.get("metadata") or {})
     phases = dict(metadata.get("alex_phase_by_file") or {})
     output_paths: dict[str, str] = {}
     by_file: dict[str, dict[str, str]] = {}
     for path in request.files:
-        rows = frames.get(str(path))
-        if rows is None:
-            raise ValueError(f"the search has no bursts of {Path(path).name}")
-        stored = _store_file(path, request, store_from_rows(rows), phases.get(str(path), {}))
+        table = tables.get(str(path))
+        if table is None:
+            rows = frames.get(str(path))
+            if rows is None:
+                raise ValueError(f"the search has no bursts of {Path(path).name}")
+            table = store_from_rows(rows)
+        stored = _store_file(path, request, table, phases.get(str(path), {}))
         for key, value in stored.items():
             output_paths.setdefault(key, value)
         by_file[str(path)] = stored
@@ -988,6 +1006,7 @@ def analyze_request(
     request: AnalysisRequest,
     *,
     progress_callback: Callable[[int, int, str], None] | None = None,
+    keep_tables: bool = False,
 ) -> AnalysisResult:
     """Run burst selection for a complete analysis request.
 
@@ -1001,6 +1020,10 @@ def analyze_request(
         real incremental progress instead of a single opaque call the caller
         can only watch as a busy spinner. Not used for cancellation: this is
         report-only, called directly and never expected to raise.
+    keep_tables : bool
+        In-process callers only: each file's burst table is handed over as it is, on
+        ``result._tables`` (``{file: table}``), and its rows are not built. A file searched in a
+        worker process still comes back as rows (a table does not cross a process boundary).
 
     Returns
     -------
@@ -1008,6 +1031,7 @@ def analyze_request(
         Combined analysis result.
     """
     frames: dict[str, list[dict[str, Any]]] = {}
+    tables: dict[str, Any] = {}
     output_paths: dict[str, str] = {}
     output_paths_by_file: dict[str, dict[str, str]] = {}
     metadata: dict[str, Any] = {
@@ -1054,6 +1078,9 @@ def analyze_request(
 
     def merge(path, result: AnalysisResult, stored: dict[str, str]) -> None:
         frames.update(result.dataframes)
+        table = result.__dict__.pop("_table", None)
+        if keep_tables and table is not None:
+            tables[str(path)] = table
         output_paths.update(result.output_paths)
         output_paths_by_file.update(result.output_paths_by_file)
         for key, value in stored.items():
@@ -1077,7 +1104,8 @@ def analyze_request(
     else:
         for file_index, path in enumerate(request.files):
             result, stored = _search_file(
-                path, request, bur_output_dir, legacy_output_folder, batch_macro_time_resolution
+                path, request, bur_output_dir, legacy_output_folder, batch_macro_time_resolution,
+                keep_table=keep_tables,
             )
             if batch_macro_time_resolution is None and "macro_time_resolution" in result.metadata:
                 batch_macro_time_resolution = float(result.metadata["macro_time_resolution"])
@@ -1097,7 +1125,7 @@ def analyze_request(
                 output_paths["output_folder"] = str(zip_path)
                 metadata["output_folder"] = str(zip_path)
 
-    return AnalysisResult(
+    combined = AnalysisResult(
         files=request.files,
         dataframes=frames,
         output_paths=output_paths,
@@ -1105,3 +1133,6 @@ def analyze_request(
         metadata=metadata,
         warnings=warnings,
     )
+    if keep_tables:
+        combined._tables = tables
+    return combined
