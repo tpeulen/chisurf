@@ -295,8 +295,10 @@ class MleNativeApp(TourTarget, ImApp):
         self.drop_ahead()
         self._ahead_key = str(key)
         self._ahead_dropped = threading.Event()  # its own: a dropped one runs out beside the next
+        self._ahead_hurry = threading.Event()  # Next: its fit takes every thread
         self._queue_job("take_ahead", tables, str(key), settings,
-                        [str(p) for p in prepare_from or ()], references, self._ahead_dropped)
+                        [str(p) for p in prepare_from or ()], references, self._ahead_dropped,
+                        self._ahead_hurry)
 
     def drop_ahead(self) -> None:
         """The search settings changed: the preparation ahead is not wanted (queued, it never
@@ -319,6 +321,9 @@ class MleNativeApp(TourTarget, ImApp):
         if key is None:
             return False
         self._ahead_key = None
+        hurry = self.__dict__.get("_ahead_hurry")
+        if hurry is not None:
+            hurry.set()  # the user waits for the fit ahead now: every thread, from its next chunk
         self._queue_job("attach_ahead", [str(p) for p in paths], key, settings,
                         [str(p) for p in prepare_from or ()], references)
         return True

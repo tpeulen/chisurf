@@ -3121,7 +3121,7 @@ class MleSession:
         )
 
     def run_batch(
-        self, progress=None, max_workers: int | None = None, should_stop=None
+        self, progress=None, max_workers=None, should_stop=None
     ) -> list[dict]:
         """Fit every burst of every loaded file and detector, in this process.
 
@@ -3131,7 +3131,9 @@ class MleSession:
         photons' shared-memory copies or pickling. Each burst gives one row per detector
         (``Tau (G|G)``, ``gamma (G|G)``, ...). Nothing is exported here: the rows are kept on
         :attr:`burst_results`. *should_stop* is read as each chunk finishes; *progress(done,
-        total)* counts bursts.
+        total)* counts bursts. *max_workers* may be a callable (the count may change while the
+        fit runs: Burst MLE ahead of Next takes every thread once the user waits for it); the
+        native fit reads it before each chunk of bursts, the Python path once.
         """
         from ._mp_worker import BurstJob, fit_jobs
 
@@ -3253,7 +3255,8 @@ class MleSession:
                 should_stop=should_stop,
             )
         errors: list[str] = []
-        results = fit_jobs(jobs, max_workers or fit_workers(), should_stop=should_stop,
+        workers = max_workers() if callable(max_workers) else max_workers
+        results = fit_jobs(jobs, workers or fit_workers(), should_stop=should_stop,
                            progress=progress, errors=errors)
         if errors:  # a chunk failed: named, its bursts kept as rejected rows
             self.status = "; ".join(errors[:3])

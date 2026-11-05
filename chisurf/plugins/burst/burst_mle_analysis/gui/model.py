@@ -472,6 +472,7 @@ class MleViewModel(RunPickerMixin):
     def take_ahead(
         self, tables: dict, key: str, settings: dict | None = None, prepare_from=(),
         references: dict | None = None, dropped: threading.Event | None = None,
+        hurry: threading.Event | None = None,
     ) -> None:
         """The pipeline's hand-over ahead of Next, as one background job: the bursts Burst
         Selection found ahead (``{photon file: burst table}``, nothing written yet,
@@ -481,7 +482,8 @@ class MleViewModel(RunPickerMixin):
         at the search settings. The results are written once Next wrote the run
         (:meth:`attach_ahead`). Stopped (:meth:`stop`) the job
         ends without merging anything; so does setting *dropped* (this preparation's own flag:
-        the next one may start while it runs out)."""
+        the next one may start while it runs out). The fit takes half the fit's threads until
+        *hurry* is set (Next: the user now waits for it), then every one, from its next chunk."""
 
         def stopped() -> bool:
             return self._cancel.is_set() or (dropped is not None and dropped.is_set())
@@ -501,7 +503,9 @@ class MleViewModel(RunPickerMixin):
             if not self.input_status()[0]:
                 return  # nothing to fit with yet: Next prepares and fits as usual
             fingerprint = self.session.batch_fingerprint()
-            workers = max(1, engine.fit_workers() // 2)  # the window and the search ahead first
+            def workers() -> int:  # the window and the search ahead first, until Next waits
+                full = engine.fit_workers()
+                return full if hurry is not None and hurry.is_set() else max(1, full // 2)
 
             def progress(done, total):
                 self.status_text = f"Fitting the bursts searched ahead ... {done}/{total}"

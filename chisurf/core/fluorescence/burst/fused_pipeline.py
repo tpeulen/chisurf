@@ -498,13 +498,22 @@ def _fit_entry(det: str, cfg: dict, n: int, shift: int, timing) -> tuple[dict, t
     return entry, fitter
 
 
-def fit_session(session, configs: dict, det_order: list, binning: int, *, threads: int | None = None,
+#: Chunks of a file's bursts when the fit's thread count may change while it runs.
+FIT_CHUNKS = 8
+
+
+def fit_session(session, configs: dict, det_order: list, binning: int, *, threads=None,
                 should_stop=None, progress=None, errors: list | None = None):
     """The rows ``_mp_worker.fit_jobs`` returns for *session*'s bursts, fitted natively.
 
     Per file: one ``decays`` call (the CSR decays of every burst and decay group, from the
     TTTR in place) and one ``fit`` call (every detector, every burst over the photon floor, on
     *threads* threads). ``None`` when the session splits by state (not fused).
+
+    *threads* may be a callable: the count is then read again before each of
+    :data:`FIT_CHUNKS` chunks of a file's bursts (one ``decays`` and one ``fit`` call each), so
+    a fit started on few threads (Burst MLE ahead of Next) takes more once the user waits for it.
+    A burst's fit does not depend on the others', so the rows are the same either way.
     """
     import tttrlib
 
@@ -549,6 +558,10 @@ def fit_session(session, configs: dict, det_order: list, binning: int, *, thread
         for d in det_order:
             by_len.setdefault(n_bins[d], []).append(d)
         cols: dict[str, dict] = {}
+        n_threads = threads if callable(threads) else (lambda: threads)
+        # one chunk of every burst, unless the thread count may change while the fit runs
+        size = max(1, -(-int(first.size) // FIT_CHUNKS)) if callable(threads) else max(1, int(first.size))
+        chunks = [(a, min(int(first.size), a + size)) for a in range(0, int(first.size), size)] or [(0, 0)]
         for n, dets in by_len.items():
             pipe_cfg = json.dumps({
                 "detectors": [{"name": d, "chs": [int(c) for c in detectors[d].get("chs", [])], "gates": []}
@@ -557,9 +570,6 @@ def fit_session(session, configs: dict, det_order: list, binning: int, *, thread
                 "decays": {"binning": int(binning), "n_bins": int(n)},
                 "features": False, "confidence": False,
             })
-            t_native = time.perf_counter()
-            pipe = tttrlib.BurstPipeline(pipe_cfg)
-            result = pipe.decays(tttr, first, last, int(binning), int(n))
             entries, fitters = [], {}
             for d in dets:
                 cfg = dict(configs[d], mirror=len(detectors[d].get("chs", [])) < 2)
@@ -568,26 +578,38 @@ def fit_session(session, configs: dict, det_order: list, binning: int, *, thread
                 entry, fitter = _fit_entry(d, cfg, n, shift, (cfg["dt"], cfg["period"]))
                 entries.append(entry)
                 fitters[d] = (cfg, fitter)
-            fit_text = json.dumps({"fits": entries, "n_threads": int(threads or 0)})
-            _poll(lambda: pipe.fit(result, fit_text), pipe, should_stop,
-                  None if progress is None else (lambda k, _d=done: progress(min(total, _d + k), total)))
-            stats["native_s"] += time.perf_counter() - t_native
-            stats["calls"] += 4 + 2 * len(dets)
-            stats["bytes_in"] += len(pipe_cfg) + len(fit_text) + first.nbytes + last.nbytes
+            parts: dict[str, list[dict]] = {d: [] for d in dets}
+            for a, b in chunks:
+                t_native = time.perf_counter()
+                pipe = tttrlib.BurstPipeline(pipe_cfg)
+                result = pipe.decays(tttr, first[a:b], last[a:b], int(binning), int(n))
+                fit_text = json.dumps({"fits": entries, "n_threads": int(n_threads() or 0)})
+                _poll(lambda: pipe.fit(result, fit_text), pipe, should_stop,
+                      None if progress is None else (lambda k, _d=done + a: progress(min(total, _d + k), total)))
+                stats["native_s"] += time.perf_counter() - t_native
+                stats["calls"] += 4 + 2 * len(dets)
+                stats["bytes_in"] += len(pipe_cfg) + len(fit_text) + int(first[a:b].nbytes + last[a:b].nbytes)
+                for d in dets:
+                    cfg, fitter = fitters[d]
+                    p = f"fit|{d}|"
+                    n_par = 3 if fitter is None else int(fitter._n_parameters)
+                    names = list(tttrlib.result_names(cfg.get("model"))) if fitter is not None else []
+                    # one list per column, once: indexing a view per row and value is ~10x slower
+                    parts[d].append({
+                        "ng_p": result.column_view(p + "ng_p").tolist(),
+                        "ng_s": result.column_view(p + "ng_s").tolist(),
+                        "reason": result.column_view(p + "reason").tolist(),
+                        "objective": result.column_view(p + "objective").tolist(),
+                        "x": np.column_stack([result.column_view(f"{p}x|{i}") for i in range(n_par)]),
+                        "r": {nm: result.column_view(f"{p}r|{k}").tolist() for k, nm in enumerate(names)},
+                    })
             for d in dets:
-                cfg, fitter = fitters[d]
-                p = f"fit|{d}|"
-                n_par = 3 if fitter is None else int(fitter._n_parameters)
-                names = list(tttrlib.result_names(cfg.get("model"))) if fitter is not None else []
-                # one list per column, once: indexing a view per row and value is ~10x slower
+                got = parts[d]
                 cols[d] = {
-                    "cfg": cfg,
-                    "ng_p": result.column_view(p + "ng_p").tolist(),
-                    "ng_s": result.column_view(p + "ng_s").tolist(),
-                    "reason": result.column_view(p + "reason").tolist(),
-                    "objective": result.column_view(p + "objective").tolist(),
-                    "x": np.column_stack([result.column_view(f"{p}x|{i}") for i in range(n_par)]),
-                    "r": {nm: result.column_view(f"{p}r|{k}").tolist() for k, nm in enumerate(names)},
+                    "cfg": fitters[d][0],
+                    **{key: [v for c in got for v in c[key]] for key in ("ng_p", "ng_s", "reason", "objective")},
+                    "x": got[0]["x"] if len(got) == 1 else np.vstack([c["x"] for c in got]),
+                    "r": {nm: [v for c in got for v in c["r"][nm]] for nm in got[0]["r"]},
                 }
         t_rows = time.perf_counter()
         nan_column = [float("nan")] * int(first.size)
