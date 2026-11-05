@@ -9,6 +9,20 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
+**Next, by measured cost (2026-11-05, after the UI-thread hot spots; [Pipeline wall
+time](#pipeline-wall-time) "UI-thread hot spots").** With the fused tttrlib really loaded (home's
+`work/t4l_vm/tttr_site` has none -- use `~/perf_bench/ui/tttr_site` or `~/bp/site_lto`), the gui
+bench is ~140 s and **Burst MLE ready is ~100 s of it**:
+1. The reference-dye IRF (`irf_estimator/core/extraction.py`: `irf_from_reference` ->
+   `richardson_lucy`, `reference_rotation`'s golden search over FFT convolutions), ~20 s of the
+   job thread per preparation, made in `take_ahead` and again in `take_bursts` (Next): keep it by
+   the reference's content and the setup, as the strict selection is kept by `_strict_key`.
+2. The strict selection's accept loop (`StrictBackground.keep_at`, one native call per
+   tightening, 3-5 s): its `accept_hist` is Python between calls.
+3. Shell frames: `DataDocks._form` is drawing (its spec is loaded once); the lever left is a
+   retained replay of an unchanged form in `emtk.view_form` (record the painter calls, replay
+   while the model values, box, font and input are unchanged) -- not started.
+
 **The burst pipeline as one tttrlib pass (2026-11-05, default on).** The search, the burst table,
 the outside-burst and strict backgrounds and the per-burst decays and fits run as tttrlib
 `BurstPipeline` / `StrictBackground` calls, with no photon arrays copied into Python
@@ -150,14 +164,19 @@ are somehow overheads" and "after processing the ui is super slow". Measurement 
    container's ptolib `sha256_file` is 6x slower than `hashlib` (1.8 vs 0.3 s, same digest) --
    one remembered digest, computed by `hashlib` (143bccb10); (g) `pto._payload_bytes` decoded every
    "File Name" label per table written (7a7815258). Measured: [Pipeline wall time](#pipeline-wall-time)
-   "Copy-work audit". **Left, by measured cost** (py-spy, one run): `MleViewModel.__copy__`
-   (`burst_mle_analysis/gui/model.py:172-176`, every `SnapshotJob.start`) 16.5 s of the UI thread
-   -- MLE lane; the burst_background step's strict selection (`run_background.py:104`) ~10 s of GIL
-   running beside Burst MLE's own (different `accept`, so not shareable as is; the fused pipeline's
-   native strict background is the place); `ShellRibbon.tabs` rebuilds its buttons every frame
-   (`shell_ribbon.py:196-219`, 12 s a run) and `DataDocks._form` (`fit_docks.py:2799`, 13 s) --
-   shell frames; per-frame `tr()` lookups ~10 s; ptolib's `sha256_file` itself (tttrlib) for its
-   other callers.
+   "Copy-work audit". *Done (2026-11-05): the audit's UI-thread hot spots* (measured: [Pipeline
+   wall time](#pipeline-wall-time) "UI-thread hot spots"): `MleViewModel.__copy__` shares the
+   fitted rows (65b2155af; `attach_run` builds renamed rows, never edits held ones); Burst
+   Background's strict selection runs on tttrlib's `StrictBackground` (40295d72a; the accept rules
+   differ from Burst MLE's, so it stays a second call, now native and GIL-free); the shell ribbon's
+   buttons are kept by `_tabs_key` (73c110f22) and emtk 0.1.48 keeps the ribbon's measurements
+   (8d45969); `tr()`'s cost was emtk re-parsing the chisurf catalogue after every window's
+   `install_shared_translations` (38 generation bumps a run) -- a no-op addition no longer bumps
+   and parsed files are kept (emtk 16b2403), the chisurf seam skips its registration check
+   (ed81e9b5f); `DataDocks._form`'s spec was already loaded once (`fit_docks.py:814`): its cost is
+   drawing, of which emtk 0.1.48's colour memo took a third (de248a0). Left: ptolib's
+   `sha256_file` (tttrlib) for its other callers; a retained replay of an unchanged form
+   (`emtk.view_form`) is the only lever left on `_form`.
 
 **Burst MLE: rho free, the decay's floor, excluded fits, objectives, G after a restore (2026-11-05).**
 Owner: "by default fit rho", "detector dark counts and bg are not accounted for", "BIFL scatter
@@ -820,6 +839,43 @@ columns, order, dtypes, values); py-spy: `restore_settings` 7.8 -> 0.9 s, UI-thr
 of setups ~20 s -> 0, `session_menus` 11.9 -> < 3 s a run. Scripts (home `~/perf_bench/tools`):
 `ab.sh` (pairs), `calib_equiv.py`, `search_equiv.py` + `cmp_npz.py`, `final.sh` (nohup; the
 connection drops), `spy_gui.sh` + `spy.py`/`callers.py`/`kids.py` (py-spy attribution).
+
+**UI-thread hot spots (2026-11-05).** Home at load 9-16 (another lane's fit campaign beside it),
+`CHISURF_FIT_WORKERS=4`, tttrlib with the fused pipeline (`~/bp/site_lto`, frozen as
+`~/perf_bench/ui/tttr_site`); trees built from the working tree with only this round's hunks
+reversed (`patch -R`), emtk 0.1.47 vs 0.1.48. **Trap:** the audit's 80.8 s ran on home's
+`work/t4l_vm/tttr_site` tttrlib, which has no `BurstPipeline`/`StrictBackground` -- every fused
+call site silently took the Python path; and the tree between 59a99aa5f and the `in_burst` fix
+failed Burst MLE's preparation in fused mode (`UnboundLocalError`, the job's error is not printed
+by the bench: wrap `SnapshotJob.poll`), so its "mle fit" of 0.2 s fitted nothing. Three
+alternating pairs of `gui`, median (runs):
+
+| Hub step (wall, s) | before | after |
+|---|---:|---:|
+| shell start | 2.7 (2.7 / 2.7 / 2.8) | 2.5 (2.2 / 2.5 / 2.6) |
+| hub open | 2.3 (2.3 / 2.2 / 2.5) | 1.5 (1.5 / 1.5 / 1.6) |
+| data + reference calibration | 4.4 (4.4 / 4.3 / 5.3) | 4.5 (4.0 / 4.5 / 5.4) |
+| burst search + write (Next) | 2.2 (2.2 / 1.9 / 2.4) | 1.9 (1.9 / 1.7 / 2.0) |
+| Burst MLE ready | 110.6 (107.3 / 110.6 / 114.2) | 102.3 (96.1 / 102.3 / 109.0) |
+| Burst MLE fit (4 threads) | 25.8 (25.5 / 25.8 / 27.1) | 26.9 (25.5 / 27.4 / 26.9) |
+| **total** | **148.1** (145.0 / 148.1 / 155.0) | **140.5** (131.7 / 140.5 / 148.1) |
+| frame setup / data / selection / more (ms) | 25.0 / 29.9 / 52.2 / 22.3 | 20.7 / 29.8 / 49.2 / 20.0 |
+| frame mle / decay / inspect / results (ms) | 48.3 / 50.9 / 44.0 / 45.2 | 46.9 / 46.0 / 37.1 / 41.8 |
+
+Idle shell frames (Burst Analysis hub on its setup step, 300 frames, test painter,
+`~/perf_bench/ui/ui_idle.py`, alternating): median 22.5-24.7 -> 18.4-20.0 ms; py-spy over the
+same run: `ShellRibbon.tabs` 0.45 -> 0.03 s, `ShellRibbon.draw` 1.73 -> 0.63, `DataDocks._form`
+1.43 -> 0.92, emtk `tr` 2.05 -> 0.50 (catalogue parses `_load` 1.83 -> 0.35), `colour_bytes`
+1.17 -> 0.19, the whole shell draw 11.8 -> 8.3 s. Per call: `copy.copy(MleViewModel)` with 65 k
+rows 3.7-4.1 s -> < 1 ms (`copy_bench.py`); Burst Background's strict selection on DNA13bp_3
+2.37 -> 0.80-0.85 s, same kept photons and seconds, rate scale within 5e-11
+(`strict_rates_equiv.py`). Scripts: home `~/perf_bench/ui/` (`uispy.sh`, `seq.sh`, `ab_ui.sh`,
+`abtable.py`, `idle_ab.sh`, `hot.py`/`up.py`/`kids2.py` py-spy attribution, `trsite/` counts
+`emtk.i18n` calls per process -- the GUI process ends in `os._exit`, so it dumps every 5 s).
+**Burst MLE ready is now the run** (~100 s): the reference-dye IRF (`irf_from_reference`:
+`richardson_lucy`, `reference_rotation`'s golden search over FFT convolutions, ~20 s of the job
+thread a hand-over, taken in `take_ahead` and again in `take_bursts`), then the strict selection's
+accept loop (`StrictBackground.keep_at`, 3-5 s).
 
 ## Overview
 

@@ -4,6 +4,18 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Three Burst Background tests red at e89a1efd7 (found 2026-11-05)
+
+status: open — red on a clean worktree of `e89a1efd7` (before the native strict background
+`40295d72a`), so not caused by it: `test/core/test_burst_background_provenance.py`
+`test_worker_publication_uses_frozen_reader_and_result_context[False|True]` (the worker opens
+`m000.pto` in the test's tmp dir and it is not there: `PtoMfdbError ... No such file or
+directory`) and `test/native_emtk/test_burst_background_window_contract.py`
+`test_resize_preserves_real_background_worker_physics`. Re-derive: `git worktree add --detach
+<dir> e89a1efd7`, run both files in the arm64 env. Owner: the lane of the per-run background
+record (`7daf4210c`); the container the worker publishes into is likely created later than the
+test expects.
+
 ## Six Burst MLE model-selection tests red before the fit_many change (found 2026-11-05)
 
 status: open — red on the tree before it (a `ssh home` copy of HEAD's plugin):
