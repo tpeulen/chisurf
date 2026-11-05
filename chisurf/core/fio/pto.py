@@ -479,7 +479,13 @@ def _payload_bytes(store: Any) -> int:
     for i in range(store.n_columns()):
         column = store[i]
         try:
-            total += int(np.asarray(column.numpy()).nbytes)
+            # a text column by its codes (a view), never by decoding every label -- that walked
+            # 44 k "File Name" strings one by one per burst table written (0.5 s)
+            try:
+                values = column.codes()
+            except (AttributeError, TypeError):
+                values = column.numpy()
+            total += int(np.asarray(values).nbytes)
         except Exception:
             total += int(store.n_rows()) * 8
     return total
