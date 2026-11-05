@@ -1038,29 +1038,22 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
     def _window_histogram(self):
         """``((centres, counts, width), n bursts in all)`` of the chosen feature over the bursts of
         the visible window -- the bursts the count-rate trace shows -- or ``(None, n)``."""
-        from . import diagnostics as diag_mod
-
         m = self.model
-        frame = m.display_frame
-        if frame is None:
+        if m.display_frame is None:
             return None, 0
-        n_all = diag_mod.histogram_data_from_frame(frame, m.hist_feature).size
+        # memoised by the model per table and window: an idle frame touches no burst column
+        n_all = m.feature_data(m.hist_feature).size
         if n_all == 0 and m.hist_feature != FALLBACK_FEATURE:
             # the feature does not exist for these detectors (Proximity Ratio needs a green and a
             # red one; a setup proposed from a file names them ch0, ch1, ...): a feature every run has
-            if diag_mod.histogram_data_from_frame(frame, FALLBACK_FEATURE).size:
+            if m.feature_data(FALLBACK_FEATURE).size:
                 self._feature_note = (
                     f"{m.hist_feature} is not defined for these detectors: showing {FALLBACK_FEATURE}."
                 )
                 m.hist_feature = FALLBACK_FEATURE
                 self._hist_feature_seen = FALLBACK_FEATURE
-                n_all = diag_mod.histogram_data_from_frame(frame, m.hist_feature).size
-        active = getattr(m, "active_file", None)
-        window = diag_mod.rows_in_window(
-            frame, float(m.window_start_s), float(m.window_length_s),
-            Path(active).name if active is not None else None,
-        )
-        data = diag_mod.histogram_data_from_frame(window, m.hist_feature)
+                n_all = m.feature_data(m.hist_feature).size
+        data = m.window_feature_data(m.hist_feature)
         if data.size == 0:
             return None, n_all
         lo, hi = m.histogram_range(data)

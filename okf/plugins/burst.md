@@ -16,14 +16,29 @@ are somehow overheads" and "after processing the ui is super slow". Measurement 
 1. *Burst MLE prepares twice*: `take_bursts` -> `prepare_patterns` runs the strict background
    selection in `auto_extract` **and** in `set_pattern_files` (sampled 15.1 s + 14.9 s of 37.5 s on
    home): `engine._memo` misses between them. One selection per (photons, bursts, IRF) -- MLE lane.
-2. *Burst Selection's in-process RPC serialises the burst table*: `analysis_result_to_payload` ->
-   `to_jsonable` walks 1.9 M objects (11.7 s cProfiled of a 31.7 s search) and the model rebuilds the
-   table with `store_from_rows` (2.0-2.3 s); the raw search + filter + summary is 3.3 s. Hand the
-   table through `InProcessClient` (`result._table`), rows only for a real ZMQ client -- Selection lane.
-3. *Burst Selection frames ~300 ms* (test painter): `model.burst_spans` (model.py:1485) 71 ms/frame,
-   `native._histogram` (`diagnostics.histogram_data_from_frame`, `adapter.burst_rows_for_display`)
-   66 ms, `native._window_histogram` (`rows_in_window`) 52 ms -- recomputed every frame; cache by
-   (result, window) -- Selection lane.
+2. *Done (2026-11-05): Burst Selection's in-process RPC hands the tables over.* Through an
+   `InProcessClient` the client passes `api.contract.IN_PROCESS` (an object, so no JSON request can
+   ask for it), `analyze_request(keep_tables=True)` skips the rows, and the service result carries
+   `tables` (`{file: burst table}`, `RESULT_TABLES`) that the model shows as they are and
+   `store_results` writes as they are. A JSON-RPC caller, MMFDB archival and a file searched in a
+   worker process still get rows. Headless `client.analyze_files` on DNA13bp_3 33.6 -> 5.6-6.3 s
+   (cProfiled, home at load ~40), `show_ahead` 1.25 -> 0.20-0.25 s. Guards:
+   `burst_selection/tests/test_in_process_tables.py` (both paths, the forged marker, store both ways).
+3. *Burst Selection frames: the three recomputations cached (2026-11-05), the stairs renderer is
+   what is left.* `model.burst_spans` is memoised per diagnostic and window (`_curves_cached`), the
+   histogram's feature values (all bursts, visible window) per displayed table and window
+   (`model._frame_cached`, keyed on the `display_frame` object -- every run, preview, search ahead
+   or file switch assigns a new one); an idle frame derives nothing (guard:
+   `tests/test_idle_frames.py`). Median frame (test painter) 335-373 -> 146-179 ms; the plots are
+   pixel-identical (before/after PNGs of DNA13bp_3, only the run path and a search-ahead status
+   line differ). **Not yet under 50 ms**: emtk's `implot_items._render_stairs` draws the two
+   count-rate stairs (~2800 points each, `TRACE_PLOT_POINTS` 4000) as two Python `fill_rect`s per
+   point -- with it stubbed out the frame is 88 ms vs 179 ms. Vectorise the stairs (and shaded)
+   renderers in emtk the way the line-strip lane is vectorising `_render_line_strip` (uncommitted
+   in emtk at the time); the rest of the 88 ms is the shell (ribbon, text) and GIL contention from
+   the console's ZMQ poll under home's load. Re-derive: `burst_pipeline_bench gui` (its
+   `selection` frame); the numbers above are the hub driven to the Selection step only (setup,
+   DNA13bp_3 + references, headless `client.analyze_files`, Next), 30 frames, on home.
 4. *The fit is C++ time, not Python loop time*: fit23 on 1000-channel decays 3.0 ms per call on one
    core, the Python around it < 2 % (profiled); `Fit2x.fit_many` (8 OpenMP threads) 0.42 ms/fit.
    `run_batch` over N spawned processes could be one `fit_many` per detector (threads, GIL
@@ -639,14 +654,15 @@ measurement are one sample to More samples (it resolves paths).
 | Frame (median, ms) | before | after |
 |---|---:|---:|
 | Data step | 169 (94*) | 49 (33*) |
-| Burst Selection step | 337 | 303 |
+| Burst Selection step | 337 | 303 -> 146-179 (cached spans/histograms) |
 | Burst MLE, Decay and fit / Inspected burst / Lifetime table | 136 / 157 / 151 | 113 / 99 / 113 |
 | More samples step | 56 | 47 |
 
 (* the back-to-back pair under lighter load.) Stage by stage, headless, beside the raw engine call
 (cProfiled, so the plugin rows are inflated): TTTR read 0.8 s; raw photon filter + `find_bursts`
 1.5 s, `summarize_bursts` 1.8 s vs the plugin search 31.7 s (row serialisation, container +
-vocabulary, see item 2 and 6 above); MLE background + strict selection 14.0 -> 7.6 s; `run_batch`
+vocabulary, see item 2 and 6 above; the GUI client's in-process search, rows no longer built,
+33.6 -> 5.6-6.3 s cProfiled); MLE background + strict selection 14.0 -> 7.6 s; `run_batch`
 17.9 s; per-burst decay histograms of all bursts 0.8 s; fit23 3.0 ms/call vs `fit_many`
 0.42 ms/fit; More samples, one sample 40.3 -> 37.9 s. Pool memory (peak RSS): fit worker
 0.08-0.13 GB, More samples worker 0.75 GB, GUI process 1.5 GB.

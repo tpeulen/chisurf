@@ -1311,13 +1311,53 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         names = [n for n in column_names(self.display_frame) if n != "File Idx"]
         return [*names, PROXIMITY_RATIO_COLUMN] if PROXIMITY_RATIO_COLUMN not in names else names
 
+    def _frame_cached(self, name: str, key: tuple, build):
+        """Memoise what is derived from the displayed burst table, per table.
+
+        The step draws its histogram every frame, and deriving it -- the table without its
+        separator rows, the feature's column, the bursts of the visible window -- copied the
+        whole table two or three times a frame (~120 ms on 21 808 bursts). Kept for as long as
+        :attr:`display_frame` is the same object: a run, a preview, a search ahead or another
+        file all assign a new one, so a stale value cannot outlive its table.
+        """
+        frame = self.display_frame
+        memo = self.__dict__.get("_frame_memo")
+        if memo is None or memo[0] is not frame:
+            memo = (frame, {})
+            self._frame_memo = memo
+        full = (name, key)
+        if full not in memo[1]:
+            memo[1][full] = build()
+        return memo[1][full]
+
     def feature_data(self, feature: str) -> np.ndarray:
+        """The finite values of *feature* over every displayed burst (memoised per table)."""
         if self.display_frame is None:
             return np.array([], dtype=float)
+        return self._frame_cached("feature", (feature,), lambda: self._feature_data(feature))
+
+    def _feature_data(self, feature: str) -> np.ndarray:
+        """:meth:`feature_data`, computed (empty for a column without numbers)."""
         try:
             return diag_mod.histogram_data_from_frame(self.display_frame, feature)
         except Exception:  # noqa: BLE001 - a non-numeric column has no histogram
             return np.array([], dtype=float)
+
+    def window_feature_data(self, feature: str) -> np.ndarray:
+        """The finite values of *feature* over the bursts of the visible window -- the bursts the
+        count-rate trace shows (of the active file) -- memoised per table and window."""
+        if self.display_frame is None:
+            return np.array([], dtype=float)
+        active = getattr(self, "active_file", None)
+        name = Path(active).name if active is not None else None
+        start, length = float(self.window_start_s), float(self.window_length_s)
+
+        def build() -> np.ndarray:
+            rows = self._frame_cached("rows", (), lambda: _display_rows_frame(self.display_frame))
+            window = diag_mod.rows_in_window(rows, start, length, name)
+            return diag_mod.histogram_data_from_frame(window, feature)
+
+        return self._frame_cached("window", (feature, start, length, name), build)
 
     # -- histogram and GMM ------------------------------------------------------------------------------- #
     def histogram_range(self, data: np.ndarray) -> tuple[float, float]:
@@ -1616,7 +1656,15 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         return np.cumsum(edges[:-1]) > 0
 
     def burst_spans(self) -> tuple[np.ndarray, np.ndarray]:
-        """``(start_s, stop_s)`` of the bursts in the visible window, on the trace's clock."""
+        """``(start_s, stop_s)`` of the bursts in the visible window, on the trace's clock.
+
+        Memoised per diagnostic and window (see :meth:`_curves_cached`): every frame shades the
+        spans, and each time it copied every macro time of the file out of tttrlib (~70 ms).
+        """
+        return self._curves_cached("burst_spans", (self._window_indices(),), self._burst_spans)
+
+    def _burst_spans(self) -> tuple[np.ndarray, np.ndarray]:
+        """:meth:`burst_spans`, computed."""
         diag = self.diagnostic or {}
         tttr = diag.get("tttr")
         start_stop = np.asarray(diag.get("start_stop", []), dtype=np.int64).reshape(-1, 2)
