@@ -114,7 +114,9 @@ def _manifest_settings(analysis_settings) -> dict:
 
 def _delta_macro_time_ms(tttr: tttrlib.TTTR) -> np.ndarray:
     """Return delta macro times in milliseconds."""
-    macro_times = tttr.macro_times
+    from chisurf.core.fio.photon_views import photon_column
+
+    macro_times = photon_column(tttr, "macro_times")  # no copy of the column
     d_t = np.diff(macro_times, prepend=macro_times[0])
     return d_t * tttr.header.macro_time_resolution * 1000.0
 

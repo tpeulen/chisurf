@@ -128,8 +128,10 @@ def _detector_mask(tttr: typing.Any, detectors: typing.Mapping[str, typing.Any])
 
     from chisurf.core.fluorescence.channels import channel_mask
 
-    routing = np.asarray(tttr.routing_channels)
-    micro = np.asarray(tttr.micro_times)
+    from chisurf.core.fio.photon_views import photon_column
+
+    routing = photon_column(tttr, "routing_channels")  # views, not copies of the stream
+    micro = photon_column(tttr, "micro_times")
     mask = np.zeros(routing.shape, dtype=bool)
     for det in detectors.values():
         chs = list((det or {}).get("chs") or [])

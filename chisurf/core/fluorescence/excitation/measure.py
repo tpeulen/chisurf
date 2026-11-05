@@ -62,9 +62,13 @@ def _load(data: Any):
 
 
 def _arrays(tttr, max_photons: int):
-    micro = np.asarray(tttr.micro_times)
-    routing = np.asarray(tttr.routing_channels)
-    macro = np.asarray(tttr.macro_times)
+    """The photons' micro times, routing channels and macro times (the first *max_photons*):
+    read-only views of the stream's columns, not three copies of 12 M values to keep 4 M."""
+    from chisurf.core.fio.photon_views import photon_column
+
+    micro = photon_column(tttr, "micro_times")
+    routing = photon_column(tttr, "routing_channels")
+    macro = photon_column(tttr, "macro_times")
     if max_photons and micro.size > max_photons:
         micro, routing, macro = micro[:max_photons], routing[:max_photons], macro[:max_photons]
     return micro, routing, macro

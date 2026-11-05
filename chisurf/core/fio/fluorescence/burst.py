@@ -438,9 +438,12 @@ def generate_burst_dataframe(
     file_name_only = pathlib.Path(filename).name
 
     # unpack
-    macro = tttr.macro_times
-    micro = tttr.micro_times
-    rout = tttr.routing_channel
+    # read-only views of the photon columns, not three copies of the stream
+    from chisurf.core.fio.photon_views import photon_column
+
+    macro = photon_column(tttr, "macro_times")
+    micro = photon_column(tttr, "micro_times")
+    rout = photon_column(tttr, "routing_channels")
     res = (
         tttr.header.macro_time_resolution
         if macro_time_resolution is None

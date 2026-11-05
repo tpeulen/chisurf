@@ -406,14 +406,16 @@ def _applied_detectors(tttr, detectors, micro_time_resolution_ps):
 
 def _detector_interphoton_times(tttr, det_info, dt_scale):
     """Return the inter-photon times (ms) of one detector's photon stream."""
-    rout = np.asarray(tttr.routing_channel)
-    micro = np.asarray(tttr.micro_times)
-    macro = np.asarray(tttr.macro_times, dtype=np.int64)
+    from chisurf.core.fio.photon_views import photon_column
+
+    rout = photon_column(tttr, "routing_channels")  # views of the stream, not copies
+    micro = photon_column(tttr, "micro_times")
     chs = np.asarray(det_info.get("chs", []), dtype=int)
     if chs.size == 0:
         return np.empty(0)
     mask = channel_mask(rout, chs) & micro_time_mask(micro, det_info.get("micro_time_ranges"))
-    times = macro[mask]
+    # the detector's photons only, then int64 (was: all 12 M macro times copied as int64 first)
+    times = photon_column(tttr, "macro_times")[mask].astype(np.int64)
     if times.size < 2:
         return np.empty(0)
     return np.diff(times.astype(np.float64)) * dt_scale
