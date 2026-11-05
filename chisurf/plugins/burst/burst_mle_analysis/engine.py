@@ -1189,6 +1189,9 @@ class MleSession:
     template: MleSettings = field(default_factory=MleSettings)
     bur_files: list[Path] = field(default_factory=list)
     df_bursts: Any = None
+    #: The key of the search ahead whose bursts these are, not written to a run yet
+    #: (:meth:`take_ahead`); ``""`` for bursts read from a run on disk.
+    ahead_key: str = ""
     tttr_paths: dict[str, Path] = field(default_factory=dict)
     current_detector: str = ""
     current_index: int = 0
@@ -1425,6 +1428,90 @@ class MleSession:
             self.detectors = {k: dict(v) for k, v in setup_info["detectors"].items()}
         self.current_index = min(self.current_index, max(0, len(self.bur_files) - 1))
 
+    def take_ahead(self, tables: dict, key: str, setup: dict | None = None) -> None:
+        """Bursts a search found ahead of time, not written to a run yet: *tables* is
+        ``{photon file: burst table}`` (the in-process search result), *key* the search's
+        identity (:attr:`ahead_key`). Each file is its own measurement, its photons read from
+        the file itself (the shared reading every step holds, not a copy). Everything a run on
+        disk allows works -- the decays, the IRF and background, the fits -- except writing the
+        results: there is no run to write them into until :meth:`attach_run`.
+        """
+        from chisurf.core.fio.fluorescence.burst_container import deinterleave_bursts
+
+        self.bur_files, tables_in, raw_paths = [], [], {}
+        for photons, table in tables.items():
+            if table is None or not row_count(table):
+                continue
+            path = Path(photons).resolve()
+            # one row per burst, as a run is read (the search's table carries the .bur zero
+            # rows), and a table of our own: the step's stays as it is
+            table = concat_stores([deinterleave_bursts(table)])
+            set_constant(table, "burst_file", path.name)
+            set_constant(table, "_burst_path", str(path))
+            table["_measurement_path"] = [str(path)] * row_count(table)
+            tables_in.append(table)
+            raw_paths[str(path)] = path
+            self.bur_files.append(path)
+        self.df_bursts = concat_stores(tables_in) if tables_in else None
+        if self.tttr_paths != raw_paths:
+            self.tttr_paths.clear()
+            self.tttr_paths.update(raw_paths)
+            self.tttrs = LazyTTTRs(self.tttr_paths, self.file_type, self.definition)
+        self.ahead_key = str(key)
+        self.burst_results = []
+        self.current_index = 0
+        if setup:
+            self.set_definition(setup)
+
+    def attach_run(self, runs: collections.abc.Sequence[str | Path]) -> bool:
+        """The bursts of the search ahead were written (*runs*, ``m.pto/<run>`` per measurement):
+        from now on they are those runs' bursts -- the identities, the burst files and the rows
+        fitted ahead name the runs, so the results go into them. Nothing is computed again: the
+        photons stay those already read (by their file, a container is not read a second time)
+        and every cached decay, background and fit is kept. ``False`` when *runs* are not the
+        runs of these bursts (another measurement, other burst counts): then take them as usual.
+        """
+        from chisurf.core.fio.analysis_path import split_container_path
+
+        if not self.ahead_key or self.df_bursts is None:
+            return False
+        by_stem = {}
+        for run in map(Path, runs):
+            box, name = split_container_path(run)
+            if box is None or not name:
+                return False
+            by_stem[Path(box).stem] = (Path(box).resolve(), name, run)
+        if set(by_stem) != {p.stem for p in self.bur_files}:
+            return False
+        key = self._memo_key()
+        # a table of its own: the one a job's copy shares with the window is never written into
+        self.df_bursts = concat_stores([self.df_bursts])
+        identities = np.asarray(self.df_bursts["_measurement_path"], dtype=object)
+        new_identity, new_burst, renamed = identities.copy(), identities.copy(), {}
+        for photons in self.bur_files:
+            box, name, run = by_stem[photons.stem]
+            mask = identities == str(photons)
+            new_identity[mask] = str(box / name)
+            new_burst[mask] = str(Path(run).resolve())
+            renamed[str(photons)] = str(box / name)
+        self.df_bursts["_measurement_path"] = new_identity.tolist()
+        self.df_bursts["_burst_path"] = new_burst.tolist()
+        self.df_bursts["burst_file"] = [Path(str(v)).name for v in new_burst]
+        paths = {renamed[k]: v for k, v in self.tttr_paths.items()}
+        self.tttr_paths.clear()
+        self.tttr_paths.update(paths)  # the same LazyTTTRs: its photons are cached by file
+        self.bur_files = [by_stem[p.stem][2] for p in self.bur_files]
+        for row in self.burst_results:
+            if str(row.get("First File")) in renamed:
+                row["First File"] = renamed[str(row["First File"])]
+        if self.burst_results:
+            self.batch_files_snapshot = self.measurement_files()
+        self.ahead_key = ""
+        memo = self.__dict__.get("_memo_cache")
+        if memo is not None and memo.get("key") == key:
+            memo["key"] = self._memo_key()  # the same bursts and photons under their run's name
+        return True
+
     @property
     def current_filename(self) -> str:
         return str(self.bur_files[self.current_index]) if self.bur_files else ""
@@ -1436,8 +1523,19 @@ class MleSession:
         coverage; every answer went through the burst table's text columns (and a list of millions
         of photon indices) again -- 0.4 s on the UI thread per hand-over.
         """
+        key = self._memo_key()
+        memo = self.__dict__.setdefault("_memo_cache", _Memo())
+        if memo.get("key") != key:
+            memo.clear()
+            memo["key"] = key
+        if name not in memo:
+            memo[name] = compute()
+        return memo[name]
+
+    def _memo_key(self) -> tuple:
+        """What :meth:`_memo`'s answers are valid for."""
         df = self.df_bursts
-        key = (
+        return (
             id(df),
             row_count(df) if df is not None else 0,
             str(self.current_filename),
@@ -1446,13 +1544,6 @@ class MleSession:
             # a new reading (a LUT, another setup's correction) is another photon stream
             repr(getattr(self.tttrs, "_read_signature", None)),
         )
-        memo = self.__dict__.setdefault("_memo_cache", _Memo())
-        if memo.get("key") != key:
-            memo.clear()
-            memo["key"] = key
-        if name not in memo:
-            memo[name] = compute()
-        return memo[name]
 
     def current_tttr(self):
         """The TTTR behind the selected burst file (``None`` when nothing is loaded)."""
@@ -3169,6 +3260,8 @@ class MleSession:
 
     def export_results(self, tick=None) -> list[Path]:
         """Write the ``b?4`` tables of the last batch beside the burst folders."""
+        if self.ahead_key:
+            raise ValueError("The bursts were searched ahead: there is no run to write into yet.")
         files_by_stem = self.batch_files_snapshot or self.measurement_files()
         rows = []
         for row in self.burst_results:

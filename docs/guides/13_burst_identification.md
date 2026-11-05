@@ -228,6 +228,14 @@ window takes longer than about 0.25 s. Four things make that possible:
     search instead of starting another. No blur covers the window meanwhile: a
     line with a bar above the search settings (and in Summary) says what is
     running, and the settings stay editable;
+  - the burst lifetimes: as soon as the bursts found ahead are on show, Burst MLE
+    prepares them in the background -- the IRF from the reference dye, the strict
+    background, the time-shift calibration and the reference fits -- and then fits
+    every burst on half the fit's threads. A changed search setting drops that and
+    starts on the new bursts. **Next** stores the bursts and hands the prepared
+    state to the run it wrote: Burst MLE opens fitted and its lifetimes are written
+    into the run then (never before the run exists). See
+    [Lifetimes from bursts](21_lifetime_from_bursts.md);
   - the photon file is read in the background as soon as Data Selection has it;
   - the modules the steps need are loaded in the background when the window
     opens;

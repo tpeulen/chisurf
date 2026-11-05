@@ -730,6 +730,23 @@ class BurstAnalysisHubApp(ToolHubApp):
         settings = self.context.channel_settings
         patterns = self.context.irf_background_patterns
         take = getattr(child, "take_bursts", None)
+        selection = self.children.get("selection")
+        if (
+            bursts
+            and getattr(child, "ahead_key", None) is not None
+            and child.ahead_key == getattr(selection, "stored_key", None)
+            and self._changed(role, "bursts", bursts)
+        ):
+            # Next stored the bursts this step prepared (and fitted) ahead: that state becomes
+            # the run's, its lifetimes are written into it -- nothing is read or fitted again
+            self._handed[(role, "bursts")] = _signature(bursts)
+            if settings:
+                self._handed[(role, "setup")] = _signature(settings)
+            prepare_from, references = self._mle_preparation(role, patterns)
+            child.attach_ahead(self.context.bur_files, settings, prepare_from, references)
+            if patterns:
+                self._resync.add(role)
+            return
         if bursts and callable(take) and (
             not child.model.session.bur_files or self._changed(role, "bursts", bursts)
         ):
@@ -770,6 +787,51 @@ class BurstAnalysisHubApp(ToolHubApp):
                 prepare(self.context.raw_files, self.context.references())
 
     _to_segment_mle = _to_mle
+
+    def _mle_preparation(self, role: str, patterns) -> tuple:
+        """``(prepare_from, references)`` of a hand-over to Burst MLE: the measurements whose
+        buffer / scatter / reference dyes give its IRF and background (none when step 0's
+        patterns come instead)."""
+        references = self.context.references()
+        if patterns or not self.context.raw_files:
+            return (), references
+        self._handed[(role, "prepared")] = _signature([str(self.context.burst_folder), references])
+        return self.context.raw_files, references
+
+    def _mle_ahead(self) -> None:
+        """Burst MLE runs ahead of Next: as soon as Burst Selection's search ahead has found the
+        bursts (in memory, not stored), the MLE step prepares their IRF, background and shift
+        calibration and fits them in the background (:meth:`take_ahead` of its app); a change of
+        the search settings drops that and starts on the new bursts. Next stores the bursts and
+        hands the prepared state over to the run (:meth:`_to_mle`). Only in the pipeline, only
+        before the first store, and only with every photon file's table in this process."""
+        selection = self.children.get("selection")
+        ahead = getattr(selection, "ahead_bursts", None)
+        if not callable(ahead):
+            return
+        found = ahead()
+        mle = self.children.get("mle")
+        if found is None:
+            if mle is not None and getattr(mle, "ahead_key", None) not in (
+                None, getattr(selection, "stored_key", None)
+            ):
+                mle.drop_ahead()  # its settings were changed (or nothing is found yet)
+            return
+        key, tables = found
+        if mle is None:
+            mle = self.ensure_child("mle")
+        if mle is None or not callable(getattr(mle, "take_ahead", None)) or mle.ahead_key == key:
+            return
+        if not tables or any(t is None for t in tables.values()):
+            return
+        settings = self.context.channel_settings
+        prepare_from, references = (
+            (self.context.raw_files, self.context.references())
+            if self.context.raw_files and not self.context.irf_background_patterns
+            else ((), self.context.references())
+        )
+        mle.take_ahead(tables, key, settings, prepare_from, references)
+        self.wants_frame = True
 
     def _to_more(self, child) -> None:
         """The recipe as the steps are set now (each time the step opens or an earlier one changes)."""
@@ -1051,6 +1113,10 @@ class BurstAnalysisHubApp(ToolHubApp):
         # A step whose hand-over still ran when the context changed again (the G of a reference dye
         # added after Burst MLE opened) takes what changed once it is free -- the step on screen
         # too: its own frame polls its job, so the loop below never did, and the G stayed 1.
+        try:
+            self._mle_ahead()
+        except Exception as exc:  # noqa: BLE001 - the step prepares at Next as before
+            self.status = f"mle ahead: {type(exc).__name__}: {exc}"
         for role in [r for r in self._resync if r == self.selected]:
             child = self.children.get(role)
             if child is not None and not getattr(child, "pending", False):

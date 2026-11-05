@@ -31,6 +31,34 @@ the outside-burst and strict backgrounds and the per-burst decays and fits run a
   table writer and reader's ~200 k calls. The resume point is that concept's "Where to pick
   this up".
 
+**Burst MLE runs ahead of Next (2026-11-05).** Owner: speculative analysis through the whole
+pipeline. When Burst Selection's search ahead lands (`burst_selection` app `ahead_bursts()`:
+`(key, {photon file: burst table})`, cached per key), the hub's `_mle_ahead` (every frame, before
+the steps render) makes the MLE step (`ensure_child`) and calls its `take_ahead`: one background
+job (`MleViewModel.take_ahead`) takes the tables in memory (`MleSession.take_ahead`: identity the
+photon file, `ahead_key` the search key, the `.bur` zero rows dropped, photons from the shared
+reading -- nothing read twice), sets the setup, `prepare_patterns` (reference-dye IRF, one strict
+background, shift calibration, reference fits) and fits every burst on `fit_workers() // 2`
+threads; nothing is written (`export_results` refuses while `ahead_key`). A changed search setting
+(`ahead_bursts()` None, key not the stored one) calls `drop_ahead`: queued it never starts,
+running it stops at its next chunk (its own `threading.Event`, so the next one can start beside
+it) and merges nothing. Next stores the bursts; `_to_mle` sees `ahead_key == selection.stored_key`
+and queues `attach_ahead`: `MleSession.attach_run` renames identities, burst paths, the
+`tttr_paths` keys (the same `LazyTTTRs`, cached by the .ptu, so the container is not read) and the
+fitted rows to the run, re-keys the memo (decays, strict background kept), the fingerprint is
+taken again (Fit bursts then says *Unchanged*) and the lifetimes are written into the run. If the
+runs are not those bursts it falls back to `take_bursts`. Measured (`burst_pipeline_bench gui
+--think`, home, HEAD vs HEAD + this): **Next -> Burst MLE fitted 60.4 -> 21.1 s** (store 9.0,
+MLE ready 5.9, Fit bursts unchanged 6.2 s); the work ahead took ~62 s while the settings were on
+screen (frames there 58-60 ms in both). Tests: `burst_mle_analysis/tests/test_mle_ahead.py`
+(ahead + attach = the run read and fitted, row for row; export refused before; other runs not
+attached; the app's real jobs; a dropped preparation merges nothing),
+`burst_analysis/tests/test_mle_ahead_hub.py` (take once per key, drop on a change, keep for the
+stored key). Open: only before the first store (Selection shows no search ahead after one, so a
+re-search after Next is not prepared ahead); the job's snapshot deep-copies the fitted rows (65 k
+dicts) at every job start -- the attach job pays ~1-2 s of that; BVA / 2CDE do not run ahead yet;
+"low priority" is half the threads, not an OS priority.
+
 **Pipeline wall time and the slow frames after a fit: measured, four overheads fixed, the rest
 handed to their lanes (2026-11-05).** Owner: "the burst processing can be in general faster, there
 are somehow overheads" and "after processing the ui is super slow". Measurement and table:

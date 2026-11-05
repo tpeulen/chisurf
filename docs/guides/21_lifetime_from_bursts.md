@@ -398,6 +398,19 @@ by its provider and is not a free table parameter. Fit26 needs two reference
 patterns and `fit_nexp` needs its array-input workflow, so neither is offered by
 this tool.
 
+#### Ahead of Next
+
+In the pipeline Burst MLE does not wait for the bursts to be stored: once Burst
+Selection's search ahead has found them (on show, not written), Burst MLE takes
+those bursts as they are in memory, prepares the IRF and background as below,
+calibrates the time shifts, and fits every burst on half the fit's threads, all
+in the background while the search settings are still on screen. Changing a
+search setting drops that work and starts it again on the new bursts. **Next**
+stores the bursts; the prepared and fitted state then becomes that run's, so the
+step opens fitted (**Fit bursts** reports the result unchanged) and the
+lifetimes are written into the run at that moment. The photons are those the
+search read; nothing is read twice.
+
 #### Where the IRF comes from
 
 In the pipeline the IRF of each detector is taken, in this order (Auto), from:

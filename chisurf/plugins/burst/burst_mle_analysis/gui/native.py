@@ -256,7 +256,7 @@ class MleNativeApp(TourTarget, ImApp):
     # -- actions ------------------------------------------------------------------------------------------ #
     def auto_extract(self) -> None:
         self.model.status_text = "Estimating IRF and background ..."
-        self.job.start("auto_extract")
+        self._start_job("auto_extract")
 
     def prepare(self, analysed, references: dict | None = None) -> bool:
         """Get the step ready without a click (the pipeline, when the bursts arrive): measured
@@ -264,7 +264,7 @@ class MleNativeApp(TourTarget, ImApp):
         if self.job.busy:
             return False
         self.model.status_text = "Looking for buffer and scatter measurements, preparing IRF and background ..."
-        return bool(self.job.start("prepare_patterns", [str(p) for p in analysed], references))
+        return bool(self._start_job("prepare_patterns", [str(p) for p in analysed], references))
 
     def take_bursts(
         self, paths, settings: dict | None = None, prepare_from=(), references: dict | None = None
@@ -280,13 +280,61 @@ class MleNativeApp(TourTarget, ImApp):
             references,
         )
 
+    # -- ahead of Next: the bursts Burst Selection searched ahead ---------------------------------- #
+    @property
+    def ahead_key(self) -> str | None:
+        """The search ahead this step prepares (and fits) the bursts of, ``None``: none."""
+        return self.__dict__.get("_ahead_key")
+
+    def take_ahead(self, tables: dict, key: str, settings: dict | None = None, prepare_from=(),
+                   references: dict | None = None) -> None:
+        """Prepare and fit the bursts of a search ahead in the background (:meth:`.model.
+        MleViewModel.take_ahead`), before Next wrote them; another one replaces it."""
+        import threading
+
+        self.drop_ahead()
+        self._ahead_key = str(key)
+        self._ahead_dropped = threading.Event()  # its own: a dropped one runs out beside the next
+        self._queue_job("take_ahead", tables, str(key), settings,
+                        [str(p) for p in prepare_from or ()], references, self._ahead_dropped)
+
+    def drop_ahead(self) -> None:
+        """The search settings changed: the preparation ahead is not wanted (queued, it never
+        starts; running, it stops and merges nothing)."""
+        if self.__dict__.get("_ahead_key") is None:
+            return
+        self._ahead_key = None
+        queued = self.__dict__.get("_queued_jobs") or []
+        self._queued_jobs = [job for job in queued if job[0] != "take_ahead"]
+        dropped = self.__dict__.get("_ahead_dropped")
+        if dropped is not None:
+            dropped.set()  # running, it stops at its next chunk and merges nothing
+
+    def attach_ahead(self, paths, settings: dict | None = None, prepare_from=(),
+                     references: dict | None = None) -> bool:
+        """Next wrote the bursts searched ahead as the runs *paths*: the state prepared ahead
+        becomes theirs and its lifetimes are written (or, when it is not theirs, they are taken
+        as usual). ``False`` when nothing was prepared ahead."""
+        key = self.__dict__.get("_ahead_key")
+        if key is None:
+            return False
+        self._ahead_key = None
+        self._queue_job("attach_ahead", [str(p) for p in paths], key, settings,
+                        [str(p) for p in prepare_from or ()], references)
+        return True
+
     def _queue_job(self, method: str, *args) -> None:
         """Start *method* as the job, or after the job that is running."""
         queued = self.__dict__.setdefault("_queued_jobs", [])
         if self.job.busy or queued:
             queued.append((method, args))
         else:
-            self.job.start(method, *args)
+            self._start_job(method, *args)
+
+    def _start_job(self, method: str, *args) -> bool:
+        """``job.start``, remembering which method runs (:meth:`drop_ahead` stops only its own)."""
+        self._job_method = method
+        return self.job.start(method, *args)
 
     @property
     def pending(self) -> bool:
@@ -317,7 +365,7 @@ class MleNativeApp(TourTarget, ImApp):
         queued = self.__dict__.get("_queued_jobs")
         if queued:
             method, args = queued.pop(0)
-            self.job.start(method, *args)
+            self._start_job(method, *args)
             return
         if getattr(self, "_fit_when_ready", False):
             self._fit_when_ready = False
@@ -335,7 +383,7 @@ class MleNativeApp(TourTarget, ImApp):
             )
             return
         self.model.status_text = "Fitting bursts ..."
-        self.job.start("run_batch", force)
+        self._start_job("run_batch", force)
 
     def optimize(self) -> None:
         """Run Opt on a snapshot: the search refits many times and applies the best configuration at the end."""
@@ -347,7 +395,7 @@ class MleNativeApp(TourTarget, ImApp):
             )
             return
         self.model.status_text = str(tr("Optimising ..."))
-        self.job.start("optimize")
+        self._start_job("optimize")
 
     def save_fit(self) -> None:
         """Store the current detector's fit settings on the selected detector setup."""

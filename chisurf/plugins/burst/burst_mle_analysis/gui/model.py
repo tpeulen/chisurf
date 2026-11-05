@@ -466,6 +466,81 @@ class MleViewModel(RunPickerMixin):
         if prepare_from:
             self.prepare_patterns(prepare_from, references)
 
+    # -- the bursts searched ahead (before Next wrote them) ------------------------------------------ #
+    def take_ahead(
+        self, tables: dict, key: str, settings: dict | None = None, prepare_from=(),
+        references: dict | None = None, dropped: threading.Event | None = None,
+    ) -> None:
+        """The pipeline's hand-over ahead of Next, as one background job: the bursts Burst
+        Selection found ahead (``{photon file: burst table}``, nothing written yet,
+        :meth:`MleSession.take_ahead`), the workflow's setup, the IRF and background prepared as
+        :meth:`take_bursts` prepares them (reference dye, strict background, shift calibration,
+        reference fits), then every burst fitted on half the fit's threads -- the user is still
+        at the search settings. The results are written once Next wrote the run
+        (:meth:`attach_ahead`). Stopped (:meth:`stop`) the job
+        ends without merging anything; so does setting *dropped* (this preparation's own flag:
+        the next one may start while it runs out)."""
+
+        def stopped() -> bool:
+            return self._cancel.is_set() or (dropped is not None and dropped.is_set())
+
+        try:
+            if self.session.bur_files:
+                self.clear_files()
+            self.session.take_ahead(tables, key)
+            if settings:
+                self.set_setup(settings)
+            if prepare_from:
+                self.prepare_patterns(prepare_from, references)
+            if stopped():
+                raise InterruptedError("")
+            if self.session.irf_np.get(self.session.current_detector) is not None:
+                self.session.ensure_background()  # the photons outside the bursts, once
+            if not self.input_status()[0]:
+                return  # nothing to fit with yet: Next prepares and fits as usual
+            fingerprint = self.session.batch_fingerprint()
+            workers = max(1, engine.fit_workers() // 2)  # the window and the search ahead first
+
+            def progress(done, total):
+                self.status_text = f"Fitting the bursts searched ahead ... {done}/{total}"
+                self.notify("progress")
+
+            try:
+                rows = self.session.run_batch(
+                    progress=progress, max_workers=workers, should_stop=stopped
+                )
+            except InterruptedError:
+                raise InterruptedError("") from None  # dropped: no message, nothing merged
+            self.burst_results = rows
+            self.held_fingerprint = fingerprint
+            self.status_text = (
+                f"Fitted {self.n_bursts} bursts searched ahead; their lifetimes are written "
+                "once the bursts are stored (Next)."
+            )
+            self.notify("batch")
+        finally:
+            self._release_snapshot()
+
+    def attach_ahead(
+        self, runs, key: str, settings: dict | None = None, prepare_from=(),
+        references: dict | None = None,
+    ) -> None:
+        """Next wrote the bursts searched ahead as *runs*: the session prepared (and fitted)
+        ahead becomes theirs (:meth:`MleSession.attach_run`) and its lifetimes are written into
+        them. When the bursts are not those of search *key* (it was dropped, or failed) the runs
+        are taken as usual (:meth:`take_bursts`)."""
+        session = self.session
+        session.burst_results = self.burst_results  # the rows to rename are the ones shown
+        if session.ahead_key == str(key) and session.attach_run(runs):
+            if self.burst_results:
+                self.held_fingerprint = session.batch_fingerprint()
+                self._write_results()
+            self.notify("files")
+            self._release_snapshot()
+            return
+        self.take_bursts(runs, settings, prepare_from, references)
+        self._release_snapshot()
+
     def clear_files(self) -> None:
         self.remove_file("")
         self.session.bur_files = []

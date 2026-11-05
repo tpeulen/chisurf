@@ -417,6 +417,24 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             m.show_ahead(found, spec.seconds_for(key))
             self._shown_key = key
 
+    def ahead_bursts(self) -> tuple[str, dict] | None:
+        """The bursts the search ahead found and shows, not stored yet: ``(key, {file: burst
+        table})`` -- what a later step starts on before Next (Burst MLE prepares and fits them
+        ahead); ``None`` without (nothing found yet, or stored)."""
+        m = self.model
+        key = self._shown_key
+        if key is None or m.ahead is None or m.has_processed:
+            return None
+        held = self.__dict__.get("_ahead_frames")
+        if held is None or held[0] != key:
+            held = self._ahead_frames = (key, m._result_frames(m.ahead))
+        return held
+
+    @property
+    def stored_key(self) -> str | None:
+        """The key of the search whose bursts Next stored last (``None``: none, or it failed)."""
+        return self._stored_key
+
     def prefetch(self) -> None:
         """The pipeline handed this step its files: search ahead now (no wait for still settings)."""
         self._speculate(delay_s=0.0)

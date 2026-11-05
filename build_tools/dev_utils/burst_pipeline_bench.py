@@ -4,8 +4,10 @@ Heavy: run it on the big machine (``ssh home``), never on a 16 GB laptop -- a re
 measurement several times. Three sub-commands::
 
     # the hub driven as a user would (headless, test painter): wall per step, frame time per
-    # step and per Burst MLE tab, cProfile of those frames; writes timing.json + recipe.json
-    python -m build_tools.dev_utils.burst_pipeline_bench gui OUT --settings SETTINGS --data DIR
+    # step and per Burst MLE tab, cProfile of those frames; writes timing.json + recipe.json;
+    # --think: Next only once the search ahead (and Burst MLE ahead of it) is done
+    python -m build_tools.dev_utils.burst_pipeline_bench gui OUT --settings SETTINGS --data DIR \
+        [--think]
 
     # the same pipeline stage by stage, headless, each beside the raw engine call it wraps;
     # optionally the More samples batch on N links of the measurement
@@ -36,8 +38,9 @@ import sys
 import time
 from pathlib import Path
 
-#: The steps of :func:`gui`, in order: the stacked bar's segments.
-STEPS = ("shell", "hub open", "data+calibration", "search", "mle ready", "mle fit")
+#: The steps of :func:`gui`, in order: the stacked bar's segments (``think``: with ``--think``,
+#: the time the user spends at the search settings while the pipeline works ahead).
+STEPS = ("shell", "hub open", "data+calibration", "think", "search", "mle ready", "mle fit")
 MEASUREMENT = "DNA13bp_3.ptu"
 REFERENCES = ("Rh110_thick_1.ptu", "Alexa647_thick_1.ptu")
 
@@ -57,7 +60,8 @@ def _median_ms(samples: list[float]) -> float:
     return 1e3 * samples[len(samples) // 2] if samples else float("nan")
 
 
-def gui(out: Path, settings: Path, data: Path, setup: str = "RVZMT150", frames: int = 30) -> dict:
+def gui(out: Path, settings: Path, data: Path, setup: str = "RVZMT150", frames: int = 30,
+        think: bool = False) -> dict:
     """Drive the hub through setup, data (with the two reference dyes), search and Burst MLE."""
     _hermetic(out, settings)
     t0 = time.perf_counter()
@@ -116,6 +120,20 @@ def gui(out: Path, settings: Path, data: Path, setup: str = "RVZMT150", frames: 
     hub.select("selection")
     drv.frame(3)
     selection = hub.children["selection"]
+    if think:
+        # the user looks at the search settings: the search ahead lands (and, where the pipeline
+        # runs it, Burst MLE prepares and fits ahead) before Next
+        def ahead_done() -> bool:
+            if selection.model.ahead is None:
+                return False
+            if not hasattr(hub, "_mle_ahead"):
+                return True  # a tree whose Burst MLE does not run ahead
+            mle_child = hub.children.get("mle")
+            return (mle_child is not None and getattr(mle_child, "ahead_key", None) is not None
+                    and not mle_child.pending)
+
+        wait(ahead_done, "search ahead")
+        mark("think")
     selection.run()
     wait(lambda: not selection.running and hub.context.bur_files, "search")
     mark("search")
@@ -379,6 +397,8 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--data", type=Path, default=Path(os.environ.get("DATA", ".")))
         if name == "gui":
             p.add_argument("--setup", default="RVZMT150")
+            p.add_argument("--think", action="store_true",
+                           help="wait for the search ahead (and Burst MLE ahead) before Next")
         else:
             p.add_argument("--recipe", type=Path, required=True)
             p.add_argument("--batch", type=int, default=0)
@@ -388,7 +408,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("png", type=Path)
     args = ap.parse_args(argv)
     if args.cmd == "gui":
-        gui(args.out.resolve(), args.settings, args.data, args.setup)
+        gui(args.out.resolve(), args.settings, args.data, args.setup, think=args.think)
     elif args.cmd == "stages":
         stages(args.out.resolve(), args.settings, args.data, args.recipe, args.batch)
     else:
