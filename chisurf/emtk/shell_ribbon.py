@@ -182,6 +182,9 @@ class ShellRibbon:
         #: next start (the shell saves :meth:`emtk.ribbon.Ribbon.state`); unpinned folds after each pick.
         self.ribbon = Ribbon(name="ribbon", pin=True)
         self._plugins = plugin_tree(shell.entries)
+        #: ``(key, tabs)`` of the last :meth:`tabs` (:meth:`_tabs_key`): a frame that changed none
+        #: of what the buttons are made of draws the same buttons, not new ones.
+        self._tabs_cache: tuple[tuple, list[RibbonTab]] | None = None
 
     # -- the model ---------------------------------------------------------- #
     def _actions(self) -> dict[str, Any]:
@@ -253,7 +256,38 @@ class ShellRibbon:
             ]
         return RibbonGroup("Recent", buttons)
 
+    def _tabs_key(self) -> tuple:
+        """What :meth:`tabs` is made of: the catalogue (its tree, kept from the start), the
+        language and its catalogues (:func:`emtk.i18n.generation`), the task colours, the recent
+        projects and the session objects the actions are bound to. Enabled and checked states are
+        callables a button asks while it is drawn, so they are live without a rebuild."""
+        from emtk import i18n as toolkit_i18n
+
+        shell = self.shell
+        project = getattr(shell, "project", None)
+        categories = getattr(shell, "task_categories", {}) or {}
+        return (
+            id(self._plugins),
+            toolkit_i18n.generation(),
+            toolkit_i18n.language(),
+            id(categories),
+            len(categories),
+            id(project),
+            id(getattr(shell, "data", None)),
+            tuple(getattr(project, "recent", ())[:9]),
+        )
+
     def tabs(self) -> list[RibbonTab]:
+        """The ribbon's tabs, built again only when what they are made of changed (:meth:`_tabs_key`)."""
+        key = self._tabs_key()
+        cached = self._tabs_cache
+        if cached is not None and cached[0] == key:
+            return cached[1]
+        tabs = self._build_tabs()
+        self._tabs_cache = (key, tabs)
+        return tabs
+
+    def _build_tabs(self) -> list[RibbonTab]:
         """The ribbon's tabs now (the session groups' enabled states and recent projects are live).
 
         Each group wears the colour of its kind of task (:mod:`chisurf.emtk.task_colors`) on its

@@ -193,3 +193,30 @@ def test_screenshots_wide_and_narrow(shell, language):
     driver.frame(2)
     driver.screenshot(SHOTS / f"emtk_shell_ribbon_{language}_menu.png")
     time.sleep(0)
+
+
+def test_an_idle_frame_keeps_the_ribbon_buttons(shell):
+    """The tabs are built once and kept while nothing they are made of changes; a new recent
+    project or another language builds them again, and an enabled state stays live."""
+    from emtk import i18n as toolkit_i18n
+
+    driver = Driver(shell, size=(1440, 900))
+    driver.frame(2)
+    first = shell.ribbon.tabs()
+    driver.frame(2)
+    assert shell.ribbon.tabs() is first and shell.ribbon.ribbon.tabs is first
+    save = next(b for t in first if t.title == "File" for g in t.groups for b in g.buttons
+                if b.key == "action.save_project")
+    assert not save.is_enabled()  # no session yet: asked live, every frame
+    shell.project.recent.insert(0, "/tmp/a.cs.pto")
+    try:
+        assert shell.ribbon.tabs() is not first
+    finally:
+        shell.project.recent.remove("/tmp/a.cs.pto")
+    kept = shell.ribbon.tabs()
+    before = toolkit_i18n.language()
+    toolkit_i18n.set_language("de" if before != "de" else "en")
+    try:
+        assert shell.ribbon.tabs() is not kept
+    finally:
+        toolkit_i18n.set_language(before)
