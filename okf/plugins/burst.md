@@ -866,7 +866,7 @@ Idle shell frames (Burst Analysis hub on its setup step, 300 frames, test painte
 `~/perf_bench/ui/ui_idle.py`, alternating): median 22.5-24.7 -> 18.4-20.0 ms; py-spy over the
 same run: `ShellRibbon.tabs` 0.45 -> 0.03 s, `ShellRibbon.draw` 1.73 -> 0.63, `DataDocks._form`
 1.43 -> 0.92, emtk `tr` 2.05 -> 0.50 (catalogue parses `_load` 1.83 -> 0.35), `colour_bytes`
-1.17 -> 0.19, the whole shell draw 11.8 -> 8.3 s. Per call: `copy.copy(MleViewModel)` with 65 k
+1.17 -> 0.19, the whole shell draw 11.8 -> 8.3 s. One py-spy `gui` run each (a run, UI thread): `MleViewModel.__copy__` 5.0 -> 0.6 s, `ShellRibbon.tabs` 5.3 -> 0.07, `ShellRibbon.draw` 15.4 -> 7.7, `DataDocks._form` 8.3 -> 7.5, emtk `tr` 7.1 -> 4.4, `colour_bytes` 9.1 -> 2.9, Burst Background's `_strict_selection` 4.7 -> 1.1 (native, GIL released). Per call: `copy.copy(MleViewModel)` with 65 k
 rows 3.7-4.1 s -> < 1 ms (`copy_bench.py`); Burst Background's strict selection on DNA13bp_3
 2.37 -> 0.80-0.85 s, same kept photons and seconds, rate scale within 5e-11
 (`strict_rates_equiv.py`). Scripts: home `~/perf_bench/ui/` (`uispy.sh`, `seq.sh`, `ab_ui.sh`,
