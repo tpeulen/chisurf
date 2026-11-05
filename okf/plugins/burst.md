@@ -31,11 +31,13 @@ are somehow overheads" and "after processing the ui is super slow". Measurement 
    or file switch assigns a new one); an idle frame derives nothing (guard:
    `tests/test_idle_frames.py`). Median frame (test painter) 335-373 -> 146-179 ms; the plots are
    pixel-identical (before/after PNGs of DNA13bp_3, only the run path and a search-ahead status
-   line differ). **Not yet under 50 ms**: emtk's `implot_items._render_stairs` draws the two
+   line differ). **Not yet under 50 ms**: emtk's `implot_items._render_stairs` drew the two
    count-rate stairs (~2800 points each, `TRACE_PLOT_POINTS` 4000) as two Python `fill_rect`s per
-   point -- with it stubbed out the frame is 88 ms vs 179 ms. Vectorise the stairs (and shaded)
-   renderers in emtk the way the line-strip lane is vectorising `_render_line_strip` (uncommitted
-   in emtk at the time); the rest of the 88 ms is the shell (ribbon, text) and GIL contention from
+   point -- with it stubbed out the frame is 88 ms vs 179 ms. *Done in emtk 0.1.47 (2026-11-05)*:
+   stairs, shaded stairs and shaded bands emit one `fill_rects`/`fill_triangles` batch
+   ([chiplot](/subsystems/chiplot.md) "Plot lines are drawn in one numpy pass"); `sel_bench.py`
+   on home, emtk 0.1.46 vs 0.1.47 back to back: frame median 157-203 -> 87-125 ms, the stairs
+   stub now saves 15 ms (was 60-107); the rest of the ~80 ms is the shell (ribbon, text) and GIL contention from
    the console's ZMQ poll under home's load. Re-derive: `burst_pipeline_bench gui` (its
    `selection` frame); the numbers above are the hub driven to the Selection step only (setup,
    DNA13bp_3 + references, headless `client.analyze_files`, Next), 30 frames, on home.
@@ -44,11 +46,25 @@ are somehow overheads" and "after processing the ui is super slow". Measurement 
    `run_batch` over N spawned processes could be one `fit_many` per detector (threads, GIL
    released): the same throughput with no processes, shared memory or queue pickling, and no pool
    memory at all -- MLE lane; fit23's own cost is tttrlib's.
-5. *emtk draws plot lines per segment in Python* (`implot_items._render_line_strip`: transform +
-   cull per point, then `painter.polyline`, per-segment `line()` without a native polyline): the
-   Burst MLE tabs' remaining ~80-100 ms/frame under the test painter. Vectorise in emtk.
-6. *The pto vocabulary* (`chisurf/core/fio/pto.py` `_vocabulary`, 10.8 s cProfiled) is parsed again
-   whenever the pickle under `settings/cache` misses -- every fresh settings folder and batch worker.
+5. *Done (emtk 0.1.47, 2026-11-05): plot lines in one numpy pass.* Transform, cull and NaN runs
+   vectorised, one `polyline` per run, batched `polyline`/`fill_triangles`/`fill_rects` in the test
+   painters and `QuadPainter`, output identical ([chiplot](/subsystems/chiplot.md) "Plot lines are
+   drawn in one numpy pass"). `burst_pipeline_bench gui` on home, emtk 0.1.46 vs 0.1.47 back to
+   back (load ~40): `_render_line_strip` per 15 cProfiled frames 1.41 -> 0.36 s (Decay and fit),
+   2.37 -> 0.72 s (Inspected burst), 1.72 -> 0.82 s (Lifetime table); `ResidualPlot.draw` 2.05 ->
+   1.17 s. Frame medians 106 / 130 / 134 -> 110 / 115 / 106 ms: the Decay tab's wall did not
+   follow its profile -- the rest of the frame (ribbon, view_form, text recording ~0.4 s each per
+   15 frames) and the console's ZMQ poll under home's load are now most of it. Re-derive with
+   `PYTHONPATH=<emtk checkout>:...` for the before half.
+6. *Done (2026-11-05): the vocabulary parse is paid once per machine.*
+   `chisurf.core.support.vocabulary` keys its pickle on the dictionary bytes + parser source +
+   Python version and keeps it in the user cache (`CHISURF_CACHE_DIR`, `~/Library/Caches/chisurf`,
+   `$XDG_CACHE_HOME/chisurf`), written by atomic rename (a concurrent writer or a crash never leaves
+   a partial file; other keys pruned after 30 days unused). A fresh settings folder: 1.6-1.7 s ->
+   0.08 s (laptop; the parse itself 1.3 s, 10.8 s under cProfile). Prebuild:
+   `python -m chisurf.core.support.vocabulary`. Not shipped prebuilt: a pickle is tied to the Python
+   version and the parser's classes. Open: the parse itself (`mmfdb.schema.pdbx_metadata._parse_file`,
+   per-line `startswith` chains, 5 M calls) lives in the mmfdb repo.
 
 **Burst MLE: rho free, the decay's floor, excluded fits, objectives, G after a restore (2026-11-05).**
 Owner: "by default fit rho", "detector dark counts and bg are not accounted for", "BIFL scatter

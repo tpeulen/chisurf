@@ -594,7 +594,42 @@ Guards: `test/native_emtk/test_residual_plot.py` (above, same x, linked zoom, re
 symmetric `COND_ALWAYS`, tick labels, thick zero, VV|VH), `test/gui/test_lineplot.py`
 (`_symmetric_strips`), emtk `tests/test_emtk_plot.py` (hline width).
 
+## Plot lines are drawn in one numpy pass — 2026-11-05 (emtk 0.1.47)
+
+`emtk.implot_items._render_line_strip` transformed and culled every sample in Python and the
+test painters (`RecordingPainter`, its `MetricPainter`, `PixelPainter`) had no `polyline`, so
+`painter.polyline` fell back to one `line()` quad -- two `fill_triangle` calls -- per segment;
+markers built every triangle as a Python tuple before `QuadPainter.fill_triangles` converted
+them back. Now: `Axis.plot_to_pixels_array` (bit for bit the scalar; a scale's forward
+transform still applied per value through the same `math` function), one array pass for cull
+and NaN runs (`_strip_runs`, the scalar state machine including `SKIP_NAN`'s "last finite
+point"), one `polyline` per unbroken run; markers go to `fill_triangles` as one broadcast
+array. Stairs, shaded stairs and `plot_shaded` bands (and `LINE_FLAGS_SHADED`) emit their
+rectangles/triangles as one batch: a new `painter.fill_rects(p, rects, colour)` acceleration
+(`QuadPainter`, `RecordingPainter`, `PixelPainter`, `HostPainter`; `OffsetPainter`/`ScaledPainter`
+move an array in one operation) and `fill_triangles`. `QuadPainter.fill_triangles` now scales in
+float64 before storing, so it is bit-identical to `fill_triangle` at any device scale (it was
+float32 x scale). `RecordingPainter.polyline` records the identical
+triangle tuples (`painter.polyline_triangles`), `PixelPainter.polyline`/`fill_triangles`
+rasterise byte-identically (a subclass overriding `fill_triangle` keeps the per-segment path,
+`painter.stroke_segments`). Without numpy every renderer is its old per-point self.
+
+Measured (`emtk/tools/bench_implot_lines.py`, laptop, median ms/frame of a Burst-MLE-like
+frame: residual strip with two NaN-gapped traces and the thick zero line over a log-y decay of
+2000 channels -- markers, model, IRF, background, stairs): RecordingPainter 41.6 -> 16.0,
+PixelPainter 293 -> 124, QuadPainter (on screen) 105 -> 15.9; the `--digest` of every painter's
+output is unchanged. Guards: emtk `tests/test_implot_vectorised_lines.py` (vectorised vs
+`implot_items.np = None` on linear/log/symlog/stairs scenes, triangles and pixels equal;
+batched raster vs single triangles incl. translucent overlap, clip, chunking).
+
 # Where to pick this up — the emtk backend
+
+**Plot line speed (2026-11-05):** see "Plot lines are drawn in one numpy pass". Open: a log
+axis spanning ~300 decades (an IRF whose tails reach 1e-300, unfiltered) makes ~3000 tick and
+grid lines a frame (`implot._end_plot_render` -> `_line_h`); thin the log ticker. `PixelPainter.markers`
+(sprite stamping, ~75 ms for 2000 markers) and the per-rect `fill_rect` of stairs/bars are the
+next Python loops in a test frame. Re-measure with `python tools/bench_implot_lines.py --digest
+--profile` in emtk.
 
 **Residual strips (2026-11-05):** the rule and helper are above ("Residual strips"). Open:
 Burst MLE (`burst_mle_analysis/gui/native.py`) still draws its own decay/residual pair — its
