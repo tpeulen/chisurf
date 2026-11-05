@@ -29,6 +29,7 @@ from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.residual_plot import ResidualPlot, Residuals
 from chisurf.plugins.emtk_layout import LabelColumn, labelled, layout_spec, window_size
 
 from ..core.estimation import estimate_irf
@@ -45,7 +46,10 @@ PENS = {
     "Estimated IRF (scaled)": ((0, 220, 0, 255), None),
     "Extracted IRF (scaled)": ((0, 220, 0, 255), None),
     "IRF \u2297 Exp (Forward Model)": ((255, 165, 0, 255), (6.0, 4.0)),
+    "Reference fit": ((255, 165, 0, 255), None),
 }
+#: The residual trace's colour: the model's it is taken against (orange), on the dark strip.
+WRES_PEN = (255, 165, 0, 255)
 #: guide.json names the toolbar actions by caption and the parameter fields by their tour
 #: ids; the spec's names are mapped onto those.
 TOUR_KEYS = {
@@ -171,6 +175,9 @@ class IRFEstimatorApp(ImApp):
         self.error = ""
         self.item_rects = {}
         self.pointer_text = ""
+        #: The decay and the reference fit, each under its weighted-residual strip.
+        self.decay_view = ResidualPlot("irf_decay")
+        self.reference_view = ResidualPlot("irf_reference")
         spec = _spec()
         self.window_size = window_size(spec, (1100, 720))
         self.spec = layout_spec(spec)
@@ -381,57 +388,43 @@ class IRFEstimatorApp(ImApp):
         fit = self.model.reference_fit
         if fit is None:
             im.text_wrapped(
-                "A reference dye's decay is fitted here with the IRF extracted from it, its "
-                "lifetime fixed: estimate an IRF with the Reference dye source."
+                tr(
+                    "A reference dye's decay is fitted here with the IRF extracted from it, its "
+                    "lifetime fixed: estimate an IRF with the Reference dye source."
+                )
             )
             return
-        w, h = im.get_content_region_avail()
-        if not implot.begin_subplots(
-            "##reference_fit", 2, 1, (w, max(120.0, h)), implot.SUBPLOT_FLAGS_LINK_ALL_X
-            | implot.SUBPLOT_FLAGS_NO_TITLE, row_ratios=[0.72, 0.28],
-        ):
-            return
-        x = np.arange(fit.data.size)
-        n_half = fit.data.size // (2 if self.model.vv_vh else 1)
-        lo, hi = fit.window
-        spans = [(lo + k * n_half, hi + k * n_half) for k in range(fit.data.size // n_half)]
-        if implot.begin_plot("Reference dye and fit", (-1, -1)):
-            implot.setup_axes("Channel (VV, then VH)", "Counts",
-                              implot.AXIS_FLAGS_NO_TICK_LABELS | implot.AXIS_FLAGS_NO_LABEL)
-            implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
-            # linked axes do not fit themselves: the fitted windows, and the counts in them
-            implot.setup_axis_limits(implot.AXIS_X1, spans[0][0] - 0.5, spans[-1][1] - 0.5)
-            shown = np.hstack([fit.data[a:b] for a, b in spans])
-            shown = shown[shown > 0]
-            if shown.size:
-                implot.setup_axis_limits(implot.AXIS_Y1, float(shown.min()) * 0.5, float(shown.max()) * 2.0)
-            implot.setup_legend(implot.LOCATION_NORTH_EAST)
-            inside = np.zeros(fit.data.size, dtype=bool)
-            for a, b in spans:
-                inside[a:b] = True
+        n = fit.data.size
+        axis = self.model.channel_axis
+        on_time = axis is not None and len(axis) == n  # the data's own x: the plot beside it
+        x = np.asarray(axis, dtype=float) if on_time else np.arange(n, dtype=float)
+        unit = "Time (ns), VV then VH" if on_time else "Channel (VV, then VH)"
+        inside = np.isfinite(np.asarray(fit.residuals, dtype=float))
+        fitted = np.flatnonzero(inside)
+        extent = (float(x[fitted[0]]), float(x[fitted[-1]])) if fitted.size else None
+
+        def draw_data():
             positive = inside & (fit.data > 0)
             implot.plot_scatter("Data", x[positive], fit.data[positive], marker_size=1.6)
-            for k, (a, b) in enumerate(spans):
-                seg = np.arange(a, b)
-                implot.plot_line("Model" if k == 0 else "##Model", seg, fit.model[seg])
-            implot.end_plot()
-        title = f"Weighted residuals, χ²ᵣ = {fit.chi2r:.3f}##refres"
-        if implot.begin_plot(title, (-1, -1)):
-            implot.setup_axes("Channel (VV, then VH)", "w.res.")
-            res = fit.residuals
-            finite = np.abs(res[np.isfinite(res)])
-            reach = float(np.clip(np.percentile(finite, 99) * 1.2, 3.0, 50.0)) if finite.size else 3.0
-            implot.setup_axis_limits(implot.AXIS_Y1, -reach, reach)
-            implot.plot_inf_lines("##zero", np.array([0.0]), flags=implot.INF_LINES_HORIZONTAL)
-            for a, b in spans:
-                seg = np.arange(a, b)
-                implot.plot_line("##w.res.", seg, res[seg])
-            implot.end_plot()
-        implot.end_subplots()
-        im.set_item_tooltip(
-            "(data - model) / sqrt(model). The reference dye has one known lifetime: with the "
-            "right IRF, G, l1, l2, rotation and time shifts the residuals scatter about zero and "
-            "χ²ᵣ is about 1 (a little more for a bright bulk measurement)."
+            implot.set_next_line_style(PENS["Reference fit"][0], 2.0)
+            implot.plot_line("Model", x, np.where(inside, fit.model, np.nan))
+
+        self.reference_view.draw(
+            draw_data,
+            [Residuals("w.res.", x, fit.residuals, WRES_PEN)],
+            x_extent=extent,
+            key=id(fit),
+            title=f"Reference dye and fit, \u03c7\u00b2\u1d63 = {fit.chi2r:.3f}",
+            x_label=unit,
+            y_label="Counts",
+            log_y=True,
+            legend=implot.LOCATION_NORTH_EAST,
+            wres_tooltip=(
+                "Weighted residuals (data - model) / sqrt(model) of VV and VH, each under its own "
+                "data. The reference dye has one known lifetime: with the right IRF, G, l1, l2, "
+                "rotation and time shifts they scatter about the zero line and \u03c7\u00b2\u1d63 "
+                "is about 1 (a little more for a bright bulk measurement)."
+            ),
         )
 
     def results(self, box):
@@ -443,12 +436,16 @@ class IRFEstimatorApp(ImApp):
             im.text_disabled(self.pointer_text)
 
     def plot(self, box):
+        """The decay, the extracted IRF and the model, under the weighted residuals of that
+        model (:meth:`IRFViewModel.residual_series`: the reference fit where there is one)."""
         m = self.model
-        if implot.begin_plot("IRF Estimation Results", size=(-1.0, -1.0)):
-            implot.setup_axes("Time (ns)", "Intensity (counts/channel)")
-            implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
+        wres = m.residual_series()
+        axis = m.channel_axis
+        extent = (float(axis[0]), float(axis[-1])) if axis is not None and len(axis) else (0.0, 1000.0)
+
+        def draw_data():
             if m.decay_data_original is None:  # nothing loaded: sensible empty axes, not 1e-4 .. 1
-                implot.setup_axes_limits(0.0, 1000.0, 1.0, 1000.0, cond=implot.COND_ONCE)
+                implot.setup_axis_limits(implot.AXIS_Y1, 1.0, 1000.0, implot.COND_ONCE)
             for curve in m.plot_series():
                 values = np.asarray(curve["y"], dtype=float)
                 colour, dash = PENS.get(curve["name"].split(" (BG=")[0], (None, None))
@@ -489,7 +486,26 @@ class IRFEstimatorApp(ImApp):
                 draw.add_line((pixel[0], pos[1]), (pixel[0], pos[1] + size[1]), cross)
                 draw.add_line((pos[0], pixel[1]), (pos[0] + size[0], pixel[1]), cross)
                 im.set_tooltip(self.pointer_text)
-            implot.end_plot()
+
+        title = "IRF Estimation Results"
+        if wres is not None and np.isfinite(wres["chi2r"]):
+            title += f", w.res. of {wres['model']}: \u03c7\u00b2\u1d63 = {wres['chi2r']:.3f}"
+        self.decay_view.draw(
+            draw_data,
+            [] if wres is None else [Residuals("w.res.", wres["x"], wres["y"], WRES_PEN)],
+            x_extent=extent,
+            key=(id(m.decay_data_original), id(m.result), id(m.reference_fit)),
+            title=title,
+            x_label="Time (ns)",
+            y_label="Intensity (counts/channel)",
+            log_y=True,
+            wres_tooltip=(
+                "Weighted residuals (data - model) / sqrt(model) of "
+                + (wres["model"] if wres is not None else "the model")
+                + ", at the data's own time: a deviation sits right above the part of the "
+                "decay that causes it. Symmetric about the thick zero line."
+            ),
+        )
         self.item_rects["plot"] = tuple(box)
 
     def render(self):

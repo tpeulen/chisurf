@@ -173,6 +173,25 @@ that a measured decay fits the assumed exponential model.
 The scaled IRF is drawn only where it is at least one count, so the log axis
 stays on the data. **Guide** walks through the same steps.
 
+**Weighted residuals sit above the decay**, on its time axis — zooming or
+panning one moves the other — in a strip whose range is always symmetric about a
+thick zero line, so a deviation reads straight down onto the part of the decay
+that causes it. They are taken against the model the plot shows: with a
+**Reference dye** the reference fit (its model is drawn as *Reference fit*, both
+VV and VH, $(d - F)/\sqrt{F}$, $\chi^2_r$ in the title); otherwise the blind
+estimate's forward model, or the scaled IRF itself for a scatter or non-burst
+IRF. The **Reference fit** tab shows the same fit with its data points.
+
+```{figure} figures/irf_estimator_wres.png
+:name: fig-irf-estimator-wres
+:width: 90%
+
+Rh110 handed over from Burst MLE (G|G, VV then VH on one time axis): the
+measured decay, the reference fit and the extracted IRF, under the reference
+fit's weighted residuals ($\chi^2_r = 1.398$). The strip is symmetric about
+its thick zero line; each half's residuals sit above their own decay.
+```
+
 ## Usage
 
 ### Basic Usage

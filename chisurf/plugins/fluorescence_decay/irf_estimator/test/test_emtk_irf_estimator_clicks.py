@@ -503,7 +503,10 @@ def test_the_curves_carry_their_pens(monkeypatch):
             lambda colour=None, weight=None, dash=None: styles.append((colour, dash)),
         )
         _draw(app, n=1)
-        assert styles == [
+        # the residual strip first (its trace in the model's colour, then the zero line), then
+        # the decay plot's curves
+        assert styles[0] == (app_module.WRES_PEN, None)
+        assert styles[2:] == [
             app_module.PENS[name]
             for name in (
                 "Measured Decay",
@@ -513,7 +516,7 @@ def test_the_curves_carry_their_pens(monkeypatch):
             )
         ]
         # the background-corrected decay and the forward model are dashed
-        assert [dash is not None for _, dash in styles] == [False, True, False, True]
+        assert [dash is not None for _, dash in styles[2:]] == [False, True, False, True]
     finally:
         app.close()
 

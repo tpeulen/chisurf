@@ -398,10 +398,60 @@ class IRFViewModel:
         self.source_text = f"{origin}{' ' + str(detector) if detector else ''}: {payload.get('name') or self.source}"
         self.status = f"Loaded the {dict(SOURCES)[self.source].lower()} of {origin}."
 
+    #: The curve a residual is taken against, best first: the reference dye's fitted model,
+    #: the blind estimate's forward model, the IRF itself (scatter, non-burst).
+    RESIDUAL_MODELS = ("Reference fit", "IRF \u2297 Exp (Forward Model)", "Extracted IRF (scaled)",
+                       "Estimated IRF (scaled)")
+
+    def residual_series(self):
+        """The weighted residuals of the plotted model against the data it describes, or ``None``.
+
+        ``{"name", "model", "x", "y", "chi2r"}`` on :attr:`channel_axis`, NaN where the model
+        does not describe the data (outside the fitted window, an IRF below one count). With a
+        reference fit that fit's residuals, both polarisations (``(data - model) / sqrt(model)``,
+        as :func:`..core.extraction.reference_fit` gives them); otherwise ``(data - model) /
+        sqrt(max(model, 1))`` of the first of :attr:`RESIDUAL_MODELS` the plot shows.
+        """
+        if self.decay_data_original is None or self.result is None:
+            return None
+        axis = np.asarray(self.channel_axis, dtype=float)
+        fit = self.reference_fit
+        if fit is not None and np.size(fit.residuals) == axis.size:
+            return {"name": "Reference fit", "model": "Reference fit", "x": axis,
+                    "y": np.asarray(fit.residuals, dtype=float), "chi2r": float(fit.chi2r)}
+        curves = {c["name"]: c for c in self.plot_series()}
+        name = next((n for n in self.RESIDUAL_MODELS if n in curves), None)
+        if name is None:
+            return None
+        model = np.asarray(curves[name]["y"], dtype=float)
+        data = np.asarray(
+            self.decay_data if name.startswith("IRF \u2297") else self.decay_data_original, dtype=float
+        )
+        if model.size != data.size:
+            return None
+        usable = np.isfinite(model) & (model > 0.0)
+        if self.use_range_selection:
+            lower, upper = sorted(int(np.clip(b, 0, data.size - 1)) for b in self.range_bounds)
+            inside = np.zeros(data.size, dtype=bool)
+            inside[lower : upper + 1] = True
+            usable &= inside
+        wres = np.full(data.size, np.nan)
+        wres[usable] = (data[usable] - model[usable]) / np.sqrt(np.maximum(model[usable], 1.0))
+        shown = wres[usable]
+        chi2r = float(np.mean(shown * shown)) if shown.size else float("nan")
+        return {"name": f"Data \u2212 {name}", "model": name, "x": axis, "y": wres, "chi2r": chi2r}
+
     def plot_series(self):
         if self.decay_data_original is None:
             return []
         result = [{"name": "Measured Decay", "x": self.channel_axis, "y": self.decay_data_original}]
+        fit = self.reference_fit
+        if fit is not None and np.size(fit.model) == np.size(self.decay_data_original):
+            # the model the reference dye was fitted with, over its fitted windows: what the
+            # residuals above the plot are taken against
+            model = np.asarray(fit.model, dtype=float)
+            shown = np.where(np.isfinite(np.asarray(fit.residuals, dtype=float)), model, np.nan)
+            result.append({"name": "Reference fit", "x": self.channel_axis, "y": shown})
         if self.manual_background > 0:
             result.append(
                 {
