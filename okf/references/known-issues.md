@@ -4,6 +4,37 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Six Burst MLE model-selection tests red before the fit_many change (found 2026-11-05)
+
+status: open — red on the tree before it (a `ssh home` copy of HEAD's plugin):
+`test/native_emtk/test_burst_mle_model_selection.py` `test_physical_preview_and_worker_match_actual_facade[fit24]`
+(the row's Tau is NaN, the direct fit -1.0: the rejected-fit rule writes NaN for tau <= 0 and the
+test still compares raw values), `test_fit23_matches_frozen_physical_preview_and_finite_exports`
+(frozen hashes of x/curve, taken before rho was fitted by default), and
+`test_registered_vectors_and_per_model_edits_survive_settings[fit23|fit24|fit25]` /
+`test_actual_native_choice_pointer_commits_and_notifies_used` (the parameter table now lists the
+three shift rows `IRF shift VV`, `IRF shift VH`, `Shift VV/VH` after the model's own). Owner: the
+lane of the rho / shift-parameter changes; re-pin with the rejected rule and the shift rows.
+
+## tttrlib fit23 with soft BIFL and the Poisson objective depends on the fit before it (found 2026-11-05)
+
+status: open — tttrlib's to fix. `DecayFit23::fit` (`modules/spectroscopy/decay/src/DecayFit23.cpp`)
+calls `fit_signals.compute_signal_and_background` **before** `correct_input` sets this fit's
+gamma, so `Bexpected = gamma * B` is computed with the gamma the *previous* fit on that thread
+ended at (`fit_signals` / `fit_corrections` are `thread_local`); with soft BIFL and the plain
+Poisson objective (2I*: P+2S off) the analytic gradient `decay23_gradient` reads that stale
+`Bexpected`. A burst's result therefore depends on which bursts were fitted before it on the
+same thread: on 70 synthetic bursts 1-2 of them differ (tau 1.9506 vs 1.9457 ns) between one
+`Fit2x.fit` per burst and `fit_many`, and between thread layouts. On DNA13bp_3 (21 808 bursts x
+3 detectors, `ssh home`) the former process pool gave 23 rows differently at 8 and at 4 workers
+(its chunks moved with the count), and the threads differ from it in ~3 800 rows (the fit
+before a burst is now the same detector's previous burst, then the previous detector's):
+neither is the burst's own answer. The default (P+2S on, BIFL
+off) and every other option are path-independent and bit-identical
+(`burst_mle_analysis/tests/test_fit_many_equivalence.py`, whose `p2s=False,bifl=True` case is
+an `xfail` until this is fixed). Fix: set the gamma (`fit_corrections.set_gamma` of the
+sanitised `x[1]`) before `compute_signal_and_background` in `fit()`, then drop the xfail.
+
 ## Burst MLE "IRF tool" reported hanging; not reproduced (found 2026-11-05)
 
 The owner saw the shell hang after Burst MLE's *IRF tool* button. A native sample of the

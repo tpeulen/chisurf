@@ -13,9 +13,17 @@ timestamp: '2026-07-05T00:00:00Z'
 handed to their lanes (2026-11-05).** Owner: "the burst processing can be in general faster, there
 are somehow overheads" and "after processing the ui is super slow". Measurement and table:
 [Pipeline wall time](#pipeline-wall-time) below. Open, in order of measured cost:
-1. *Burst MLE prepares twice*: `take_bursts` -> `prepare_patterns` runs the strict background
-   selection in `auto_extract` **and** in `set_pattern_files` (sampled 15.1 s + 14.9 s of 37.5 s on
-   home): `engine._memo` misses between them. One selection per (photons, bursts, IRF) -- MLE lane.
+1. *Done (2026-11-05): Burst MLE selects the strict background once.* The hand-over's
+   `set_setup` -> `refit` ran before the references gave the IRFs, and its fit (blocked: no IRF)
+   still made the background and the strict selection judged by no IRF; `auto_extract` made it
+   again with the IRFs. `_fit_once` now makes no background while the fit lacks an IRF
+   (`_irf_missing`), and the selection's memo key is `_strict_key()` (binning, each detector's
+   channels and gate, the IRF's *content*). Same result (`tests/test_strict_background_once.py`).
+   `burst_pipeline_bench gui`, back-to-back pairs on home: Burst MLE ready 61.9 / 48.5 -> 48.1 /
+   38.3 s. The trace that found it: wrap `MleSession.select_background` and
+   `irf_bg.strict_background_mask` (print the IRF ids + a stack) in a script that runs the bench
+   -- **under the `__main__` guard**: spawned pool workers re-import `__main__` and each ran the
+   whole bench again.
 2. *Done (2026-11-05): Burst Selection's in-process RPC hands the tables over.* Through an
    `InProcessClient` the client passes `api.contract.IN_PROCESS` (an object, so no JSON request can
    ask for it), `analyze_request(keep_tables=True)` skips the rows, and the service result carries
@@ -41,11 +49,19 @@ are somehow overheads" and "after processing the ui is super slow". Measurement 
    the console's ZMQ poll under home's load. Re-derive: `burst_pipeline_bench gui` (its
    `selection` frame); the numbers above are the hub driven to the Selection step only (setup,
    DNA13bp_3 + references, headless `client.analyze_files`, Next), 30 frames, on home.
-4. *The fit is C++ time, not Python loop time*: fit23 on 1000-channel decays 3.0 ms per call on one
-   core, the Python around it < 2 % (profiled); `Fit2x.fit_many` (8 OpenMP threads) 0.42 ms/fit.
-   `run_batch` over N spawned processes could be one `fit_many` per detector (threads, GIL
-   released): the same throughput with no processes, shared memory or queue pickling, and no pool
-   memory at all -- MLE lane; fit23's own cost is tttrlib's.
+4. *Done (2026-11-05): the burst fit is `Fit2x.fit_many` on threads.* `run_batch` builds each
+   chunk's decays in one `bincount` (`_mp_worker.burst_counts`, `CHUNK_ROWS` 256 bursts) and fits
+   them with one `fit_many` per chunk on `fit_workers()` threads (`fit_jobs`; under tttrlib's
+   1024-row threshold its batch is serial, so the threads are the cap): no processes, shared
+   memory or pickling; Stop and progress per chunk. Bit-identical rows on DNA13bp_3 (65 424 rows)
+   for the default, P+2S off, BIFL, no floor, fit24, fit25 and the tail fit (`scratchpad`
+   `equiv_real.py` + `compare.py`: run_batch of the old and new tree, every column but the run
+   path) -- **except soft BIFL with P+2S off**, which depends on the fit before it in tttrlib
+   (known-issues: the old pool differed from itself between 8 and 4 workers). `stages` run_batch
+   22.5 -> 17.1 s; the gui fit step 28.3 / 24.1 -> 27.2 / 24.9 s (the same throughput, as
+   expected: the C++ fit is the cost). The tail bisection runs over all bursts at once
+   (`tail_lifetimes`; per burst on threads it held the GIL: 3.6 -> 11.8 s, now 5.5 s). Left:
+   the shm adapters `process_one_file_worker` / `pool_states_worker` only serve tests now.
 5. *Done (emtk 0.1.47, 2026-11-05): plot lines in one numpy pass.* Transform, cull and NaN runs
    vectorised, one `polyline` per run, batched `polyline`/`fill_triangles`/`fill_rects` in the test
    painters and `QuadPainter`, output identical ([chiplot](/subsystems/chiplot.md) "Plot lines are
@@ -241,13 +257,14 @@ step 4 is selected go to it (`receive_photons`). Measured on the demo (`demo.mak
 hand (sample 2 as step 1's measurement, steps 2-3 re-run, MLE window set as tuned) = replay, 580
 bursts, mean tau 2.984289746440577 ns, IRF arrays identical (`test_more_samples.py`, 5 tests ~55 s).
 **Batch scheduler (owner: "when processing multiple datasets, in batch, max out parallelization").**
-One pool of `core_budget()` processes (physical cores - 1, capped by `engine.fit_workers()`: it IS
-the MLE fit pool, `batch_pool`) runs every sample's `search_task`, `bva_task`, `two_cde_task` and
-fit chunks; `SampleQueue._work` admits samples (threads) up to the budget and while
+One pool of `core_budget()` processes (physical cores - 1, capped by `engine.fit_workers()`;
+`engine.fit_pool`, `batch_pool`) runs every sample's `search_task`, `bva_task` and `two_cde_task`;
+the burst fit is not in it (since 2026-11-05 `run_batch` fits on threads, `Fit2x.fit_many`).
+`SampleQueue._work` admits samples (threads) up to the budget and while
 `sample_memory` (37 B per file byte + 100 MB) of those in flight fits 60 % of free memory;
 `share()` = budget - in flight + 1: 1 -> everything after the search is one pool task
-(`analyse_task`, the fit inline via `_InlineExecutor`), more -> stages in the thread, fit chunks
-fanned out. Replay MLE no longer re-derives the IRF (take_bursts without prepare, the buffer set as
+(`analyse_task`, its fit on one thread), more -> stages in the thread, the fit on the budget's
+threads in the window's process. Replay MLE no longer re-derives the IRF (take_bursts without prepare, the buffer set as
 prepare_patterns does, recipe IRF, then `ensure_background` judges the strict selection with it) --
 by-hand equality still exact. Memory measured with macOS `proc_pid_rusage` phys_footprint summed
 over the process and pool (RSS lies under memory pressure: compressed pages): synthetic bursty PTU
@@ -666,6 +683,17 @@ measurement are one sample to More samples (it resolves paths).
 | Burst MLE ready (references, IRF, strict background) | 63.6 | 44.1 |
 | Burst MLE fit (8 processes) | 24.2 | 20.5 |
 | **total** | **145** | **113** |
+
+Burst MLE, one strict selection + `fit_many` threads (2026-11-05, home at load 35-45, two
+back-to-back pairs of `gui`; the trees: HEAD before / after these two commits, the rest equal):
+
+| Hub step (wall, s) | before (run 1 / 2) | after (run 1 / 2) |
+|---|---:|---:|
+| search + write | 23.2 / 17.2 | 23.6 / 17.6 |
+| Burst MLE ready | 61.9 / 48.5 | 48.1 / 38.3 |
+| Burst MLE fit (8 processes -> 8 threads) | 28.3 / 24.1 | 27.2 / 24.9 |
+| **total** | **153.0 / 120.9** | **134.6 / 111.4** |
+| frames Decay / Inspected / Lifetime table (ms) | 120-84 / 147-76 / 147-81 | 106-72 / 94-68 / 99 |
 
 | Frame (median, ms) | before | after |
 |---|---:|---:|
