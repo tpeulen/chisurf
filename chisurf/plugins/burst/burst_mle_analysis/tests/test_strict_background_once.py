@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chisurf.core.fluorescence.burst import irf_bg
+from chisurf.core.fluorescence.burst import fused_pipeline, irf_bg
 
 from .test_mle_restored_inputs import fresh_session, inputs  # noqa: F401 - fixture
 
@@ -29,6 +29,14 @@ def counted(monkeypatch):
         return real(*args, **kwargs)
 
     monkeypatch.setattr(irf_bg, "strict_background_mask", mask)
+    # the native selection (tttrlib's StrictBackground) is the same selection, counted the same
+    native = fused_pipeline.session_strict_background
+
+    def strict(*args, **kwargs):
+        calls.append(1)
+        return native(*args, **kwargs)
+
+    monkeypatch.setattr(fused_pipeline, "session_strict_background", strict)
     return calls
 
 
