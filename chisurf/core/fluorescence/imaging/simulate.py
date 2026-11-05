@@ -214,7 +214,7 @@ class Blob:
         Fluorescence lifetime (ns).
     r0 : float
         Fundamental anisotropy. Non-zero is what makes the parallel and
-        perpendicular channels differ at all — with ``r0 = 0`` the two decays
+        VH channels differ at all — with ``r0 = 0`` the two decays
         are the same curve and a VV/VH fit has nothing to work with.
     rho : float
         Rotational correlation time (ns). ``0`` freezes the anisotropy at
@@ -238,7 +238,7 @@ class SimulatedMixture:
 
     The test set the segmentation and the region-wise fit are both aimed at:
     one field, several objects, each with its *own* lifetime, and photons split
-    over a parallel and a perpendicular detector so a VV/VH estimator has the
+    over a VV and a VH detector so a VV/VH estimator has the
     two channels it expects.
 
     Attributes

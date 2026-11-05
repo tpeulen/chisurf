@@ -61,7 +61,7 @@ def resample_s1s2(
         Species weights of the fitted probability spectrum. Normalised
         internally.
     probabilities : array_like
-        Per-photon channel-1 (green) probability of each species; same length
+        Per-photon channel-1 (G|G) probability of each species; same length
         as ``amplitudes``.
     n_bursts : int
         Number of bursts to draw.

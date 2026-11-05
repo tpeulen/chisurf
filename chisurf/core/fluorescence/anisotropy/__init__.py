@@ -3,17 +3,17 @@ import chisurf.core.fluorescence.anisotropy.integrals
 from chisurf.core.fluorescence.intensity import nusiance
 
 # Global constants (normally defined elsewhere)
-Bp = 10.0  # Background for parallel signal correction
+Bp = 10.0  # Background for VV signal correction
 Bs = 5.0  # Background for vertical signal correction
 Gfactor = 1.2  # Gain factor to correct detection sensitivity
-l1 = 0.1  # Mixing factor for the parallel channel
+l1 = 0.1  # Mixing factor for the VV channel
 l2 = 0.2  # Mixing factor for the vertical channel
 
 
 @nusiance
 def r_scatter(signal_vertical, signal_parallel, **kwargs):
     """
-    Computes the scatter anisotropy ratio from vertical and parallel signals.
+    Computes the scatter anisotropy ratio from vertical and VV signals.
 
     The ratio is computed after applying background corrections and a gain
     factor. In detail, the modified parallel and vertical signals are calculated as:
@@ -42,7 +42,7 @@ def r_scatter(signal_vertical, signal_parallel, **kwargs):
     Examples
     --------
     >>> Bp = 10.0; Bs = 5.0; Gfactor = 1.2; l1 = 0.1; l2 = 0.2
-    >>> # Given a vertical signal of 100 and a parallel signal of 150:
+    >>> # Given a vertical signal of 100 and a VV signal of 150:
     >>> # F_p = (150 - 10) * 1.2 = 168
     >>> # F_s = 100 - 5 = 95
     >>> # Denom = 168*(1 - 0.6) + 95*(2 - 0.3) = 168*0.4 + 95*1.7 = 67.2 + 161.5 = 228.7

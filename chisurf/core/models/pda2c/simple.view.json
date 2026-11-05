@@ -27,7 +27,7 @@
           "collapsible": false
         }
       ],
-      "description": "Background rates (kHz) in the donor and acceptor channels added to the burst photons."
+      "description": "Background rates Bg_G|G and Bg_R|G (kHz) added to the burst photons."
     },
     {
       "type": "panel",

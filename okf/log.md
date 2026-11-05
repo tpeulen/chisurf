@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-11-05
+
+- Nomenclature, core: burst window columns are written | lo:hi (burst_features.yaml; tttrlib f2f21e89e writes and reads lo:hi, lo-hi of older tables still read via detector_names.RANGE); detector_names.guess_burst_columns maps lo:hi for a tttrlib built before; PDA micro-time ranges, the G-factor gate and the excitation-window texts read a-b and write a:b; VV / VH, G|G / R|G and Bg_<detector> in core descriptions, docstrings and messages. New concept okf/references/nomenclature.md (names, read-side renames, guard, where to pick up).
+
 ## 2026-11-04
 
 - Agent: tool focus for the on-device model (tool_focus.py; ~20 of 46 tools per request, prompt 11.7k→7.0k tokens for a decay fit; live suite 8/8 in 12:53 vs 7/8 in 14:32 without) and create_fit refuses IRF datasets (three tests had been fitting the IRF). See subsystems/llm-agent.md.

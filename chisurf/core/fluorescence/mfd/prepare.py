@@ -771,7 +771,7 @@ def window_columns(frame) -> list[tuple[int, int]]:
     """Return the micro-time windows a burst table names in its own headers.
 
     The ``.bur`` writer emits one column per (window, detector) pair, headed
-    ``S <window> <detector> (kHz) | <lo>-<hi>``. Those bounds are the windows the
+    ``S <window> <detector> (kHz) | <lo>:<hi>``. Those bounds are the windows the
     analysis actually used, so they are the right candidates to try when the
     detector definitions themselves were not recorded — read off the file rather
     than assumed.
@@ -786,7 +786,7 @@ def window_columns(frame) -> list[tuple[int, int]]:
     list of tuple
         Half-open ``(start, stop)`` windows, de-duplicated.
     """
-    pattern = re.compile(r"\|\s*(\d+)\s*-\s*(\d+)\s*$")
+    from chisurf.core.fluorescence.detector_names import RANGE as pattern  # | lo:hi
     out: list[tuple[int, int]] = []
     for column in column_names(frame):
         match = pattern.search(str(column))

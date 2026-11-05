@@ -128,7 +128,7 @@ def from_bursts(
         return service_error(
             "the gated bursts gave an empty PDA histogram: check the channels "
             f"{[list(g) for g in ch]}, the micro-time ranges and the photon-number limits "
-            f"({minimum_number_of_photons}-{maximum_number_of_photons}) against the files",
+            f"({minimum_number_of_photons}:{maximum_number_of_photons}) against the files",
             error_code=OPERATION_FAILED,
         )
     return {"ok": True, "result": {"curves": curves, "n_files": len(slices)}}

@@ -274,7 +274,7 @@ _DETECTOR = re.compile(r"(?<![A-Za-z0-9_])[BGYRbgyr]\|[BGYRbgyr](?![A-Za-z0-9_])
 
 def _normalize_left(name: str) -> str:
     """Return the part of a name before the first ``|`` outside a detector name, stripped
-    (``"S prompt G|G (kHz) | 0-2048"`` -> ``"S prompt G|G (kHz)"``)."""
+    (``"S prompt G|G (kHz) | 0:2048"`` -> ``"S prompt G|G (kHz)"``)."""
     text = str(name)
     at = _DETECTOR.sub(lambda m: "#" * len(m.group()), text).find("|")
     return (text if at < 0 else text[:at]).strip()

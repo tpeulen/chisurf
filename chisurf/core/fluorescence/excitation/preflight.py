@@ -97,7 +97,7 @@ def _windows_line(check: WindowCheck) -> str | None:
     if not det.alternating and check.mismatch and codes & _GATE_CODES:
         # one pulse (or none), but a gate that sees nothing of it: say so, whatever the scheme
         fixed = {d: g for d, g in check.proposal_gates.items() if g != check.gates.get(d)}
-        gates = ", ".join(f"{d} " + " ".join(f"{a}–{b}" for a, b in g) for d, g in fixed.items())
+        gates = ", ".join(f"{d} " + " ".join(f"{a}:{b}" for a, b in g) for d, g in fixed.items())
         first = next(i.message for i in check.issues if i.code in _GATE_CODES)
         return (f"Detector gates do not match the data: {first}"
                 + (f" Detected gates: {gates}." if gates else "")
@@ -111,11 +111,11 @@ def _windows_line(check: WindowCheck) -> str | None:
     if not check.mismatch:
         return None
     found = check.proposal or check.detection.windows
-    proposal = ", ".join(f"{k} {v[0]}–{v[1]}" for k, v in found.items())
+    proposal = ", ".join(f"{k} {v[0]}:{v[1]}" for k, v in found.items())
     fixed = {d: g for d, g in check.proposal_gates.items() if g != check.gates.get(d)}
     if fixed:
         proposal += ("; " if proposal else "") + "gates " + ", ".join(
-            f"{d} " + " ".join(f"{a}–{b}" for a, b in g) for d, g in fixed.items())
+            f"{d} " + " ".join(f"{a}:{b}" for a, b in g) for d, g in fixed.items())
     what = ("Detector gates" if codes & _GATE_CODES and not codes - _GATE_CODES - _EITHER_CODES
             or (not check.windows and check.gates) else "PIE windows")
     return (f"{what} do not match the data: {check.summary} Detected windows: {proposal} "

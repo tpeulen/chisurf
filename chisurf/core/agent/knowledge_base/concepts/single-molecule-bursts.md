@@ -55,7 +55,7 @@ counted over one burst. It moves with FRET, which is why it separates
 populations — but it is **not** the FRET efficiency E, because it ignores:
 
 * **background** in both channels (worst for dim bursts),
-* **spectral crosstalk**: donor emission leaking into the acceptor detector,
+* **spectral crosstalk**: donor emission leaking into R|G,
 * **direct excitation** of the acceptor by the donor's laser,
 * **γ**, the ratio of detection efficiency × quantum yield between the two
   channels.

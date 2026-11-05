@@ -416,7 +416,7 @@ class Pda2cAnisotropyModel(Pda2cModelMixin, ModelCurve):
         # 2D model S_parallel / S_perp distribution
         s1s2_model = np.asarray(self.pda.s1s2, dtype=float)
 
-        # When the data P(S∥, S⊥) has been flattened into fit.data.y,
+        # When the data P(S_VV, S_VH) has been flattened into fit.data.y,
         # we need to match the shape from the metadata (same as in
         # FRET PDA).
         try:

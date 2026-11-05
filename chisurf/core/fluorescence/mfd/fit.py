@@ -745,7 +745,7 @@ class MfdModel:
         data : MfdData
             The measurement, from :func:`load_mfd_data`.
         parallel : str
-            Detector name of the parallel channel, whose response and micro times
+            Detector name of the VV channel, whose response and micro times
             the lifetime axis uses.
 
         Returns

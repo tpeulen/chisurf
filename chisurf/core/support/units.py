@@ -208,7 +208,7 @@ def split_label(label: str) -> tuple[str, str]:
     label : str
 
     A label may carry both conventions at once, and one in this tree does: a
-    burst table's window rate is ``"S prompt G|G (kHz) | 0-2048"``, where the
+    burst table's window rate is ``"S prompt G|G (kHz) | 0:2048"``, where the
     bar separates a *range* rather than a unit and the unit is in the brackets
     before it. So a bar whose right-hand side is not a unit falls through to the
     bracket on its left-hand side, instead of ending the search. Reading the

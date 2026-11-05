@@ -1,4 +1,4 @@
-"""Time-resolved anisotropy r(t) from a parallel and a perpendicular decay."""
+"""Time-resolved anisotropy r(t) from a VV and a VH decay."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ def rt_curves(t, vv, vh, g: float = 1.0, l1: float = 0.0, l2: float = 0.0):
     t : array_like
         Time axis.
     vv, vh : array_like
-        Parallel and perpendicular decays, background already subtracted.
+        VV and VH decays, background already subtracted.
     g : float
         Detection sensitivity factor multiplying the perpendicular VH decay.
     l1, l2 : float

@@ -965,7 +965,7 @@ class Pda2cReader(ExperimentReader):
                 # Align experimental S1S2 orientation with the theoretical model.
                 #
                 # The tttrlib.Pda model S1S2 matrix (from the probability spectrum)
-                # uses rows for channel 1 (green) and columns for channel 2 (red).
+                # uses rows for channel 1 (G|G) and columns for channel 2 (R|G).
                 # The experimental histogram produced by compute_experimental_histograms
                 # is effectively stored with rows corresponding to channel 2 and
                 # columns to channel 1. For consistent comparison (2D residuals and

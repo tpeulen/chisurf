@@ -4,8 +4,8 @@ from __future__ import annotations
 def nusiance(f, *args, **kwargs):
     """Inject intensity/anisotropy correction globals into the wrapped function.
 
-    :param Ss: perpenticular signal
-    :param Sp: parallel signal
+    :param Ss: VH signal
+    :param Sp: VV signal
     :param Bs: perpenticular background
     :param Bp: parallel background
     :param Gfactor: g-factor

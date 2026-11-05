@@ -187,7 +187,7 @@ def simulate_decay_channels(
 
     The channel twin of :func:`simulate_decay`: the same ideal (peak-scaled,
     IRF-convolved) magic-angle decay is split into the parallel and
-    perpendicular channels with the fit stack's forward model
+    VH channels with the fit stack's forward model
     (:func:`~chisurf.core.fluorescence.anisotropy.decay.vm_rt_to_vv_vh`)
     before the IRF convolution, and a finite-count observation is Poisson
     sampled per channel from one generator with the budget split

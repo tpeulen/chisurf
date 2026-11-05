@@ -85,8 +85,8 @@ def _reference_dataframe_cells(start_stop, filename, tttr, windows, detectors):
     win_cols = []
     for w, (r0, r1) in windows.items():
         for d in detectors:
-            win_cols.append(f"S {w} {d} (kHz) | {r0}-{r1}")
-            win_cols.append(f"S {w} {d} (photons) | {r0}-{r1}")
+            win_cols.append(f"S {w} {d} (kHz) | {r0}:{r1}")
+            win_cols.append(f"S {w} {d} (photons) | {r0}:{r1}")
     micro_cols = [f"Mean Microtime ({d}) (ns)" for d in detectors]
     micro_ns = micro_time_resolution_ns(tttr)
     cols = static_cols + det_cols + win_cols + micro_cols + [""]
@@ -142,8 +142,8 @@ def _reference_dataframe_cells(start_stop, filename, tttr, windows, detectors):
         for w in windows:
             for d in detectors:
                 idxs = np.nonzero(det_global[d][sl] & win_global[w][sl])[0]
-                key = f"S {w} {d} (kHz) | {windows[w][0]}-{windows[w][1]}"
-                row[idx[f"S {w} {d} (photons) | {windows[w][0]}-{windows[w][1]}"]] = idxs.size
+                key = f"S {w} {d} (kHz) | {windows[w][0]}:{windows[w][1]}"
+                row[idx[f"S {w} {d} (photons) | {windows[w][0]}:{windows[w][1]}"]] = idxs.size
                 if idxs.size == 0:
                     row[idx[key]] = -1.0
                 else:

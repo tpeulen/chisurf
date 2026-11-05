@@ -45,7 +45,7 @@ unless ``tau_a`` is given a *sensitised* spectrum via ``acceptor_decay=True``.
 
 MFD mode. Set ``alex=False`` for the classic single-laser, polarization-resolved
 measurement that 2D-MFD analysis reads: one excitation, green and red detectors
-each split into parallel and perpendicular, on the routing channels the burst
+each split into VV and VH, on the routing channels the burst
 pipeline expects.
 
 ===========  ==========================  ==========
@@ -65,7 +65,7 @@ itself and logs every transition, so the occupation times are ground truth rathe
 than a reconstruction. Singly labelled species never exchange.
 
 Polarization is a **state**, not a post-processing step. Each labelling species
-is simulated as two species — a parallel and a perpendicular emission mode —
+is simulated as two species — a VV and a VH emission mode —
 each emitting into its own detectors and carrying its own polarized decay
 spectrum, with the modes interconverting through the *excitation-scaled* rate
 matrix so that successive photons are independent. That reproduces the joint
@@ -74,7 +74,7 @@ the anisotropy over the fluorescence lifetime.
 
 The engine's own ``r0``/``D_rot`` parameters are deliberately unused: they are
 described in its source as reviving a legacy rotational-diffusion model, and they
-route parallel/perpendicular into channels 0/1 *instead of* by colour, whereas
+route VV/VH into channels 0/1 *instead of* by colour, whereas
 MFD needs colour × polarization. The general encoding — a species is any emitting
 state, carrying its own per-channel brightness and micro-time pattern — is
 written up in ``okf/references/simengine-species-encoding.md``.
@@ -238,7 +238,7 @@ class SmfretParameters:
         Two alternating lasers (the default). ``False`` gives the single-laser,
         polarization-resolved measurement 2D-MFD reads.
     polarized : bool
-        Split each colour into parallel and perpendicular detectors, on the
+        Split each colour into VV and VH detectors, on the
         routing channels of :data:`MFD_STREAMS`. Requires ``alex=False``.
     irf_centre, irf_width : float
         Gaussian instrument response, ns. ``irf_width = 0`` (the default) leaves
@@ -498,7 +498,7 @@ class SmfretParameters:
         So a component ``(a, τ)`` contributes ``a`` at ``τ`` plus a depolarizing
         term at the mixed time ``1/(1/τ + 1/ρ)``, with opposite signs in the two
         channels. The Schaffer/Eggeling convention is used throughout: ``G``
-        *divides* the perpendicular channel and ``l1``/``l2`` enter the
+        *divides* the VH channel and ``l1``/``l2`` enter the
         amplitudes, matching
         :func:`~chisurf.core.fluorescence.anisotropy.decay.vm_rt_to_vv_vh`.
 
@@ -614,7 +614,7 @@ class SmfretParameters:
                 # carries its own polarized spectrum and emits only into its own
                 # detectors, which reproduces the (channel, micro time) joint
                 # exactly. The legacy r0/D_rot path cannot be used here because it
-                # routes parallel/perpendicular into channels 0/1 *instead of* by
+                # routes VV/VH into channels 0/1 *instead of* by
                 # colour. See okf/references/simengine-species-encoding.md.
                 vv, vh = self.polarized_spectra(amplitudes, lifetimes)
                 species.append(

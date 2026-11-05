@@ -27,7 +27,7 @@
         "attr": "three_colours",
         "equals": true
       },
-      "description": "Two colours: the green and the red detector, each with its routing channels and its own photon-selection window.",
+      "description": "Two colours: a donor row (G|G by default) and a FRET-acceptor row (R|G by default), each with its routing channels and its own photon-selection window.",
       "sections": [
         {
           "type": "info",
@@ -42,49 +42,49 @@
         {
           "type": "info",
           "text": "Micro time",
-          "description": "Micro-time ranges of each detector: start-end; separate multiple ranges with ';'."
+          "description": "Micro-time ranges of each detector: start:end; separate multiple ranges with ';'."
         },
         {
           "type": "choice",
           "attr": "detector_0",
-          "label": "Green",
+          "label": "Donor (G|G)",
           "options_source": "detector_names",
-          "description": "The detector of the setup the green photons are read from: its channels and micro-time ranges fill the row."
+          "description": "The detector of the setup the donor photons are read from (G|G by default): its channels and micro-time ranges fill the row."
         },
         {
           "type": "value",
           "attr": "channels_0",
           "kind": "str",
           "placeholder": "e.g. 0, 3",
-          "description": "Routing channels of the green detector, comma separated."
+          "description": "Routing channels of the donor row (G|G by default), comma separated."
         },
         {
           "type": "value",
           "attr": "window_0",
           "kind": "str",
-          "placeholder": "start-end",
-          "description": "Micro-time ranges for the green detector: start-end; separate multiple ranges with ';'."
+          "placeholder": "start:end",
+          "description": "Micro-time ranges for the donor row (G|G by default): start:end; separate multiple ranges with ';'."
         },
         {
           "type": "choice",
           "attr": "detector_1",
-          "label": "Red",
+          "label": "Acceptor (R|G)",
           "options_source": "detector_names",
-          "description": "The detector of the setup the red photons are read from: its channels and micro-time ranges fill the row."
+          "description": "The detector of the setup the FRET-acceptor photons are read from (R|G by default): its channels and micro-time ranges fill the row."
         },
         {
           "type": "value",
           "attr": "channels_1",
           "kind": "str",
           "placeholder": "e.g. 1, 2",
-          "description": "Routing channels of the red detector, comma separated."
+          "description": "Routing channels of the acceptor row (R|G by default), comma separated."
         },
         {
           "type": "value",
           "attr": "window_1",
           "kind": "str",
-          "placeholder": "start-end",
-          "description": "Micro-time ranges for the red detector: start-end; separate multiple ranges with ';'."
+          "placeholder": "start:end",
+          "description": "Micro-time ranges for the acceptor row (R|G by default): start:end; separate multiple ranges with ';'."
         }
       ]
     },
@@ -95,7 +95,7 @@
         "attr": "three_colours",
         "equals": false
       },
-      "description": "Three colours: the blue, green and red detectors. Their micro-time windows are the excitation periods of the PIE cycle, below.",
+      "description": "Three colours: B|B, G|G and R|G (by default). Their micro-time windows are the excitation periods of the PIE cycle, below.",
       "sections": [
         {
           "type": "info",
@@ -110,44 +110,44 @@
         {
           "type": "choice",
           "attr": "detector_0",
-          "label": "Blue",
+          "label": "Blue (B|B)",
           "options_source": "detector_names",
-          "description": "The detector of the setup the blue photons are read from: its channels fill the row."
+          "description": "The detector of the setup the blue photons are read from (B|B by default): its channels fill the row."
         },
         {
           "type": "value",
           "attr": "channels_0",
           "kind": "str",
           "placeholder": "e.g. 0",
-          "description": "Routing channels of the blue detector, comma separated."
+          "description": "Routing channels of the B|B row, comma separated."
         },
         {
           "type": "choice",
           "attr": "detector_1",
-          "label": "Green",
+          "label": "Green (G|G)",
           "options_source": "detector_names",
-          "description": "The detector of the setup the green photons are read from: its channels fill the row."
+          "description": "The detector of the setup the green photons are read from (G|G by default): its channels fill the row."
         },
         {
           "type": "value",
           "attr": "channels_1",
           "kind": "str",
           "placeholder": "e.g. 1",
-          "description": "Routing channels of the green detector, comma separated."
+          "description": "Routing channels of the G|G row, comma separated."
         },
         {
           "type": "choice",
           "attr": "detector_2",
-          "label": "Red",
+          "label": "Red (R|G)",
           "options_source": "detector_names",
-          "description": "The detector of the setup the red photons are read from: its channels fill the row."
+          "description": "The detector of the setup the red photons are read from (R|G by default): its channels fill the row."
         },
         {
           "type": "value",
           "attr": "channels_2",
           "kind": "str",
           "placeholder": "e.g. 2",
-          "description": "Routing channels of the red detector, comma separated."
+          "description": "Routing channels of the R|G row, comma separated."
         }
       ]
     },
@@ -158,14 +158,14 @@
         "attr": "three_colours",
         "equals": false
       },
-      "description": "The excitation periods of the three-colour PIE cycle: the blue pulse is seen by all three detectors, the green pulse by green and red.",
+      "description": "The excitation periods of the three-colour PIE cycle: the blue pulse is seen by all three detectors, the green pulse by G|G and R|G.",
       "sections": [
         {
           "type": "value",
           "attr": "window_0",
           "kind": "str",
           "label": "Blue excitation",
-          "placeholder": "start-end",
+          "placeholder": "start:end",
           "description": "Micro-time range of the blue excitation period. Photons inside it are counted in every detector that can see the blue pulse."
         },
         {
@@ -173,7 +173,7 @@
           "attr": "window_1",
           "kind": "str",
           "label": "Green excitation",
-          "placeholder": "start-end",
+          "placeholder": "start:end",
           "description": "Micro-time range of the green excitation period. Photons inside it are counted in every detector that can see the green pulse."
         }
       ]

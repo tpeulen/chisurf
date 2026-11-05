@@ -93,7 +93,9 @@ def colour_count(value: Any) -> int:
 
 
 def parse_micro_time_ranges(text: str) -> list:
-    """Parse ``"start-end;start-end"`` into a list of ``[start, end]`` pairs.
+    """Parse ``"start:end;start:end"`` into a list of ``[start, end]`` pairs.
+
+    The older ``"start-end"`` spelling of saved settings is read as well.
 
     Parameters
     ----------
@@ -114,7 +116,7 @@ def parse_micro_time_ranges(text: str) -> list:
         if not segment:
             continue
         try:
-            bounds = [int(j) for j in segment.split("-")]
+            bounds = [int(j) for j in segment.replace(":", "-").split("-")]
         except ValueError:
             continue
         if len(bounds) >= 2:
@@ -123,7 +125,7 @@ def parse_micro_time_ranges(text: str) -> list:
 
 
 def format_micro_time_ranges(value: Any) -> str:
-    """Render a micro-time window as the ``"start-end;start-end"`` a field shows.
+    """Render a micro-time window as the ``"start:end;start:end"`` a field shows.
 
     Accepts a single ``(start, stop)`` pair, a list of them, or a bare integer
     (mirroring ``PhotonFilter.update_pie_windows``).
@@ -142,16 +144,16 @@ def format_micro_time_ranges(value: Any) -> str:
         value = value.tolist()
     if isinstance(value, (list, tuple)):
         if len(value) == 2 and all(isinstance(x, (int, np.integer)) for x in value):
-            return f"{int(value[0])}-{int(value[1])}"
+            return f"{int(value[0])}:{int(value[1])}"
         parts = []
         for item in value:
             if isinstance(item, (list, tuple)) and len(item) >= 2:
-                parts.append(f"{int(item[0])}-{int(item[1])}")
+                parts.append(f"{int(item[0])}:{int(item[1])}")
             elif isinstance(item, (int, np.integer)):
-                parts.append(f"{int(item)}-{int(item)}")
+                parts.append(f"{int(item)}:{int(item)}")
         return ";".join(parts)
     if isinstance(value, (int, np.integer)):
-        return f"{int(value)}-{int(value)}"
+        return f"{int(value)}:{int(value)}"
     return ""
 
 

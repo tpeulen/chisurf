@@ -43,7 +43,7 @@ def vv_vh_window(stack, vv=(0, None), vh=(0, None)):
     """Return the VV|VH *stack* with a window applied to each half separately.
 
     A VV/VH array is two decays laid end to end, and they do not share a fit
-    window: the perpendicular channel's useful range starts and ends elsewhere.
+    window: the VH channel's useful range starts and ends elsewhere.
     Slicing the concatenated array as one is the mistake this exists to prevent
     — it takes the window out of the wrong half and leaves a decay that looks
     fine and is one channel's tail glued to the other's rise.
@@ -51,7 +51,7 @@ def vv_vh_window(stack, vv=(0, None), vh=(0, None)):
     Parameters
     ----------
     stack : array-like
-        ``2n`` values: the parallel decay followed by the perpendicular one.
+        ``2n`` values: the VV decay followed by the VH one.
     vv, vh : tuple of int
         ``(start, stop)`` per half; ``None`` for stop means to the end.
 

@@ -47,7 +47,7 @@ def test_gates_of_another_instrument_warn(demo):
     warnings: list[str] = []
     rates = background.estimate_background_from_bursts(demo, WRONG, warnings=warnings)
     assert set(rates) == {"green", "red"}
-    assert len(warnings) == 1 and "detector green (2048–4095)" in warnings[0], warnings
+    assert len(warnings) == 1 and "detector green (2048:4095)" in warnings[0], warnings
     diag: list[str] = []
     background.background_diagnostics_from_bursts(demo, WRONG, warnings=diag)
     assert diag == warnings

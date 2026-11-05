@@ -223,7 +223,7 @@
           "minimum": 0.0,
           "maximum": 100.0,
           "step": 0.01,
-          "description": "Detection-efficiency ratio (g-factor) between the parallel and perpendicular channels."
+          "description": "G = S_VV/S_VH, the VV/VH detection sensitivity ratio."
         },
         {
           "type": "value",
@@ -235,7 +235,7 @@
           "step": 0.001,
           "decimals": 6,
           "call": "l1_changed",
-          "description": "Polarization leakage correction for the parallel channel."
+          "description": "Polarization mixing correction l1 of the VV channel."
         },
         {
           "type": "value",
@@ -246,7 +246,7 @@
           "maximum": 10,
           "step": 0.001,
           "decimals": 6,
-          "description": "Polarization leakage correction for the perpendicular channel."
+          "description": "Polarization mixing correction l2 of the VH channel."
         },
         {
           "type": "toggle",
@@ -263,7 +263,7 @@
           "minimum": -150,
           "maximum": 150,
           "style": "spin",
-          "description": "Channel shift of the perpendicular decay relative to the parallel decay."
+          "description": "Channel shift of the VH decay relative to the VV decay."
         },
         {
           "type": "button_row",

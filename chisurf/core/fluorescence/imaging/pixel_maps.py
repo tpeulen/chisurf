@@ -484,7 +484,7 @@ def windows_from_payload(payload: dict) -> dict[str, dict]:
 
     Reads the shared detector-setup payload (``payload['detectors']``) produced by
     the step-0 detector wizard: per detector with routing channels its ``chs``, the
-    explicit parallel / perpendicular channels (``ch_p``/``ch_s``, for
+    explicit VV/VH channels (``ch_p``/``ch_s``, for
     polarization-resolved counts) and its half-open ``micro_time_ranges`` gates as tuples.
     Returns an empty dict when no detectors are set.
     """

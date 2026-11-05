@@ -136,7 +136,7 @@ def format_ranges(ranges: Mapping[str, Sequence]) -> str:
     parts = []
     for name, r in (ranges or {}).items():
         rs = r if r and isinstance(r[0], (list, tuple)) else [r]
-        parts.append(f"{name} " + ", ".join(f"{int(a)}–{int(b)}" for a, b in rs))
+        parts.append(f"{name} " + ", ".join(f"{int(a)}:{int(b)}" for a, b in rs))
     return ", ".join(parts)
 
 

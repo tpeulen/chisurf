@@ -48,9 +48,10 @@ def _reader(**kw):
 
 def test_micro_time_fields_round_trip():
     assert inputs.parse_micro_time_ranges("1-16000; 20-30;bad;") == [[1, 16000], [20, 30]]
-    assert inputs.format_micro_time_ranges([[1, 16000], [20, 30]]) == "1-16000;20-30"
-    assert inputs.format_micro_time_ranges((0, 8000)) == "0-8000"
-    assert inputs.format_micro_time_ranges(7) == "7-7"
+    assert inputs.parse_micro_time_ranges("1:16000; 20:30") == [[1, 16000], [20, 30]]
+    assert inputs.format_micro_time_ranges([[1, 16000], [20, 30]]) == "1:16000;20:30"
+    assert inputs.format_micro_time_ranges((0, 8000)) == "0:8000"
+    assert inputs.format_micro_time_ranges(7) == "7:7"
     assert inputs.format_micro_time_ranges(None) == ""
 
 

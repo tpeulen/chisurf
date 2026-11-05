@@ -68,7 +68,7 @@
           "minimum": 0.0,
           "maximum": 10.0,
           "step": 0.01,
-          "description": "Detection-efficiency ratio (g-factor) between the parallel and perpendicular channels; weights VH in the VM sum and is attached to a VV/VH pair for the fit."
+          "description": "G = S_VV/S_VH, the VV/VH detection sensitivity ratio; weights VH in the VM sum and is attached to a VV/VH pair for the fit."
         },
         {
           "type": "value",

@@ -142,7 +142,7 @@ def test_real_json_apply_preserves_metadata_ids_stores_and_refreshes_cells(edito
     assert model.get_settings()["future_metadata"]["user_edit"] == "kept"
     assert model.get_settings()["tttr_reading"]["effective_micro_time_resolution"] == 100.0
     row = app.page.detector_rows()[0]
-    assert [row["l1"], row["l2"], row["gch"]] == ["0.071", "0.042", "8-18"]
+    assert [row["l1"], row["l2"], row["gch"]] == ["0.071", "0.042", "8:18"]
 
 
 @pytest.mark.parametrize(

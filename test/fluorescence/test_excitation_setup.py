@@ -49,4 +49,4 @@ def test_polarization_merge_and_format():
     out = merge_gates(SETUP["detectors"], {"red": [[0, 3125]], "other": [[1, 2]]})
     assert out["red"]["micro_time_ranges"] == [[0, 3125]] and "other" not in out
     assert format_ranges({"prompt": [50, 1613], "green": [[0, 10], [20, 30]]}) == \
-        "prompt 50–1613, green 0–10, 20–30"
+        "prompt 50:1613, green 0:10, 20:30"

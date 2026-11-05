@@ -287,7 +287,7 @@ class PdaReaderSettings(WindowsPreflightMixin):
         self.reader.channels = groups
 
     def window_text(self, index: int) -> str:
-        """Micro-time window *index* as ``"start-end;start-end"``.
+        """Micro-time window *index* as ``"start:end;start:end"``.
 
         A detector's photon selection at two colours; an excitation period of
         the PIE cycle at three.
@@ -296,7 +296,7 @@ class PdaReaderSettings(WindowsPreflightMixin):
         return inputs.format_micro_time_ranges(windows[index]) if index < len(windows) else ""
 
     def set_window_text(self, index: int, text: str) -> None:
-        """Set micro-time window *index* from ``"start-end;start-end"``.
+        """Set micro-time window *index* from ``"start:end;start:end"``.
 
         A two-colour window is a detector's photon selection and may list
         several ranges, so it stays a list of them. A three-colour window is

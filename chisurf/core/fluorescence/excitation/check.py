@@ -138,7 +138,7 @@ def check_windows(
                     "warning",
                     f"The windows are in {windows_resolution_s * 1e12:.4g} ps channels, the data in "
                     f"{res * 1e12:.4g} ps{_binning(ratio)}: converted ("
-                    + ", ".join(f"{k} {win[k][0]}–{win[k][1]} → {conv[k][0]}–{conv[k][1]}"
+                    + ", ".join(f"{k} {win[k][0]}:{win[k][1]} → {conv[k][0]}:{conv[k][1]}"
                                 for k in win)
                     + ").",
                 )
@@ -176,7 +176,7 @@ def check_windows(
                         Issue(
                             "window_empty",
                             "warning",
-                            f"Window {name} ({lo}–{hi}) holds {100 * frac:.2g} % of the photons.",
+                            f"Window {name} ({lo}:{hi}) holds {100 * frac:.2g} % of the photons.",
                             name,
                         )
                     )
@@ -231,7 +231,7 @@ def check_windows(
                             "window_cuts_pulse",
                             "warning",
                             f"Window {name} has its boundary at {edge}, inside the {label} "
-                            f"({p.rise}–{p.core_stop}).",
+                            f"({p.rise}:{p.core_stop}).",
                             name,
                         )
                     )
@@ -244,7 +244,7 @@ def check_windows(
                 Issue(
                     "window_mixes_pulses",
                     "warning",
-                    f"Window {name} ({a}–{b}) holds {len(inside)} excitation pulses: its photons "
+                    f"Window {name} ({a}:{b}) holds {len(inside)} excitation pulses: its photons "
                     "mix the excitations.",
                     name,
                 )
@@ -327,7 +327,7 @@ def _binning(ratio: float) -> str:
 
 
 def _fmt(ranges) -> str:
-    return ", ".join(f"{lo}–{hi}" for lo, hi in ranges)
+    return ", ".join(f"{lo}:{hi}" for lo, hi in ranges)
 
 
 def _verdict(issues, detection, win, proposal, gates=None, proposal_gates=None) -> WindowCheck:

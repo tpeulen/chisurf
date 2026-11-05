@@ -179,7 +179,7 @@ def apply_lightpath_to_nuisance(
     donor, acceptor : str
         Dye labels.
     green_detector, red_detector : str
-        Detector labels for the green/red channels.
+        Detector labels of the donor (G|G) and FRET-acceptor (R|G) detectors.
     green_laser : str, optional
         Donor-excitation laser label.
     """

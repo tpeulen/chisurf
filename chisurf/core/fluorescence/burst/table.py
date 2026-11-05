@@ -316,7 +316,9 @@ def maps_fret_channels(path, extra_hints: dict | None = None) -> bool:
     try:
         columns = read_burst_table(resolved)
         names = list(columns)
-        mapped = tttrlib.guess_burst_columns(names, extra_hints)
+        from chisurf.core.fluorescence.detector_names import guess_burst_columns
+
+        mapped = guess_burst_columns(names, extra_hints)
         ok = bool(mapped.get("i_dd")) and bool(mapped.get("i_da"))
     except Exception:
         # Unreadable is not "does not map" -- it is unknown, and refusing a run

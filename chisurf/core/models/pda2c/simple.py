@@ -425,8 +425,8 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
                     "model": "Pda2cSimpleModel",
                     "len_prob_spectrum": int(len(p)),
                     "first_entries": [float(x) for x in p[:8]],
-                    "BG": float(self.background.bg0),
-                    "BR": float(self.background.bg1),
+                    "Bg_G|G": float(self.background.bg0),
+                    "Bg_R|G": float(self.background.bg1),
                 }
             )
         except Exception:

@@ -60,11 +60,11 @@ class CrosstalkFactors:
       ``(donor, acceptor)``: ``[[1, δ], [0, β]]`` (donor laser excites the donor and,
       by ``δ``, the acceptor directly; the acceptor laser excites the acceptor by ``β``).
     - ``emission[chromophore, detector]`` — chromophores ``(donor, acceptor)`` × detectors
-      ``(green, red)``: ``[[1, α], [0, γ]]`` (donor detected in green and, by ``α`` leakage,
-      in red; acceptor detected in red by ``γ``).
+      ``(G|G, R|G)``: ``[[1, α], [0, γ]]`` (donor detected on G|G and, by ``α`` leakage,
+      on R|G; acceptor detected on R|G by ``γ``).
     """
 
-    alpha: float = 0.0  # donor leakage into the acceptor (red) channel
+    alpha: float = 0.0  # donor leakage into R|G
     beta: float = 1.0  # excitation-flux ratio (acceptor vs donor excitation)
     gamma: float = 1.0  # detection/quantum-yield ratio (acceptor vs donor)
     delta: float = 0.0  # direct acceptor excitation by the donor-excitation laser

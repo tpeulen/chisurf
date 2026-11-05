@@ -579,7 +579,7 @@ class ChannelDefinition:
         detector = self.data["detectors"][name]
         channels = detector["chs"]
         if len(channels) < 2:
-            raise ValueError("G-factor calculation needs parallel and perpendicular channels.")
+            raise ValueError("G-factor calculation needs VV and VH channels.")
         if path is not None:
             self.read_tttr(path)
         if not self.preview:

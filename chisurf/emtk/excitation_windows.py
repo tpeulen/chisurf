@@ -241,9 +241,9 @@ class WindowsReview:
             rows.append(
                 {
                     "window": name,
-                    "current": f"{cur[0]}–{cur[1]}" if cur else "—",
-                    "proposed": f"{new[0]}–{new[1]}" if new else "—",
-                    "ns": f"{new[0] * f:.2f}–{new[1] * f:.2f}" if new else "—",
+                    "current": f"{cur[0]}:{cur[1]}" if cur else "—",
+                    "proposed": f"{new[0]}:{new[1]}" if new else "—",
+                    "ns": f"{new[0] * f:.2f}:{new[1] * f:.2f}" if new else "—",
                     "excites": (
                         (f"{p.role}: " if p.role else "") + ", ".join(p.excites) if p else "—"
                     ),
@@ -254,9 +254,9 @@ class WindowsReview:
             rows.append(
                 {
                     "window": f"gate {name}",
-                    "current": ", ".join(f"{a}–{b}" for a, b in ranges),
-                    "proposed": ", ".join(f"{a}–{b}" for a, b in new) if new else "—",
-                    "ns": ", ".join(f"{a * f:.2f}–{b * f:.2f}" for a, b in new) if new else "—",
+                    "current": ", ".join(f"{a}:{b}" for a, b in ranges),
+                    "proposed": ", ".join(f"{a}:{b}" for a, b in new) if new else "—",
+                    "ns": ", ".join(f"{a * f:.2f}:{b * f:.2f}" for a, b in new) if new else "—",
                     "excites": tr("detector gate"),
                 }
             )

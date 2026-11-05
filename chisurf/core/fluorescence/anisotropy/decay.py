@@ -79,8 +79,8 @@ def vm_rt_to_vv_vh(
 
         r(t) = sum_i (b_i * exp(-t / rho_i))
 
-    ``G = S_par / S_perp`` is the parallel/perpendicular sensitivity ratio, so the
-    perpendicular channel records ``1/G`` of what an equally sensitive one would —
+    ``G = S_VV / S_VH`` is the VV/VH sensitivity ratio, so the
+    VH channel records ``1/G`` of what an equally sensitive one would —
     it **divides** rather than multiplies. That placement, and this meaning of
     l1/l2, are what make the pair invert back to the anisotropy it was built from:
 
@@ -174,7 +174,7 @@ def vm_rt_to_vv_vh(
     #
     #     VV = vm (1 + (2 - 3 l1) r),    VH = vm (1 - (1 - 3 l2) r) / G
     #
-    # G is the parallel/perpendicular sensitivity ratio, so the perpendicular
+    # G is the VV/VH sensitivity ratio, so the VH
     # channel records 1/G of what an equally sensitive one would.
     #
     # This used to build an ideal pair and then mix it with a 2x2 matrix
@@ -221,8 +221,8 @@ def calculcate_spectrum(
         f_VV(t) = f_VM(t) * (1 + (2 - 3 * l1) * r(t))
         f_VH(t) = f_VM(t) * (1 - (1 - 3 * l2) * r(t)) / G
 
-    ``G = S_par / S_perp`` is the parallel/perpendicular sensitivity ratio, so
-    the perpendicular channel records ``1/G`` of what an equally sensitive one
+    ``G = S_VV / S_VH`` is the VV/VH sensitivity ratio, so
+    the VH channel records ``1/G`` of what an equally sensitive one
     would. The pair inverts back to ``r(t)`` with the Schaffer correction
 
         r(t) = (f_VV - G f_VH) / ((1 - 3 l2) f_VV + (2 - 3 l1) G f_VH)
@@ -333,8 +333,8 @@ def calculcate_spectrum(
         #
         #     f_VV = f (1 + (2 - 3 l1) r),    f_VH = f (1 - (1 - 3 l2) r) / G
         #
-        # G is the parallel/perpendicular sensitivity ratio, so the
-        # perpendicular channel records 1/G of what an equally sensitive one
+        # G is the VV/VH sensitivity ratio, so the
+        # VH channel records 1/G of what an equally sensitive one
         # would. This used to superpose two ideal channels with the Koshioka
         # 2x2 matrix (`(1 - l1) vv + l1 vh`), a different meaning of l1/l2 that
         # the Schaffer correction downstream does not invert: r = 0.30 at

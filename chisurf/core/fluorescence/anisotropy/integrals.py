@@ -57,9 +57,9 @@ def compute_g_factor_isotropic(
     Parameters
     ----------
     s_p : array-like
-        Parallel signal intensities.
+        VV signal intensities.
     s_s : array-like
-        Perpendicular signal intensities.
+        VH signal intensities.
     axis : int, optional
         Axis along which to sum. If None, sums over all elements.
 
@@ -71,7 +71,7 @@ def compute_g_factor_isotropic(
     Raises
     ------
     ZeroDivisionError
-        If the sum of the parallel signal is zero.
+        If the sum of the VV signal is zero.
     """
     sp = np.asarray(s_p, dtype=float)
     ss = np.asarray(s_s, dtype=float)
@@ -107,7 +107,7 @@ def compute_g_factor_perrin(
     num = ss * (1.0 + r * (2.0 - 3.0 * float(l1)))
     if num == 0.0:
         raise ZeroDivisionError("Cannot compute G: numerator is zero")
-    # G is the **parallel/perpendicular** sensitivity ratio, the convention of
+    # G is the **VV/VH** sensitivity ratio, the convention of
     # Schaffer, Volkmer, Eggeling, Subramaniam, Striker & Seidel, J. Phys. Chem.
     # A 103 (1999) 331, and the one tttrlib's estimators take. This used to
     # return its reciprocal, so a G measured here and handed to tttrlib (or to
@@ -132,21 +132,21 @@ def anisotropy_from_integrals(
     Parameters
     ----------
     s_p : array-like
-        Parallel signal intensities.
+        VV signal intensities.
     s_s : array-like
-        Perpendicular signal intensities.
+        VH signal intensities.
     G : float
         G-factor correction for detection sensitivity.
     l1 : float, optional
-        Mixing factor for parallel channel (default 0.0).
+        Mixing factor for VV channel (default 0.0).
     l2 : float, optional
-        Mixing factor for perpendicular channel (default 0.0).
+        Mixing factor for VH channel (default 0.0).
     gamma : float, optional
         Scatter correction factor (default 0.0).
     B_p : float, optional
-        Background for parallel channel (default 0.0).
+        Background for VV channel (default 0.0).
     B_s : float, optional
-        Background for perpendicular channel (default 0.0).
+        Background for VH channel (default 0.0).
     axis : int, optional
         Axis along which to sum signal arrays.
     scatter_corrected : bool, optional

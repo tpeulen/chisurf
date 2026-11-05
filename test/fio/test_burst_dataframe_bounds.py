@@ -86,7 +86,7 @@ def test_burst_dataframe_counts_the_photon_at_the_stop_index(
     # 10 photons in 9 µs = 1111.1 kHz, the unit the column header states.
     assert row["Count Rate (KHz)"] == pytest.approx(10 / 9e-3)
     assert row["G Count Rate (KHz)"] == pytest.approx(10 / 9e-3)
-    assert row["S all g (kHz) | 0-4096"] == pytest.approx(10 / 9e-3)
+    assert row["S all g (kHz) | 0:4096"] == pytest.approx(10 / 9e-3)
 
 
 def test_burst_dataframe_may_end_on_the_last_photon(burst_stream: _FakeTTTR) -> None:

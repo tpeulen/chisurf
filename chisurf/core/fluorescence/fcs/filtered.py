@@ -64,7 +64,7 @@ def species_weight_streams(filters, micro_times, routing_channels=None):
 
     Channel-aware: when ``filters`` carries a per-channel dimension, photon
     ``i`` is weighted by ``filters[routing_channel[i], species, micro_time[i]]``
-    (mirroring PAM's par/perp filter application); otherwise the single filter
+    (mirroring PAM's VV/VH filter application); otherwise the single filter
     set is indexed by micro-time only.
 
     Parameters
@@ -453,7 +453,7 @@ def calc_ffcs_filters(
     ``F = (D_norm^T W D_norm)^{-1} D_norm^T W``. ``empty_bins`` chooses how a
     bin with ``I = 0`` is treated -- PAM's two filter routines differ exactly
     there (see ``_ffcs_normal_matrix``). Several detection channels (e.g.
-    parallel and perpendicular) are handled jointly by passing the channels
+    VV and VH) are handled jointly by passing the channels
     concatenated on one micro-time axis, PAM's stacked layout; the filter then
     also uses each species' channel ratio as contrast.
 

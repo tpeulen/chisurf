@@ -155,7 +155,37 @@ def label(detector: str) -> str:
     return text if _NAME.match(text) else text.capitalize()
 
 
+#: A column's trailing micro-time range, ``| lo:hi`` (``| lo-hi`` in a table written before).
+RANGE = re.compile(r"\|\s*(\d+)\s*[:\-–]\s*(\d+)\s*$")
+
+
+def range_colon(column: str) -> str:
+    """*column* with its trailing range written ``lo:hi``: ``S prompt G|G (kHz) | 0-2048`` ->
+    ``S prompt G|G (kHz) | 0:2048``. Ranges are written ``a:b`` everywhere."""
+    return RANGE.sub(lambda m: f"| {m.group(1)}:{m.group(2)}", str(column))
+
+
+def guess_burst_columns(names: Iterable[str], extra_hints: Mapping | None = None) -> dict:
+    """``tttrlib.guess_burst_columns`` for a table whose ranges are written ``lo:hi``.
+
+    A tttrlib built before it read ``| 616:3784`` matches the gated streams only as
+    ``| 616-3784``; the names are handed over in that spelling and the result mapped back, so
+    either build finds the same columns. Drop this once every tttrlib in use is newer than its
+    commit f2f21e89e.
+    """
+    import tttrlib
+
+    names = [str(n) for n in names]
+    older = {RANGE.sub(lambda m: f"| {m.group(1)}-{m.group(2)}", n): n for n in names}
+    found = (tttrlib.guess_burst_columns(list(older), extra_hints) if extra_hints
+             else tttrlib.guess_burst_columns(list(older)))
+    return {role: older.get(column, column) for role, column in found.items()}
+
+
 __all__ = [
+    "RANGE",
+    "range_colon",
+    "guess_burst_columns",
     "ACCEPTOR",
     "ACCEPTOR_DIRECT",
     "COLOURS",

@@ -103,7 +103,7 @@ class Background(FittingParameterGroup):
             lb=0.0,
             ub=100.0,
             bounds_on=True,
-            description="Background photon count rate in channel 0 (green/donor channel).",
+            description="Background rate Bg_G|G of channel 0 (G|G).",
         )
         self._bg1 = FittingParameter(
             value=0.0,
@@ -111,7 +111,7 @@ class Background(FittingParameterGroup):
             lb=0.0,
             ub=100.0,
             bounds_on=True,
-            description="Background photon count rate in channel 1 (red/acceptor channel).",
+            description="Background rate Bg_R|G of channel 1 (R|G).",
         )
 
 
@@ -459,7 +459,7 @@ class Pda2cFretNuisance(FittingParameterGroup):
             lb=0.0,
             ub=100.0,
             bounds_on=True,
-            description="Background photon count rate in the green/donor channel.",
+            description="Background rate Bg_G|G.",
         )
         self._bgR = FittingParameter(
             value=0.0,
@@ -467,7 +467,7 @@ class Pda2cFretNuisance(FittingParameterGroup):
             lb=0.0,
             ub=100.0,
             bounds_on=True,
-            description="Background photon count rate in the red/acceptor channel.",
+            description="Background rate Bg_R|G.",
         )
         self._QYD = FittingParameter(
             value=0.8,
@@ -486,13 +486,13 @@ class Pda2cFretNuisance(FittingParameterGroup):
             value=1.0,
             name="gG",
             fixed=True,
-            description="Green-channel detection efficiency.",
+            description="Detection efficiency of G|G.",
         )
         self._gR = FittingParameter(
             value=1.0,
             name="gR",
             fixed=True,
-            description="Red-channel detection efficiency.",
+            description="Detection efficiency of R|G.",
         )
         # Absolute excitation probabilities (e.g. extinction coefficients at
         # the donor excitation wavelength). By default they are zero so that
@@ -517,25 +517,25 @@ class Pda2cFretNuisance(FittingParameterGroup):
             value=1.0,
             name="cGD",
             fixed=True,
-            description="Emission crosstalk: fraction of donor emission detected in the green channel.",
+            description="Emission crosstalk: fraction of donor emission detected on G|G.",
         )
         self._cGA = FittingParameter(
             value=0.0,
             name="cGA",
             fixed=True,
-            description="Emission crosstalk: fraction of donor emission leaking into the red channel.",
+            description="Emission crosstalk: fraction of donor emission leaking into R|G.",
         )
         self._cRD = FittingParameter(
             value=0.02,
             name="cRD",
             fixed=True,
-            description="Emission crosstalk: fraction of acceptor emission leaking into the green channel.",
+            description="Emission crosstalk: fraction of acceptor emission leaking into G|G.",
         )
         self._cRA = FittingParameter(
             value=1.0,
             name="cRA",
             fixed=True,
-            description="Emission crosstalk: fraction of acceptor emission detected in the red channel.",
+            description="Emission crosstalk: fraction of acceptor emission detected on R|G.",
         )
         # Derived legacy-style crosstalk parameters. These are populated by
         # PDA models that use this nuisance group and are shown as fixed,

@@ -84,8 +84,8 @@ for name in sorted(bursts["file"].unique()):
     for a, b in zip(part["First Photon"].astype(int), part["Last Photon"].astype(int)):
         green += int(np.isin(routing[a:b], GREEN).sum())
         red += int(np.isin(routing[a:b], RED).sum())
-assert green == int(bursts["Number of Photons (green)"].sum())
-assert red == int(bursts["Number of Photons (red)"].sum())
+assert green == int(bursts["Number of Photons (G|G)"].sum())
+assert red == int(bursts["Number of Photons (R|G)"].sum())
 ```
 
 If it does not match, stop and say so. Do not adjust the slice until the

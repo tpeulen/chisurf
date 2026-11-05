@@ -26,13 +26,13 @@
     {
       "type": "panel",
       "title": "Detector",
-      "description": "Donor and acceptor detectors of the photon stream.",
+      "description": "The donor (G|G) and FRET-acceptor (R|G) detectors of the photon stream.",
       "collapsed": false,
       "sections": [
         {
           "type": "custom",
           "key": "pda_detector",
-          "description": "Routing channels that define the donor and acceptor detectors."
+          "description": "Routing channels that define G|G and R|G."
         }
       ]
     },

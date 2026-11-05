@@ -147,7 +147,7 @@ def parse_channels(text):
 
 
 def parse_gate(text):
-    """The G-factor channel range ``start-end`` (``start:end`` too) as ``[start, end]``; ``None`` for anything else."""
+    """The G-factor channel range ``start:end`` (the older ``start-end`` too) as ``[start, end]``; ``None`` for anything else."""
     parts = str(text).replace(" ", "").replace(":", "-").split("-")
     if len(parts) != 2:
         return None
@@ -158,9 +158,9 @@ def parse_gate(text):
 
 
 def format_gate(gate):
-    """The G-factor channel range as the Qt table shows it: ``start-end``."""
+    """The G-factor channel range as the table shows it: ``start:end``."""
     if isinstance(gate, (list, tuple)) and len(gate) == 2:
-        return f"{int(gate[0])}-{int(gate[1])}"
+        return f"{int(gate[0])}:{int(gate[1])}"
     return gate if isinstance(gate, str) else ""
 
 
@@ -500,7 +500,7 @@ class ChannelDefinitionWidget:
                     120,
                     True,
                     mark(
-                        "TAC range start-end used to calculate the G factor from the loaded decays."
+                        "TAC range start:end used to calculate the G factor from the loaded decays."
                     ),
                 ),
                 ("calc", "", 62, False, mark("Calculate the G factor of this detector.")),
@@ -1364,7 +1364,7 @@ class ChannelDefinitionWidget:
         self.model.changed()
         self._refresh_rows()
         self.status = tr("Windows from the measurement: {windows}").format(
-            windows=", ".join(f"{k} {v[0]}–{v[1]}" for k, v in windows.items())
+            windows=", ".join(f"{k} {v[0]}:{v[1]}" for k, v in windows.items())
         )
 
     def _remove_detector(self, record):

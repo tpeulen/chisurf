@@ -39,8 +39,8 @@ indices and detector roles are what you think.
 ## Proximity ratio
 
 ```python
-green = bursts["Number of Photons (green)"].to_numpy(float)
-red = bursts["Number of Photons (red)"].to_numpy(float)
+green = bursts["Number of Photons (G|G)"].to_numpy(float)
+red = bursts["Number of Photons (R|G)"].to_numpy(float)
 bursts["PR"] = red / (green + red)
 ```
 
@@ -48,7 +48,7 @@ bursts["PR"] = red / (green + red)
 for:
 
 * background in either channel — worst for dim bursts,
-* spectral crosstalk, donor emission leaking into the acceptor detector,
+* spectral crosstalk, donor emission leaking into R|G,
 * direct excitation of the acceptor by the donor's laser,
 * γ, the ratio of detection efficiency × quantum yield between channels.
 
@@ -94,7 +94,7 @@ separately prepared donor-only sample, and free.
 print(
     len(bursts[fret]),
     "bursts,",
-    int(bursts[fret]["Number of Photons (green)"].sum()),
+    int(bursts[fret]["Number of Photons (G|G)"].sum()),
     "donor photons",
 )
 ```

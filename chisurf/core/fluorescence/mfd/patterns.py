@@ -279,7 +279,7 @@ def _polarized_spectrum(
 
     So the node is driven at ``g = 1``, where it *is* the Schaffer form, and
     ``G`` is applied afterwards as what it physically is: a detection
-    sensitivity scaling the whole perpendicular channel, after the mixing that
+    sensitivity scaling the whole VH channel, after the mixing that
     happens in front of the detector. That is one multiplication of a channel
     gain, not a second copy of the spectrum algebra. The node's own ordering is
     a defect recorded in ``okf/references/known-issues.md``; it is not corrected
@@ -414,7 +414,7 @@ class Optics:
         an informative prior; it is *not* a free broadening parameter.
     g_factor : float
         Ratio of the perpendicular to the parallel detection sensitivity. A
-        *detection* property, so it scales the whole perpendicular channel rather
+        *detection* property, so it scales the whole VH channel rather
         than only its depolarization term — see :func:`polarized_patterns`.
     l1, l2 : float
         Polarization mixing of the two detection channels.
@@ -705,7 +705,7 @@ class ChannelResponse:
 
         :meth:`decay` normalises, which is right for a pattern and wrong for a
         *branching*: the fraction of a species' photons that lands in the
-        parallel channel is the ratio of two channel decays, and normalising each
+        VV channel is the ratio of two channel decays, and normalising each
         first would make that ratio one half by construction. So the sum is kept
         here and divided out one level up.
 
@@ -858,7 +858,7 @@ def perrin_anisotropy(lifetime, rho: float, r0_anisotropy: float):
     lifetime ``τ`` depolarizing with rotational correlation time ``ρ``.
 
     This is here as a **prediction, not an input.** The forward model builds the
-    parallel and perpendicular patterns from ``r(t)`` and integrates them; that the
+    VV and VH patterns from ``r(t)`` and integrates them; that the
     result satisfies Perrin is then a check on the machinery rather than something
     imposed on it. A model that took ``r_ss`` as a parameter would agree with Perrin
     by construction and could not be wrong.
@@ -889,7 +889,7 @@ def polarized_patterns(
     rho: float,
     optics: Optics,
 ):
-    """Split a decay into the parallel and perpendicular patterns actually recorded.
+    """Split a decay into the VV and VH patterns actually recorded.
 
     A polarisation is a **spectrum** transform, not a curve one: the measured decay
     is the product of the fluorescence decay and ``r(t)``, and a product of two sums
@@ -933,14 +933,14 @@ def polarized_patterns(
     parallel, perpendicular : numpy.ndarray
         Recorded patterns, each normalised to unit sum.
     p_parallel : float
-        Fraction of this species' photons recorded in the parallel channel — the
+        Fraction of this species' photons recorded in the VV channel — the
         branching the anisotropy axis needs, exactly as the acceptor probability is
         the branching the FRET axis needs.
     """
     vv = response._unnormalized_decay(
         *_polarized_spectrum(amplitudes, lifetimes, rho, optics, "vv")
     )
-    # The perpendicular detector is 1/G as sensitive, and that applies to
+    # The VH detector is 1/G as sensitive, and that applies to
     # everything it collects -- including the parallel light l2 mixed into it.
     vh = response._unnormalized_decay(
         *_polarized_spectrum(amplitudes, lifetimes, rho, optics, "vh")
