@@ -664,6 +664,24 @@ DNA13bp_3 G|G median 2.42, mean 2.66, 10 % trimmed mean 2.59, photon-weighted
 2.94 ns -- the spread there is the sample's FRET heterogeneity, not outliers.
 R|R excludes 2136 of 5231 bursts for too few photons (no acceptor).
 
+```{figure} figures/21_burst_mle_decay_strip.png
+:name: fig-21-burst-mle-decay-strip
+:width: 100%
+
+Burst MLE on DNA13bp_3 (RVZMT150, G 1.436 from Rh110), G|G: the weighted
+residuals in a strip over the decay (one x axis, symmetric about zero, zero a
+thick line), the **Background (fit)** at the decay's floor. One lifetime does
+not describe this FRET mix (χ²ᵣ 11.6); the reference dye is the instrument check.
+```
+
+```{figure} figures/21_burst_mle_excluded.png
+:name: fig-21-burst-mle-excluded
+:width: 100%
+
+After **Fit bursts**: the **Burst lifetimes** table with the **Excluded** count
+per detector (hover a row for the reasons).
+```
+
 ```{figure} figures/21_mle_reference_before_after.png
 :name: fig-21-mle-reference-before-after
 :width: 100%
