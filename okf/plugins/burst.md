@@ -9,6 +9,37 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
+**Burst Selection searches ahead; the display range sits above the plots (2026-11-05).** Owner:
+"do work in background ... speculative processing" and "the display range should be setup in the
+plt dock". Measured on DNA13bp_3 (311 MB, RVZMT150; `scratchpad/spec/timing2.py`, taken on the
+laptop before the heavy-work-on-home rule -- rerun on `ssh home` once its tttrlib has
+`as_micro_time_windows`): the search alone (empty
+`output_formats`) **~12 s**; search + store into a fresh container 28 s, into an existing one 15 s;
+`store_from_rows` 0.8 s + `write_container` 0.07 s. So the pipeline's step (`gui/speculative.py`)
+searches as soon as files + setup + settings are known (hub `_to_selection` -> `prefetch()`, then
+every 0.25 s a look at `model.search_key()`; a change starts again after 0.8 s still, the old search
+is dropped -- between files stopped by raising from the progress callback, inside a file it runs out
+and is thrown away; at most one dropped search runs beside the current one). It writes nothing;
+Next (`run`) with the same key sets `model._reuse` and the job calls the new store-only RPC
+`burst_selection.jobs.store_results` (`api.selection.store_results`, the store half split out of
+`_search_file` as `_store_file`; per-file ALEX phase now in `metadata["alex_phase_by_file"]`). Next
+while it runs waits (`running` is true, the hub's `_advance` waits) instead of searching twice. The
+pipeline step sets `busy_overlay = False`; progress is a line + bar above the search settings and in
+Summary. Not split: MMFDB archival, legacy folders/.bur, zip (`search_ahead_request()` returns None,
+Next searches as before); standalone Burst Selection and *More samples* (`model.run()` without
+`_reuse`) are unchanged. Display: the `Display` spec group (Start, Length, Bin on the count rate, All /
+Selected) is drawn above the Count rate / Inter-photon time / Micro-time decay plots in every mode, no
+longer in Filter settings. Guard: `burst_selection/tests/test_search_ahead.py`. Open:
+- *Burst MLE could prepare speculatively too* (per-burst decays, references, IRF/background) from the
+  search ahead's in-memory table, before the run is written. Today MLE only starts from a written
+  run (hub `_selection_done` -> `_to_mle`); it needs a public MLE hook taking `(photon file, burst
+  table, setup)` -- an MLE-lane change, not done here.
+- *A CUSUM search waits for its prefilled background rate* (`_background_ready`); the estimate is
+  made only while Filter settings is drawn, so a hub `prefetch()` before the step was ever shown
+  skips CUSUM with no typed rate. Moving the estimate into the model would let it prefetch too.
+- *Drag/zoom of the plot does not move the window*: `trace_plot.py` accepts an `"x_range"` request
+  in its state; wiring a pan past the window's end to `window_start_s` is the next step.
+
 **Burst Selection: "bursts seem split" was the trace, not the search (2026-11-05).** Owner, on
 DNA13bp_3 (RVZMT150, CUSUM/SPRT, L=5, S/B 3.317, background 3317 cps, >= 30 photons, gap fill 3,
 60 s window), zoomed to 33-35.6 s: the "Selected photons" trace dropped to 0 between short spikes
