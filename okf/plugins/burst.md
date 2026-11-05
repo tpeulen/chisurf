@@ -131,6 +131,33 @@ are somehow overheads" and "after processing the ui is super slow". Measurement 
    `python -m chisurf.core.support.vocabulary`. Not shipped prebuilt: a pickle is tied to the Python
    version and the parser's classes. Open: the parse itself (`mmfdb.schema.pdbx_metadata._parse_file`,
    per-line `startswith` chains, 5 M calls) lives in the mmfdb repo.
+7. *Done (2026-11-05): the copy-work and redundant-work audit.* Found with py-spy on home (works
+   without root there: `~/perf_bench/tools/pyspy`, `record --threads -f raw`; per-thread collapsed
+   stacks, no GIL taken; walls ~2x, so walls come from plain runs). Fixed, each with an equivalence
+   test: (a) the detector setup's two micro-time previews (1.3 MB of its 1.4 MB) were deep-copied
+   and JSON-signed at every `get_settings` and hand-off, ~20 s of the UI thread a run, 5.6 s of
+   them in `restore_settings` -- `setup_channel_definition.copy_setup` / `setup_signature` share
+   them and sign them by digest (a0633dd38); (b) the shell globbed three style folders per frame
+   for its menus, 8-12 s a run -- `theme.available_styles` and `_theme_actions` are kept
+   (067ee6397); (c) the reference dyes' G made the search ahead run again (G was in the search key,
+   recorded: the two requests differed only in `g_factor`) -- `SEARCH_BLIND` (ffc5cef11); (d) the
+   photon getters copy a whole column per call (54-90 ms each on 12 M photons) --
+   `chisurf.core.fio.photon_views.photon_column` hands out read-only zero-copy views (07ba69884;
+   tttrlib's `data()` did not keep its TTTR alive, fixed in tttrlib 80cf0193e, needs a rebuild);
+   (e) `calibrate` read each reference per detector and correlated every photon with a float
+   weight -- one read per calibration, `correlate_masked` walks only the dye's photons (bit-identical
+   curve, 8021a6860); (f) the report hashed the files again in Python on the UI thread, and the
+   container's ptolib `sha256_file` is 6x slower than `hashlib` (1.8 vs 0.3 s, same digest) --
+   one remembered digest, computed by `hashlib` (143bccb10); (g) `pto._payload_bytes` decoded every
+   "File Name" label per table written (7a7815258). Measured: [Pipeline wall time](#pipeline-wall-time)
+   "Copy-work audit". **Left, by measured cost** (py-spy, one run): `MleViewModel.__copy__`
+   (`burst_mle_analysis/gui/model.py:172-176`, every `SnapshotJob.start`) 16.5 s of the UI thread
+   -- MLE lane; the burst_background step's strict selection (`run_background.py:104`) ~10 s of GIL
+   running beside Burst MLE's own (different `accept`, so not shareable as is; the fused pipeline's
+   native strict background is the place); `ShellRibbon.tabs` rebuilds its buttons every frame
+   (`shell_ribbon.py:196-219`, 12 s a run) and `DataDocks._form` (`fit_docks.py:2799`, 13 s) --
+   shell frames; per-frame `tr()` lookups ~10 s; ptolib's `sha256_file` itself (tttrlib) for its
+   other callers.
 
 **Burst MLE: rho free, the decay's floor, excluded fits, objectives, G after a restore (2026-11-05).**
 Owner: "by default fit rho", "detector dark counts and bg are not accounted for", "BIFL scatter
@@ -767,6 +794,32 @@ per (burst, table, photons, windows); the strict background selection looks the 
 the photons (identical mask, 4.1 -> 2.3 s a call); kept process pools (`IdlePool`: fit pool,
 BVA/2CDE tasks, imaging reader) let their processes go after 60 s idle and their workers exit with
 their parent (91 orphans were found on home); `FIT_WORKER_GB` 1.5 -> 0.75 (measured).
+
+**Copy-work audit (2026-11-05)** (where-to-pick-up item 7). Home at load 15-20, three alternating
+back-to-back pairs of `gui` (`CHISURF_FIT_WORKERS=4`); the trees: HEAD b3f72958f (fused pipeline
+59a99aa5f and Burst MLE ahead included) as *after*, the same with the audit's seven commits
+reverted as *before*. Per-step wall, median (runs):
+
+| Hub step (wall, s) | before | after |
+|---|---:|---:|
+| shell start | 3.8 (5.2 / 3.6 / 3.8) | 3.5 (5.2 / 3.5 / 3.1) |
+| hub open | 6.7 (6.9 / 6.7 / 6.3) | 3.1 (3.9 / 3.1 / 3.0) |
+| data + reference calibration | 7.3 (7.0 / 7.3 / 7.3) | 5.1 (5.1 / 4.9 / 6.3) |
+| burst search + write (Next) | 10.2 (11.0 / 9.5 / 10.2) | 3.5 (4.5 / 3.5 / 2.8) |
+| Burst MLE ready | 31.9 (30.2 / 31.9 / 32.0) | 32.2 (32.2 / 32.3 / 30.2) |
+| Burst MLE fit (4 threads) | 32.2 (32.8 / 32.2 / 32.1) | 32.7 (32.7 / 32.8 / 31.8) |
+| **total** | **92.4** (94.0 / 92.3 / 92.4) | **80.8** (84.7 / 80.8 / 77.9) |
+
+Frames (median, round 2, ms) unchanged within noise: Data 35 -> 31, Selection 75 -> 68, More
+36 -> 25, Burst MLE tabs 55-70 either way. Headless `stages` (one run each) are equal within
+noise -- search 4.6 / 4.3, calibration 1.9 / 2.0, MLE background 6.0 / 6.5, run_batch 22.1 /
+21.8 s: the audit's gains are the UI thread and the search the pipeline ran twice, not the
+engine calls. Isolated: `calibrate` (Rh110 + Alexa647) 1.57 -> 1.20 s and `analyze_file` (fused)
+2.26 -> 2.09 s, both **identical** results (every calibration key and curve; the burst table's 43
+columns, order, dtypes, values); py-spy: `restore_settings` 7.8 -> 0.9 s, UI-thread `deepcopy`
+of setups ~20 s -> 0, `session_menus` 11.9 -> < 3 s a run. Scripts (home `~/perf_bench/tools`):
+`ab.sh` (pairs), `calib_equiv.py`, `search_equiv.py` + `cmp_npz.py`, `final.sh` (nohup; the
+connection drops), `spy_gui.sh` + `spy.py`/`callers.py`/`kids.py` (py-spy attribution).
 
 ## Overview
 
