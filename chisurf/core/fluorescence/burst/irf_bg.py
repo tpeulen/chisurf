@@ -182,22 +182,49 @@ def _merged(lo: np.ndarray, hi: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return lo[new], np.maximum.reduceat(hi, np.flatnonzero(new)) if group.size else hi
 
 
-def _inside(t: np.ndarray, lo: np.ndarray, hi: np.ndarray) -> np.ndarray:
-    """Whether each time of *t* lies in one of the disjoint sorted intervals ``[lo, hi]``."""
+def _inside(t: np.ndarray, lo: np.ndarray, hi: np.ndarray, t_sorted: bool = True) -> np.ndarray:
+    """Whether each time of *t* lies in one of the disjoint sorted intervals ``[lo, hi]``.
+
+    The intervals are looked up in the photons (``M log N``), not every photon in the intervals
+    (``N log M``): a measurement has tens of millions of photons and far fewer intervals, and this
+    runs once per threshold the strict background selection tries."""
     if lo.size == 0:
         return np.zeros(t.size, dtype=bool)
-    k = np.searchsorted(lo, t, side="right") - 1
-    ok = k >= 0
-    out = np.zeros(t.size, dtype=bool)
-    out[ok] = t[ok] <= hi[k[ok]]
-    return out
+    if not t_sorted:
+        k = np.searchsorted(lo, t, side="right") - 1
+        ok = k >= 0
+        out = np.zeros(t.size, dtype=bool)
+        out[ok] = t[ok] <= hi[k[ok]]
+        return out
+    # [first photon >= lo, first photon > hi) per interval: non-decreasing and non-overlapping, as
+    # the intervals are disjoint and sorted
+    edges = np.empty(2 * lo.size + 2, dtype=np.int64)
+    edges[0], edges[-1] = 0, t.size
+    edges[1:-1:2] = np.searchsorted(t, lo, side="left")
+    edges[2:-1:2] = np.searchsorted(t, hi, side="right")
+    flags = np.zeros(2 * lo.size + 1, dtype=bool)
+    flags[1::2] = True  # outside, inside, outside, ... between the edges
+    return np.repeat(flags, np.diff(edges))
+
+
+def _merged_windows(lo: np.ndarray, hi: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """:func:`_merged` of intervals whose starts *and* ends are both non-decreasing (sliding
+    windows over sorted times): one pass, no sort."""
+    if lo.size == 0:
+        return lo, hi
+    new = np.r_[True, lo[1:] > hi[:-1]]
+    first = np.flatnonzero(new)
+    last = np.r_[first[1:] - 1, lo.size - 1]
+    return lo[first], hi[last]
 
 
 def _poisson_tail_rate(gaps_s: np.ndarray) -> float:
     """The rate [Hz] of the Poisson part of inter-photon times: the slope of the log survival
     function over the long gaps (the 50th to 99.5th percentile). Between molecules the stream is
     background alone, so its long gaps fall as ``exp(-rate t)``; molecules only add short ones."""
-    gaps = np.sort(np.asarray(gaps_s, dtype=float))
+    # unsorted: np.quantile selects its order statistics itself (a full sort of millions of gaps
+    # cost as much as the rest of the strict selection)
+    gaps = np.asarray(gaps_s, dtype=float)
     if gaps.size < 20:
         return 1.0 / max(float(np.mean(gaps)), 1e-12) if gaps.size else 0.0
     q = np.linspace(0.5, 0.995, 40)
@@ -281,6 +308,7 @@ def strict_background_mask(
         else np.ones(n, dtype=bool)
     )
     t = macro_all.astype(np.float64) * res_s  # seconds
+    ordered = bool(n < 2 or np.all(macro_all[1:] >= macro_all[:-1]))
     total = float(t[-1] - t[0]) if n > 1 else 0.0
 
     # 1. bursts and their flanks, as time intervals
@@ -292,7 +320,7 @@ def strict_background_mask(
         flanks = (t[starts] - pad, t[ends] + pad)
     else:
         flanks = (np.zeros(0), np.zeros(0))
-    outside_flanks = ~_inside(t, *_merged(*flanks))
+    outside_flanks = ~_inside(t, *_merged(*flanks), t_sorted=ordered)
 
     # 2./3. the local rate at the background's level
     times = t[sel]
@@ -301,11 +329,17 @@ def strict_background_mask(
     gaps = np.diff(times[outside_flanks[sel]])
     rate = float(rate_khz) if rate_khz else _poisson_tail_rate(gaps) / 1e3  # kHz
     factor = (m - 1) / _gamma_quantile(m - 1, false_alarm)
+    # the local rate of every window [kHz], once: each threshold tried only compares against it
+    positive = span > 0.0
+    local_khz = (m - 1) / np.where(positive, span, np.inf) / 1e3
+
     def keep_slow(threshold_khz: float):
-        fast = (span > 0.0) & ((m - 1) / np.where(span > 0.0, span, np.inf) / 1e3 > threshold_khz)
+        fast = positive & (local_khz > threshold_khz)
         k = np.flatnonzero(fast)
-        lo, hi = _merged(np.r_[flanks[0], times[k]], np.r_[flanks[1], times[k + m - 1]])
-        mask = ~_inside(t, lo, hi)
+        # the fast windows slide over sorted times: merged in one pass before the flanks join them
+        fast_lo, fast_hi = _merged_windows(times[k], times[k + m - 1])
+        lo, hi = _merged(np.r_[flanks[0], fast_lo], np.r_[flanks[1], fast_hi])
+        mask = ~_inside(t, lo, hi, t_sorted=ordered)
         left = max(total - float(np.sum(np.clip(hi, t[0], t[-1]) - np.clip(lo, t[0], t[-1]))), 0.0)
         return mask, left
 

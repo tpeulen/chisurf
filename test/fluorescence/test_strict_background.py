@@ -98,3 +98,23 @@ def test_too_little_background_time_is_said():
     tttr, *_ = _simulate(dim_hz=2000.0, seconds=30.0)
     strict = strict_background_mask(tttr, np.zeros(tttr.macro_times.size, bool), rate_khz=1.0, iterations=1)
     assert strict.warning and strict.fraction < 0.05
+
+
+def test_interval_lookup_and_window_merge_match_the_plain_versions():
+    """The photon-side interval lookup and the one-pass window merge (what made the strict
+    selection of a 300 MB measurement take seconds per threshold) give the plain answers."""
+    from chisurf.core.fluorescence.burst import irf_bg
+
+    rng = np.random.default_rng(7)
+    t = np.sort(rng.uniform(0, 100, 20000))
+    t[100:110] = t[100]  # equal times
+    lo = np.sort(rng.uniform(-5, 105, 300))
+    lo, hi = irf_bg._merged(lo, lo + rng.uniform(0, 0.5, lo.size))
+    assert np.array_equal(irf_bg._inside(t, lo, hi), irf_bg._inside(t, lo, hi, t_sorted=False))
+    exact = np.r_[t[0], t[5000]]
+    assert np.array_equal(irf_bg._inside(t, exact, exact), irf_bg._inside(t, exact, exact, t_sorted=False))
+    for m in (2, 10):
+        k = np.flatnonzero(rng.random(t.size - m + 1) < 0.3)
+        a = irf_bg._merged_windows(t[k], t[k + m - 1])
+        b = irf_bg._merged(t[k], t[k + m - 1])
+        assert all(np.array_equal(x, y) for x, y in zip(a, b))
