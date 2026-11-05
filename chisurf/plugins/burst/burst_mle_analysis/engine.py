@@ -1820,9 +1820,7 @@ class MleSession:
                 tttr, in_burst, channels=chs or None, accept=self._background_shaped(tttr)
             )
 
-        # once per measurement and IRF (an IRF judges whether the selection is a background's)
-        irfs = tuple(id(self.irf_np.get(d)) for d in self.detectors)
-        strict = self._memo(f"strict_background{irfs}", select)
+        strict = self._memo(f"strict_background{self._strict_key()}", select)
         self.strict_background = {
             "seconds": strict.seconds, "total_seconds": strict.total_seconds,
             "fraction": strict.fraction, "rate_khz": strict.rate_khz,
@@ -1842,6 +1840,24 @@ class MleSession:
             for det in dets:
                 self.bg_strict_np.pop(det, None)
         return self.strict_background
+
+    def _strict_key(self) -> tuple:
+        """What the strict selection depends on besides the photons and bursts (the memo's own
+        key): the binning, each detector's channels and gate, and the content of each IRF it is
+        judged by (:meth:`_background_shaped`) -- not the IRF arrays' identity: an IRF taken
+        again from the same source is a new array with the same numbers."""
+        import hashlib
+
+        parts = [int(self.settings.micro_time_binning)]
+        for det in self.detectors:
+            irf = np.ascontiguousarray(self.irf_np.get(det, []), dtype=float)
+            judged = bool(irf.size and np.any(irf))
+            parts.append((
+                det, tuple(int(c) for c in self.detectors[det].get("chs", [])),
+                self._gate_window(det, irf.size // 2 if judged else None),
+                hashlib.sha1(irf.tobytes()).hexdigest() if judged else "",
+            ))
+        return tuple(parts)
 
     def _background_shaped(self, tttr: Any):
         """``accept(mask)`` for the strict selection: whether the kept photons of every detector
@@ -2755,7 +2771,9 @@ class MleSession:
         )
         return Fit2x(settings, model=Fit2xModel(self.settings.model))
 
-    def blocked_reason(self) -> str | None:
+    def _irf_missing(self) -> str | None:
+        """Why the current detector cannot be fitted for want of an IRF (``None``: it has one,
+        or its model needs none)."""
         det = self.current_detector
         if not det:
             return "no detector selected"
@@ -2763,6 +2781,13 @@ class MleSession:
             det not in self.irf_np or np.asarray(self.irf_np.get(det, [])).size == 0
         ):
             return f"no IRF for detector {det!r} (load or send an IRF)"
+        return None
+
+    def blocked_reason(self) -> str | None:
+        det = self.current_detector
+        missing = self._irf_missing()
+        if missing is not None:
+            return missing
         if det not in self.bg_np or np.asarray(self.bg_np.get(det, [])).size == 0:
             return f"no background for detector {det!r}"
         if self.decay is None or np.asarray(self.decay).size == 0:
@@ -2782,7 +2807,11 @@ class MleSession:
 
     def _fit_once(self) -> FitOutcome | None:
         """One fit of the current decay at the current settings (:meth:`fit`)."""
-        self.ensure_background()
+        if self._irf_missing() is None:
+            # the background's strict selection is judged by the IRFs: made before they are
+            # there it is made again once they are (the hand-over set the setup, and fitted,
+            # before the references gave the IRFs: two selections of ~10 s, the first unused)
+            self.ensure_background()
         reason = self.blocked_reason()
         if reason is not None:
             self.status = f"Cannot fit: {reason}"
