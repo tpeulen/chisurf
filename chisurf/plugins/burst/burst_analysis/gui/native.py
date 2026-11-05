@@ -748,7 +748,11 @@ class BurstAnalysisHubApp(ToolHubApp):
                 self._resync.add(role)
             return
         if bursts and callable(take) and (
-            not child.model.session.bur_files or self._changed(role, "bursts", bursts)
+            # no bursts on show yet, and none on their way: a hand-over queued or running (the
+            # bursts prepared ahead, attached once that job ends) is not taken a second time --
+            # that read, prepared and fitted the same bursts again (~70 s on DNA13bp_3)
+            (not child.model.session.bur_files and not getattr(child, "pending", False))
+            or self._changed(role, "bursts", bursts)
         ):
             # A new search is a new analysis: the step drops the previous bursts and their
             # lifetimes and takes the new run (``m.pto/<run> (2)``) -- never fits stale bursts.

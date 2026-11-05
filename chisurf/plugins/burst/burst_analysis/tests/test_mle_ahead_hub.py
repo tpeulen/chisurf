@@ -61,3 +61,46 @@ def test_the_hub_runs_mle_ahead_and_follows_the_search_settings():
     selection.found, selection.stored_key = None, "k2"  # Next stored them
     run(hub)
     assert mle.ahead_key == "k2", "kept for the run Next wrote"
+
+
+class _MleStep:
+    """Burst MLE's app as :meth:`BurstAnalysisHubApp._to_mle` sees it: the bursts it was
+    handed are queued behind the job that prepares them ahead."""
+
+    def __init__(self):
+        self.ahead_key = "k1"
+        self.queued = []
+        self.model = SimpleNamespace(session=SimpleNamespace(bur_files=[]))
+
+    @property
+    def pending(self):
+        return bool(self.queued)
+
+    def attach_ahead(self, paths, settings, prepare_from, references):
+        self.ahead_key = None
+        self.queued.append(("attach_ahead", tuple(paths)))
+        return True
+
+    def take_bursts(self, paths, settings, prepare_from, references):
+        self.queued.append(("take_bursts", tuple(paths)))
+
+
+def test_bursts_attached_ahead_are_not_taken_again_while_the_attach_waits():
+    # Next stored the bursts searched ahead; the step's preparation ahead still runs (its
+    # session shows no bursts yet) and the attach waits behind it. Opening the step again
+    # (``select``) must not queue a take of the same bursts: that read, prepared and fitted
+    # them all a second time.
+    selection, mle = _Selection(), _MleStep()
+    selection.stored_key = "k1"
+    hub = _hub(selection, mle)
+    hub.context.bur_files, hub.context.burst_folder = ["m.pto/run"], "m.pto"
+    hub._handed, hub._resync = {}, set()
+    for name in ("_changed", "_mle_preparation"):
+        setattr(hub, name, getattr(BurstAnalysisHubApp, name).__get__(hub))
+    to_mle = BurstAnalysisHubApp._to_mle
+    to_mle(hub, mle)  # the store's hand-over
+    to_mle(hub, mle)  # the step selected
+    assert mle.queued == [("attach_ahead", ("m.pto/run",))]
+    hub.context.bur_files = ["m.pto/run (2)"]  # a new search is a new hand-over
+    to_mle(hub, mle)
+    assert mle.queued[-1] == ("take_bursts", ("m.pto/run (2)",))
