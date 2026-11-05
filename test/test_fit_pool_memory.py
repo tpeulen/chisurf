@@ -14,9 +14,9 @@ def test_workers_follow_available_memory(monkeypatch):
     monkeypatch.delenv("CHISURF_FIT_WORKERS", raising=False)
     monkeypatch.setattr("os.cpu_count", lambda: 48)
     monkeypatch.setattr(psutil, "virtual_memory", lambda: SimpleNamespace(available=3.6e9))
-    assert engine.fit_workers() == 1  # the laptop at the crash: 3.6 GB free
+    assert engine.fit_workers() == 2  # the laptop at the crash: 3.6 GB free
     monkeypatch.setattr(psutil, "virtual_memory", lambda: SimpleNamespace(available=27e9))
-    assert engine.fit_workers() == 9
+    assert engine.fit_workers() == 18
     monkeypatch.setattr(psutil, "virtual_memory", lambda: SimpleNamespace(available=500e9))
     assert engine.fit_workers() == 47  # cores bound
 

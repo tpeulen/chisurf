@@ -908,9 +908,11 @@ _FIT_POOL_WORKERS = 0
 MIN_CHUNK_BURSTS = 200
 
 
-#: Resident memory of one fit process (Python, tttrlib, the fit imports and its chunk of bursts),
-#: measured 1-3 GB on DNA13bp_3.ptu; the pool may claim half of the memory available at start.
-FIT_WORKER_GB = 1.5
+#: Resident memory of one pool process at its peak, measured on DNA13bp_3.ptu (12 M photons,
+#: 22 000 bursts, ssh home): a fit worker 0.08-0.13 GB, the More samples worker that searches and
+#: analyses a whole sample 0.75 GB -- the largest any use of this pool makes. The pool may claim
+#: half of the memory available at start.
+FIT_WORKER_GB = 0.75
 FIT_POOL_MEMORY_SHARE = 0.5
 
 
