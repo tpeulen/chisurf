@@ -35,6 +35,7 @@ def _run_with_crash_log(launch: Callable[[], int]) -> int:
         with crash_log.open("w") as crash_file:
             # enable already registers fatal signals; registering them twice fails.
             faulthandler.enable(file=crash_file, all_threads=True)
+            _register_stack_dump(faulthandler, crash_file)
             frame_handler = _record_frame_errors(crash_file)
             try:
                 return int(launch() or 0)
@@ -42,12 +43,41 @@ def _run_with_crash_log(launch: Callable[[], int]) -> int:
                 _forget_frame_errors(frame_handler)
                 # Never leave the signal handler referencing a closed file.
                 try:
+                    _unregister_stack_dump(faulthandler)
                     faulthandler.disable()
                 except Exception:
                     logging.exception("Failed to disable ChiSurf crash reporting")
     except Exception:
         logging.exception("ChiSurf encountered an error during startup")
         raise
+
+
+def _register_stack_dump(faulthandler, crash_file) -> None:
+    """``kill -USR1 <pid>`` writes every thread's Python stack into *crash_file*, ChiSurf running on.
+
+    A window that waits for something no thread will finish (a lost wake-up, a job nobody
+    collects) shows nothing in a native sample but idle threads; the Python stacks say which
+    tool and which line. Reading them from outside needs root on macOS (py-spy), the signal
+    does not. Not on Windows, which has no SIGUSR1.
+    """
+    import signal
+
+    usr1 = getattr(signal, "SIGUSR1", None)
+    if usr1 is None:
+        return
+    try:
+        faulthandler.register(usr1, file=crash_file, all_threads=True, chain=False)
+    except (AttributeError, RuntimeError, ValueError):  # not the main thread, or no register()
+        logging.exception("Could not register the SIGUSR1 stack dump")
+
+
+def _unregister_stack_dump(faulthandler) -> None:
+    """Drop the SIGUSR1 handler before *crash_file* closes."""
+    import signal
+
+    usr1 = getattr(signal, "SIGUSR1", None)
+    if usr1 is not None and hasattr(faulthandler, "unregister"):
+        faulthandler.unregister(usr1)
 
 
 def _record_frame_errors(crash_file):

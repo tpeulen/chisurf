@@ -181,6 +181,10 @@ class PluginManifest:
     #: Every other tool opens again as "<name> #2", "#3", ... in the shell.
     single_instance: bool = False
 
+    #: Where the shell docks the tool the first time it opens: ``"center"`` (tabbed over the
+    #: open tool) or ``"right"`` (a region split off the right of the centre, the AI agent).
+    dock_side: str | None = None
+
     #: Declared maturity flag from the plugin spec's "honest metadata" rule. Surfaced
     #: like ``experimental``: the meta-tool shell marks the navigation entry and tops
     #: the panel with a banner carrying ``deprecation_message``.
@@ -301,6 +305,7 @@ class PluginManifest:
             experimental_message=tr(data.get("experimental_message", "")),
             menu_hidden=data.get("menu_hidden", False),
             single_instance=data.get("single_instance", False),
+            dock_side=data.get("dock_side"),
             deprecated=data.get("deprecated", False),
             deprecation_message=tr(data.get("deprecation_message", "")),
             demo=data.get("demo", False),
@@ -368,6 +373,7 @@ class PluginManifest:
             "experimental_message": self.experimental_message,
             "menu_hidden": self.menu_hidden,
             "single_instance": self.single_instance,
+            "dock_side": self.dock_side,
             "deprecated": self.deprecated,
             "deprecation_message": self.deprecation_message,
             "demo": self.demo,
@@ -1027,7 +1033,7 @@ def _parse_workspace_input(raw: Any) -> Any:
 
 def _validate_field_shapes(data: dict[str, Any]) -> list[str]:
     """Validate scalar and collection shapes consumed by ``from_dict``."""
-    nullable_fields = {"icon", "brand", "state_namespace", "state_schema"}
+    nullable_fields = {"icon", "brand", "state_namespace", "state_schema", "dock_side"}
     errors: list[str] = [
         f"field {key!r} must not be null"
         for key, value in data.items()

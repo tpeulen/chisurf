@@ -4,6 +4,19 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Burst MLE "IRF tool" reported hanging; not reproduced (found 2026-11-05)
+
+The owner saw the shell hang after Burst MLE's *IRF tool* button. A native sample of the
+live process showed every thread idle (main loop in kevent, pool workers on their queues):
+no deadlock and no running compute, so the estimate had finished or never started and
+nothing collected it. Not reproduced headless: `scratchpad`-style replay of setup RVZMT150,
+DNA13bp_3.ptu, search, MLE, then three clicks (G|G, R|R, G|G) drawing **only** when the
+shell's `animating()` / `next_frame_in()` / `request_frame()` ask (the native host's rule)
+-- each IRF arrived in 100-200 frames. Next time it hangs: `kill -USR1 <pid>` (no root)
+appends every Python stack to the newest `~/.chisurf/crash_*.log`; that names the waiting
+line. Suspects not yet excluded: the real wgpu painter (`DrawCancelled` on an occluded
+window), a burst fit still running when the button is pressed, data other than DNA13bp_3.
+
 ## Red before the nomenclature sweep (found 2026-11-05)
 
 status: open — red on the commits the sweep started from (chisurf 06a445974, ndX 4490dcd) or on HEAD without its changes:

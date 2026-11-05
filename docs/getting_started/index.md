@@ -189,3 +189,18 @@ the original startup exception. It leaves your settings intact. Run
 `pixi run chisurf` in a terminal to inspect the diagnostic. Crash reports are
 written in the settings directory; a configured `CHISURF_SETTINGS_DIR` also
 applies to those reports. Save the traceback when reporting a startup problem.
+
+## If ChiSurf stops responding
+
+When a window waits and never finishes (a progress card that stays, a tool that does
+not come up), ChiSurf can write what every thread is doing without being stopped and
+without administrator rights. In a terminal:
+
+```bash
+kill -USR1 $(pgrep -f "python.*-m chisurf")
+```
+
+The Python stack of each thread is appended to the newest `crash_<date>.log` in the
+settings directory (`~/.chisurf` unless `CHISURF_SETTINGS_DIR` is set), and ChiSurf
+runs on. Attach that file when reporting the problem. macOS and Linux only: Windows
+has no `SIGUSR1`.
