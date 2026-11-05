@@ -12,7 +12,8 @@ with the first one's and with each other.
    tool*, or drop files on the window while this step is open.
 2. Press **Run** (or **Next**). The samples are processed side by side, using the whole machine:
    one pool of worker processes (the physical cores but one) runs every sample's burst search,
-   BVA, 2CDE and lifetime fit, so one sample searches while another fits; as many samples are in
+   BVA and 2CDE, and the lifetime fits run on threads beside them, so one sample searches while
+   another fits; as many samples are in
    flight as the cores and the free memory allow, and the last ones get the freed cores. The
    results are the same as one after the other. The window waits behind the progress card; its **Stop** stops after the step each sample is in. A sample that fails is
    marked *failed* and the others go on; **Run** again processes the failed and the queued ones.

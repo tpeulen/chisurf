@@ -641,8 +641,8 @@ def _fit(calibration: Calibration, run: Path, should_stop, progress, workers=Non
                 session.bg_np[det] = np.asarray(pattern["bg"], dtype=float)
         session.select_background()
     _check(should_stop)
-    # the shared fit pool (engine.fit_pool) at the batch's size: every sample's chunks go into the
-    # same processes, so a sample alone gets all of them and several share them
+    # the fit's threads (Fit2x.fit_many, in this process): all of the batch's cores for a sample
+    # analysed here, one inside a pool worker (analyse_task)
     session.run_batch(progress=progress, should_stop=should_stop, max_workers=workers)
     _check(should_stop)
     session.export_results()
@@ -748,12 +748,12 @@ def process_sample(
     now = int(share() if callable(share) else (workers or 0))
     if pool is not None and now <= 1:
         # many samples in flight: everything after the search is one task of the pool (its fit
-        # chunks in that worker), so the samples' stages run side by side on every core
+        # on one thread in that worker), so the samples' stages run side by side on every core
         stage("analysing (one worker)")
         sample.update(_call(pool, should_stop, analyse_task, handle, str(run), str(path),
                             str(folder)))
     else:
-        # few samples left: the stages here, the fit's chunks fanned out over the pool
+        # few samples left: the stages here, the fit on the budget's threads in this process
         sample.update(_analyse(calibration_of(handle), run, path, folder, pool=pool,
                                workers=workers or None, should_stop=should_stop, stage=stage))
     stage("")
@@ -804,33 +804,11 @@ def _analyse(calibration: Calibration, run: Path, path: Path, folder: Path, *, p
     return out
 
 
-class _InlineExecutor:
-    """An executor that runs what it is given at once, here: Burst MLE's fit chunks inside the
-    pool worker that analyses a sample (no pool started from a worker)."""
-
-    def submit(self, fn, *args, **kwargs):
-        future: concurrent.futures.Future = concurrent.futures.Future()
-        try:
-            future.set_result(fn(*args, **kwargs))
-        except BaseException as exc:  # noqa: BLE001 - delivered through the future
-            future.set_exception(exc)
-        return future
-
-    def shutdown(self, *args, **kwargs) -> None:
-        pass
-
-
 def analyse_task(handle, run: str, path: str, folder: str) -> dict:
     """:func:`_analyse` of one sample in a worker of the batch pool, every stage in this process
-    (the fit's chunks too); returns :data:`RESULT_KEYS`."""
-    from chisurf.plugins.burst.burst_mle_analysis import engine
-
-    pool_of = engine.fit_pool
-    engine.fit_pool = lambda workers=None: _InlineExecutor()
-    try:
-        return _analyse(calibration_of(handle), Path(run), Path(path), Path(folder), workers=1)
-    finally:
-        engine.fit_pool = pool_of
+    (the fit on one thread: the pool's processes are the batch's cores); returns
+    :data:`RESULT_KEYS`."""
+    return _analyse(calibration_of(handle), Path(run), Path(path), Path(folder), workers=1)
 
 
 def sample_tip(sample: dict) -> str:
@@ -907,9 +885,9 @@ def core_budget() -> int:
 
 
 def batch_pool(budget: int | None = None):
-    """The one process pool of a batch: Burst MLE's fit pool at *budget* processes. The searches,
-    BVA and 2CDE of every sample are tasks in it, and every sample's fit chunks go into it, so
-    the batch never runs more than *budget* worker processes."""
+    """The one process pool of a batch (``engine.fit_pool``) at *budget* processes. The searches,
+    BVA and 2CDE of every sample are tasks in it (a sample analysed in a worker fits there on one
+    thread), so the batch never runs more than *budget* worker processes."""
     from chisurf.plugins.burst.burst_mle_analysis.engine import fit_pool
 
     return fit_pool(int(budget or core_budget()))

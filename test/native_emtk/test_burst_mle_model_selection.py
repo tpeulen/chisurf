@@ -249,7 +249,9 @@ def test_fit25_state_seed_preserves_candidates_and_mixed_state_schema():
         }
         for det in cfgs
     }
-    job = tuple([None] * 9 + [cfgs])
+    from chisurf.plugins.burst.burst_mle_analysis._mp_worker import BurstJob
+
+    job = BurstJob("m.ptu", [], None, None, list(cfgs), cfgs)
     assert state_split.seed_state_fits([job], fits) == 1
     np.testing.assert_array_equal(cfg25["state_x0"][0], cfg25["x0"])
     assert cfg24["state_x0"][0][0] == 2.5

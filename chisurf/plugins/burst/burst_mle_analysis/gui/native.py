@@ -264,11 +264,6 @@ class MleNativeApp(TourTarget, ImApp):
         if self.job.busy:
             return False
         self.model.status_text = "Looking for buffer and scatter measurements, preparing IRF and background ..."
-        # The fit's worker processes start meanwhile, off the UI thread (spawning them takes ~0.3 s):
-        # the fit then does not wait for them.
-        import threading
-
-        threading.Thread(target=engine.warm_fit_pool_quietly, name="mle-warm", daemon=True).start()
         return bool(self.job.start("prepare_patterns", [str(p) for p in analysed], references))
 
     def take_bursts(
@@ -277,11 +272,6 @@ class MleNativeApp(TourTarget, ImApp):
         """The pipeline hands new bursts over: read, set up and prepared in the background (reading a
         run and its photons on the UI thread froze the window as the step opened)."""
         self.model.status_text = "Taking the bursts, preparing IRF and background ..."
-        if prepare_from:
-            # the fit's worker processes start meanwhile, off the UI thread
-            import threading
-
-            threading.Thread(target=engine.warm_fit_pool_quietly, name="mle-warm", daemon=True).start()
         self._queue_job(
             "take_bursts",
             [str(p) for p in paths],

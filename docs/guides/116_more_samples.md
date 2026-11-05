@@ -61,10 +61,12 @@ others; **Run** again processes the failed and queued ones.
 A batch is scheduled, not looped (`more_samples.SampleQueue`):
 
 - **One pool, all stages.** A single pool of `core_budget()` worker processes — the physical
-  cores but one (the window's), never more than Burst MLE's own fit limit, because it *is* Burst
-  MLE's fit pool — runs every sample's burst search, BVA and 2CDE and takes every sample's fit
-  chunks. No pool is started per sample or per stage, so the batch never runs more workers than
-  that, and the stages of different samples overlap: sample 2 searches while sample 1 fits.
+  cores but one (the window's), never more than Burst MLE's own fit limit (`fit_workers()`) —
+  runs every sample's burst search, BVA and 2CDE. A sample's lifetime fit runs on threads
+  (`Fit2x.fit_many`, see [Lifetimes from bursts](21_lifetime_from_bursts.md)): on that many
+  threads in the window's process, on one inside a pool worker. No pool is started per sample or
+  per stage, so the batch never runs more workers than that, and the stages of different samples
+  overlap: sample 2 searches while sample 1 fits.
 - **Samples in flight.** As many as there are worker processes and free memory for, admitted
   largest first while the memory of those in flight leaves room (`concurrent_samples`). One sample
   needs about 37 bytes per byte of its photon file — 20 M photons (a 103 MB PTU) about 3.7 GB,
@@ -115,7 +117,7 @@ import json
 
 from chisurf.plugins.burst.burst_analysis.api import BurstWorkflow, Recipe
 
-if __name__ == "__main__":          # the burst fit runs in worker processes
+if __name__ == "__main__":          # the burst searches run in worker processes
     recipe = Recipe.from_payload(json.load(open("recipe.json")))
     rows = BurstWorkflow.offline().process_more(["m2.ptu", "m3.ptu"], recipe)
     for row in rows:

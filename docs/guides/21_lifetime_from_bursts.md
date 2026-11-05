@@ -383,11 +383,13 @@ Select **Fit model** before running the preview or batch:
 | Fit25 | `tau1`, `tau2`, `tau3`, `tau4`, `gamma` | Four editable, fixed candidate lifetimes; the result reports the winning `selected_index` (0-based). |
 | Tail fit (multi-exp) | `tail_start`, `tau1`, `tau2` | Sum of exponentials fitted to the tail of the VV+VH decay from channel `tail_start`; no IRF is deconvolved, so it needs only a background. A preview of the current decay: it is not offered for **Fit bursts**. |
 
-**Fit bursts** splits each measurement's bursts into chunks of at least 200 and
-fits them on every core but one; the rows come back in burst order, the same
-as a fit on one core. The worker processes stay alive between fits. In the
-pipeline they start while the IRF and background are being prepared, so the
-5231 bursts of a 311 MB PTU fit in about 0.3 s.
+**Fit bursts** fits each detector's bursts in chunks of 256 with one
+`Fit2x.fit_many` call per chunk, on as many threads as there are cores but one
+(fewer when memory is short; `CHISURF_FIT_WORKERS` sets the count). The call
+fits in C++ with the Python interpreter released, so the threads run in
+parallel inside ChiSurf: no worker processes are started and the photons are
+not copied. The rows come back in burst order, the same as a fit on one
+thread, and **Stop** ends the fit after the chunks in flight.
 
 Double-click **Start** to edit a value; use **Fixed** to hold a fitted parameter.
 Each model retains its own edits when you switch away and back, including in

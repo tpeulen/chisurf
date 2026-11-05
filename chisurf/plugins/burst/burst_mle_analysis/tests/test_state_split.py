@@ -18,6 +18,7 @@ pytest.importorskip("tttrlib")
 
 from chisurf.plugins.burst.burst_mle_analysis import state_split  # noqa: E402
 from chisurf.plugins.burst.burst_mle_analysis._mp_worker import (  # noqa: E402
+    BurstJob,
     process_one_file_worker,
 )
 
@@ -275,44 +276,20 @@ def test_a_states_burst_fits_start_from_that_states_pooled_lifetime():
 
 
 def test_the_pooled_step_fits_writes_and_seeds_in_one_go(tmp_path):
-    """The whole global-lifetime step, over the real process pool.
+    """The whole global-lifetime step, in this process.
 
     Pools across files, fits each state, and puts each fitted lifetime into the job payloads as that state's start
     value -- the piece the per-burst pass then reads. The table is written beside the analysis.
     """
-    import multiprocessing as mp
-
     analysis = tmp_path / "burstwise_All 0.1000#15"
     (analysis / "bi4_bur").mkdir(parents=True)
 
     mt, rc, st, bursts = _synth()
-    blocks = _in_shared_memory([rc, mt, st])
-    try:
-        rc_sh, mt_sh, st_sh = blocks
-        cfg = _cfg()
-        jobs = [
-            (
-                "m000.spc",
-                bursts,
-                rc_sh.name,
-                rc.shape,
-                str(rc.dtype),
-                mt_sh.name,
-                mt.shape,
-                str(mt.dtype),
-                ["G|G"],
-                {"G|G": cfg},
-                0,
-                (st_sh.name, st.shape, str(st.dtype), 2),
-            )
-        ]
-        rows, seeded, message = state_split.pooled_state_fits(
-            jobs, ["G|G"], mp.get_context("spawn"), 2, "fit23", ["tau", "gamma", "r0", "rho"], 0
-        )
-    finally:
-        for sh in blocks:
-            sh.close()
-            sh.unlink()
+    cfg = _cfg()
+    jobs = [BurstJob("m000.spc", bursts, rc, mt, ["G|G"], {"G|G": cfg}, 0, st, 2)]
+    rows, seeded, message = state_split.pooled_state_fits(
+        jobs, ["G|G"], "fit23", ["tau", "gamma", "r0", "rho"], 0
+    )
 
     assert [r["State"] for r in rows] == [0, 1]
     assert abs(rows[0]["Tau"] - 3.6) < 0.25, rows[0]["Tau"]
@@ -323,7 +300,7 @@ def test_the_pooled_step_fits_writes_and_seeds_in_one_go(tmp_path):
     # The files it wrote come back, so a reuse gate can cover them.
     assert written == [table]
 
-    seeds = jobs[0][9]["G|G"]["state_x0"]
+    seeds = jobs[0].perdet["G|G"]["state_x0"]
     assert set(seeds) == {0, 1}
     assert seeds[0][0] == rows[0]["Tau"], "the seed is the pooled lifetime itself"
     # ...and only the lifetime is seeded; the rest of the start vector stands.
@@ -338,42 +315,19 @@ def test_a_file_without_raw_data_does_not_cost_the_pooled_fit():
     no start values while the run otherwise completed and exported a full table -- the per-burst state fits then
     fell back to the panel's single guess, which is the bias the seeding exists to remove.
     """
-    import multiprocessing as mp
-
     mt, rc, st, bursts = _synth()
-    blocks = _in_shared_memory([rc, mt, st])
-    try:
-        rc_sh, mt_sh, st_sh = blocks
-        cfg = _cfg()
-        # First: a file whose raw measurement could not be read (this is exactly what the batch appends for it --
-        # no shm names, no config).
-        broken = ("missing.spc", bursts, None, None, None, None, None, None, ["G|G"], {}, 0, None)
-        real = (
-            "m000.spc",
-            bursts,
-            rc_sh.name,
-            rc.shape,
-            str(rc.dtype),
-            mt_sh.name,
-            mt.shape,
-            str(mt.dtype),
-            ["G|G"],
-            {"G|G": cfg},
-            0,
-            (st_sh.name, st.shape, str(st.dtype), 2),
-        )
-        jobs = [broken, real]
-        rows, seeded, _message = state_split.pooled_state_fits(
-            jobs, ["G|G"], mp.get_context("spawn"), 2, "fit23", ["tau", "gamma", "r0", "rho"], 0
-        )
-    finally:
-        for sh in blocks:
-            sh.close()
-            sh.unlink()
+    cfg = _cfg()
+    # First: a file whose raw measurement could not be read (what the batch appends for it: no
+    # photons).
+    broken = BurstJob("missing.spc", bursts, None, None, ["G|G"], {}, 0)
+    real = BurstJob("m000.spc", bursts, rc, mt, ["G|G"], {"G|G": cfg}, 0, st, 2)
+    rows, seeded, _message = state_split.pooled_state_fits(
+        [broken, real], ["G|G"], "fit23", ["tau", "gamma", "r0", "rho"], 0
+    )
 
     assert [r["State"] for r in rows] == [0, 1], "the good file still describes the states"
     assert seeded == 2
-    assert set(real[9]["G|G"]["state_x0"]) == {0, 1}, "and the real job is seeded"
+    assert set(real.perdet["G|G"]["state_x0"]) == {0, 1}, "and the real job is seeded"
 
 
 def test_state_lifetimes_are_written_beside_the_analysis_not_as_a_companion(tmp_path):

@@ -1469,7 +1469,7 @@ class MleViewModel(RunPickerMixin):
             self._release_snapshot()
 
     def run_batch(self, force: bool = False) -> None:
-        """Fit every burst of every loaded file and detector (worker processes) and keep the rows.
+        """Fit every burst of every loaded file and detector (threads, `Fit2x.fit_many`) and keep the rows.
 
         A request identical to the one the held rows answer -- same burst files, same settings, IRF and background,
         same code (:meth:`MleSession.batch_fingerprint`) -- is not fitted again: the status line says so and

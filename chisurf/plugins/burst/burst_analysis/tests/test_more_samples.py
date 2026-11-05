@@ -255,8 +255,8 @@ def test_a_parallel_batch_equals_the_serial_one_and_stays_within_the_cores(first
         stop.set()
         watcher.join()
     pool = ms.batch_pool(budget)
-    assert pool._max_workers == budget
-    pool_pids = set(getattr(pool, "_processes", {}) or {})
+    assert pool.workers == budget  # an IdlePool: its executor is started on the first task
+    pool_pids = set(getattr(pool._pool, "_processes", None) or {})
     assert len(pool_pids) <= budget
     # nothing but the one pool's processes appeared for the batch (no pool per sample or stage)
     assert seen - before <= pool_pids, (seen - before, pool_pids)

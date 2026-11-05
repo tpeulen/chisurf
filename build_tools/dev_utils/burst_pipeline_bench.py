@@ -1,7 +1,7 @@
 """Where the wall time of the Burst Analysis pipeline goes: per step, per frame, per stage.
 
 Heavy: run it on the big machine (``ssh home``), never on a 16 GB laptop -- a replay holds the
-measurement several times and the fit pool several GB. Three sub-commands::
+measurement several times. Three sub-commands::
 
     # the hub driven as a user would (headless, test painter): wall per step, frame time per
     # step and per Burst MLE tab, cProfile of those frames; writes timing.json + recipe.json
@@ -19,8 +19,8 @@ measurement several times and the fit pool several GB. Three sub-commands::
 *SETTINGS* is a ChiSurf settings folder holding the detector setup (``RVZMT150`` by default,
 ``--setup``), copied into *OUT* first; *DIR* holds ``DNA13bp_3.ptu``, ``Rh110_thick_1.ptu`` and
 ``Alexa647_thick_1.ptu`` (copy them off an SD card first: the card's reads would be measured).
-``CHISURF_FIT_WORKERS`` caps the fit processes. The numbers, and what they meant, are kept in the
-OKF concept ``okf/plugins/burst.md`` ("Pipeline wall time").
+``CHISURF_FIT_WORKERS`` caps the fit threads (and the More samples processes). The numbers, and
+what they meant, are kept in the OKF concept ``okf/plugins/burst.md`` ("Pipeline wall time").
 """
 
 from __future__ import annotations
@@ -265,7 +265,7 @@ def stages(out: Path, settings: Path, data: Path, recipe_path: Path, batch: int 
                 session.bg_np[det] = np.asarray(pattern["bg"], dtype=float)
         session.select_background()
     workers = engine.fit_workers()
-    with stage(f"mle: run_batch ({workers} processes, per-burst loop)", profile=False):
+    with stage(f"mle: run_batch ({workers} threads, fit_many)", profile=False):
         session.run_batch(max_workers=workers)
     with stage("mle: export_results"):
         session.export_results()

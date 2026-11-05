@@ -59,74 +59,36 @@ def load_state_arrays(
 def pool_state_decays(
     jobs: list,
     det_order: list[str],
-    ctx: Any,
-    max_workers: int,
     *,
     should_stop: Callable[[], bool] | None = None,
     on_file: Callable[[int, int], None] | None = None,
 ) -> dict[str, np.ndarray]:
     """Sum every burst's photons into one decay per ``(detector, state)``, over every file.
 
-    Runs the binning-only pass of :func:`._mp_worker.pool_states_worker` over the same jobs (and the same shared
-    memory) the fit pass uses. *should_stop* is read between files; *on_file(done, total)* reports progress.
+    The binning-only pass (:func:`._mp_worker.pool_state_counts`) over the same jobs
+    (:class:`._mp_worker.BurstJob`) the fit pass uses, in this process. *should_stop* is read
+    between files; *on_file(done, total)* reports progress.
 
     Returns ``{detector: ndarray(n_states, 2, half_len)}``, empty when there is nothing to pool or it was stopped.
     """
-    from concurrent.futures import ProcessPoolExecutor, as_completed
+    from ._mp_worker import pool_state_counts
 
-    from ._mp_worker import pool_states_worker
-
-    pool_jobs = [
-        (
-            bursts,
-            rc_name,
-            rc_shape,
-            rc_dtype,
-            mt_name,
-            mt_shape,
-            mt_dtype,
-            det_order,
-            perdet_cfg,
-            state_info,
-        )
-        for (
-            _fname,
-            bursts,
-            rc_name,
-            rc_shape,
-            rc_dtype,
-            mt_name,
-            mt_shape,
-            mt_dtype,
-            _det_order,
-            perdet_cfg,
-            _shift,
-            state_info,
-        ) in jobs
-    ]
     totals: dict[str, np.ndarray] = {}
-    done = 0
-    with ProcessPoolExecutor(max_workers=max_workers, mp_context=ctx) as ex:
-        futures = [ex.submit(pool_states_worker, j) for j in pool_jobs]
-        for fut in as_completed(futures):
-            # Read the stop *here*: after the loop it is read once every future has been joined.
-            if should_stop is not None and should_stop():
-                for pending in futures:
-                    pending.cancel()
-                return {}
-            try:
-                part = fut.result()
-            except Exception as exc:  # noqa: BLE001 - one unreadable file must not cost the pooled fit
-                logger.warning("Pooled state decays: a file failed (%s)", exc)
-                part = None
-            for det, arr in (part or {}).items():
-                if det in totals:
-                    totals[det] += arr
-                else:
-                    totals[det] = np.asarray(arr, dtype=np.int64).copy()
-            done += 1
-            if on_file is not None:
-                on_file(done, len(pool_jobs))
+    for done, job in enumerate(jobs, start=1):
+        if should_stop is not None and should_stop():
+            return {}
+        try:
+            part = pool_state_counts(job)
+        except Exception as exc:  # noqa: BLE001 - one unreadable file must not cost the pooled fit
+            logger.warning("Pooled state decays: a file failed (%s)", exc)
+            part = None
+        for det, arr in (part or {}).items():
+            if det in totals:
+                totals[det] += arr
+            else:
+                totals[det] = np.asarray(arr, dtype=np.int64).copy()
+        if on_file is not None:
+            on_file(done, len(jobs))
     return totals
 
 
@@ -249,7 +211,7 @@ def seed_state_fits(jobs: list, fits: dict) -> int:
     """
     seeded = 0
     for job in jobs:
-        cfgs = job[9]
+        cfgs = job.perdet
         for det, per_state in fits.items():
             cfg = cfgs.get(det)
             if cfg is None:
@@ -272,8 +234,6 @@ def seed_state_fits(jobs: list, fits: dict) -> int:
 def pooled_state_fits(
     jobs: list,
     det_order: list[str],
-    ctx: Any,
-    max_workers: int,
     model: str,
     param_names,
     shift: int,
@@ -282,14 +242,12 @@ def pooled_state_fits(
     on_file: Callable[[int, int], None] | None = None,
 ) -> tuple[list[dict], int, str]:
     """Pool, fit and seed: the whole global-lifetime step. Returns ``(rows, seeded, status message)``."""
-    pooled = pool_state_decays(
-        jobs, det_order, ctx, max_workers, should_stop=should_stop, on_file=on_file
-    )
+    pooled = pool_state_decays(jobs, det_order, should_stop=should_stop, on_file=on_file)
     if not pooled:
         return [], 0, "Pooled state lifetimes: nothing to pool."
     # Every job carries the same per-detector configuration; a file without its raw measurement carries an empty one
     # and can be first, so take the first real one.
-    shared_cfg: dict = next((j[9] for j in jobs if j[9]), {})
+    shared_cfg: dict = next((j.perdet for j in jobs if j.perdet and j.rc is not None), {})
     fits = fit_pooled_state_decays(pooled, det_order, shared_cfg, shift)
     rows = state_lifetime_rows(fits, model, param_names, perdet_cfg=shared_cfg)
     seeded = seed_state_fits(jobs, fits)

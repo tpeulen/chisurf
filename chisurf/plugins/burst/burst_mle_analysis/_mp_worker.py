@@ -1,3 +1,4 @@
+import dataclasses
 from multiprocessing import shared_memory as _shm
 
 import numpy as np
@@ -126,28 +127,37 @@ def tail_lifetime(counts: np.ndarray, dt: float) -> float:
     time equals ``tau - T / (exp(T / tau) - 1)``; that mean rises monotonically with tau towards
     ``T / 2``, so a bisection finds it. NaN for fewer than two photons or a flat window.
     """
-    counts = np.asarray(counts, dtype=np.float64)
-    n = counts.sum()
-    if n < 2 or counts.size < 2 or dt <= 0:
-        return float("nan")
-    t = (np.arange(counts.size) + 0.5) * dt
-    T = counts.size * dt
-    mean = float((counts * t).sum() / n)
-    if mean >= 0.5 * T * 0.999:
-        return float("nan")  # no decay in the window
+    return float(tail_lifetimes(np.asarray(counts, dtype=np.float64)[None, :], dt)[0])
 
-    def mean_of(tau):
-        r = T / tau
-        return tau - T / np.expm1(r) if r < 700 else tau
 
-    lo, hi = 1e-4, 1e4
+def tail_lifetimes(tails: np.ndarray, dt: float) -> np.ndarray:
+    """:func:`tail_lifetime` of every row of *tails* (``(n_bursts, n_bins)``), the bisection
+    run on all rows at once (a loop of it per burst held the GIL for seconds)."""
+    tails = np.asarray(tails, dtype=np.float64)
+    k, m = tails.shape
+    out = np.full(k, np.nan)
+    if m < 2 or dt <= 0 or not k:
+        return out
+    n = tails.sum(axis=1)  # whole counts: exact in any order
+    t = (np.arange(m) + 0.5) * dt
+    T = m * dt
+    mean = np.array([float((row * t).sum()) for row in tails]) / np.where(n > 0, n, 1.0)
+    ok = (n >= 2) & ~(mean >= 0.5 * T * 0.999)  # else no decay in the window
+    if not ok.any():
+        return out
+    target = mean[ok]
+    lo = np.full(target.size, 1e-4)
+    hi = np.full(target.size, 1e4)
     for _ in range(80):
         mid = np.sqrt(lo * hi)
-        if mean_of(mid) < mean:
-            lo = mid
-        else:
-            hi = mid
-    return float(np.sqrt(lo * hi))
+        r = T / mid
+        with np.errstate(over="ignore"):
+            value = np.where(r < 700, mid - T / np.expm1(np.minimum(r, 700.0)), mid)
+        below = value < target
+        lo = np.where(below, mid, lo)
+        hi = np.where(below, hi, mid)
+    out[ok] = np.sqrt(lo * hi)
+    return out
 
 
 #: Why a burst's fit is not a lifetime (the ``Fit rejected (<det>)`` row key, never exported):
@@ -277,286 +287,314 @@ def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None, ex
     return rec
 
 
-def pool_states_worker(args):
-    """Sum one file's burst photons into a decay per ``(detector, state)``.
 
-    The cheap first pass of a split-by-state run: no fitting, only binning. Its
-    product is the *pooled* decay of a state — every burst's photons of that
-    state, over the whole measurement — which is the robust lifetime of the
-    state (a single burst holds tens of photons; a state holds all of them) and
-    the start value the per-burst fits of that state are then given.
 
-    Photons outside a burst never enter it: the sum runs over exactly the burst
-    slices the fit pass uses, so the pooled decay is the same population, only
-    added up.
+# -- the fit of every burst: Fit2x.fit_many on threads ---------------------------------------- #
+#: Bursts per ``fit_many`` call. Under tttrlib's 1024 rows its batch runs on the calling thread,
+#: so the threads of :func:`fit_jobs` are the only ones (as many as ``fit_workers()``), and a
+#: chunk is about 0.8 s of fit23 at 3 ms a fit: Stop and the progress bar answer within that.
+CHUNK_ROWS = 256
 
-    args = (bursts,
-            rc_name, rc_shape, rc_dtype_str,
-            mt_name, mt_shape, mt_dtype_str,
-            det_order, perdet_cfg, state_info)
 
-    Returns ``{detector: ndarray(n_states, 2, half_len)}`` — parallel and
-    perpendicular counts, unwindowed and unshifted, because both are cheap
-    linear operations the caller applies once to the sum rather than per burst.
+@dataclasses.dataclass
+class BurstJob:
+    """One measurement's bursts, as the fit reads them: the photons are arrays of this process.
+
+    *rc* (routing channels) and *mt* (micro-time bins at the fit's binning) index as the burst
+    table's ``First Photon`` / ``Last Photon`` (inclusive); *states* the per-photon H2MM state
+    (``-1`` unassigned) when the fit is split by state. ``rc is None``: the raw measurement could
+    not be read, every burst gets the no-data row. *perdet* holds each detector's constants
+    (:meth:`~.engine.MleSession.batch_config` plus ``class_lut``, ``mirror``, ``half_len``).
     """
-    (
-        bursts,
-        rc_name,
-        rc_shape,
-        rc_dtype_str,
-        mt_name,
-        mt_shape,
-        mt_dtype_str,
-        det_order,
-        perdet_cfg,
-        state_info,
-    ) = args
 
-    if rc_name is None or mt_name is None or state_info is None:
-        return {}
+    fname: str
+    bursts: list
+    rc: np.ndarray | None
+    mt: np.ndarray | None
+    det_order: list
+    perdet: dict
+    shift: int = 0
+    states: np.ndarray | None = None
+    n_states: int = 0
 
-    st_name, st_shape, st_dtype, n_states = state_info
-    if n_states <= 0:
-        return {}
 
-    rc_sh = _shm.SharedMemory(name=rc_name)
-    mt_sh = _shm.SharedMemory(name=mt_name)
-    st_sh = _shm.SharedMemory(name=st_name)
+def burst_counts(rc, mt, bursts, class_lut, n, states=None, state=None):
+    """``(cp, cs)``: the ``(len(bursts), n)`` parallel and perpendicular micro-time histograms of
+    each burst's photons (*class_lut*: routing channel -> -1 ignore / 0 P / 1 S), all bursts in one
+    ``bincount``; with *state*, only the photons of that state. Bins at or past *n* are dropped,
+    as the per-burst histogram's windows never read them."""
+    nb = len(bursts)
+    if not nb:
+        return np.zeros((0, n), np.int64), np.zeros((0, n), np.int64)
+    pairs = np.asarray(bursts, dtype=np.int64).reshape(nb, 2)
+    first = pairs[:, 0]
+    stop = np.minimum(pairs[:, 1] + 1, len(rc))  # Last Photon is inclusive (_burst_slice)
+    lengths = np.maximum(stop - first, 0)
+    owner = np.repeat(np.arange(nb, dtype=np.int64), lengths)
+    idx = np.arange(int(lengths.sum()), dtype=np.int64) + np.repeat(
+        first - (np.cumsum(lengths) - lengths), lengths
+    )
+    cls = class_lut[rc[idx]]
+    b = mt[idx].astype(np.int64)
+    keep = (cls >= 0) & (b < n)
+    if states is not None and state is not None:
+        keep &= states[idx] == state
+    flat = owner[keep] * (2 * n) + b[keep] * 2 + cls[keep]
+    h = np.bincount(flat, minlength=nb * 2 * n).reshape(nb, n, 2)
+    return h[:, :, 0], h[:, :, 1]
+
+
+def decay_rows(cp, cs, cfg, n, shift):
+    """The decays the fit takes, one row a burst: VV in the detector's VV gate, VH in its VH
+    gate rolled by *shift* (``dst[j] = cs[(j - shift) % n]``, as :func:`_copy_shifted`), zeros
+    elsewhere."""
+    s0, s1 = max(0, int(cfg["sb"])), min(n, int(cfg["eb"]))
+    t0 = max(0, int(cfg.get("vh_sb", cfg["sb"])))
+    t1 = min(n, int(cfg.get("vh_eb", cfg["eb"])))
+    d = np.zeros((cp.shape[0], 2 * n), dtype=np.float64)
+    if s1 > s0:
+        d[:, s0:s1] = cp[:, s0:s1]
+    if t1 > t0:
+        cols = (np.arange(t0, t1) - int(shift)) % n if shift else np.arange(t0, t1)
+        d[:, n + t0 : n + t1] = cs[:, cols]
+    return d
+
+
+def _fit_chunk(job: BurstJob, det: str, fitter, bursts, state) -> list[dict]:
+    """The result rows of *det* (and *state*, ``None`` = all photons) for a chunk of *job*'s
+    bursts: their histograms, one ``fit_many`` call for those above the photon floor."""
+    cfg = job.perdet[det]
+    n = int(cfg["half_len"])
+    color = colour_of(det)
+    cp, cs = burst_counts(job.rc, job.mt, bursts, cfg["class_lut"], n, job.states, state)
+    if cfg.get("mirror"):
+        cs = cp
+    s0, s1 = max(0, int(cfg["sb"])), min(n, int(cfg["eb"]))
+    t0 = max(0, int(cfg.get("vh_sb", cfg["sb"])))
+    t1 = min(n, int(cfg.get("vh_eb", cfg["eb"])))
+    cp_sum = cp[:, s0:s1].sum(axis=1) if s1 > s0 else np.zeros(len(bursts), np.int64)
+    cs_sum = cs[:, t0:t1].sum(axis=1) if t1 > t0 else np.zeros(len(bursts), np.int64)
+    if cfg.get("mirror"):
+        cs_sum = np.zeros_like(cs_sum)  # the same photons twice: counted once
+    if state is None:
+        floor = int(cfg["min_photons"])
+    else:
+        # split by colour *and* state a burst is thin: the state passes have their own floor
+        floor = int(cfg.get("state_min_photons") or cfg["min_photons"])
+    fitted = np.flatnonzero(cp_sum + cs_sum >= floor)
+    rows = [
+        _record(job.fname, det, color, cfg, None, float("nan"), int(a), int(b), state=state, reason=1)
+        for a, b in zip(cp_sum.tolist(), cs_sum.tolist())
+    ]
+    if not fitted.size:
+        return rows
+    if fitter is None:
+        # the tail fit: from the tail start (after the decay's peak) to the window's end, both
+        # polarisations summed
+        start = min(max(int(cfg.get("tail_bin", s0)), s0), s1)
+        tails = cp[fitted, start:s1].astype(np.float64)
+        if not cfg.get("mirror"):
+            tails = tails + cs[fitted, start:s1]
+        taus = tail_lifetimes(tails, float(cfg["dt"]))
+        for i, tau in zip(fitted.tolist(), taus.tolist()):
+            x = np.array([float(start), tau, np.nan])
+            reason = reject_reason(cfg, x)
+            rows[i] = _record(job.fname, det, color, cfg, None if reason else x, float("nan"),
+                              int(cp_sum[i]), int(cs_sum[i]), state=state, reason=reason)
+        return rows
+    # a state's fits start from that state's pooled lifetime when one was fitted
+    # (state_split.seed_state_fits): at the panel's one guess every state is pulled to it
+    x0 = cfg["x0"] if state is None else (cfg.get("state_x0") or {}).get(state, cfg["x0"])
+    d = decay_rows(cp[fitted], cs[fitted], cfg, n, job.shift)
+    batch = fitter.fit_many(d, x0, fixed=cfg["fixed"])
+    converged = batch.result("converged")
+    r_scatter, r_experimental = batch.result("r_scatter"), batch.result("r_experimental")
+    selected = batch.result("selected_index")
+    for k, i in enumerate(fitted.tolist()):
+        x = np.asarray(batch.x[k], dtype=np.float64)
+        two_istar = float(batch.twoIstar[k])
+        reason = reject_reason(cfg, x, float(converged[k]), two_istar)
+        rows[i] = _record(
+            job.fname, det, color, cfg, None if reason else x, two_istar,
+            int(cp_sum[i]), int(cs_sum[i]), state=state, reason=reason,
+            extras=None if reason else {
+                "r_scatter": float(r_scatter[k]), "r_experimental": float(r_experimental[k]),
+                "selected_index": float(selected[k]),
+            },
+        )
+    return rows
+
+
+def _missing_rows(job: BurstJob) -> list[dict]:
+    """The rows of a measurement whose photons could not be read: cp = cs = -1, the historical
+    "no data" sentinel (photon count -2)."""
+    return [
+        _record(job.fname, det, colour_of(det), job.perdet.get(det, {}), None, float("nan"), -1, -1,
+                reason=1)
+        for _burst in job.bursts
+        for det in job.det_order
+    ]
+
+
+def fit_jobs(jobs: list[BurstJob], threads: int = 1, *, should_stop=None, progress=None,
+             errors: list | None = None) -> list[dict]:
+    """Fit every burst of every job and detector: one row per ``(burst, detector)``, in job and
+    burst order, a state split's columns in the same row.
+
+    The fits are ``Fit2x.fit_many`` calls of :data:`CHUNK_ROWS` bursts on *threads* threads (the
+    call releases the GIL, so the threads fit in parallel in one process: no worker processes,
+    shared memory or pickling). *should_stop()* is read as each chunk finishes (then
+    :class:`InterruptedError`); *progress(done, total)* counts bursts. A chunk that raises is
+    named in *errors* and its bursts get rejected rows ("not finite"), never missing rows -- the
+    table is merged by position.
+    """
+    from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+
+    fitters: dict = {}
+    tasks = []  # (job index, det, state, start, bursts)
+    for j, job in enumerate(jobs):
+        if job.rc is None or job.mt is None:
+            continue
+        for det in job.det_order:
+            cfg = job.perdet[det]
+            key = (id(job.perdet), det)
+            if key not in fitters:
+                fitters[key] = None if cfg.get("model") == "tail" else _build_fitter(cfg)
+            for state in [None] + list(range(int(job.n_states))):
+                for start in range(0, len(job.bursts), CHUNK_ROWS):
+                    tasks.append((j, det, state, start, job.bursts[start : start + CHUNK_ROWS]))
+    parts: dict = {}
+    total = sum(len(job.bursts) for job in jobs)
+    units = {j: max(1, len(job.det_order) * (1 + int(job.n_states))) for j, job in enumerate(jobs)}
+    done = float(sum(len(job.bursts) for job in jobs if job.rc is None or job.mt is None))
+    if progress is not None and done:
+        progress(int(done), total)
+    ex = ThreadPoolExecutor(max_workers=max(1, int(threads)), thread_name_prefix="burst-fit")
     try:
-        rc_full = np.ndarray(rc_shape, dtype=np.dtype(rc_dtype_str), buffer=rc_sh.buf)
-        mt_full = np.ndarray(mt_shape, dtype=np.dtype(mt_dtype_str), buffer=mt_sh.buf)
-        state_full = np.ndarray(st_shape, dtype=np.dtype(st_dtype), buffer=st_sh.buf)
-
-        pooled = {
-            det: np.zeros((n_states, 2, int(perdet_cfg[det]["half_len"])), dtype=np.int64)
-            for det in det_order
+        pending = {
+            ex.submit(_fit_chunk, jobs[j], det, fitters[(id(jobs[j].perdet), det)], bursts, state):
+            (j, det, state, start, bursts)
+            for j, det, state, start, bursts in tasks
         }
-        for first_ph, last_ph in bursts:
-            sl = _burst_slice(first_ph, last_ph)
-            rc_slice = rc_full[sl]
-            mt_slice = mt_full[sl]
-            st_slice = state_full[sl]
-            for state in range(n_states):
-                pick = st_slice == state
-                if not pick.any():
-                    continue
-                mt_sel, rc_sel = mt_slice[pick], rc_slice[pick]
-                for det in det_order:
-                    cfg = perdet_cfg[det]
-                    cp, cs = _hist2_split_core_classlut(
-                        mt_sel, rc_sel, cfg["class_lut"], int(cfg["half_len"])
-                    )
-                    if cfg.get("mirror"):
-                        cs = cp
-                    pooled[det][state, 0] += cp
-                    pooled[det][state, 1] += cs
-        return pooled
+        while pending:
+            finished, _ = wait(pending, return_when=FIRST_COMPLETED)
+            if should_stop is not None and should_stop():
+                raise InterruptedError("The burst fit was stopped.")
+            for fut in finished:
+                j, det, state, start, bursts = pending.pop(fut)
+                try:
+                    rows = fut.result()
+                except Exception as exc:  # noqa: BLE001 - named, and the bursts keep their rows
+                    if errors is not None:
+                        errors.append(f"{jobs[j].fname} ({det}) failed: {exc}")
+                    cfg = jobs[j].perdet[det]
+                    rows = [_record(jobs[j].fname, det, colour_of(det), cfg, None, float("nan"),
+                                    0, 0, state=state, reason=3) for _b in bursts]
+                parts[(j, det, state, start)] = rows
+                done += len(bursts) / units[j]
+                if progress is not None:
+                    progress(min(int(done), total), total)
     finally:
-        rc_sh.close()
-        mt_sh.close()
-        st_sh.close()
+        ex.shutdown(wait=False, cancel_futures=True)
+    out: list[dict] = []
+    for j, job in enumerate(jobs):
+        if job.rc is None or job.mt is None:
+            out.extend(_missing_rows(job))
+            continue
+        states = [None] + list(range(int(job.n_states)))
+        for i in range(len(job.bursts)):
+            start, k = i - i % CHUNK_ROWS, i % CHUNK_ROWS
+            for det in job.det_order:
+                rec: dict = {}
+                for state in states:
+                    rec.update(parts[(j, det, state, start)][k])
+                out.append(rec)
+    return out
+
+
+def pool_state_counts(job: BurstJob) -> dict:
+    """Sum *job*'s burst photons into a decay per ``(detector, state)``: the cheap first pass of
+    a split-by-state run, binning only. The pooled decay of a state -- every burst's photons of it
+    -- is the state's robust lifetime and the start of its per-burst fits. Photons outside a
+    burst never enter it: the sum runs over the burst slices the fit uses.
+
+    Returns ``{detector: ndarray(n_states, 2, half_len)}`` -- parallel and perpendicular counts,
+    unwindowed and unshifted (both linear, applied once to the sum by the caller); empty without
+    photons or states."""
+    if job.rc is None or job.mt is None or job.states is None or int(job.n_states) <= 0:
+        return {}
+    pooled = {}
+    for det in job.det_order:
+        cfg = job.perdet[det]
+        n = int(cfg["half_len"])
+        arr = np.zeros((int(job.n_states), 2, n), dtype=np.int64)
+        for state in range(int(job.n_states)):
+            for start in range(0, len(job.bursts), 4 * CHUNK_ROWS):
+                cp, cs = burst_counts(job.rc, job.mt, job.bursts[start : start + 4 * CHUNK_ROWS],
+                                      cfg["class_lut"], n, job.states, state)
+                if cfg.get("mirror"):
+                    cs = cp
+                arr[state, 0] += cp.sum(axis=0)
+                arr[state, 1] += cs.sum(axis=0)
+        pooled[det] = arr
+    return pooled
+
+
+# -- a job in shared memory (one process of its own) ------------------------------------------ #
+def _shared_job(names, bursts, det_order, perdet, fname="", shift=0, state_info=None):
+    """``(BurstJob, blocks)`` of arrays in shared memory, attached by name (*names*:
+    ``(rc_name, rc_shape, rc_dtype, mt_name, mt_shape, mt_dtype)``); close the blocks after."""
+    rc_name, rc_shape, rc_dtype, mt_name, mt_shape, mt_dtype = names
+    if rc_name is None or mt_name is None:
+        return BurstJob(fname, list(bursts), None, None, list(det_order), perdet or {}, int(shift or 0)), []
+    blocks = [_shm.SharedMemory(name=rc_name), _shm.SharedMemory(name=mt_name)]
+    rc = np.ndarray(rc_shape, dtype=np.dtype(rc_dtype), buffer=blocks[0].buf)
+    mt = np.ndarray(mt_shape, dtype=np.dtype(mt_dtype), buffer=blocks[1].buf)
+    states, n_states = None, 0
+    if state_info is not None:
+        st_name, st_shape, st_dtype, n_states = state_info
+        blocks.append(_shm.SharedMemory(name=st_name))
+        states = np.ndarray(st_shape, dtype=np.dtype(st_dtype), buffer=blocks[2].buf)
+    job = BurstJob(fname, list(bursts), rc, mt, list(det_order), perdet, int(shift or 0), states,
+                   int(n_states))
+    return job, blocks
 
 
 def process_one_file_worker(args):
-    """
-    Process a single file in a separate process using shared memory
-    for arrays. Returns (list_of_dicts, n_bursts_processed).
+    """:func:`fit_jobs` of one file whose arrays are in shared memory (a process of its own);
+    returns ``(rows, n_bursts)``.
 
-    args = (fname, bursts,
-            rc_name, rc_shape, rc_dtype_str,
-            mt_name, mt_shape, mt_dtype_str,
+    args = (fname, bursts, rc_name, rc_shape, rc_dtype_str, mt_name, mt_shape, mt_dtype_str,
             det_order, perdet_cfg, shift_int, state_info)
-
-    ``state_info`` is ``None`` for an ordinary run, or
-    ``(shm_name, shape, dtype_str, n_states)`` naming a per-photon state array
-    (``-1`` = unassigned). With it, each burst is additionally fitted once per
-    state, and those results are merged into the *same* row as extra columns —
-    a sub-population is a column of the burst, not a row of its own.
     """
-    (
-        fname,
-        bursts,
-        rc_name,
-        rc_shape,
-        rc_dtype_str,
-        mt_name,
-        mt_shape,
-        mt_dtype_str,
-        det_order,
-        perdet_cfg,
-        shift_int,
-        state_info,
-    ) = args
-
-    # Missing TTTR: emit defaults (cp=cs=-1 → photon count -2, matching the
-    # historical "no data" sentinel).
-    if rc_name is None or mt_name is None:
-        out = []
-        for _first, _last in bursts:
-            for det in det_order:
-                cfg = perdet_cfg.get(det, {})
-                out.append(_record(fname, det, colour_of(det), cfg, None, float("nan"), -1, -1, reason=1))
-        return out, len(bursts)
-
-    # Attach shared memory
-    rc_sh = _shm.SharedMemory(name=rc_name)
-    mt_sh = _shm.SharedMemory(name=mt_name)
-    st_sh = None
-    state_full = None
-    n_states = 0
-    if state_info is not None:
-        st_name, st_shape, st_dtype, n_states = state_info
-        st_sh = _shm.SharedMemory(name=st_name)
-        state_full = np.ndarray(st_shape, dtype=np.dtype(st_dtype), buffer=st_sh.buf)
+    (fname, bursts, rc_name, rc_shape, rc_dtype, mt_name, mt_shape, mt_dtype, det_order, perdet,
+     shift, state_info) = args
+    job, blocks = _shared_job((rc_name, rc_shape, rc_dtype, mt_name, mt_shape, mt_dtype), bursts,
+                              det_order, perdet, fname, shift, state_info)
     try:
-        rc_full = np.ndarray(rc_shape, dtype=np.dtype(rc_dtype_str), buffer=rc_sh.buf)
-        mt_bins_full = np.ndarray(mt_shape, dtype=np.dtype(mt_dtype_str), buffer=mt_sh.buf)
-
-        # Per-detector fitters, buffers, previous ranges
-        fitters = {}
-        half_len = {}
-        decay_buf = {}
-        prev_ranges = {}  # det -> (vv_s0,vv_s1,vh_s0,vh_s1)
-        for det in det_order:
-            cfg = perdet_cfg[det]
-            fitters[det] = None if cfg.get("model") == "tail" else _build_fitter(cfg)
-            n = int(cfg["half_len"])
-            half_len[det] = n
-            decay_buf[det] = np.zeros(2 * n, dtype=np.float64)
-            prev_ranges[det] = (0, 0, 0, 0)
-
-        out = []
-        do_shift = int(shift_int) if shift_int else 0
-
-        for first_ph, last_ph in bursts:
-            sl = _burst_slice(first_ph, last_ph)
-            rc_slice = rc_full[sl]
-            mt_bins = mt_bins_full[sl]
-            st_slice = state_full[sl] if state_full is not None else None
-
-            for det in det_order:
-                cfg = perdet_cfg[det]
-                n = half_len[det]
-                color = colour_of(det)
-
-                # All the burst's photons, then one pass per state. Each pass
-                # contributes columns to the *same* row: a sub-population is a
-                # column of the burst, not a row of its own.
-                rec = {}
-                for state in [None] + list(range(n_states)):
-                    if state is None:
-                        mt_sel, rc_sel = mt_bins, rc_slice
-                        floor = int(cfg["min_photons"])
-                    else:
-                        pick = st_slice == state
-                        mt_sel, rc_sel = mt_bins[pick], rc_slice[pick]
-                        # Split by colour *and* state a burst is thin, so the
-                        # state passes get their own (lower) threshold.
-                        floor = int(cfg.get("state_min_photons") or cfg["min_photons"])
-
-                    cp_u32, cs_u32 = _hist2_split_core_classlut(mt_sel, rc_sel, cfg["class_lut"], n)
-                    if cfg.get("mirror"):
-                        cs_u32 = cp_u32
-                    # Photons inside the detector's gates: what the fit sees and the counts report.
-                    s0, s1 = max(0, int(cfg["sb"])), min(n, int(cfg["eb"]))
-                    t0 = max(0, int(cfg.get("vh_sb", cfg["sb"])))
-                    t1 = min(n, int(cfg.get("vh_eb", cfg["eb"])))
-                    cp_sum = int(cp_u32[s0:s1].sum()) if s1 > s0 else 0
-                    cs_sum = int(cs_u32[t0:t1].sum()) if t1 > t0 else 0
-                    if cfg.get("mirror"):
-                        cs_sum = 0  # the same photons twice: counted once
-
-                    if (cp_sum + cs_sum) < floor:
-                        rec.update(
-                            _record(
-                                fname,
-                                det,
-                                color,
-                                cfg,
-                                None,
-                                float("nan"),
-                                cp_sum,
-                                cs_sum,
-                                state=state,
-                                reason=1,
-                            )
-                        )
-                        continue
-
-                    # Write only the fit windows (VV, VH: the detector's gates), zeroing the previous burst's.
-                    d = decay_buf[det]
-                    pv_vv0, pv_vv1, pv_vh0, pv_vh1 = prev_ranges[det]
-                    if pv_vv1 > pv_vv0:
-                        d[pv_vv0:pv_vv1] = 0.0
-                    if pv_vh1 > pv_vh0:
-                        d[n + pv_vh0 : n + pv_vh1] = 0.0
-                    if s1 > s0:
-                        d[s0:s1] = cp_u32[s0:s1]
-                    if t1 > t0:
-                        if do_shift:
-                            _copy_shifted(cs_u32, d, n, t0, t1, do_shift, n)
-                        else:
-                            d[n + t0 : n + t1] = cs_u32[t0:t1]
-                    prev_ranges[det] = (s0, s1, t0, t1)
-
-                    # A state's fit starts from that state's *pooled* lifetime
-                    # when one was fitted (see ``pool_states_worker``): the
-                    # sub-population of a single burst is thin, and starting it
-                    # at the panel's one global guess pulls every state toward
-                    # the same answer, which is the thing the split exists to
-                    # tell apart.
-                    x0 = cfg["x0"]
-                    if state is not None:
-                        x0 = (cfg.get("state_x0") or {}).get(state, x0)
-                    if fitters[det] is None:
-                        # the tail fit: from the tail start (after the decay's peak) to the
-                        # window's end, both polarisations summed
-                        start = min(max(int(cfg.get("tail_bin", s0)), s0), s1)
-                        tail = cp_u32[start:s1].astype(np.float64)
-                        if not cfg.get("mirror"):
-                            tail = tail + cs_u32[start:s1]
-                        tau = tail_lifetime(tail, float(cfg["dt"]))
-                        x = np.array([float(start), tau, np.nan])
-                        reason = reject_reason(cfg, x)
-                        rec.update(
-                            _record(fname, det, color, cfg, None if reason else x, float("nan"),
-                                    cp_sum, cs_sum, state=state, reason=reason)
-                        )
-                        continue
-                    res = fitters[det](
-                        data=d,
-                        initial_values=x0,
-                        fixed=cfg["fixed"],
-                    )
-                    x = np.asarray(res.x, dtype=np.float64)
-                    two_istar = float(res.twoIstar)
-                    reason = reject_reason(cfg, x, res.result("converged"), two_istar)
-                    rec.update(
-                        _record(
-                            fname,
-                            det,
-                            color,
-                            cfg,
-                            None if reason else x,
-                            two_istar,
-                            cp_sum,
-                            cs_sum,
-                            state=state,
-                            extras=None if reason else {
-                                "r_scatter": res.r_scatter,
-                                "r_experimental": res.r_experimental,
-                                "selected_index": res.result("selected_index"),
-                            },
-                            reason=reason,
-                        )
-                    )
-                out.append(rec)
-        return out, len(bursts)
+        return fit_jobs([job]), len(bursts)
     finally:
-        rc_sh.close()
-        if st_sh is not None:
-            st_sh.close()
-        mt_sh.close()
+        for block in blocks:
+            block.close()
+
+
+def pool_states_worker(args):
+    """:func:`pool_state_counts` of one file whose arrays are in shared memory.
+
+    args = (bursts, rc_name, rc_shape, rc_dtype_str, mt_name, mt_shape, mt_dtype_str,
+            det_order, perdet_cfg, state_info)
+    """
+    (bursts, rc_name, rc_shape, rc_dtype, mt_name, mt_shape, mt_dtype, det_order, perdet,
+     state_info) = args
+    if state_info is None:
+        return {}
+    job, blocks = _shared_job((rc_name, rc_shape, rc_dtype, mt_name, mt_shape, mt_dtype), bursts,
+                              det_order, perdet, state_info=state_info)
+    try:
+        return pool_state_counts(job)
+    finally:
+        for block in blocks:
+            block.close()
 
 
 def warm() -> None:

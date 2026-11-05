@@ -899,13 +899,12 @@ class _Memo(dict):
         return (_Memo, ())
 
 
-# -- the fit pool ------------------------------------------------------------------------------------ #
-#: The worker processes of the burst fit, kept between fits: spawning them (a Python start and the
-#: fit imports each) cost about a second per fit, longer than fitting a measurement's bursts.
+# -- the fit threads and the batch pool ------------------------------------------------------------ #
+#: The worker processes of More samples (``more_samples.batch_pool``: each analyses a sample),
+#: kept between batches: spawning them (a Python start and the imports each) costs about a second.
+#: The burst fit itself runs on threads (:meth:`MleSession.run_batch`), not here.
 _FIT_POOL: Any = None
 _FIT_POOL_WORKERS = 0
-#: Bursts per chunk at least: a smaller job is all overhead.
-MIN_CHUNK_BURSTS = 200
 
 
 #: Resident memory of one pool process at its peak, measured on DNA13bp_3.ptu (12 M photons,
@@ -917,7 +916,8 @@ FIT_POOL_MEMORY_SHARE = 0.5
 
 
 def fit_workers() -> int:
-    """Worker processes of the burst fit: every core but one (the UI's), as many as memory allows.
+    """Workers of the burst fit -- its threads (:meth:`MleSession.run_batch`) and the processes of
+    the More samples pool (:func:`fit_pool`): every core but one (the UI's), as many as memory allows.
 
     Counting cores alone started 7 spawned processes per ChiSurf on an 8-core, 16 GB laptop and
     kept them; a few ChiSurf processes at once (a second window, a batch, tests) took 87 Python
@@ -940,7 +940,7 @@ def fit_workers() -> int:
 
 
 def fit_pool(workers: int | None = None):
-    """The kept pool of *workers* fit processes: started on first use, shut down after a minute
+    """The kept pool of *workers* processes (More samples' batch pool): started on first use, shut down after a minute
     without a fit (``CHISURF_POOL_IDLE_S``) and started again by the next
     (:class:`chisurf.core.runtime.idle_pool.IdlePool`): kept for the life of the window, the
     processes of a few ChiSurf windows held memory nobody used."""
@@ -959,7 +959,7 @@ def fit_pool(workers: int | None = None):
 
 
 def warm_fit_pool() -> None:
-    """Start the fit processes now (in the background), so the first fit does not wait for them."""
+    """Start the pool's processes now (in the background), so the first batch does not wait for them."""
     from ._mp_worker import warm
 
     pool = fit_pool()
@@ -968,7 +968,7 @@ def warm_fit_pool() -> None:
 
 
 def warm_fit_pool_quietly() -> None:
-    """:func:`warm_fit_pool` for a background thread: a failure only means the fit starts them.
+    """:func:`warm_fit_pool` for a background thread: a failure only means the batch starts them.
 
     Not under pytest: every test process opening Burst MLE started a pool of its own.
     """
@@ -988,26 +988,6 @@ def _drop_fit_pool() -> None:
     if pool is not None:
         pool.shutdown(wait=False, cancel_futures=True)
 
-
-def _chop_jobs(jobs: list[tuple], workers: int) -> list[tuple]:
-    """*jobs* (one per file) with each file's bursts split into chunks, in burst order.
-
-    About four chunks per worker over all files, so a slow chunk does not hold the batch; never
-    below :data:`MIN_CHUNK_BURSTS` bursts a chunk.
-    """
-    total = sum(len(job[1]) for job in jobs)
-    if not total:
-        return jobs
-    size = max(MIN_CHUNK_BURSTS, -(-total // max(1, 4 * int(workers))))
-    chopped: list[tuple] = []
-    for job in jobs:
-        bursts = list(job[1])
-        if len(bursts) <= size:
-            chopped.append(job)
-            continue
-        for start in range(0, len(bursts), size):
-            chopped.append((job[0], bursts[start : start + size], *job[2:]))
-    return chopped
 
 class LazyTTTRs(collections.abc.MutableMapping):
     """Canonical physical path -> lazily read TTTR; legacy stems resolve only when unique."""
@@ -3022,19 +3002,17 @@ class MleSession:
     def run_batch(
         self, progress=None, max_workers: int | None = None, should_stop=None
     ) -> list[dict]:
-        """Fit every burst of every loaded file and detector in worker processes.
+        """Fit every burst of every loaded file and detector, in this process.
 
-        The photon channels and micro times of each raw file go to the workers through shared memory; each worker
-        returns one row per burst (``Tau (G|G)``, ``gamma (G|G)``, ...). Nothing is exported here: the rows are kept
-        on :attr:`burst_results`.
+        One ``Fit2x.fit_many`` call per chunk of bursts (:func:`._mp_worker.fit_jobs`) on
+        *max_workers* threads (``fit_workers()`` by default): the call releases the GIL and fits
+        in C++, so threads give the throughput worker processes gave, without their memory, the
+        photons' shared-memory copies or pickling. Each burst gives one row per detector
+        (``Tau (G|G)``, ``gamma (G|G)``, ...). Nothing is exported here: the rows are kept on
+        :attr:`burst_results`. *should_stop* is read as each chunk finishes; *progress(done,
+        total)* counts bursts.
         """
-        import multiprocessing as mp
-        import os
-        from concurrent.futures import as_completed
-        from concurrent.futures.process import BrokenProcessPool
-        from multiprocessing import shared_memory
-
-        from ._mp_worker import process_one_file_worker
+        from ._mp_worker import BurstJob, fit_jobs
 
         if self.df_bursts is None or not len(self.tttrs):
             raise ValueError("No burst data loaded.")
@@ -3085,164 +3063,63 @@ class MleSession:
         state_arrays: dict[str, np.ndarray] = {}
         n_states = 0
         if self.split_by_state:
-            from . import state_split
-
             state_arrays, n_states, self.status = self.state_arrays_by_measurement()
         self.n_states = int(n_states)
-        blocks: list[shared_memory.SharedMemory] = []
-        #: one worker argument tuple per measurement
-        jobs: list[tuple] = []
-        try:
-            for fname, bursts in groups.items():
-                tttr = self.tttrs.get(
-                    fname if identity_column == "_measurement_path" else Path(fname).stem
-                )
-                if tttr is None:
-                    jobs.append(
-                        (
-                            fname,
-                            bursts,
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                            det_order,
-                            {},
-                            int(self.settings.shift or 0),
-                            None,
-                        )
+        shift = int(self.settings.shift or 0)
+        jobs: list[BurstJob] = []
+        for fname, bursts in groups.items():
+            tttr = self.tttrs.get(
+                fname if identity_column == "_measurement_path" else Path(fname).stem
+            )
+            if tttr is None:  # every burst gets the no-data row
+                jobs.append(BurstJob(fname, bursts, None, None, det_order, configs, shift))
+                continue
+            rc_full = np.asarray(tttr.routing_channels)
+            mt_full = np.asarray(tttr.micro_times)
+            mt_bins = mt_full // binning if binning > 1 else mt_full
+            rc_max = int(rc_full.max(initial=rc_max_seen)) if rc_full.size else rc_max_seen
+            perdet = {}
+            for det in det_order:
+                chs = self.detectors[det].get("chs", [])
+                # A one-channel detector has no polarisation: its photons are both halves (as in
+                # vv_vh_histogram, the preview), not all VH with an empty VV.
+                mirror = len(chs) < 2
+                pchs = np.asarray(chs if mirror else chs[::2], dtype=int)
+                schs = np.asarray([] if mirror else chs[1::2], dtype=int)
+                lut = np.full(rc_max + 1, -1, dtype=np.int8)
+                if pchs.size:
+                    lut[pchs] = 0
+                if schs.size:
+                    lut[schs] = 1
+                perdet[det] = dict(configs[det], class_lut=lut, mirror=mirror)
+                if configs[det].get("model") == TAIL_MODEL:
+                    # where this detector's tail starts: after the peak of its decay, pooled
+                    # over every burst photon of the file (a burst alone is too thin)
+                    perdet[det]["tail_bin"] = _tail_start_bin(
+                        rc_full, mt_bins, bursts, chs, configs[det]["sb"], configs[det]["eb"]
                     )
-                    continue
-                rc_full = np.asarray(tttr.routing_channels)
-                mt_full = np.asarray(tttr.micro_times)
-                mt_bins = (
-                    (mt_full // binning).astype(np.int32, copy=False)
-                    if binning > 1
-                    else mt_full.astype(np.int32, copy=True)
-                )
-                if rc_full.dtype != np.uint16 and int(rc_full.max(initial=0)) <= 65535:
-                    rc_full = rc_full.astype(np.uint16, copy=False)
-                if mt_bins.dtype != np.uint16 and int(mt_bins.max(initial=0)) <= 65535:
-                    mt_bins = mt_bins.astype(np.uint16, copy=False)
-                rc_shm = shared_memory.SharedMemory(create=True, size=rc_full.nbytes)
-                np.ndarray(rc_full.shape, dtype=rc_full.dtype, buffer=rc_shm.buf)[:] = rc_full
-                mt_shm = shared_memory.SharedMemory(create=True, size=mt_bins.nbytes)
-                np.ndarray(mt_bins.shape, dtype=mt_bins.dtype, buffer=mt_shm.buf)[:] = mt_bins
-                blocks.extend([rc_shm, mt_shm])
-                # The per-photon state, indexed as the routing channels are, in a third shared block.
-                state_info = None
-                states_full = state_arrays.get(fname)
-                if states_full is not None and n_states > 0:
-                    states_full = np.ascontiguousarray(states_full, dtype=np.int8)
-                    st_shm = shared_memory.SharedMemory(create=True, size=states_full.nbytes)
-                    np.ndarray(states_full.shape, dtype=states_full.dtype, buffer=st_shm.buf)[:] = (
-                        states_full
-                    )
-                    blocks.append(st_shm)
-                    state_info = (
-                        st_shm.name,
-                        states_full.shape,
-                        str(states_full.dtype),
-                        int(n_states),
-                    )
-                rc_max = int(rc_full.max(initial=rc_max_seen)) if rc_full.size else rc_max_seen
-                perdet = {}
-                for det in det_order:
-                    chs = self.detectors[det].get("chs", [])
-                    # A one-channel detector has no polarisation: its photons are both halves (as in
-                    # vv_vh_histogram, the preview), not all VH with an empty VV.
-                    mirror = len(chs) < 2
-                    pchs = np.asarray(chs if mirror else chs[::2], dtype=int)
-                    schs = np.asarray([] if mirror else chs[1::2], dtype=int)
-                    lut = np.full(rc_max + 1, -1, dtype=np.int8)
-                    if pchs.size:
-                        lut[pchs] = 0
-                    if schs.size:
-                        lut[schs] = 1
-                    perdet[det] = dict(configs[det], class_lut=lut, mirror=mirror)
-                    if configs[det].get("model") == TAIL_MODEL:
-                        # where this detector's tail starts: after the peak of its decay, pooled
-                        # over every burst photon of the file (a burst alone is too thin)
-                        perdet[det]["tail_bin"] = _tail_start_bin(
-                            rc_full, mt_bins, bursts, chs, configs[det]["sb"], configs[det]["eb"]
-                        )
-                    timing = self.timing_ns(tttr, binning)
-                    if timing[0] is not None and timing[1] is not None:
-                        perdet[det]["dt"], perdet[det]["period"] = timing
-                jobs.append(
-                    (
-                        fname,
-                        bursts,
-                        rc_shm.name,
-                        rc_full.shape,
-                        str(rc_full.dtype),
-                        mt_shm.name,
-                        mt_bins.shape,
-                        str(mt_bins.dtype),
-                        det_order,
-                        perdet,
-                        int(self.settings.shift or 0),
-                        state_info,
-                    )
-                )
-            ctx = mp.get_context("spawn")
-            workers = max_workers or fit_workers()
-            # A file's bursts are independent: chopped into chunks, every core fits (one job per file
-            # left one measurement -- the usual case -- on one core).
-            jobs = _chop_jobs(jobs, workers)
-            results: list[dict] = []
-            total = int(row_count(self.df_bursts))
-            done = 0
-            # The pooled per-state fit comes first: its lifetimes are the numbers to quote and the start values of
-            # every per-burst fit of that state.
-            self.state_lifetimes = []
-            if n_states > 0 and jobs:
-                from . import state_split
+                timing = self.timing_ns(tttr, binning)
+                if timing[0] is not None and timing[1] is not None:
+                    perdet[det]["dt"], perdet[det]["period"] = timing
+            states_full = state_arrays.get(fname) if n_states > 0 else None
+            jobs.append(BurstJob(fname, bursts, rc_full, mt_bins, det_order, perdet, shift,
+                                 states_full, int(n_states) if states_full is not None else 0))
+        # The pooled per-state fit comes first: its lifetimes are the numbers to quote and the
+        # start values of every per-burst fit of that state.
+        self.state_lifetimes = []
+        if n_states > 0 and jobs:
+            from . import state_split
 
-                model = self.settings_of(det_order[0]).model if det_order else self.template.model
-                self.state_lifetimes, _seeded, self.status = state_split.pooled_state_fits(
-                    jobs,
-                    det_order,
-                    ctx,
-                    workers,
-                    model,
-                    ["tau", "gamma", "r0", "rho"],
-                    int(self.settings.shift or 0),
-                    should_stop=should_stop,
-                )
-            ex = fit_pool(workers)
-            futures = {ex.submit(process_one_file_worker, j): i for i, j in enumerate(jobs)}
-            # in job order (files, then their chunks in burst order), whichever chunk finished first
-            by_job: list[list[dict]] = [[] for _ in jobs]
-            for fut in as_completed(futures):
-                if should_stop is not None and should_stop():
-                    for pending in futures:
-                        pending.cancel()
-                    raise InterruptedError("The burst fit was stopped.")
-                index = futures[fut]
-                try:
-                    out, n = fut.result()
-                except BrokenProcessPool:
-                    _drop_fit_pool()
-                    raise
-                except Exception as exc:  # a chunk failed: name the file rather than export a short table
-                    self.status = f"{jobs[index][0]} failed: {exc}"
-                    out, n = [], 0
-                by_job[index] = out
-                done += n
-                if progress is not None:
-                    progress(min(done, total), total)
-            for out in by_job:
-                results.extend(out)
-        finally:
-            for block in blocks:
-                try:
-                    block.close()
-                    block.unlink()
-                except Exception:
-                    pass
+            model = self.settings_of(det_order[0]).model if det_order else self.template.model
+            self.state_lifetimes, _seeded, self.status = state_split.pooled_state_fits(
+                jobs, det_order, model, ["tau", "gamma", "r0", "rho"], shift,
+                should_stop=should_stop,
+            )
+        errors: list[str] = []
+        results = fit_jobs(jobs, max_workers or fit_workers(), should_stop=should_stop,
+                           progress=progress, errors=errors)
+        if errors:  # a chunk failed: named, its bursts kept as rejected rows
+            self.status = "; ".join(errors[:3])
         self.burst_results = results
         self.batch_settings_snapshot = copy.deepcopy(self.channel_settings())
         self.batch_files_snapshot = self.measurement_files()
