@@ -620,6 +620,24 @@ def extract_irf_background(
     return results
 
 
+def _period_histogram_of(histograms, channels, binning: int, period: int, tttr) -> np.ndarray:
+    """``period_histogram`` of the photons that *histograms* (raw micro-time histograms per routing
+    channel) count in *channels*: ``get_microtime_histogram``'s ``n_micro_channels // binning``
+    bins (nothing past them; no photons, no bins), cut to one excitation period."""
+    rows = [np.asarray(histograms[c], dtype=np.float64) for c in channels if c in histograms]
+    raw = np.sum(rows, axis=0) if rows else np.zeros(0)
+    if not raw.size or raw.sum() <= 0:
+        return np.zeros(0)
+    b = max(1, int(binning))
+    n_bins = max(1, int(tttr.header.number_of_micro_time_channels) // b)
+    padded = np.zeros(-(-raw.size // b) * b)
+    padded[: raw.size] = raw
+    binned = padded.reshape(-1, b).sum(axis=1)
+    hist = np.zeros(n_bins)
+    hist[: min(n_bins, binned.size)] = binned[:n_bins]
+    return hist[: max(1, -(-int(period) // b))]
+
+
 def extract_mle_irf_background(
     tttr: tttrlib.TTTR,
     detectors: Mapping[str, Mapping[str, Any]],
@@ -632,6 +650,7 @@ def extract_mle_irf_background(
     baseline_quantile: float = 0.2,
     irf_model: str = "gaussian",
     irf_shape: float = 0.0,
+    histograms: Mapping[int, np.ndarray] | None = None,
 ) -> dict[str, dict[str, np.ndarray]]:
     """Build MLE-ready IRF and background patterns from the non-burst photons.
 
@@ -689,6 +708,10 @@ def extract_mle_irf_background(
     irf_shape : float
         Skewness of the fitted pulse (0 = symmetric Gaussian). ``irf_model=
         "skewed"`` selects a sensible non-zero default when this is 0.
+    histograms : Mapping[int, numpy.ndarray], optional
+        The selected photons as raw micro-time histograms per routing channel (from
+        ``tttrlib.BurstPipeline`` / ``StrictBackground``) instead of a *mask*: the same
+        patterns, with no photon mask and no photon subset copied out.
 
     Returns
     -------
@@ -696,17 +719,20 @@ def extract_mle_irf_background(
         ``{detector_name: {"irf": vv_vh_irf, "bg": vv_vh_bg}}``, each array the
         parallel and perpendicular halves concatenated.
     """
-    if mask is None:
-        keep = non_burst_mask(
-            tttr,
-            min_photons=min_photons,
-            photon_window=photon_window,
-            time_window=time_window,
-        )
+    if histograms is not None:
+        non_burst = None
     else:
-        keep = np.asarray(mask, dtype=bool)
-    keep_idx = np.where(keep)[0]
-    non_burst = tttr[keep_idx] if keep_idx.size else tttr[np.array([], dtype=int)]
+        if mask is None:
+            keep = non_burst_mask(
+                tttr,
+                min_photons=min_photons,
+                photon_window=photon_window,
+                time_window=time_window,
+            )
+        else:
+            keep = np.asarray(mask, dtype=bool)
+        keep_idx = np.where(keep)[0]
+        non_burst = tttr[keep_idx] if keep_idx.size else tttr[np.array([], dtype=int)]
 
     binning = max(1, int(micro_time_binning))
     from chisurf.core.fio.micro_time import channels_per_period, period_histogram
@@ -727,11 +753,14 @@ def extract_mle_irf_background(
         a gated PIE acceptor would otherwise take the other laser's pulse -- the stronger one in
         its channels -- as its IRF, outside its fit window, and every lifetime ran to the bound.
         """
-        rout = np.asarray(non_burst.routing_channel)
-        sel = channel_mask(rout, channels)
-        sub = non_burst[np.where(sel)[0]]
-        # one excitation period of the measurement (not the TDC range its header names)
-        hist = period_histogram(sub, binning, period=period)
+        if histograms is not None:
+            hist = _period_histogram_of(histograms, channels, binning, period, tttr)
+        else:
+            rout = np.asarray(non_burst.routing_channel)
+            sel = channel_mask(rout, channels)
+            sub = non_burst[np.where(sel)[0]]
+            # one excitation period of the measurement (not the TDC range its header names)
+            hist = period_histogram(sub, binning, period=period)
         ranges = [r for r in (gates or []) if r is not None and len(r) >= 2]
         inside = np.ones(hist.size, dtype=bool)
         if ranges and hist.size:

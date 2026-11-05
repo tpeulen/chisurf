@@ -9,6 +9,28 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
+**The burst pipeline as one tttrlib pass (2026-11-05, default on).** The search, the burst table,
+the outside-burst and strict backgrounds and the per-burst decays and fits run as tttrlib
+`BurstPipeline` / `StrictBackground` calls, with no photon arrays copied into Python
+([fused burst pipeline](/architecture/fused-burst-pipeline.md)).
+
+- DNA13bp_3 on home, median of 3 runs:
+
+  | Stage | Python path | Fused |
+  |---|---:|---:|
+  | search stage | 6.4 s | 3.7 s |
+  | strict background | 12.5 s | 2.4 s |
+  | outside background | 2.3 s | 0.6 s |
+  | `run_batch` | 12.4 s | 12.0 s |
+  | these stages together | 34 s | 19 s |
+  | process peak RSS | 0.82 GB | 0.65 GB |
+
+- Output: bit-identical tables, background patterns, fits and rejection codes. The only
+  difference is 3e-15 in the tail-fit tau.
+- Open: the fit itself (10.7 s native), the `run_batch` preamble's ~149 MB of copies, and the
+  table writer and reader's ~200 k calls. The resume point is that concept's "Where to pick
+  this up".
+
 **Pipeline wall time and the slow frames after a fit: measured, four overheads fixed, the rest
 handed to their lanes (2026-11-05).** Owner: "the burst processing can be in general faster, there
 are somehow overheads" and "after processing the ui is super slow". Measurement and table:

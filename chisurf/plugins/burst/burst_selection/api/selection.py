@@ -676,48 +676,64 @@ def analyze_file(
     window_warning = windows_message(windows_preflight(tttr, record, detectors=detectors or {}))
     # what is applied: the windows and gates in this measurement's channels
     applied = applied_windows(record, detectors, tttr)
-    selected = apply_photon_filters(
-        tttr,
-        analysis_settings.photon_filter,
-        burst_detection=analysis_settings.burst_detection,
-    )
-    # Both bounds come from the settings, and used not to. ``max_gap`` was left
-    # at this function's own default of 4, so a run configured to bridge nothing
-    # still bridged four photons; ``min_photons`` was applied by the
-    # sliding-window search alone, so every other search returned runs of two
-    # photons as bursts.
-    photon_filter = analysis_settings.photon_filter
-    search_gap = photon_filter.max_gap if photon_filter.use_gap_fill else 0
-    start_stop = find_bursts(selected, max_gap=search_gap)
-    # The floor of 2 is what keeps the reported ``n_bursts`` equal to the number
-    # of rows in the table: the summarizer already skips a burst whose last
-    # photon is not past its first, so counting those here reported thousands of
-    # bursts that were never written.
-    start_stop = drop_short_bursts(
-        start_stop, max(2, analysis_settings.burst_detection.min_photons)
-    )
     output_resolution = (
         float(tttr.header.macro_time_resolution)
         if macro_time_resolution is None
         else float(macro_time_resolution)
     )
     alex = _recorded_alex(tttr)
-    df = summarize_bursts(
-        start_stop,
-        # The *measurement's* name, which for a container is the instrument
-        # file inside it rather than the container itself. `First File` names
-        # what a burst was found in, and a reader resolving it against an
-        # unpacked folder would otherwise look for an `m000.pto` that is not
-        # there beside the `m000.spc` it just recovered. It is also what makes
-        # the analysis of a container and of the vendor file it holds produce
-        # byte-identical tables, which is the claim `.pto` has to be able to
-        # make about the folder it replaces.
-        _measurement_name(path),
-        tttr,
-        windows=applied["windows"],
-        detectors=applied["detectors"],
-        macro_time_resolution=output_resolution,
+    # The search, the selection mask and the table in one native pass when the configuration
+    # is one it reproduces (okf/architecture/fused-burst-pipeline.md); None: the Python path.
+    from chisurf.core.fluorescence.burst import fused_pipeline
+
+    fused = (
+        fused_pipeline.search_and_summarize(
+            tttr, analysis_settings, applied, _measurement_name(path), output_resolution
+        )
+        if fused_pipeline.enabled()
+        else None
     )
+    if fused is not None:
+        start_stop, df, fused_result = fused
+        n_selected = int(fused_result.stats()["selected_photons"])
+    else:
+        selected = apply_photon_filters(
+            tttr,
+            analysis_settings.photon_filter,
+            burst_detection=analysis_settings.burst_detection,
+        )
+        # Both bounds come from the settings, and used not to. ``max_gap`` was left
+        # at this function's own default of 4, so a run configured to bridge nothing
+        # still bridged four photons; ``min_photons`` was applied by the
+        # sliding-window search alone, so every other search returned runs of two
+        # photons as bursts.
+        photon_filter = analysis_settings.photon_filter
+        search_gap = photon_filter.max_gap if photon_filter.use_gap_fill else 0
+        start_stop = find_bursts(selected, max_gap=search_gap)
+        # The floor of 2 is what keeps the reported ``n_bursts`` equal to the number
+        # of rows in the table: the summarizer already skips a burst whose last
+        # photon is not past its first, so counting those here reported thousands of
+        # bursts that were never written.
+        start_stop = drop_short_bursts(
+            start_stop, max(2, analysis_settings.burst_detection.min_photons)
+        )
+        df = summarize_bursts(
+            start_stop,
+            # The *measurement's* name, which for a container is the instrument
+            # file inside it rather than the container itself. `First File` names
+            # what a burst was found in, and a reader resolving it against an
+            # unpacked folder would otherwise look for an `m000.pto` that is not
+            # there beside the `m000.spc` it just recovered. It is also what makes
+            # the analysis of a container and of the vendor file it holds produce
+            # byte-identical tables, which is the claim `.pto` has to be able to
+            # make about the folder it replaces.
+            _measurement_name(path),
+            tttr,
+            windows=applied["windows"],
+            detectors=applied["detectors"],
+            macro_time_resolution=output_resolution,
+        )
+        n_selected = int(np.count_nonzero(selected))
 
     output_paths: dict[str, str] = {}
     # An explicit `output_dir` is a request for the legacy folder, and the

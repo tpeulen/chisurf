@@ -1,3 +1,8 @@
+burst:
+  # The burst pipeline (search, burst table, strict background, per-burst fits) as tttrlib's
+  # fused BurstPipeline: one native call per stage instead of Python between every one.
+  # CHISURF_FUSED_BURST_PIPELINE overrides it. See okf/architecture/fused-burst-pipeline.md.
+  fused_pipeline: true
 correlator:
   B: 9
   fine: 0

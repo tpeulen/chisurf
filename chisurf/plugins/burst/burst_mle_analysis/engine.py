@@ -1792,7 +1792,13 @@ class MleSession:
         if tttr is None or not self.burst_index_array().size:
             return {}
 
+        from chisurf.core.fluorescence.burst import fused_pipeline
+
+        fused = fused_pipeline.enabled()
+
         def select():
+            if fused:  # natively, histograms instead of a photon mask
+                return fused_pipeline.session_strict_background(self, tttr)
             in_burst = np.zeros(len(tttr), dtype=bool)
             in_burst[self.burst_index_array()] = True
             chs = sorted({int(c) for d in self.detectors.values() for c in d.get("chs", [])})
@@ -1808,7 +1814,10 @@ class MleSession:
             "photons": strict.photons, "warning": strict.warning, "rate_scale": strict.rate_scale,
         }
         dets = list(detectors) if detectors is not None else list(self.detectors)
-        if strict.photons:
+        if strict.photons and isinstance(strict, fused_pipeline.StrictBackground):
+            for det, bg in fused_pipeline.session_background_patterns(self, tttr, strict, dets).items():
+                self.bg_strict_np[det] = np.asarray(bg, dtype=float)
+        elif strict.photons:
             patterns = extract_mle_irf_background(
                 tttr, {d: self.detectors[d] for d in dets},
                 micro_time_binning=self.settings.micro_time_binning, mask=strict.mask,
@@ -1882,17 +1891,23 @@ class MleSession:
         from chisurf.core.fluorescence.burst import extract_mle_irf_background
 
         tttr = self.current_tttr()
-        idx = self.burst_index_array()
-        in_burst = np.zeros(len(tttr), dtype=bool)
-        in_burst[idx] = True
-        patterns = extract_mle_irf_background(
-            tttr,
-            self.detectors,
-            micro_time_binning=self.settings.micro_time_binning,
-            mask=~in_burst,
-            min_photons=max(2, int(self.settings.min_photons)),
-            irf_model=self.settings.irf_model,
-        )
+        from chisurf.core.fluorescence.burst import fused_pipeline
+
+        if fused_pipeline.enabled():  # histograms of the photons outside the bursts, natively
+            patterns = fused_pipeline.session_outside_patterns(
+                self, tttr, self.detectors, irf_model=self.settings.irf_model)
+        else:
+            idx = self.burst_index_array()
+            in_burst = np.zeros(len(tttr), dtype=bool)
+            in_burst[idx] = True
+            patterns = extract_mle_irf_background(
+                tttr,
+                self.detectors,
+                micro_time_binning=self.settings.micro_time_binning,
+                mask=~in_burst,
+                min_photons=max(2, int(self.settings.min_photons)),
+                irf_model=self.settings.irf_model,
+            )
         n = 0
         label = dict(IRF_MODELS).get(self.settings.irf_model, self.settings.irf_model).lower()
         for det, pat in patterns.items():
@@ -2360,16 +2375,22 @@ class MleSession:
         tttr = self.current_tttr()
         if not missing or tttr is None or not self.burst_index_array().size:
             return []
-        in_burst = np.zeros(len(tttr), dtype=bool)
-        in_burst[self.burst_index_array()] = True
-        patterns = extract_mle_irf_background(
-            tttr,
-            {d: self.detectors[d] for d in missing},
-            micro_time_binning=self.settings.micro_time_binning,
-            mask=~in_burst,
-            min_photons=max(2, int(self.settings.min_photons)),
-            irf_model=self.settings.irf_model,
-        )
+        from chisurf.core.fluorescence.burst import fused_pipeline
+
+        if fused_pipeline.enabled():  # histograms of the photons outside the bursts, natively
+            patterns = fused_pipeline.session_outside_patterns(
+                self, tttr, {d: self.detectors[d] for d in missing}, irf_model=self.settings.irf_model)
+        else:
+            in_burst = np.zeros(len(tttr), dtype=bool)
+            in_burst[self.burst_index_array()] = True
+            patterns = extract_mle_irf_background(
+                tttr,
+                {d: self.detectors[d] for d in missing},
+                micro_time_binning=self.settings.micro_time_binning,
+                mask=~in_burst,
+                min_photons=max(2, int(self.settings.min_photons)),
+                irf_model=self.settings.irf_model,
+            )
         done = []
         for det, pat in patterns.items():
             if det in missing:
@@ -3043,6 +3064,22 @@ class MleSession:
         )
         for det, cfg in configs.items():
             cfg["half_len"] = max(1, cfg["irf"].size // 2) if cfg["irf"].size else max(1, period_bins)
+        from chisurf.core.fluorescence.burst import fused_pipeline
+
+        if fused_pipeline.enabled():
+            # decays and fits of every burst natively, from the photons in place
+            # (okf/architecture/fused-burst-pipeline.md); None: a split by state, the path below
+            results = fused_pipeline.fit_session(
+                self, configs, det_order, binning, threads=max_workers or fit_workers(),
+                should_stop=should_stop, progress=progress,
+            )
+            if results is not None:
+                self.state_lifetimes = []
+                self.n_states = 0
+                self.burst_results = results
+                self.batch_settings_snapshot = copy.deepcopy(self.channel_settings())
+                self.batch_files_snapshot = self.measurement_files()
+                return results
         rc_max_seen = max(
             (int(np.max(info["chs"])) for info in self.detectors.values() if info.get("chs")),
             default=0,
