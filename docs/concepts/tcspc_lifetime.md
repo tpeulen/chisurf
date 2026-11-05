@@ -233,6 +233,27 @@ fitted). With tens of photons a two-lifetime split is often not identifiable;
 check the fitted decay and residuals rather than adding components. See
 {doc}`/guides/21_lifetime_from_bursts`.
 
+Fit23's model of a burst decay is
+
+$$
+M_i = S\left[(1-\gamma)\,\frac{F_i}{\sum_j F_j} + \gamma\,\frac{B_i}{\sum_j B_j}\right],
+$$
+
+$F$ the IRF convolved with $e^{-t/\tau}(1 + (2-3l_1)r_0e^{-t/\rho})$ (VV) and
+$G^{-1}e^{-t/\tau}(1 - (1-3l_2)r_0e^{-t/\rho})$ (VH), $S$ the photons in the
+window, $B$ the background pattern and $\gamma$ its share. So the constant floor
+of a decay -- detector dark counts, the afterpulsing of the detected photons and
+uncorrelated light -- enters only through $B$: Burst MLE takes its flat part from
+the burst decay itself (the gate before the prompt), because a rate measured
+outside the bursts misses the afterpulsing of the burst photons. $\rho$ is not
+searched: free, it follows from the decay's steady-state anisotropy $r$
+(background-corrected with $\gamma$) by Perrin, $\rho = \tau/(r_0/r-1)$. The
+score is $2I^*$ of the VV and VH channels as two Poisson channels, or (**2I*:
+P+2S**) the exact likelihood of the rotation-free sum $C_p + 2C_s$
+{cite}`maus2001`; on simulated bursts both, with or without the soft-BIFL
+background term, give the same lifetime bias and spread
+({ref}`fig-21-mle-objectives-simulated`).
+
 ## Average lifetimes and fractions
 
 A multi-exponential decay has **two inequivalent averages**. The

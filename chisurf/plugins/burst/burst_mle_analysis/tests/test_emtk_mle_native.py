@@ -148,10 +148,11 @@ def test_auto_irf_background_click_equals_the_engine_and_draws_its_curves(monkey
     bands = [c[1] for c in spy.calls if c[0] == "plot_shaded"]
     assert bands == ["Fit window##Fit window0", "##Fit window1", "IRF range##IRF range0", "##IRF range1"]
     lines = sorted({c[1] for c in spy.calls if c[0] != "plot_shaded" and not c[1].startswith("##")})
-    assert lines == ["Background", "Data (VV|VH)", "IRF", "Model (fit)", "w.res."]
-    # under the decay, the weighted residuals of the fit windows: (data - model) / sqrt(model)
+    assert lines == ["Background (fit)", "Data (VV|VH)", "IRF", "Model (fit)", "w.res."]
+    # in the strip over the decay, the weighted residuals of the fit windows: (data - model) /
+    # sqrt(model), one trace on the decay's x, NaN (a gap) outside the windows
     drawn = np.concatenate([c[2][1] for c in spy.calls if c[1] == "w.res."])
-    np.testing.assert_allclose(drawn, curves.residuals)
+    np.testing.assert_allclose(drawn[np.isfinite(drawn)], curves.residuals)
     inside = curves.model > 0
     np.testing.assert_allclose(
         curves.residuals[inside],
@@ -202,7 +203,14 @@ def test_the_parameter_table_edits_a_start_value_and_a_fixed_flag(fitted):
     for _ in range(3):
         drv.app.wheel(200, 400, -3.0)
         drv.draw(1)
-    cell = drv.text_rect(drv.draw(2), "4")
+    # the '4' in the Start column (the residual strip's ticks over the decay hold a '4' too)
+    painter = drv.draw(2)
+    start = drv.text_rect(painter, "Start")
+    cell = [
+        t[:4] for t in painter.texts
+        if t[5] == "4" and t[0] < start[0] + start[2] + 40 and t[0] + t[2] > start[0] - 80
+        and t[1] > start[1]
+    ][0]
     drv.click((cell[0], cell[1], cell[2], cell[3]), clicks=2)
     assert window_table(window).editing is not None, (
         "a double click on the Start cell did not open it"

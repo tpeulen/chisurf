@@ -348,6 +348,64 @@ def process_background(arr: np.ndarray | None, shift: int, like: np.ndarray) -> 
     return np.hstack([vv, vh])
 
 
+#: Bins kept clear of the IRF's onset when the floor of a decay is read before its prompt.
+FLOOR_MARGIN_BINS = 3
+#: Fewest bins before the prompt a floor is read from: fewer leave it to the background rate.
+MIN_FLOOR_BINS = 8
+
+
+def decay_floor(
+    decay: np.ndarray, irf: np.ndarray | None, gate: tuple[int, int] | None
+) -> tuple[float, float, int] | None:
+    """The flat floor of a VV | VH decay, counts per bin of each polarisation: the mean of the
+    bins of the gate before its prompt (before the IRF rises above a thousandth of its peak,
+    less :data:`FLOOR_MARGIN_BINS`). There nothing of this pulse has arrived and the previous
+    pulse's fluorescence has decayed, so what is left is constant over the period: detector dark
+    counts, afterpulsing (a share of the detected signal, so higher inside bursts than outside)
+    and uncorrelated light. ``(vv, vh, bins)``; ``None`` with fewer than :data:`MIN_FLOOR_BINS`
+    such bins (a prompt at the gate's start)."""
+    decay = np.asarray(decay, dtype=float)
+    n = decay.size // 2
+    if n < MIN_FLOOR_BINS:
+        return None
+    lo, hi = gate if gate is not None else (0, n)
+    lo, hi = max(0, int(lo)), min(n, int(hi))
+    irf = np.asarray(irf, dtype=float) if irf is not None else np.zeros(0)
+    floors = []
+    for half in (0, 1):
+        stop = hi
+        if irf.size == 2 * n:
+            part = irf[half * n : (half + 1) * n][lo:hi]
+            if part.size and part.max() > 0:
+                stop = lo + int(np.flatnonzero(part > 1e-3 * part.max())[0]) - FLOOR_MARGIN_BINS
+        if stop - lo < MIN_FLOOR_BINS:
+            return None
+        floors.append((float(decay[half * n + lo : half * n + stop].mean()), stop - lo))
+    return floors[0][0], floors[1][0], min(floors[0][1], floors[1][1])
+
+
+def with_floor(
+    pattern: np.ndarray, floor: tuple[float, float], gate: tuple[int, int] | None,
+    reference: tuple[float, float] | None = None,
+) -> np.ndarray:
+    """*pattern* (a background in counts, VV | VH) with its flat part replaced by *floor*
+    (counts per bin, each polarisation, inside the *gate*): what lies above the pattern's own
+    flat level *reference* (its scatter) is kept. *reference* ``None``: the pattern's own floor
+    is taken as zero (it is all scatter)."""
+    pattern = np.asarray(pattern, dtype=float)
+    n = pattern.size // 2
+    lo, hi = gate if gate is not None else (0, n)
+    out = np.zeros_like(pattern)
+    for half in (0, 1):
+        part = pattern[half * n : (half + 1) * n]
+        own = float(reference[half]) if reference is not None else 0.0
+        excess = np.clip(part - own, 0.0, None)
+        flat = np.zeros(n)
+        flat[max(0, lo) : min(n, hi)] = float(floor[half])
+        out[half * n : (half + 1) * n] = flat + excess
+    return out
+
+
 def flat_scatter_background(*args, **kwargs):
     """The flat + scatter background of a histogram of background photons: the burst
     background estimator's (:func:`chisurf.core.fluorescence.burst.irf_bg.flat_scatter_background`),
@@ -1036,7 +1094,10 @@ class MleSettings:
     #: The scatter fraction is fitted: a fixed guess was the largest error of the summed-decay fit.
     fix_gamma: bool = False
     fix_r0: bool = True
-    fix_rho: bool = True
+    #: The rotation is fitted: fit23 takes it from each decay's steady-state anisotropy (Perrin,
+    #: corrected for the background fraction), so a free rho costs no stability; a fixed 1.22 ns
+    #: described no dye (Rh110 rotates in 0.17 ns).
+    fix_rho: bool = False
     #: The relative shift of the VH decay against VV, whole bins: the VH half of the data (and of
     #: the IRF and background with it) is rolled by it.
     shift: int = 0
@@ -1061,6 +1122,11 @@ class MleSettings:
     micro_time_stop: int = -1
     micro_time_binning: int = 1
     min_photons: int = 5
+    #: The fit's flat background is the burst decay's own floor before the prompt
+    #: (:func:`decay_floor`: dark counts, afterpulsing, uncorrelated light); off: the background
+    #: rate times the time in the bursts alone, which misses the afterpulsing of the burst
+    #: photons and left the summed decay's tail under its floor.
+    floor_from_bursts: bool = True
     p2s_twoIstar: bool = True
     BIFL_scatter: bool = False
     #: Shape of an IRF estimated from the photons outside the bursts (the last resort, see
@@ -1571,7 +1637,8 @@ class MleSession:
         times = self.time_in_bursts()
         irf = self.irf_np.get(det)
         key = (det, id(outside), id(strict), id(buffer), id(irf), times,
-               int(self.settings_of(det).micro_time_binning))
+               int(self.settings_of(det).micro_time_binning),
+               bool(self.settings_of(det).floor_from_bursts))
         cache = self.__dict__.setdefault("_background_cache", {})
         if cache.get(det, (None,))[0] == key:
             return cache[det][1]
@@ -1628,9 +1695,49 @@ class MleSession:
         info["rate_khz"] = float(rate.sum()) / 1e3
         info["seconds_inside"] = inside
         counts = rate * inside if inside is not None else rate
+        counts = self._floor_of_bursts(det, counts, info)
         self.background_info[det] = info
         cache[det] = (key, counts)
         return counts
+
+    def burst_decay_of(self, det: str) -> np.ndarray | None:
+        """*det*'s decay of every burst photon of the current file, every channel (not cut to a
+        window, the VH half not rolled): what its floor is read from (:func:`decay_floor`)."""
+        tttr = self.current_tttr()
+        idx = self.burst_index_array()
+        chs = self.detectors.get(det, {}).get("chs", [])
+        if tttr is None or not chs or idx.size == 0:
+            return None
+        binning = max(1, int(self.settings_of(det).micro_time_binning))
+        photons = self._memo("burst_tttr", lambda: tttr[idx])
+        return self._memo(
+            f"burst_decay_all{det}{binning}",
+            lambda: np.asarray(vv_vh_histogram(
+                photons, chs, (0, 0), binning, normalize_counts=0, apply_vh_shift=False
+            ), dtype=float),
+        )
+
+    def _floor_of_bursts(self, det: str, counts: np.ndarray, info: dict) -> np.ndarray:
+        """*counts* (the background inside the bursts, from the background rate) with its flat
+        part replaced by the burst decay's own floor (:func:`decay_floor`, when
+        ``floor_from_bursts``): the rate counts the dark counts and the uncorrelated light over
+        the bursts' time but not the afterpulsing of the burst photons, so the decay's tail stayed
+        above the model's floor. What it was, and what the rate alone gave, go to *info*."""
+        if not self.settings_of(det).floor_from_bursts:
+            return counts
+        decay = self.burst_decay_of(det)
+        irf = self.irf_np.get(det)
+        if decay is None or irf is None or np.asarray(decay).size != np.asarray(counts).size:
+            return counts
+        gate = self._gate_window(det, decay.size // 2)
+        floor = decay_floor(decay, irf, gate)
+        if floor is None:
+            return counts
+        own = decay_floor(counts, irf, gate)
+        info["floor_bursts"] = (floor[0], floor[1])
+        info["floor_rate"] = (own[0], own[1]) if own is not None else None
+        info["floor_bins"] = floor[2]
+        return with_floor(counts, floor[:2], gate, own[:2] if own is not None else None)
 
     def time_in_bursts(self) -> tuple[float, float] | None:
         """``(seconds inside the bursts, seconds of the measurement)`` of the current file."""
@@ -2700,7 +2807,7 @@ class MleSession:
             d,
             model,
             self.irf(),
-            self.background_in_bursts(),
+            self.fitted_background(d, res, list(fit.parameter_names)),
             self.window_ranges(),
             tail=self.settings.model == "tail",
             diverged=diverged,
@@ -2720,6 +2827,29 @@ class MleSession:
         )
         self.status = "" if not diverged else "Fit diverged: invalid fit quality (2I* < 0)"
         return self.outcome
+
+    def fitted_background(self, d: np.ndarray, res: Any, names: list[str]) -> np.ndarray:
+        """The background the fit put into its model, in counts of the decay *d*: the pattern
+        (shaped as :meth:`background`), its share of the window's photons the fitted ``gamma``
+        -- what Fit2x adds -- so the line drawn is the model's own background, not the expected
+        one beside it (that was drawn at the floor while the model's ran under it). Without a
+        ``gamma`` the expected background (:meth:`background_in_bursts`)."""
+        expected = self.background_in_bursts()
+        if "gamma" not in names:
+            return expected
+        gamma = float(np.asarray(res.x, dtype=float)[names.index("gamma")])
+        pattern = np.asarray(expected, dtype=float)
+        n = pattern.size // 2
+        window = fit_window(self.window_ranges(), n)
+        lo, hi = window if window is not None else (0, n)
+        inside = np.zeros_like(pattern)
+        inside[lo:hi] = pattern[lo:hi]
+        inside[n + lo : n + hi] = pattern[n + lo : n + hi]
+        total = float(inside.sum())
+        if not np.isfinite(gamma) or total <= 0.0:
+            return expected
+        counts = float(np.sum(d[lo:hi]) + np.sum(d[n + lo : n + hi]))
+        return pattern / total * gamma * counts
 
     def _fit_tail(self, d: np.ndarray, x0: np.ndarray, fixed: np.ndarray) -> FitOutcome | None:
         """Fit the tail of the total decay (VV + VH) with a sum of exponentials; no IRF is deconvolved.

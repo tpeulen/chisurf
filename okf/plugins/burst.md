@@ -9,6 +9,39 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
+**Burst MLE: rho free, the decay's floor, excluded fits, objectives, G after a restore (2026-11-05).**
+Owner: "by default fit rho", "detector dark counts and bg are not accounted for", "BIFL scatter
+and the 2I* P + 2S what is best default?", "the mean lifetimes are weird, outliers must be
+removed", "still the g factor from Rh110 is not used". Measured on `ssh home` with
+`scratchpad/mlebg/bench_home.py` / `sim_bench.py` (copies of the owner's data in `$DATA`; home's
+tttrlib 0.27 lacks the pure-Python `polarization_channels` etc. -- a `sitecustomize` shim adds
+them from the shared tree's `ext/python/ChannelSetup.py`; a real fix is rebuilding home's tttrlib).
+1. *G lost*: Data Selection restored `applied_g` (G|G 1.436) with the session while the setup came
+   back from the library at G 1.0; `apply_all_g` read that as a hand edit and never wrote G again
+   (the owner's `~/.chisurf/emtk/burst_analysis.settings.json`). A setup at G 1.0 is never a hand
+   edit now (`_edited_by_hand`). Guard: `burst_analysis/tests/test_reference_g_after_restore.py`.
+2. *Floor*: `engine.decay_floor` / `with_floor` / `MleSession._floor_of_bursts`
+   (`floor_from_bursts`): the background's flat part is the burst decay's mean before the prompt
+   (G|G 21 / 26 per bin vs the rate's 13.5 / 23 -- the afterpulsing of the burst photons). The
+   plot's **Background (fit)** is the model's own (`fitted_background`). Fit23 on Rh110 with the
+   Burst MLE pattern: 212 (rho 1.22 fixed, rate floor) -> 1.21 (rho free, decay floor). The summed
+   DNA13bp_3 G|G stays at chi2_r 11.6 with one lifetime: it is a FRET mix (two lifetimes 2.9, guide 21).
+3. *rho free by default* (`MleSettings.fix_rho = False`): fit23 derives rho by Perrin from the
+   background-corrected steady-state anisotropy, never by search, so no fit failed on simulations.
+   On RVZMT150's R|R it hits 0 because the red VV/VH are swapped (setup fix, owner's step 0).
+4. *Excluded fits*: `_mp_worker.reject_reason` (codes `REJECT_REASONS`), row key `Fit rejected (<det>)`
+   (not exported; the values are NaN = the companion sentinel); the table's **Excluded** column with
+   the reasons in the row tooltip. DNA13bp_3 (5231 bursts, this search): G|G 0-3 excluded, R|R 2136
+   too few photons. The owner's 82964 bursts (another search) are not reproduced here.
+5. *Objectives*: P+2S vs Poisson, BIFL on/off agree within noise on simulations (fig 21
+   `21_mle_objectives_simulated.png`); BIFL changes nothing on a summed fit (unit-area pattern: its
+   term is ~constant) and moved the per-burst median (2.34 -> 2.90 ns). Defaults kept (P+2S, BIFL off).
+**Next:** (a) fix gamma per burst to Bg_<det> x duration / photons (+ the floor share) -- the one
+change that narrowed the spread (30 % bg, 600 photons: 9.5 -> 7.4 %); the worker needs each burst's
+duration. (b) BIFL scatter would only mean something with the pattern in expected counts per burst
+(its B), not unit area. (e) Burst MLE prepares only from a written run: a public `MleSession` hook taking the photon file, an in-memory burst table and the setup (for Burst Selection's search-ahead) is not there yet -- `bur_files`, `current_filename` and the export all assume a run on disk, so the hook needs a run identity of its own, not a stub. (c) the Decay and fit plot draws its residual strip with the shared `ResidualPlot` (on top, linked x,
+symmetric, thick zero). (d) rebuild tttrlib on home.
+
 **Burst Selection searches ahead; the display range sits above the plots (2026-11-05).** Owner:
 "do work in background ... speculative processing" and "the display range should be setup in the
 plt dock". Measured on DNA13bp_3 (311 MB, RVZMT150; `scratchpad/spec/timing2.py`, taken on the

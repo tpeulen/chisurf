@@ -1263,21 +1263,35 @@ class MleViewModel(RunPickerMixin):
         )
 
     def lifetime_rows(self) -> list[dict]:
-        """One row per detector series of the last batch: bursts fitted, median and mean lifetime.
+        """One row per detector series of the last batch: bursts fitted, bursts excluded (their
+        fit not a lifetime: too few photons, not converged, out of the physical range -- why, in
+        the cell's tooltip), median and mean lifetime of the others.
 
         Kept with the results it summarises: the table is drawn every frame, and reading the
         lifetimes of thousands of result rows each time made the window crawl after a fit."""
         held = self.__dict__.get("_lifetime_rows")
         if held is not None and held[0] is self.burst_results:
             return held[1]
+        from .._mp_worker import REJECT_REASONS
+
         rows = []
-        for label, values in sorted(fit_view.burst_lifetimes(self.burst_results).items()):
+        rejected = fit_view.rejected_fits(self.burst_results)
+        lifetimes = fit_view.burst_lifetimes(self.burst_results)
+        for label in sorted(set(lifetimes) | set(rejected)):
+            values = lifetimes.get(label, np.zeros(0))
+            why = rejected.get(label, {})
+            excluded = sum(why.values())
             rows.append(
                 {
                     "series": label,
                     "n": str(values.size),
-                    "median": f"{np.median(values):.3f}",
-                    "mean": f"{values.mean():.3f}",
+                    "excluded": str(excluded),
+                    "excluded_tip": "\n".join(
+                        f"{count}: {REJECT_REASONS.get(reason, reason)}"
+                        for reason, count in sorted(why.items())
+                    ) or "every burst was fitted",
+                    "median": f"{np.median(values):.3f}" if values.size else "-",
+                    "mean": f"{values.mean():.3f}" if values.size else "-",
                 }
             )
         self._lifetime_rows = (self.burst_results, rows)

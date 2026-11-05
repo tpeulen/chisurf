@@ -484,6 +484,20 @@ gamma. The background of the fit is therefore, in this order:
    before the prompt (and in the gate's last tenth, the lower), a scatter of the
    IRF's shape from that same fit -- never the decay.
 
+**The flat part is the burst decay's own floor.** The rate counts dark counts
+and uncorrelated light over the bursts' time, but not the afterpulsing of the
+burst photons themselves (a share of every detected photon, so it is higher
+inside a burst than outside). So the flat part of the background is read from
+the burst decay: the mean of the bins of the detector's gate before the prompt
+(before the IRF rises, less 3 bins; `decay_floor`), where nothing of this pulse
+has arrived; the scatter above the background's own floor is kept (`with_floor`,
+setting `floor_from_bursts`, on by default). Fewer than 8 such bins (a prompt at
+the gate's start) leave the rate's floor. On DNA13bp_3 G|G the floor before the
+prompt is 21 (VV) / 26 (VH) photons per bin, the rate gave 13.5 / 23; on the
+Rh110 reference the same fit (Fit23, ρ free) went from χ²ᵣ 2.40 to 1.21. The
+**Background (fit)** line of the plot is the background the model added (γ of
+the window's photons on that pattern), not an expected one beside it.
+
 Its rate times the time in the bursts is the count the plot draws. The fit text
 names which it is ("Background: 1.9% of the photons in the window (flat +
 scatter model)"); the detector line gives its rate, the rate of all photons
@@ -612,6 +626,60 @@ fits to zero here — no evidence for a second lifetime.
 IRF/background** and **Fit bursts** with Fit23: the decay fit gives 1.918 ns,
 the per-burst lifetimes spread over 1.82–2.06 ns. Finite counts, the fit
 window and the estimated IRF keep the recovery from being exact.
+```
+
+#### Rotation, objective and the excluded fits
+
+**rho is fitted by default** (r0 stays fixed). Fit23 does not search it: with
+rho free it takes it from the decay's steady-state anisotropy (Perrin,
+$\rho = \tau/(r_0/r - 1)$, $r$ corrected for the background fraction γ), so a
+free rho costs no stability -- on simulated bursts it never failed a fit. A
+fixed 1.22 ns described no dye: Rh110 rotates in 0.16 ns, and its Fit23 fit
+went from χ²ᵣ 212 (ρ 1.22 fixed) to 1.21 (ρ free, the burst floor). Below ~50
+photons a burst's ρ is biased low (−40 % at 20 photons): read it from the
+distribution or the summed decay.
+
+**2I*: P+2S** (on by default) scores the sum $C_p + 2C_s$, the rotation-free total
+intensity, with the exact likelihood of such a sum (Maus et al. 2001); off,
+the parallel and perpendicular channels are scored as two Poisson channels.
+**BIFL scatter** subtracts a soft term for the expected background photons from
+the score. Benchmarked on simulated bursts (τ 4 ns, ρ 1.2 ns, 20-600 photons,
+0-30 % background, 400 bursts each) the four combinations agree within the
+noise: median τ bias −3 to −8 % at 20 photons, within ±1 % at 600; spread
+21 → 5.5 % (0 % background) and 38 → 9.5 % (30 %). P+2S with BIFL scatter
+rejects 0.5-1 % more fits. On DNA13bp_3 (5231 bursts) Poisson and P+2S give
+the same G|G median (2.34 ns), BIFL scatter moves it (Poisson + BIFL 2.90 ns, 23
+fits not converged). BIFL scatter changes nothing on a summed decay: with the
+background pattern of unit area its term is nearly constant. So the default
+stays P+2S, BIFL off. Fixing γ to the known background fraction narrows the
+spread more than any objective (30 % background, 600 photons: 9.5 → 7.4 %).
+
+**Excluded fits.** A burst whose fit is not a lifetime is written as the
+companion's skipped sentinel (NaN in the container, 0 in an export), never a
+number, and the **Burst lifetimes** table counts it under **Excluded** (the row's
+tooltip says why): too few photons, not converged, not finite, a lifetime at or
+below half a bin or longer than the fit window (the 882 ns "mean" was such
+fits), or γ ≥ 0.99. The mean is the arithmetic mean of the others; on
+DNA13bp_3 G|G median 2.42, mean 2.66, 10 % trimmed mean 2.59, photon-weighted
+2.94 ns -- the spread there is the sample's FRET heterogeneity, not outliers.
+R|R excludes 2136 of 5231 bursts for too few photons (no acceptor).
+
+```{figure} figures/21_mle_reference_before_after.png
+:name: fig-21-mle-reference-before-after
+:width: 100%
+
+Fit23 on the reference dyes with the Burst MLE background: before (the rate's
+floor, ρ fixed 1.22 ns: G|G Rh110 χ²ᵣ 212) and after (the decay's floor, ρ
+free: 1.21). R|R (Alexa647) stays at 19.5: RVZMT150's red VV/VH are swapped
+(ρ hits 0), the setup must be corrected in step 0.
+```
+
+```{figure} figures/21_mle_objectives_simulated.png
+:name: fig-21-mle-objectives-simulated
+:width: 100%
+
+The four objective choices on simulated bursts (γ and ρ free): median τ bias,
+spread, rejected fits and median ρ bias against photons per burst.
 ```
 
 ## Result

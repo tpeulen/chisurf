@@ -335,13 +335,13 @@
           "type": "toggle",
           "attr": "p2s_twoIstar",
           "label": "2I*: P+2S",
-          "description": "Use the P+2S form of the 2I* statistic."
+          "description": "Score the rotation-free sum P + 2S with its exact likelihood (Maus et al. 2001) instead of VV and VH as two Poisson channels. On simulated bursts both give the same lifetime bias and spread; on by default."
         },
         {
           "type": "toggle",
           "attr": "BIFL_scatter",
           "label": "BIFL scatter",
-          "description": "Treat the scattered light as burst-integrated fluorescence lifetime scatter (soft)."
+          "description": "Subtract a soft term for the expected background photons from the score (soft BIFL). With the background pattern of unit area it barely changes a summed fit and shifted the per-burst median on DNA13bp_3; off by default."
         },
         {
           "type": "value",
@@ -373,10 +373,12 @@
       ]
     },
     {
-      "description": "Fitted lifetime of each burst.",
+      "description": "Fitted lifetime of each burst. A burst whose fit is not a lifetime (too few photons, not converged, outside the physical range) is excluded from the statistics; hover a row for why.",
       "type": "table",
       "source": "lifetime_rows",
       "title": "Burst lifetimes",
+      "tooltip_key": "excluded_tip",
+      "selection_note": false,
       "columns": [
         {
           "key": "series",
@@ -391,6 +393,12 @@
           "description": "Bursts with a fitted lifetime."
         },
         {
+          "key": "excluded",
+          "label": "Excluded",
+          "width": 70,
+          "description": "Bursts whose fit is not a lifetime: too few photons, not converged, not finite, a lifetime at or below half a bin or longer than the fit window, or every photon given to the background. Written as the skipped sentinel, never averaged in; the row's tooltip says why."
+        },
+        {
           "key": "median",
           "label": "Median tau [ns]",
           "width": 110,
@@ -400,7 +408,7 @@
           "key": "mean",
           "label": "Mean tau [ns]",
           "width": 110,
-          "description": "Mean fitted lifetime of the series."
+          "description": "Mean fitted lifetime of the bursts not excluded."
         }
       ]
     }

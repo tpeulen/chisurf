@@ -150,7 +150,50 @@ def tail_lifetime(counts: np.ndarray, dt: float) -> float:
     return float(np.sqrt(lo * hi))
 
 
-def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None, extras=None):
+#: Why a burst's fit is not a lifetime (the ``Fit rejected (<det>)`` row key, never exported):
+#: the row's fitted values are written as NaN -- the companion's skipped sentinel -- and the
+#: Lifetime table counts the burst as excluded instead of averaging it in.
+REJECT_REASONS = {
+    1: "too few photons",
+    2: "not converged",
+    3: "not finite",
+    4: "lifetime at or below zero / under half a bin",
+    5: "lifetime longer than the fit window",
+    6: "all background (gamma at its bound)",
+}
+#: gamma at or above this is a fit that gave every photon to the background.
+GAMMA_BOUND = 0.99
+
+
+def reject_reason(cfg, x, converged: float | None = None, two_istar: float | None = None) -> int:
+    """``0`` when fitted values *x* of *cfg*'s model are a lifetime, else the code of
+    :data:`REJECT_REASONS`. The physical range: above half a bin and shorter than the fit window
+    (a longer lifetime is not resolved by it -- the batch's mean of 882 ns was such fits)."""
+    if x is None:
+        return 1
+    x = np.asarray(x, dtype=float)
+    tau_index = 1 if cfg.get("model") == "tail" else 0
+    # a NaN 2I* alone is no reason: some held configurations report none
+    if x.size <= tau_index or not np.isfinite(x[tau_index]):
+        return 3
+    if converged is not None and np.isfinite(converged) and converged <= 0:
+        return 2
+    dt = float(cfg.get("dt") or 0.0)
+    tau = float(x[tau_index])
+    if tau <= 0.5 * dt or tau <= 0.0:
+        return 4
+    window = cfg.get("fit_window")
+    lo, hi = (window if window else (cfg.get("sb", 0), cfg.get("eb", 0)))
+    span = (int(hi) - int(lo)) * dt
+    if span > 0 and tau > span:
+        return 5
+    if cfg.get("model", "fit23") == "fit23" and x.size > 1 and np.isfinite(x[1]) and x[1] >= GAMMA_BOUND:
+        return 6
+    return 0
+
+
+def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None, extras=None,
+            reason=0):
     """One result row, laid out by the fitted model.
 
     ``fit23`` keeps its historical column set (tau/gamma/r0/rho + the two
@@ -165,6 +208,9 @@ def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None, ex
     fitted parameters now stand alone, so anything derived arrives here by name.
     Reading them positionally would silently write NaN into two columns of the
     ``.b?4`` export.
+
+    ``reason`` (:func:`reject_reason`) is kept as the row key ``Fit rejected (<det>)`` -- not an
+    export column: a rejected fit's values are NaN, the skipped sentinel, already.
 
     With ``state`` set, every measured column is suffixed (``Tau S0 (G|G)``)
     and the identity columns are omitted: a sub-population of a burst is a
@@ -186,7 +232,7 @@ def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None, ex
     extras = extras or {}
 
     sfx = _state_suffix(state)
-    rec = {}
+    rec = {f"Fit rejected{sfx} ({color})": int(reason)}
     if state is None:
         rec["First File"] = fname
         rec["Detector"] = det
@@ -349,7 +395,7 @@ def process_one_file_worker(args):
         for _first, _last in bursts:
             for det in det_order:
                 cfg = perdet_cfg.get(det, {})
-                out.append(_record(fname, det, colour_of(det), cfg, None, float("nan"), -1, -1))
+                out.append(_record(fname, det, colour_of(det), cfg, None, float("nan"), -1, -1, reason=1))
         return out, len(bursts)
 
     # Attach shared memory
@@ -432,6 +478,7 @@ def process_one_file_worker(args):
                                 cp_sum,
                                 cs_sum,
                                 state=state,
+                                reason=1,
                             )
                         )
                         continue
@@ -470,9 +517,10 @@ def process_one_file_worker(args):
                             tail = tail + cs_u32[start:s1]
                         tau = tail_lifetime(tail, float(cfg["dt"]))
                         x = np.array([float(start), tau, np.nan])
+                        reason = reject_reason(cfg, x)
                         rec.update(
-                            _record(fname, det, color, cfg, x, float("nan"), cp_sum, cs_sum,
-                                    state=state)
+                            _record(fname, det, color, cfg, None if reason else x, float("nan"),
+                                    cp_sum, cs_sum, state=state, reason=reason)
                         )
                         continue
                     res = fitters[det](
@@ -482,22 +530,24 @@ def process_one_file_worker(args):
                     )
                     x = np.asarray(res.x, dtype=np.float64)
                     two_istar = float(res.twoIstar)
+                    reason = reject_reason(cfg, x, res.result("converged"), two_istar)
                     rec.update(
                         _record(
                             fname,
                             det,
                             color,
                             cfg,
-                            x,
+                            None if reason else x,
                             two_istar,
                             cp_sum,
                             cs_sum,
                             state=state,
-                            extras={
+                            extras=None if reason else {
                                 "r_scatter": res.r_scatter,
                                 "r_experimental": res.r_experimental,
                                 "selected_index": res.result("selected_index"),
                             },
+                            reason=reason,
                         )
                     )
                 out.append(rec)

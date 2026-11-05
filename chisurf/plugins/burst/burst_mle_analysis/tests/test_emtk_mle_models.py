@@ -176,7 +176,7 @@ def test_the_demo_clears_previous_curves_and_parameter_state(model):
     assert model.tau == 4.0
     assert not model.fix_tau
     assert not model.fix_gamma  # the scatter fraction is fitted
-    assert model.fix_r0 and model.fix_rho
+    assert model.fix_r0 and not model.fix_rho  # the rotation is fitted (Perrin)
 
 
 def test_the_reader_honours_an_explicit_correction_and_clock(hermetic_env, tmp_path):

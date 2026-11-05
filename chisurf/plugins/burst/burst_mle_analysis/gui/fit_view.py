@@ -14,6 +14,7 @@ import re
 import numpy as np
 
 _TAU_COLUMN = re.compile(r"^Tau(?: S(?P<state>\d+))? \((?P<colour>.+)\)$")
+_REJECT_KEY = re.compile(r"^Fit rejected(?: S(?P<state>\d+))? \((?P<colour>.+)\)$")
 
 
 def burst_lifetimes(rows: list[dict] | None) -> dict[str, np.ndarray]:
@@ -48,3 +49,23 @@ def burst_lifetimes(rows: list[dict] | None) -> dict[str, np.ndarray]:
     }
 
 
+
+
+def rejected_fits(rows: list[dict] | None) -> dict[str, dict[int, int]]:
+    """Per series, how many bursts' fits were rejected and why: ``{series: {reason: count}}``
+    (the reasons of ``_mp_worker.REJECT_REASONS``; series named as :func:`burst_lifetimes`)."""
+    out: dict[str, dict[int, int]] = {}
+    for row in rows or []:
+        for column, value in row.items():
+            match = _REJECT_KEY.match(str(column))
+            if match is None:
+                continue
+            try:
+                reason = int(value)
+            except (TypeError, ValueError):
+                continue
+            key = match["colour"] if match["state"] is None else f"S{match['state']} {match['colour']}"
+            counts = out.setdefault(key, {})
+            if reason:
+                counts[reason] = counts.get(reason, 0) + 1
+    return out

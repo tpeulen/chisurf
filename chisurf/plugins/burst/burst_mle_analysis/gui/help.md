@@ -58,6 +58,13 @@ anisotropy $r_0$ and the rotational correlation time $\rho$ to the parallel and 
 quantity minimised is the likelihood statistic $2I^*$; it is about one per degree of freedom for a good fit. The model
 curve is the exponential decay convolved with the IRF, plus the scaled background and the scattered light.
 
+* **rho is free by default** ($r_0$ fixed): fit23 takes it from the decay's steady-state anisotropy (Perrin), so it
+  costs no stability; a fixed 1.22 ns fitted the Rh110 reference at $\chi^2_r$ 212, free at 1.21.
+* The background's **flat part is the burst decay's own floor** before the prompt (dark counts, afterpulsing of the
+  burst photons, uncorrelated light); the rate measured outside the bursts misses the afterpulsing.
+* A burst whose fit is no lifetime (too few photons, not converged, a lifetime under half a bin or longer than the
+  window, all background) is written as the skipped sentinel and counted under **Excluded** in the table.
+
 * The **IRF** and **background** belong to the setup, not to a burst. The background is the **buffer** of Data
   Selection when there is one (its shape and rate); else the **strict background selection** of the measurement --
   not the photons outside the bursts, which hold molecules below the threshold and the bursts' flanks (a decay), but
