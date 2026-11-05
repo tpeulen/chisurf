@@ -83,6 +83,7 @@ def gui(out: Path, settings: Path, data: Path, setup: str = "RVZMT150", frames: 
                    for n in ("running", "busy"))
 
     mark("imports")
+    jobs = _watch_jobs(t0)
     shell = EmtkShellApp(console_history=False, console_session_file=False)
     shell.data.adopt(start_session())
     drv = RealisticDriver(shell, (1440, 900), real_painter=False)
@@ -179,11 +180,49 @@ def gui(out: Path, settings: Path, data: Path, setup: str = "RVZMT150", frames: 
         (out / f"frame_{tab}.txt").write_text(text.getvalue())
     for name, ms in frame_cost.items():
         print(f"frame {name:12s} {ms:8.2f} ms", flush=True)
-    result = {"marks": marks, "frames_ms": frame_cost,
-              "bursts": int(getattr(mle.model, "n_bursts", 0))}
+    fitted = len(getattr(mle.model, "burst_results", None) or ())
+    result = {"marks": marks, "frames_ms": frame_cost, "jobs": jobs,
+              "bursts": int(getattr(mle.model, "n_bursts", 0)), "fitted_rows": fitted}
     (out / "timing.json").write_text(json.dumps(result, indent=1))
     shell.close()
+    failed = [j for j in jobs if j.get("error")]
+    if failed or not fitted:
+        # a failed job leaves its step idle, so a broken tree looks fast: a run that fitted
+        # nothing is not a measurement
+        raise SystemExit(f"bench invalid: {len(failed)} job(s) failed, {fitted} burst rows fitted")
     return result
+
+
+def _watch_jobs(t0: float) -> list[dict]:
+    """Every background job of the run (``SnapshotJob``): method, start, end and error, printed
+    as it ends. A job's error is otherwise only a status line nobody reads."""
+    from chisurf.emtk.jobs import SnapshotJob
+
+    jobs: list[dict] = []
+    start, poll = SnapshotJob.start, SnapshotJob.poll
+
+    def started(self, method, *args, **kwargs):
+        ok = start(self, method, *args, **kwargs)
+        if ok:
+            self._bench_job = {"model": type(self.model).__name__, "method": method,
+                               "start": time.perf_counter() - t0}
+            jobs.append(self._bench_job)
+        return ok
+
+    def polled(self):
+        was = self.busy
+        changed = poll(self)
+        job = getattr(self, "_bench_job", None)
+        if was and not self.busy and job is not None and "end" not in job:
+            job["end"] = time.perf_counter() - t0
+            job["error"] = self.error
+            print(f"[{job['end']:8.2f}] job {job['model']}.{job['method']} "
+                  f"{job['end'] - job['start']:.2f} s" + (f" ERROR {self.error}" if self.error else ""),
+                  flush=True)
+        return changed
+
+    SnapshotJob.start, SnapshotJob.poll = started, polled
+    return jobs
 
 
 class _Stage:
@@ -284,7 +323,9 @@ def stages(out: Path, settings: Path, data: Path, recipe_path: Path, batch: int 
         session.select_background()
     workers = engine.fit_workers()
     with stage(f"mle: run_batch ({workers} threads, fit_many)", profile=False):
-        session.run_batch(max_workers=workers)
+        fitted = session.run_batch(max_workers=workers)
+    if not fitted:
+        raise SystemExit("bench invalid: run_batch fitted no burst")
     with stage("mle: export_results"):
         session.export_results()
     # raw fit2x on the same decays: one C++ call for many bursts vs the per-burst Python loop
