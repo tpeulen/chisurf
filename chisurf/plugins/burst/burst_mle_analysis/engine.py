@@ -880,15 +880,17 @@ def fit_workers() -> int:
 
 
 def fit_pool(workers: int | None = None):
-    """The kept pool of *workers* fit processes, started on first use."""
-    import multiprocessing as mp
-    from concurrent.futures import ProcessPoolExecutor
+    """The kept pool of *workers* fit processes: started on first use, shut down after a minute
+    without a fit (``CHISURF_POOL_IDLE_S``) and started again by the next
+    (:class:`chisurf.core.runtime.idle_pool.IdlePool`): kept for the life of the window, the
+    processes of a few ChiSurf windows held memory nobody used."""
+    from chisurf.core.runtime.idle_pool import IdlePool
 
     global _FIT_POOL, _FIT_POOL_WORKERS
     workers = int(workers or fit_workers())
     if _FIT_POOL is None or _FIT_POOL_WORKERS != workers:
         _drop_fit_pool()
-        _FIT_POOL = ProcessPoolExecutor(max_workers=workers, mp_context=mp.get_context("spawn"))
+        _FIT_POOL = IdlePool(workers, name="burst-fit")
         _FIT_POOL_WORKERS = workers
         import atexit
 

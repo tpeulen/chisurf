@@ -25,16 +25,17 @@ _POOL_LOCK = threading.Lock()
 
 
 def pool():
-    """The kept pool of two task processes (BVA and 2CDE side by side), started on first use."""
+    """The kept pool of two task processes (BVA and 2CDE side by side): started on first use,
+    shut down after a minute without a task and started again by the next
+    (:class:`chisurf.core.runtime.idle_pool.IdlePool`)."""
     global _POOL
     with _POOL_LOCK:
         if _POOL is None:
             import atexit
-            import multiprocessing as mp
 
-            _POOL = concurrent.futures.ProcessPoolExecutor(
-                max_workers=2, mp_context=mp.get_context("spawn")
-            )
+            from chisurf.core.runtime.idle_pool import IdlePool
+
+            _POOL = IdlePool(2, name="burst-tasks")
             atexit.register(_POOL.shutdown, wait=False, cancel_futures=True)
         return _POOL
 

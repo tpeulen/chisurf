@@ -211,12 +211,10 @@ def _get_proc_pool():
     global _PROC_POOL
     with _PROC_POOL_LOCK:
         if _PROC_POOL is None:
-            import concurrent.futures as _futures
-            import multiprocessing as _mp
+            from chisurf.core.runtime.idle_pool import IdlePool
 
-            _PROC_POOL = _futures.ProcessPoolExecutor(
-                max_workers=1, mp_context=_mp.get_context("spawn")
-            )
+            # its TTTR cache is let go with the process after a minute without a read
+            _PROC_POOL = IdlePool(1, name="imaging-read")
         return _PROC_POOL
 
 
