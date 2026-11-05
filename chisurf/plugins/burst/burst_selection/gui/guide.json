@@ -62,7 +62,7 @@
     },
     {
       "title": "Check the selection",
-      "text": "The count-rate trace of the visible window: all photons, and the photons the search kept. Move the window under <b>Display</b> in Filter settings.",
+      "text": "The count-rate trace of the visible window: all photons, and the photons the search kept. Move the window with <b>Start</b> and <b>Length</b> above the plot.",
       "target": {
         "name": "trace",
         "tab": "trace"

@@ -78,6 +78,15 @@ def _sections(spec: dict, *titles: str) -> list[dict]:
     return [s for s in spec["sections"] if s.get("title") in titles]
 
 
+def _without(sections: list[dict], attr: str) -> list[dict]:
+    """*sections* with the field *attr* left out (at any depth)."""
+    return [
+        {**sec, "sections": _without(sec["sections"], attr)} if isinstance(sec.get("sections"), list) else sec
+        for sec in sections
+        if sec.get("attr") != attr
+    ]
+
+
 class BurstSelectionNativeApp(TourTarget, ImApp):
     """Immediate-mode Burst Selection: files, detector editor, search, filter, run, diagnostics, features, output.
 
@@ -152,7 +161,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         self.output_sections = _sections(spec, "Output")
         self.search_sections = _sections(spec, "Burst search")
         self.filter_sections = _sections(spec, "Channel selection", "Macro time interval", "Filter")
+        #: The visible window and what the plots draw: above the plots, in every mode.
         self.display_sections = _sections(spec, "Display")
+        self.display_form = FormState()
         self.hist_sections = _sections(spec, "Histogram")
         self.gmm_table = _sections(spec, "GMM")
         self.burst_table = _sections(spec, "Bursts")
@@ -630,7 +641,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         # times the searches keep in seconds are shown in µs / ms / s (0.5 ms, not 0.0005)
         params, factors = scaled_sections(m.search_sections(), m.search_schema())
         nested, nested_factors = scaled_sections(m.nested_sections(), m.nested_schema())
-        static = self.search_sections + self.filter_sections + self.display_sections
+        static = self.search_sections + self.filter_sections
         if not self.labels.ready:
             self.labels.measure([f["label"] for f in labelled(static + params + nested)])
             self.labels.pad(static)
@@ -670,7 +681,6 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             )
             self.remember("save_defaults")
         draw_sections(self.filter_sections, target, self.form)
-        draw_sections(self.display_sections, target, self.form)
         im.end_disabled()
 
     def _split_search(self, params: list[dict]) -> tuple[list[dict], list[dict]]:
@@ -785,8 +795,17 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
     def _empty(self, text: str) -> None:
         im.text_wrapped(text)
 
+    def _display(self, trace: bool = False) -> None:
+        """The visible window (start, length), the trace's bin (on the count rate) and the layers,
+        above each plot -- in every mode; a change filters the window again (debounced)."""
+        sections = self.display_sections if trace else _without(self.display_sections, "trace_bin_ms")
+        draw_sections(sections, self.model, self.display_form, titles=False)
+        for name, rect in self.display_form.rects.items():
+            self.item_rects[name] = tuple(rect)
+
     def _trace(self, box=None) -> None:
         self.remember("trace", box)
+        self._display(trace=True)
         m = self.model
         curves = m.trace_curves()
         if not curves:
@@ -801,6 +820,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
 
     def _dt(self, box=None) -> None:
         self.remember("dt", box)
+        self._display(trace=False)
         m = self.model
         curves = m.dt_curves()
         if not curves:
@@ -834,6 +854,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
 
     def _decay(self, box=None) -> None:
         self.remember("decay", box)
+        self._display(trace=False)
         curves = self.model.decay_curves()
         if not curves:
             self._empty(

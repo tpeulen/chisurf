@@ -355,57 +355,66 @@
     {
       "type": "panel",
       "title": "Display",
-      "collapsed": true,
-      "description": "What the diagnostic plots draw.",
+      "description": "The time window the plots show, above the plots in every mode.",
       "sections": [
         {
-          "type": "toggle",
-          "attr": "show_all_photons",
-          "label": "All photons",
-          "description": "Draw the layers computed from every photon in the visible window."
+          "type": "group",
+          "sections": [
+            {
+              "type": "value",
+              "attr": "window_start_s",
+              "label": "Start",
+              "kind": "float",
+              "style": "slider",
+              "decimals": 2,
+              "suffix": " s",
+              "minimum": 0.0,
+              "maximum": 100000.0,
+              "description": "Start of the visible window in the active file (s). The count rate, the inter-photon times, the decay, the preview and the histogram are computed for this slice only."
+            }
+          ]
         },
         {
-          "type": "toggle",
-          "attr": "show_selected_photons",
-          "label": "Selected photons",
-          "description": "Draw the layers computed from the photons the search kept."
-        },
-        {
-          "type": "value",
-          "attr": "window_start_s",
-          "label": "Window start (s)",
-          "kind": "float",
-          "style": "slider",
-          "decimals": 2,
-          "suffix": " s",
-          "minimum": 0.0,
-          "maximum": 100000.0,
-          "description": "Start of the visible window in the active file. The plots and the preview are computed for this slice only."
-        },
-        {
-          "type": "value",
-          "attr": "window_length_s",
-          "label": "Window length",
-          "kind": "float",
-          "decimals": 2,
-          "minimum": 0.0,
-          "maximum": 100000.0,
-          "suffix": " s",
-          "description": "Length of the visible window; 0 shows the whole file."
-        },
-        {
-          "type": "value",
-          "attr": "trace_bin_ms",
-          "label": "MCS bin width",
-          "kind": "float",
-          "decimals": 3,
-          "minimum": 0.05,
-          "maximum": 9999.0,
-          "suffix": " ms",
-          "description": "Bin width of the count-rate trace."
+          "type": "group",
+          "n_col": 4,
+          "sections": [
+            {
+              "type": "value",
+              "attr": "window_length_s",
+              "label": "Length",
+              "kind": "float",
+              "decimals": 2,
+              "minimum": 0.0,
+              "maximum": 100000.0,
+              "suffix": " s",
+              "description": "Length of the visible window (s); 0 shows the whole file (slow on a large file)."
+            },
+            {
+              "type": "value",
+              "attr": "trace_bin_ms",
+              "label": "Bin",
+              "kind": "float",
+              "decimals": 3,
+              "minimum": 0.05,
+              "maximum": 9999.0,
+              "suffix": " ms",
+              "description": "Bin width of the count-rate trace (ms)."
+            },
+            {
+              "type": "toggle",
+              "attr": "show_all_photons",
+              "label": "All photons",
+              "description": "Draw the layers computed from every photon in the visible window."
+            },
+            {
+              "type": "toggle",
+              "attr": "show_selected_photons",
+              "label": "Selected photons",
+              "description": "Draw the layers computed from the photons the search kept."
+            }
+          ]
         }
-      ],
-      "collapsible": true
+      ]
     },
     {
       "type": "panel",
