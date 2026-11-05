@@ -66,6 +66,63 @@ def _burst_mask(measurement, burst_table: str, n_photons: int) -> np.ndarray:
     return np.cumsum(edges[:-1]) > 0
 
 
+#: The settings of :func:`strict_selection_rates` the native selection takes (all but ``accept``).
+_NATIVE_STRICT = frozenset((
+    "margin_ms", "margin_fraction", "photon_window", "false_alarm", "iterations", "min_fraction",
+    "min_seconds", "rate_khz", "tighten", "max_tighten",
+))
+
+
+def _is_tttr(tttr) -> bool:
+    import tttrlib
+
+    return isinstance(tttr, tttrlib.TTTR)
+
+
+def _mask_runs(burst_mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """The first and last photon of every run of ``True`` in *burst_mask* (touching or
+    overlapping bursts are one run, as the mask makes them)."""
+    edges = np.diff(np.concatenate(([0], np.asarray(burst_mask, dtype=np.int8), [0])))
+    first = np.flatnonzero(edges == 1).astype(np.int64)
+    last = (np.flatnonzero(edges == -1) - 1).astype(np.int64)
+    return first, last
+
+
+def _native_rates(tttr, first, last, chs, detectors, **strict):
+    """:func:`strict_selection_rates` on tttrlib's ``StrictBackground``: one native selection
+    (GIL released) whose kept photons come back as micro-time histograms per routing channel, so
+    a detector's count is its channels' histograms summed over its gates -- no photon mask, no
+    photon arrays copied into Python."""
+    from tttrlib import micro_time_mask
+
+    from chisurf.core.fluorescence.burst.fused_pipeline import strict_background
+
+    selection = strict_background(tttr, first, last, chs, histogram_channels=chs, **strict)
+    info = {
+        "seconds": float(selection.seconds),
+        "total_seconds": float(selection.total_seconds),
+        "warning": str(selection.warning),
+        "rate_scale": float(selection.rate_scale),
+    }
+    if selection.seconds <= 0 or not selection.photons:
+        return {}, info
+    seconds = float(selection.seconds) / float(selection.rate_scale or 1.0)
+    rates = {}
+    for name, det in detectors.items():
+        det_chs = sorted({int(c) for c in det.get("chs", [])})
+        if not det_chs:
+            continue
+        count = 0
+        for c in det_chs:
+            hist = selection.histograms.get(c)
+            if hist is None or not len(hist):
+                continue
+            gate = micro_time_mask(np.arange(len(hist)), det.get("micro_time_ranges"))
+            count += int(np.asarray(hist)[gate].sum())
+        rates[str(name)] = float(count) / seconds / 1e3
+    return rates, info
+
+
 def strict_selection_rates(
     tttr: Any, burst_mask: np.ndarray, detectors: Mapping[str, Mapping[str, Any]], **strict: Any
 ) -> tuple[dict[str, float], dict[str, Any]]:
@@ -76,7 +133,9 @@ def strict_selection_rates(
     :func:`~chisurf.core.fluorescence.burst.irf_bg.strict_background_mask`); a detector's rate is
     its photons in that selection (its channels, inside its gates) over the time kept, corrected
     for the background's own fast stretches the local-rate cut dropped (``rate_scale``) -- as Burst
-    MLE takes it.
+    MLE takes it. With the fused pipeline on (:func:`~chisurf.core.fluorescence.burst.fused_pipeline.enabled`)
+    and a real ``tttrlib.TTTR`` the selection is tttrlib's ``StrictBackground`` (GIL released, no
+    photon mask): the same photons over the same time, the rate scale equal to ~1e-10.
 
     Parameters
     ----------
@@ -97,10 +156,15 @@ def strict_selection_rates(
     """
     from tttrlib import micro_time_mask
 
+    from chisurf.core.fluorescence.burst import fused_pipeline
     from chisurf.core.fluorescence.burst.irf_bg import strict_background_mask
     from chisurf.core.fluorescence.channels import channel_mask
 
     chs = sorted({int(c) for d in detectors.values() for c in d.get("chs", [])})
+    first, last = _mask_runs(burst_mask)
+    native = chs and first.size and set(strict) <= _NATIVE_STRICT and _is_tttr(tttr)
+    if native and fused_pipeline.enabled():
+        return _native_rates(tttr, first, last, chs, detectors, **strict)
     selection = strict_background_mask(tttr, burst_mask, channels=chs or None, **strict)
     info = {
         "seconds": float(selection.seconds),

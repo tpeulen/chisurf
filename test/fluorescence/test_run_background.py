@@ -102,3 +102,52 @@ def test_the_record_is_the_runs_and_ndx_reads_it(tmp_path):
     found = ndx.stored_background(str(path), RUN)
     assert found["G|G"]["rate"] == 2.0 and found["R|G"]["source"] == "model"
     assert ndx.stored_background_constants(str(path), RUN) == {"Bg_G|G": 2.0, "Bg_R|G": 0.7}
+
+
+GATED = {
+    "G|G": {"chs": [0, 1], "micro_time_ranges": [[100, 900], [2100, 2900]]},
+    "R|G": {"chs": [2, 3], "micro_time_ranges": [[150, 950]]},
+    "R|R": {"chs": [2, 3, 3], "micro_time_ranges": [[2000, 3000], [2500, 3500]]},
+    "all": {"chs": [0, 1, 2, 3]},
+}
+
+
+def _stream(seed=3, seconds=120.0):
+    """A real TTTR: flat background on four channels, bright bursts, micro times over 4096."""
+    tttrlib = pytest.importorskip("tttrlib")
+    tttr, in_burst = _photons(seed=seed, seconds=seconds, rates=(1.1, 0.9))
+    rng = np.random.default_rng(seed)
+    n = len(tttr.macro_times)
+    routing = (np.asarray(tttr.routing_channel) * 2 + rng.integers(0, 2, n)).astype(np.int8)
+    stream = tttrlib.TTTR(
+        tttr.macro_times.astype(np.uint64), rng.integers(0, 4096, n).astype(np.uint16), routing,
+        np.zeros(n, dtype=np.int8),
+    )
+    stream.header.set_macro_time_resolution(RES_S)
+    return stream, in_burst
+
+
+def test_the_native_selection_gives_the_python_rates(monkeypatch):
+    """The fused ``StrictBackground`` path (no photon mask, GIL released) and the Python mask keep
+    the same photons over the same time; the rates differ only by the tail-rate fit's rounding
+    (``np.polyfit`` against tttrlib's closed-form least squares, ~1e-11 relative on DNA13bp_3)."""
+    from chisurf.core.fio.fluorescence import run_background as rb
+    from chisurf.core.fluorescence.burst import fused_pipeline
+
+    if not fused_pipeline.available():
+        pytest.skip("tttrlib without the fused pipeline")
+    stream, in_burst = _stream()
+    monkeypatch.setenv(fused_pipeline.ENV, "1")
+    native = rb.strict_selection_rates(stream, in_burst, GATED)
+    monkeypatch.setenv(fused_pipeline.ENV, "0")
+    python = rb.strict_selection_rates(stream, in_burst, GATED)
+    (rates_n, info_n), (rates_p, info_p) = native, python
+    assert rates_n and set(rates_n) == set(rates_p)
+    for key in ("seconds", "total_seconds", "warning"):
+        assert info_n[key] == info_p[key], key
+    assert info_n["rate_scale"] == pytest.approx(info_p["rate_scale"], rel=1e-9)
+    for det in rates_p:
+        assert rates_n[det] == pytest.approx(rates_p[det], rel=1e-9)
+        # what the rate scale multiplies is the count of kept photons over the kept time: equal
+        assert rates_n[det] / info_n["rate_scale"] == pytest.approx(
+            rates_p[det] / info_p["rate_scale"], rel=1e-15, abs=0.0)
