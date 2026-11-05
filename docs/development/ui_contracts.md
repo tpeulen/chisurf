@@ -109,3 +109,24 @@ file, save or external actions remain pending. Pending/unwired actions fail
 the interaction gate. `--all` runs isolated bounded workers. Release enrollment
 comes from frozen HEAD; `--live` explicitly diagnoses local prototypes, and
 reports qualify current runtime bytes. No wait is marked satisfied by fiat.
+
+## Weighted residuals: above the data, one x-axis, symmetric
+
+Every plot that shows a fit's weighted residuals draws them in a strip **above**
+the data, about a fifth of its height, on **the same x-axis** (same limits, zoom
+and pan linked, x tick labels only under the data), with a y-range that is
+**always symmetric** about zero and a **thick zero line**. Concatenated data
+(VV | VH) keep their residuals at their own x, NaN between fitted windows. The
+user has to see at a glance where a deviation comes from; an auto-fitted strip
+moves zero to wherever the residuals land and hides which way the model misses.
+
+- immediate-mode tools: `chisurf.emtk.residual_plot.ResidualPlot` —
+  `ResidualPlot(id).draw(draw_data, [Residuals(label, x, wres)], x_extent=…,
+  key=…, x_label=…, y_label=…, log_y=…)`;
+- fit windows (chiplot `LinePlot`): `symmetric_limit`, `ZERO_LINE_WIDTH` and
+  `zero_line_colour` from the same module;
+- the range alone, toolkit-free: `chisurf.core.plotting.residuals.symmetric_limit`.
+
+Never a separate residual dock or tab. Guard:
+`test/native_emtk/test_residual_plot.py`.
+

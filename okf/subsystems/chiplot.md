@@ -561,7 +561,49 @@ has to pin the active backend to do it: the rest of the module constructs
 canvases from the backend directly, which is exactly what let the seam go
 unexercised.
 
+## Residual strips: above the data, one x-axis, symmetric, a thick zero — 2026-11-05
+
+Owner rule: *"wres go on top of data, and scale the same way; make wres always sym and plot
+thick 0 line, must be easy to see for user where the deviation comes from."* Every fit plot
+that shows weighted residuals draws them in a strip **above** the data (~22 % of the height),
+on **the same x-axis** (same limits, linked zoom/pan, x tick labels only under the data), with
+a y-range **always** `-r .. r` (never auto-fitted to one side) and a **thick zero line**.
+Concatenated VV | VH residuals stay at their data's x, NaN between the fitted windows.
+
+- **Immediate mode** (`emtk.implot` tools): `chisurf.emtk.residual_plot.ResidualPlot` —
+  `ResidualPlot(plot_id, fraction=0.22).draw(draw_data, [Residuals(label, x, y, colour)],
+  x_extent=(lo, hi), key=…, size=(-1, -1), x_label, y_label, wres_label="w.res.", title,
+  log_x, log_y, y_limits, legend, data_flags, percentile=100, minimum=0, wres_tooltip,
+  fit_y=True)`. `draw_data` is called inside the data plot (lines, drag tools, hover); a new
+  `key` re-fits x to `x_extent` and y to the data. The two plots are linked through
+  `ResidualPlot.x_range` (a `[lo, hi]` list, `setup_axis_links`), aligned with
+  `begin_aligned_plots`. The strip's name (`wres_label`) is written in its top-left corner,
+not as a vertical axis label: in a short strip (LLTF at 1200x800) the aligned layout put the
+vertical label over the strip's own tick labels (`-8`), which the layout test caught. Used by IRF Estimation (both views), LLTF, MaxEnt, FCS filter
+  calculator, Region MLE.
+- **Retained** (chiplot `LinePlot`, the fit windows): already stacked above the data and
+  `link_x`-ed; `_symmetric_strips()` sets both strips (w.res. and a.corr.) to
+  `symmetric_limit` of their visible traces every update, and each carries
+  `panel.hline(0.0, pen=to_pen(zero_line_colour(), width=ZERO_LINE_WIDTH))` — emtk ≥ 0.1.46
+  draws `Plot.hline(..., width=)` thick (chiplot's emtk backend passes the pen width).
+- **The range alone**: `chisurf.core.plotting.residuals.symmetric_limit(values, percentile=100,
+  pad=1.08, minimum=0)` (toolkit-free). `core.fluorescence.mle.display.residual_ylim` (the
+  MLE family's robust 99th percentile, at least ±5) delegates to it.
+
+Guards: `test/native_emtk/test_residual_plot.py` (above, same x, linked zoom, refit on new data,
+symmetric `COND_ALWAYS`, tick labels, thick zero, VV|VH), `test/gui/test_lineplot.py`
+(`_symmetric_strips`), emtk `tests/test_emtk_plot.py` (hline width).
+
 # Where to pick this up — the emtk backend
+
+**Residual strips (2026-11-05):** the rule and helper are above ("Residual strips"). Open:
+Burst MLE (`burst_mle_analysis/gui/native.py`) still draws its own decay/residual pair — its
+lane adopts `ResidualPlot` (pass `percentile=99, minimum=5` to keep `residual_ylim`'s range).
+`fcs_saturation_calc` (FCS curve + residual series side by side) and the Plot-settings preview
+(`plugins/core/plot_settings`, a static three-panel sample) were not ported. `LinePlot`'s strips
+are reset to symmetric on every `update()`; a y-zoom the user makes in a strip lasts until the
+next update — by design, but a restored project view for a strip's y is therefore ignored.
+
 
 **Plot settings reach the plots (2026-10-12):** see "Settings ▸ Plots changed no plot". Next:
 re-style *open* fit windows when a plot setting changes (the one gap left; it needs `LinePlot`

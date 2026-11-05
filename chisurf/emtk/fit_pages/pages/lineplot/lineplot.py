@@ -20,6 +20,7 @@ from chisurf import chiplot as cp
 from chisurf import typing
 from chisurf.core.support.i18n import tr
 from chisurf.emtk.fit_pages.pages import plotbase
+from chisurf.emtk.residual_plot import ZERO_LINE_WIDTH, symmetric_limit, zero_line_colour
 
 _BUILTIN_PRESETS_PATH = Path(__file__).parent / "reference_presets.json"
 
@@ -590,6 +591,10 @@ class LinePlot(plotbase.Plot):
         plots = {"top_left_plot": p1, "top_right_plot": p2, "main_plot": p3}
         plots["top_left_plot"].set_axis_visible(bottom=False)
         plots["top_right_plot"].set_axis_visible(bottom=False)
+        # The residual strips follow the one rule of chisurf.emtk.residual_plot: above the
+        # data, on its x-axis, symmetric about a thick zero line (set in update()).
+        zero_pen = cp.to_pen(zero_line_colour(), width=ZERO_LINE_WIDTH)
+        self._zero_lines = tuple(panel.hline(0.0, pen=zero_pen) for panel in (p1, p2))
         # Panels, not widgets: the fit window's surface draws their canvases.
         self._panels = (p2, p1, p3)  # A.corr. residuals, residuals, data
         self.plot_stack = None
@@ -1223,6 +1228,8 @@ class LinePlot(plotbase.Plot):
                 fit, curves, data_log_x, data_log_y, director, x_shift, y_shift
             )
 
+        self._symmetric_strips()
+
         # Set log-scales
         self.plots["main_plot"].set_log(x=data_log_x, y=data_log_y)
         self.plots["top_left_plot"].set_log(x=data_log_x)
@@ -1286,6 +1293,28 @@ class LinePlot(plotbase.Plot):
                 self.text.text = metrics_text
             except Exception:
                 pass
+
+    #: The curves of each residual strip, by panel key (a curve key contains the name).
+    STRIP_CURVES = {"top_left_plot": "weighted residuals", "top_right_plot": "autocorrelation"}
+
+    def _symmetric_strips(self) -> None:
+        """Give each residual strip the range ``-r .. r`` of what it shows, every update.
+
+        A strip auto-fitted to its traces puts zero wherever the data lands, so which way a
+        model misses cannot be read off; ``r`` is :func:`symmetric_limit` of the visible traces.
+        """
+        for panel_key, name in self.STRIP_CURVES.items():
+            shown = []
+            for line_key, line in self.lines.items():
+                if line is None or name not in str(line_key) or not line.visible:
+                    continue
+                try:
+                    shown.append(np.asarray(line.get_data()[1], dtype=float))
+                except Exception:  # noqa: BLE001 - a handle without data shows nothing
+                    continue
+            if shown:
+                reach = symmetric_limit(shown)
+                self.plots[panel_key].set_ylim(-reach, reach, padding=0.0)
 
     def _build_metrics_overlay_html(self, current_fit) -> str:
         """Build the metrics overlay HTML.

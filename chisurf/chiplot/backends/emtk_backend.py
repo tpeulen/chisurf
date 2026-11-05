@@ -1214,6 +1214,7 @@ class EmtkCanvas(base.Canvas):
                     float(state.get("value", 0.0)),
                     state.get("color", (200, 200, 200)),
                     label or None,
+                    width=float(state.get("width", 1.0)),
                 )
             else:
                 # A vertical guide: emtk's Plot draws horizontal ones, so this
@@ -1937,6 +1938,7 @@ class EmtkCanvas(base.Canvas):
             value=float(pos),
             orientation=_orientation(orientation),
             color=_rgb(pen),
+            width=float(getattr(pen, "width", 1.0) or 1.0),
             name=label,
             movable=bool(movable),
         )

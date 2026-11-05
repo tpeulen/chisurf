@@ -179,10 +179,10 @@ def residual_ylim(residuals, *, minimum: float = 5.0, percentile: float = 99.0):
     -------
     tuple of float
     """
-    values = np.asarray(residuals, dtype=float)
-    values = values[np.isfinite(values)]
-    span = float(np.percentile(np.abs(values), percentile)) if values.size else minimum
-    span = max(span, minimum)
+    from chisurf.core.plotting.residuals import symmetric_limit
+
+    # the one residual-range rule (chisurf.core.plotting.residuals); no headroom, as before
+    span = symmetric_limit(residuals, percentile=percentile, pad=1.0, minimum=minimum)
     return (-span, span)
 
 

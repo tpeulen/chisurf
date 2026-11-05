@@ -394,3 +394,47 @@ def test_a_huge_chi2_is_printed_short():
     assert _fmt_metric(0.0) == "0.000"
     assert _fmt_metric(None) == "?"
     assert len(_fmt_metric(123456789.0, nd=4)) <= 12
+
+
+def test_residual_strips_are_symmetric_about_a_thick_zero_line():
+    """The w.res. and a.corr. strips get ``-r .. r`` of what they show, never an auto-fit.
+
+    The rule lives in ``chisurf.emtk.residual_plot``; a strip fitted to its traces puts zero
+    wherever the residuals land, so the side a model misses on cannot be read off.
+    """
+    from chisurf.emtk.residual_plot import ZERO_LINE_WIDTH, symmetric_limit
+
+    class _Line:
+        visible = True
+
+        def __init__(self, y):
+            self.y = np.asarray(y, dtype=float)
+
+        def get_data(self):
+            return np.arange(self.y.size), self.y
+
+    class _Panel:
+        ylim = None
+
+        def set_ylim(self, lo, hi, *, padding=None):
+            self.ylim = (lo, hi)
+
+    plot = LinePlot.__new__(LinePlot)
+    wres = [0.5, -6.0, 2.0, np.nan]
+    hidden = _Line([100.0])
+    hidden.visible = False
+    plot.lines = {
+        "weighted residuals": _Line(wres),
+        "weighted residuals_1": hidden,  # a hidden trace does not stretch the strip
+        "autocorrelation": _Line([0.2, 0.9]),
+        "data": _Line([1e4, 1e5]),
+    }
+    plot.plots = {"top_left_plot": _Panel(), "top_right_plot": _Panel(), "main_plot": _Panel()}
+    plot._symmetric_strips()
+    lo, hi = plot.plots["top_left_plot"].ylim
+    assert hi == pytest.approx(symmetric_limit([wres])) and lo == -hi
+    lo, hi = plot.plots["top_right_plot"].ylim
+    assert hi == pytest.approx(symmetric_limit([[0.2, 0.9]])) and lo == -hi
+    assert plot.plots["main_plot"].ylim is None
+    src = _lineplot_source()
+    assert "panel.hline(0.0, pen=zero_pen)" in src and ZERO_LINE_WIDTH >= 2.0
