@@ -160,3 +160,23 @@ def test_cli_paths_with_spaces(repo, capsys):
     (repo / "log.md").write_text("# Log\n")
     assert se.main(["commit", "-m", "bad", "--file", "log.md"]) == 1
     assert "refusing" in capsys.readouterr().err
+
+
+def test_patch_commits_own_hunk_and_leaves_the_other_agents_edit_uncommitted(repo, tmp_path):
+    # code.py holds two agents' uncommitted edits; only one hunk is mine.
+    (repo / "code.py").write_text("x = 1\n" + "".join(f"k{i} = {i}\n" for i in range(12)))
+    sc.commit("more lines", ["code.py"])
+    lines = (repo / "code.py").read_text().splitlines(keepends=True)
+    lines[0] = "x = 2  # mine\n"
+    lines[-1] = "k11 = 'theirs'\n"
+    (repo / "code.py").write_text("".join(lines))
+    full = _git(repo, "diff", "-U1", "--", "code.py")
+    head, first, _second = full.split("\n@@")[0], full.split("\n@@")[1], full.split("\n@@")[2]
+    mine = tmp_path / "mine.diff"
+    mine.write_text(head + "\n@@" + first + "\n")
+    sc.commit("mine only", patches=[str(mine)])
+    committed = _show(repo, "HEAD", "code.py")
+    assert "x = 2  # mine" in committed and "theirs" not in committed
+    assert "theirs" in (repo / "code.py").read_text()  # the other edit stays in the tree
+    assert _git(repo, "diff", "--cached", "--name-only") == ""  # index synced to the commit
+    assert "theirs" in _git(repo, "diff", "--", "code.py")

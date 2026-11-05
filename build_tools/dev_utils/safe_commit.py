@@ -196,8 +196,12 @@ def _build(
     allow_drop: set[str],
     base: str | None,
     index: str,
+    patches: Sequence[str] = (),
 ) -> dict[str, list[str]]:
     """Fill ``index`` from ``head`` plus the named changes and check every guard.
+
+    *patches* (unified diffs) are applied to HEAD's content of their paths, not to the
+    working tree: that commits one's own hunks of a file another agent is editing too.
 
     Returns
     -------
@@ -211,10 +215,13 @@ def _build(
     if removes:
         _git(repo, "update-index", "--force-remove", "-z", "--stdin", index=index,
              stdin=b"".join(f.encode("utf-8", "surrogateescape") + b"\0" for f in removes))
+    for patch in patches:
+        _git(repo, "apply", "--cached", "--whitespace=nowarn", patch, index=index)
     changed = _changed_paths(repo, index)
     if not changed:
         raise UnsafeCommitError("nothing to commit: every named path matches HEAD")
-    named = set(files) | set(removes)
+    patched = set(_patch_paths(repo, patches)) - set(files)
+    named = set(files) | set(removes) | patched
     stray = sorted(set(changed) - named)
     if stray:
         raise UnsafeCommitError(f"the commit would touch paths that were not named: {stray}")
@@ -228,7 +235,8 @@ def _build(
                     "(it is missing from the working tree)"
                 )
             continue
-        if status != "M":
+        if status != "M" or path in patched:
+            # a patch that applied to HEAD's content cannot be a stale copy: git checked its context
             continue
         lost = _removed_lines(repo, index, path)
         if lost is None:
@@ -268,6 +276,17 @@ def _build(
     return dropped
 
 
+def _patch_paths(repo: Path, patches: Sequence[str]) -> list[str]:
+    """The paths the unified diffs *patches* change."""
+    paths: list[str] = []
+    for patch in patches:
+        out = _git(repo, "apply", "--numstat", "-z", patch).stdout
+        for rec in out.split(b"\0"):
+            if rec.count(b"\t") >= 2:
+                paths.append(rec.split(b"\t", 2)[2].decode("utf-8", "surrogateescape"))
+    return list(dict.fromkeys(p for p in paths if p))
+
+
 def _sync_real_index(repo: Path, sha: str, files: Sequence[str], removes: Sequence[str]) -> None:
     """Point the real index entries of the committed paths at the committed blobs."""
     paths = list(dict.fromkeys([*files, *removes]))
@@ -304,6 +323,7 @@ def commit(
     repo: str | os.PathLike[str] | None = None,
     retries: int = 5,
     dry_run: bool = False,
+    patches: Iterable[str | os.PathLike[str]] = (),
     _before_update_ref: Callable[[int], None] | None = None,
 ) -> CommitResult:
     """Commit the working-tree content of ``files`` (and the deletion of ``removes``) on HEAD.
@@ -329,6 +349,9 @@ def commit(
         Rebuilds allowed when HEAD moves between build and ``update-ref``.
     dry_run : bool, optional
         Build and check, but do not commit.
+    patches : iterable of path, optional
+        Unified diffs applied to HEAD's content (``git apply --cached``): one's own hunks
+        of a file whose working tree also holds another agent's uncommitted edits.
     _before_update_ref : callable, optional
         Test hook, called with the attempt number just before the ref update.
 
@@ -350,8 +373,12 @@ def commit(
     files_r = list(dict.fromkeys(_repo_path(root, f) for f in files))
     removes_r = list(dict.fromkeys(_repo_path(root, f) for f in removes))
     drops = {_repo_path(root, f) for f in allow_drop}
-    if not files_r and not removes_r:
-        raise UnsafeCommitError("no paths given (--file / --remove)")
+    patches_r = [str(Path(p).resolve()) for p in patches]
+    for p in patches_r:
+        if not Path(p).is_file():
+            raise UnsafeCommitError(f"patch {p} does not exist")
+    if not files_r and not removes_r and not patches_r:
+        raise UnsafeCommitError("no paths given (--file / --remove / --patch)")
     both = sorted(set(files_r) & set(removes_r))
     if both:
         raise UnsafeCommitError(f"paths given with both --file and --remove: {both}")
@@ -374,7 +401,7 @@ def commit(
         os.close(fd)
         os.unlink(index)  # git wants to create the index itself
         try:
-            dropped = _build(root, head, files_r, removes_r, drops, base, index)
+            dropped = _build(root, head, files_r, removes_r, drops, base, index, patches_r)
             if dry_run:
                 print(_out(root, "diff", "--cached", "--stat", "HEAD", index=index))
                 return CommitResult("", head, attempt, dropped)
@@ -391,7 +418,7 @@ def commit(
         cas = _git(root, "update-ref", "-m", f"safe_commit: {subject}", "HEAD", sha, head,
                    check=False)
         if cas.returncode == 0:
-            _sync_real_index(root, sha, files_r, removes_r)
+            _sync_real_index(root, sha, [*files_r, *_patch_paths(root, patches_r)], removes_r)
             return CommitResult(sha, head, attempt, dropped)
         print(f"HEAD moved during attempt {attempt}; rebuilding on the new HEAD", file=sys.stderr)
     raise UnsafeCommitError(f"HEAD kept moving; gave up after {retries} attempts")
@@ -408,6 +435,9 @@ def add_commit_parser(sub) -> None:
                     help="subject; repeat for body paragraphs")
     cp.add_argument("--file", action="append", default=[], metavar="PATH",
                     help="commit this path's working-tree content (repeat per path)")
+    cp.add_argument("--patch", action="append", default=[], metavar="DIFF",
+                    help="apply this unified diff to HEAD's content and commit the result: "
+                         "your own hunks of a file another agent also has uncommitted edits in")
     cp.add_argument("--remove", action="append", default=[], metavar="PATH",
                     help="delete this tracked path in the commit (repeat per path)")
     cp.add_argument("--allow-drop", action="append", default=[], metavar="PATH",
@@ -426,6 +456,7 @@ def run_commit_args(args) -> int:
         res = commit(
             args.message, args.file, removes=args.remove, allow_drop=args.allow_drop,
             base=args.base, retries=args.retries, dry_run=args.dry_run,
+            patches=args.patch,
         )
     except UnsafeCommitError as exc:
         print(f"safe_commit: {exc}", file=sys.stderr)
