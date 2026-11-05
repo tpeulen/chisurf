@@ -100,12 +100,15 @@ def tr(text: str | None, context: str = DEFAULT_CONTEXT) -> str | None:
     try:
         if _backend is not None:
             return _backend(context, text)
-        return _toolkit().tr(text, context=context, domain=DOMAIN)
+        return (_registered_toolkit or _toolkit()).tr(text, context=context, domain=DOMAIN)
     except Exception:
         return text
 
 
 _registered = False
+#: :mod:`emtk.i18n` once :func:`register_catalogues` ran (a label is translated every frame:
+#: the seam then costs one lookup, not an import and a registration check).
+_registered_toolkit = None
 
 
 def catalogue_directory():
@@ -132,6 +135,8 @@ def register_catalogues():
         if toolkit.default_domain() is None:
             toolkit.set_default_domain(DOMAIN)
         _registered = True
+    global _registered_toolkit
+    _registered_toolkit = toolkit
     return toolkit
 
 
