@@ -850,11 +850,33 @@ _FIT_POOL_WORKERS = 0
 MIN_CHUNK_BURSTS = 200
 
 
+#: Resident memory of one fit process (Python, tttrlib, the fit imports and its chunk of bursts),
+#: measured 1-3 GB on DNA13bp_3.ptu; the pool may claim half of the memory available at start.
+FIT_WORKER_GB = 1.5
+FIT_POOL_MEMORY_SHARE = 0.5
+
+
 def fit_workers() -> int:
-    """Worker processes of the burst fit: every core but one (the UI's)."""
+    """Worker processes of the burst fit: every core but one (the UI's), as many as memory allows.
+
+    Counting cores alone started 7 spawned processes per ChiSurf on an 8-core, 16 GB laptop and
+    kept them; a few ChiSurf processes at once (a second window, a batch, tests) took 87 Python
+    processes and 34 GB, and macOS ran out of memory. ``CHISURF_FIT_WORKERS`` overrides the count.
+    """
     import os
 
-    return max(1, (os.cpu_count() or 2) - 1)
+    override = os.environ.get("CHISURF_FIT_WORKERS", "").strip()
+    if override.isdigit() and int(override) > 0:
+        return int(override)
+    cores = max(1, (os.cpu_count() or 2) - 1)
+    try:
+        import psutil
+
+        available_gb = psutil.virtual_memory().available / 1e9
+    except Exception:  # noqa: BLE001 - no psutil: one worker per two cores, at most four
+        return max(1, min(cores // 2, 4))
+    by_memory = int(available_gb * FIT_POOL_MEMORY_SHARE / FIT_WORKER_GB)
+    return max(1, min(cores, by_memory))
 
 
 def fit_pool(workers: int | None = None):
@@ -884,7 +906,14 @@ def warm_fit_pool() -> None:
 
 
 def warm_fit_pool_quietly() -> None:
-    """:func:`warm_fit_pool` for a background thread: a failure only means the fit starts them."""
+    """:func:`warm_fit_pool` for a background thread: a failure only means the fit starts them.
+
+    Not under pytest: every test process opening Burst MLE started a pool of its own.
+    """
+    import os
+
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return
     try:
         warm_fit_pool()
     except Exception:  # noqa: BLE001

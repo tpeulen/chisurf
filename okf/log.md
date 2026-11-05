@@ -8,6 +8,7 @@
 - ndX 181319a: a run background record's own source word ('model') stays its source after the background_sources split. Known issues: tests found red before the nomenclature sweep listed.
 - chisurf: `kill -USR1 <pid>` appends every thread's Python stack to the running session's crash log (no root needed; py-spy needs it on macOS) -- for hangs where a native sample shows only idle threads. The manifest field `dock_side` is now declared on PluginManifest (it was validated but not in the schema, so the agent manifest was reported invalid).
 - Burst Analysis Data Selection: the reference dye's G was never applied after a restored session -- applied_g (G|G 1.436) came back with the session, the setup from the library at G 1.0, and the mismatch read as a hand edit; a setup at the uncalibrated G 1.0 now always takes the reference G (`BurstDataSelectionApp._edited_by_hand`, guard `burst_analysis/tests/test_reference_g_after_restore.py`). Found in the owner's ~/.chisurf/emtk/burst_analysis.settings.json.
+- Burst MLE fit pool sized by memory as well as cores (psutil available x 0.5 / 1.5 GB per worker; CHISURF_FIT_WORKERS overrides) and not pre-started under pytest: on the 8-core 16 GB laptop each ChiSurf kept 7 spawned workers, and several ChiSurf/test processes at once reached 87 Python processes / 34 GB (JetsamEvent 2026-11-05 11:59). Idle pool shutdown still open (known-issues).
 
 ## 2026-11-04
 
