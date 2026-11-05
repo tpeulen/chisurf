@@ -187,7 +187,8 @@ so commit through it:
 ```bash
 python -m build_tools.dev_utils.safe_edit commit -m "Subject" -m "Body paragraph." \
     --file chisurf/foo.py --file "docs/a b.md" --file okf/log.md \
-    [--remove old/file.py] [--allow-drop chisurf/foo.py] [--base <HEAD you started from>] [--dry-run]
+    [--patch mine.diff] [--remove old/file.py] [--allow-drop chisurf/foo.py] \
+    [--base <HEAD you started from>] [--dry-run]
 ```
 
 - Each path is its own argument (repeat `--file`), so there is no word splitting.
@@ -203,9 +204,15 @@ python -m build_tools.dev_utils.safe_edit commit -m "Subject" -m "Body paragraph
   empty commit, or a change to any path not named, is refused.
 - The message is exactly the `-m` paragraphs — no trailers. On success it
   prints the hash and `git show --stat`, and points the real index entries of
-  those paths at the committed blobs. It commits whole working-tree files, so a
+  those paths at the committed blobs. `--file` commits whole working-tree files, so a
   file with another agent's uncommitted lines sweeps them in (the content lands;
   do not use it to commit someone else's half-finished file).
+- **Your hunks only: `--patch DIFF`.** Write your own hunks of such a file as a
+  unified diff (`git diff -- PATH > all.diff`, keep only your `@@` hunks) and pass
+  `--patch mine.diff`: it is applied to HEAD's content of its paths (`git apply
+  --cached` on the temporary index), the other agent's hunks stay uncommitted in the
+  tree, and the real index is synced to the commit. A patch that applied to HEAD
+  cannot be a stale copy, so its paths skip the lost-lines check.
 
 Guard: `test/dev_utils/test_safe_commit.py`.
 

@@ -9,6 +9,32 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
+**Pipeline wall time and the slow frames after a fit: measured, four overheads fixed, the rest
+handed to their lanes (2026-11-05).** Owner: "the burst processing can be in general faster, there
+are somehow overheads" and "after processing the ui is super slow". Measurement and table:
+[Pipeline wall time](#pipeline-wall-time) below. Open, in order of measured cost:
+1. *Burst MLE prepares twice*: `take_bursts` -> `prepare_patterns` runs the strict background
+   selection in `auto_extract` **and** in `set_pattern_files` (sampled 15.1 s + 14.9 s of 37.5 s on
+   home): `engine._memo` misses between them. One selection per (photons, bursts, IRF) -- MLE lane.
+2. *Burst Selection's in-process RPC serialises the burst table*: `analysis_result_to_payload` ->
+   `to_jsonable` walks 1.9 M objects (11.7 s cProfiled of a 31.7 s search) and the model rebuilds the
+   table with `store_from_rows` (2.0-2.3 s); the raw search + filter + summary is 3.3 s. Hand the
+   table through `InProcessClient` (`result._table`), rows only for a real ZMQ client -- Selection lane.
+3. *Burst Selection frames ~300 ms* (test painter): `model.burst_spans` (model.py:1485) 71 ms/frame,
+   `native._histogram` (`diagnostics.histogram_data_from_frame`, `adapter.burst_rows_for_display`)
+   66 ms, `native._window_histogram` (`rows_in_window`) 52 ms -- recomputed every frame; cache by
+   (result, window) -- Selection lane.
+4. *The fit is C++ time, not Python loop time*: fit23 on 1000-channel decays 3.0 ms per call on one
+   core, the Python around it < 2 % (profiled); `Fit2x.fit_many` (8 OpenMP threads) 0.42 ms/fit.
+   `run_batch` over N spawned processes could be one `fit_many` per detector (threads, GIL
+   released): the same throughput with no processes, shared memory or queue pickling, and no pool
+   memory at all -- MLE lane; fit23's own cost is tttrlib's.
+5. *emtk draws plot lines per segment in Python* (`implot_items._render_line_strip`: transform +
+   cull per point, then `painter.polyline`, per-segment `line()` without a native polyline): the
+   Burst MLE tabs' remaining ~80-100 ms/frame under the test painter. Vectorise in emtk.
+6. *The pto vocabulary* (`chisurf/core/fio/pto.py` `_vocabulary`, 10.8 s cProfiled) is parsed again
+   whenever the pickle under `settings/cache` misses -- every fresh settings folder and batch worker.
+
 **Burst MLE: rho free, the decay's floor, excluded fits, objectives, G after a restore (2026-11-05).**
 Owner: "by default fit rho", "detector dark counts and bg are not accounted for", "BIFL scatter
 and the 2I* P + 2S what is best default?", "the mean lifetimes are weird, outliers must be
@@ -587,6 +613,50 @@ run its tests, then stage the composed blobs with `git update-index --cacheinfo`
    2.049 ns. BVA on all 10 files 2558 of 2980; background 1.647 / 0.495 kHz; fusion demo 419 bursts (0.9/0.7/0.5 →
    338/297/280); GS default simulation k 2878.9 / 1017.5 s⁻¹, scan bound 8.53 µs; Accurate FRET guide-14 table
    α 0.0800, δ 0.0589, γ 0.6579, β 1.3885.
+
+## Pipeline wall time
+
+Measured 2026-11-05 on `ssh home` (48-core x86_64 Linux, shared: load 35-40, so +-15 % between
+runs; the laptop is arm64 macOS -- compare shares, not seconds). DNA13bp_3.ptu (311 MB, 12 M
+photons, RVZMT150, Rh110 + Alexa647 references, 21 808 bursts, 3 detectors), headless hub
+(`RealisticDriver`, `real_painter=False`: frame times include the Python test painter). Re-derive:
+`python -m build_tools.dev_utils.burst_pipeline_bench gui|stages|figure` (docstring; slow test
+`test/test_burst_pipeline_bench.py`). Traps: run it on home, never the laptop; copy the data off the
+SD card first; an in-process all-thread stack sampler (py-spy needs root on macOS) inflated every
+frame ~2x by taking the GIL -- per-frame numbers are from runs without it; symlinked copies of one
+measurement are one sample to More samples (it resolves paths).
+
+| Hub step (wall, s) | before | after |
+|---|---:|---:|
+| shell start | 5.7 | 4.9 |
+| hub open (restore_settings 2.5 s, session_menus 2.4 s on the UI thread) | 9.6 | 8.3 |
+| data + reference calibration (confocal volume 5.2 s, container hash 3.7 s, both threads) | 16.2 | 12.0 |
+| burst search + write | 24.9 | 22.3 |
+| Burst MLE ready (references, IRF, strict background) | 63.6 | 44.1 |
+| Burst MLE fit (8 processes) | 24.2 | 20.5 |
+| **total** | **145** | **113** |
+
+| Frame (median, ms) | before | after |
+|---|---:|---:|
+| Data step | 169 (94*) | 49 (33*) |
+| Burst Selection step | 337 | 303 |
+| Burst MLE, Decay and fit / Inspected burst / Lifetime table | 136 / 157 / 151 | 113 / 99 / 113 |
+| More samples step | 56 | 47 |
+
+(* the back-to-back pair under lighter load.) Stage by stage, headless, beside the raw engine call
+(cProfiled, so the plugin rows are inflated): TTTR read 0.8 s; raw photon filter + `find_bursts`
+1.5 s, `summarize_bursts` 1.8 s vs the plugin search 31.7 s (row serialisation, container +
+vocabulary, see item 2 and 6 above); MLE background + strict selection 14.0 -> 7.6 s; `run_batch`
+17.9 s; per-burst decay histograms of all bursts 0.8 s; fit23 3.0 ms/call vs `fit_many`
+0.42 ms/fit; More samples, one sample 40.3 -> 37.9 s. Pool memory (peak RSS): fit worker
+0.08-0.13 GB, More samples worker 0.75 GB, GUI process 1.5 GB.
+
+Fixed: `dyes.get_dye` copied the whole dye database per lookup (Data step frame); the merged
+registry is kept (`catalog._merged_cached`); the Inspected burst histogram and file name are kept
+per (burst, table, photons, windows); the strict background selection looks the intervals up in
+the photons (identical mask, 4.1 -> 2.3 s a call); kept process pools (`IdlePool`: fit pool,
+BVA/2CDE tasks, imaging reader) let their processes go after 60 s idle and their workers exit with
+their parent (91 orphans were found on home); `FIT_WORKER_GB` 1.5 -> 0.75 (measured).
 
 ## Overview
 
