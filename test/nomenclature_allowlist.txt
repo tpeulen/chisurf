@@ -1,0 +1,372 @@
+# Retired nomenclature still in the tree: rule  path  count  # reason.
+#
+# The rule (test/test_nomenclature.py, build_tools/dev_utils/nomenclature_audit.py):
+# detectors G|G / R|G / R|R, backgrounds Bg_<detector> (kHz), polarisation VV / VH,
+# Tau (G|G) / r (R|R), ranges a:b, G (G|G), no HDF5.
+#
+# This list is SHRINKING: never add a line to make the guard pass. Fix the hit,
+# then lower the count or strike the line. The end state is an empty list.
+
+hdf5                chisurf/core/datastore.py  6  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/core/experiments/core/reader.py  1  # reads third-party / legacy HDF5 input (MFD HDF5, Photon-HDF5); nothing is written as HDF5
+hdf5                chisurf/core/experiments/pda2c/inputs.py  7  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/core/fio/fluorescence/burst.py  5  # reads third-party / legacy HDF5 input (MFD HDF5, Photon-HDF5); nothing is written as HDF5
+detector            chisurf/core/fio/fluorescence/burst_companion.py  1  # detector: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+detector            chisurf/core/fio/fluorescence/burst_container.py  1  # detector: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+hdf5                chisurf/core/fio/fluorescence/burst_states.py  3  # reads third-party / legacy HDF5 input (MFD HDF5, Photon-HDF5); nothing is written as HDF5
+detector            chisurf/core/fio/fluorescence/burstwise_import.py  4  # read side: legacy headers of external burst files, mapped on read
+hdf5                chisurf/core/fio/fluorescence/imaging_container.py  2  # reads third-party / legacy HDF5 input (MFD HDF5, Photon-HDF5); nothing is written as HDF5
+hdf5                chisurf/core/fio/fluorescence/photons.py  4  # reads third-party / legacy HDF5 input (MFD HDF5, Photon-HDF5); nothing is written as HDF5
+hdf5                chisurf/core/fio/pto.py  2  # reads third-party / legacy HDF5 input (MFD HDF5, Photon-HDF5); nothing is written as HDF5
+hdf5                chisurf/core/fio/staging.py  5  # reads third-party / legacy HDF5 input (MFD HDF5, Photon-HDF5); nothing is written as HDF5
+hdf5                chisurf/core/fio/structure/coordinates.py  1  # reads third-party / legacy HDF5 input (MFD HDF5, Photon-HDF5); nothing is written as HDF5
+bg                  chisurf/core/fio/structure/elements.py  1  # false positive: bromine
+hdf5                chisurf/core/fitting/fit.py  6  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/core/fitting/optimization_settings.py  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+polarisation_ident  chisurf/core/fluorescence/burst/simulate.py  9  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+detector            chisurf/core/fluorescence/burst/table.py  1  # detector: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+bg                  chisurf/core/fluorescence/fret/__init__.py  12  # Bg/Br are parameters of the legacy fg_fr/intensity public API; rename with its callers, follow-up
+range               chisurf/core/fluorescence/fret/forster_calculator.py  1  # a value interval or id join, not a data range
+polarisation        chisurf/core/fluorescence/fret/species_decay.py  1  # polarisation: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+hdf5                chisurf/core/fluorescence/imaging/image_source.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/core/fluorescence/imaging/pixel_maps.py  10  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+polarisation_ident  chisurf/core/fluorescence/imaging/pixel_maps.py  3  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+bg                  chisurf/core/fluorescence/intensity.py  2  # Bg/Br are parameters of the legacy fg_fr/intensity public API; rename with its callers, follow-up
+polarisation_ident  chisurf/core/fluorescence/mfd/fit.py  5  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+detector            chisurf/core/fluorescence/mfd/histogram.py  4  # detector: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+detector            chisurf/core/fluorescence/mfd/seed.py  1  # detector: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+polarisation_ident  chisurf/core/models/pda2c/anisotropy.py  4  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+bg                  chisurf/core/models/pda2c/nusiance.py  2  # PDA model parameter names BG/BR are stored in fits; rename needs a fit migration
+bg                  chisurf/core/models/pda3c/pda3c.py  1  # bg: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+detector_word       chisurf/core/optical_configuration.py  1  # detector_word: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+hdf5                chisurf/core/registry/file_formats.json  10  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+bg                  chisurf/core/settings/constants/parameter_registry.json  2  # PDA model parameter names BG/BR are stored in fits; rename needs a fit migration
+bg                  chisurf/core/settings/constants/structure.json  1  # false positive: bromine
+hdf5                chisurf/core/settings/settings_chisurf.yaml  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+polarisation        chisurf/core/setup_channel_definition.py  3  # polarisation: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+hdf5                chisurf/core/structure/structure.py  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/core/structure/trajectory.py  3  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/emtk/channel_definition.py  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/emtk/fit_pages/pages/fitinfo.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+polarisation        chisurf/emtk/fit_pages/pages/table_plot_emtk.py  2  # false positive: a symbol table / a table-scope button, not polarisation
+hdf5                chisurf/emtk/state.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+detector            chisurf/plugins/burst/alex_suite/api/histograms.py  1  # detector: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+hdf5                chisurf/plugins/burst/bid_to_analysis/README.md  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/burst/bid_to_analysis/__init__.py  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/burst/bid_to_analysis/gui/help.md  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/burst/bid_to_analysis/manifest.json  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+polarisation        chisurf/plugins/burst/burst_analysis/demo.py  1  # polarisation: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+detector_word       chisurf/plugins/burst/burst_analysis/gui/guide.json  1  # detector_word: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+polarisation        chisurf/plugins/burst/burst_analysis/samples.py  3  # polarisation: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+hdf5                chisurf/plugins/burst/burst_browser/gui/help.md  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/burst/burst_fusion/gui/controller.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/burst/burst_gs/gui/view_model.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/burst/burst_h2mm/backend/services.py  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/burst/burst_h2mm/core/export.py  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/burst/burst_h2mm/examples/generate_example_data.py  4  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+range               chisurf/plugins/burst/burst_h2mm/gui/model.py  1  # a value interval or id join, not a data range
+bg                  chisurf/plugins/burst/burst_irf_bg/gui/irf_bg_results_emtk.view.json  1  # n_bg is the results table's column key (stored); rename with its readers, follow-up
+bg                  chisurf/plugins/burst/burst_irf_bg/gui/view_model.py  3  # n_bg is the results table's column key (stored); rename with its readers, follow-up
+polarisation        chisurf/plugins/burst/burst_mle_analysis/engine.py  1  # polarisation: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+detector_word       chisurf/plugins/burst/burst_mle_analysis/gui/help.md  1  # detector_word: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+polarisation        chisurf/plugins/burst/burst_mle_analysis/gui/help.md  1  # polarisation: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+hdf5                chisurf/plugins/burst/burst_selection/api/mmfdb.py  4  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/burst/burst_selection/api/models.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/burst/burst_selection/api/transformer.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/burst/burst_selection/docs/CONTRACT.md  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/burst/burst_selection/docs/INSTRUCTION_GUI_VERIFICATION.md  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/burst/burst_selection/docs/INSTRUCTION_HDF5_ZIP_TESTS.md  5  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/burst/burst_selection/docs/INSTRUCTION_TTTRLIB_BURSTFILTER.md  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/burst/burst_selection/docs/REFERENCE_IMPLEMENTATION.md  3  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+detector            chisurf/plugins/burst/burst_selection/gui/adapter.py  1  # detector: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+detector            chisurf/plugins/burst/burstwise_import/sample.py  12  # read side: legacy headers of external burst files, mapped on read
+polarisation_ident  chisurf/plugins/burst/fret_check/pipeline.py  4  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+detector            chisurf/plugins/core/acq/gui/guide.json  1  # a colour of something drawn or a current UI label; reword with the UI
+polarisation_ident  chisurf/plugins/core/acq/gui/record_app.py  21  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+bg                  chisurf/plugins/core/acq/gui/sim_setup.py  1  # 'BG' labels the background species row (asserted by test_setup_widgets); owner decision
+range               chisurf/plugins/core/acq/live/average_power.py  1  # a value interval or id join, not a data range
+polarisation_ident  chisurf/plugins/core/acq/live/calibration/library.py  4  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+polarisation        chisurf/plugins/core/acq/live/calibration/measurements.py  1  # polarisation: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+polarisation_ident  chisurf/plugins/core/acq/live/calibration/measurements.py  4  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+polarisation        chisurf/plugins/core/acq/live/cmc_light/gui.py  2  # polarisation: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+polarisation_ident  chisurf/plugins/core/acq/tcspc_devices/simulation/simulation_cli.py  2  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+polarisation        chisurf/plugins/core/help/api/mathtext.py  2  # false positive: a symbol table / a table-scope button, not polarisation
+hdf5                chisurf/plugins/core/pto_inspector/gui/app.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+detector            chisurf/plugins/core/setup_channel_definition/gui/help.md  1  # a colour of something drawn or a current UI label; reword with the UI
+polarisation        chisurf/plugins/curve_input.py  1  # polarisation: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+hdf5                chisurf/plugins/fcs/fcs_correlator/workflow.py  4  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+polarisation_ident  chisurf/plugins/fcs/fcs_filter_calculator/api.py  79  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+polarisation_ident  chisurf/plugins/fcs/fcs_filter_calculator/backend/services.py  8  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+polarisation        chisurf/plugins/fcs/fcs_filter_calculator/gui/app.py  3  # polarisation: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+polarisation_ident  chisurf/plugins/fcs/fcs_filter_calculator/gui/app.py  1  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+polarisation        chisurf/plugins/fcs/fcs_filter_calculator/gui/model.py  3  # polarisation: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+polarisation_ident  chisurf/plugins/fcs/fcs_filter_calculator/gui/model.py  2  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+polarisation        chisurf/plugins/fcs/fcs_filter_calculator/gui/panel.py  1  # polarisation: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+polarisation_ident  chisurf/plugins/fcs/fcs_filter_calculator/gui/scientific.py  2  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+hdf5                chisurf/plugins/fcs/flc_2d/api.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/fluorescence_decay/maxent_decay/core/sampling.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+polarisation        chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/app.py  2  # polarisation: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+hdf5                chisurf/plugins/microscopy/clsm/EMTK_CHECKLIST.md  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/clsm/gui/clsm.view.json  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/clsm/gui/help.md  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/clsm/gui/view_model.py  4  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/imaging_common/base.py  27  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/imaging_common/mmfdb.py  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/imaging_emtk/pixel_app.py  4  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/imaging_emtk/pixel_checks.py  12  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/imaging_emtk/pixel_model.py  13  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/imaging_tools/__init__.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/imaging_tools/gui/app.py  19  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/imaging_tools/gui/guide.json  3  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/imaging_tools/gui/help.md  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/imaging_tools/manifest.json  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_drift/core.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_flow/core.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_flow/gui/model.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_flow/gui/view_model.py  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_frc/core.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_frc/gui/model.py  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_frc/gui/view_model.py  4  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_intensity/EMTK_CHECKLIST.md  3  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_intensity/__init__.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_intensity/cli/main.py  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_intensity/gui/guide.json  4  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_intensity/gui/help.md  4  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_intensity/gui/intensity.view.json  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_intensity/gui/intensity_emtk.view.json  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_intensity/gui/view_model.py  3  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+polarisation_ident  chisurf/plugins/microscopy/img_pixel_intensity/gui/view_model.py  3  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_intensity/manifest.json  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_micro_time/EMTK_CHECKLIST.md  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_micro_time/cli/main.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_micro_time/core.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_micro_time/gui/guide.json  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_micro_time/gui/help.md  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_micro_time/gui/micro_time_emtk.view.json  5  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_micro_time/gui/view_model.py  3  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_mle/api/models.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_mle/gui/locales.json  5  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_nb/cli/main.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_nb/core.py  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_nb/gui/help.md  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_nb/gui/nb.view.json  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_nb/gui/nb_emtk.view.json  3  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_nb/gui/view_model.py  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_phasor/EMTK_CHECKLIST.md  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_phasor/cli/main.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_phasor/core.py  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_phasor/gui/guide.json  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_phasor/gui/help.md  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_phasor/gui/phasor_emtk.view.json  3  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_pixel_phasor/gui/view_model.py  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_tracking/core.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/img_tracking/gui/model.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/microscopy/region_mle/api/region_mle.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+range               chisurf/plugins/modelling/fret/gui/docking_card.py  1  # a value interval or id join, not a data range
+hdf5                chisurf/plugins/modelling/fret/gui/pair_selection_app.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/ndxplorer/gui/guide.json  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+range               chisurf/plugins/quenching_estimator/cli/cli.py  1  # a value interval or id join, not a data range
+range               chisurf/plugins/quenching_estimator/core/inference/report.py  2  # a value interval or id join, not a data range
+range               chisurf/plugins/quenching_estimator/examples/05_diffusion_modulated_fret.py  1  # a value interval or id join, not a data range
+hdf5                chisurf/plugins/traj/fret_trajectory/traj2fret.py  3  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/traj/fret_trajectory/view_model.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/traj/traj_align/view_model.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/traj/traj_convert/view_model.py  3  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/traj/traj_join/view_model.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/traj/traj_remove_clashes/view_model.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/traj/traj_rotate_translate/__init__.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/traj/traj_rotate_translate/view_model.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+polarisation        chisurf/plugins/tttr/microtime_histogram/gui/app.py  3  # polarisation: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+polarisation        chisurf/plugins/tttr/microtime_histogram/gui/model.py  6  # polarisation: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+hdf5                chisurf/plugins/tttr/ptu_alex_creator/core/__init__.py  3  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/tttr/ptu_alex_creator/gui/alex.view.json  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/tttr/ptu_alex_creator/gui/app.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/tttr/trace_browser/gui/model.py  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/tttr/tttr_header_edit/README.md  3  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/tttr/tttr_header_edit/__init__.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/tttr/tttr_header_edit/gui/guide.json  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/tttr/tttr_header_edit/gui/view_model.py  4  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/tttr/tttr_header_edit/manifest.json  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/tttr/tttr_image_browser/api/io.py  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/tttr/tttr_lut_tools/gui/model.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/tttr/tttr_microtime_shifter/api/transformer.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                chisurf/plugins/tttr/tttr_splitter/gui/view_model.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+polarisation        chisurf/plugins/vv_vh_g_factor/backend/services.py  2  # polarisation: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+polarisation_ident  chisurf/plugins/vv_vh_g_factor/core/calculations.py  30  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+polarisation_ident  chisurf/plugins/vv_vh_g_factor/demo.py  4  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+polarisation        chisurf/plugins/vv_vh_g_factor/gui/model.py  9  # polarisation: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+polarisation_ident  chisurf/plugins/vv_vh_g_factor/gui/model.py  21  # code identifier (i_par, n_perp, par/perp keys); rename is not local, follow-up
+range               chisurf/server/jobs.py  1  # a value interval or id join, not a data range
+range               chisurf/startup/services.py  1  # a value interval or id join, not a data range
+hdf5                docs/concepts/imaging_flim_phasor.md  1  # documents an HDF5 file feature that still exists; strike when the feature goes
+detector            docs/concepts/kappa2_orientation.md  1  # a colour of something drawn or a current UI label; reword with the UI
+bg                  docs/concepts/pda2c.md  3  # PDA model parameter names BG/BR are stored in fits; rename needs a fit migration
+hdf5                docs/concepts/photon_container.md  3  # documents an HDF5 file feature that still exists; strike when the feature goes
+hdf5                docs/development/emtk_interaction_testing.md  1  # legacy manual / literature record / process notes, not current UI
+hdf5                docs/development/licenses.json  3  # legacy manual / literature record / process notes, not current UI
+hdf5                docs/development/licenses.md  1  # legacy manual / literature record / process notes, not current UI
+hdf5                docs/development/measurement_data_analysis_database_scope.md  8  # legacy manual / literature record / process notes, not current UI
+hdf5                docs/development/prd_fdb_architecture_migration.md  2  # legacy manual / literature record / process notes, not current UI
+hdf5                docs/development/prd_measurement_data_analysis_database.md  1  # legacy manual / literature record / process notes, not current UI
+hdf5                docs/development/prd_mmfdb_architecture.md  2  # legacy manual / literature record / process notes, not current UI
+hdf5                docs/development/prd_mmfdb_viewer_node_editor_workflows.md  4  # legacy manual / literature record / process notes, not current UI
+range               docs/fundamentals/instrumentation.md  1  # a value interval or id join, not a data range
+detector            docs/getting_started/index.md  1  # a colour of something drawn or a current UI label; reword with the UI
+detector            docs/guides/03_polymer_distance_distributions.md  1  # a colour of something drawn or a current UI label; reword with the UI
+detector            docs/guides/04_fida_pch.md  1  # a colour of something drawn or a current UI label; reword with the UI
+detector_word       docs/guides/08_burst_variance_analysis.md  1  # detector_word: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+hdf5                docs/guides/100_alex_creator.md  2  # documents an HDF5 file feature that still exists; strike when the feature goes
+detector            docs/guides/112_fret_check.md  1  # a colour of something drawn or a current UI label; reword with the UI
+hdf5                docs/guides/12_handling_tttr_files.md  10  # documents an HDF5 file feature that still exists; strike when the feature goes
+detector            docs/guides/18_tttr_simulation.md  1  # a colour of something drawn or a current UI label; reword with the UI
+detector_word       docs/guides/19_h2mm_hidden_markov.md  1  # detector_word: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+detector            docs/guides/20_ebfret_binned_hmm.md  1  # a colour of something drawn or a current UI label; reword with the UI
+detector            docs/guides/21_lifetime_from_bursts.md  1  # a colour of something drawn or a current UI label; reword with the UI
+hdf5                docs/guides/24_scan_images.md  3  # documents an HDF5 file feature that still exists; strike when the feature goes
+hdf5                docs/guides/27_alex_smfret_workflow.md  1  # documents an HDF5 file feature that still exists; strike when the feature goes
+hdf5                docs/guides/31_h2mm_simulation_validation.md  1  # documents an HDF5 file feature that still exists; strike when the feature goes
+hdf5                docs/guides/34_exporting_burst_data.md  1  # documents an HDF5 file feature that still exists; strike when the feature goes
+hdf5                docs/guides/36_multispot.md  1  # documents an HDF5 file feature that still exists; strike when the feature goes
+hdf5                docs/guides/39_parameter_uncertainty.md  7  # documents an HDF5 file feature that still exists; strike when the feature goes
+bg                  docs/guides/46_ndxplorer.md  1  # bg: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+hdf5                docs/guides/46_ndxplorer.md  1  # documents an HDF5 file feature that still exists; strike when the feature goes
+detector            docs/guides/56_fcs_saturation.md  1  # a colour of something drawn or a current UI label; reword with the UI
+detector            docs/guides/65_live_acquisition.md  1  # a colour of something drawn or a current UI label; reword with the UI
+hdf5                docs/guides/67_number_and_brightness.md  3  # documents an HDF5 file feature that still exists; strike when the feature goes
+hdf5                docs/guides/73_tttr_decay_and_correlation.md  1  # documents an HDF5 file feature that still exists; strike when the feature goes
+hdf5                docs/guides/74_intensity_traces_and_file_tools.md  2  # documents an HDF5 file feature that still exists; strike when the feature goes
+hdf5                docs/guides/75_fcs_toolbox.md  1  # documents an HDF5 file feature that still exists; strike when the feature goes
+range               docs/guides/76_decay_analysis_tools.md  1  # a value interval or id join, not a data range
+hdf5                docs/guides/81_trajectory_tools.md  1  # documents an HDF5 file feature that still exists; strike when the feature goes
+detector            docs/guides/87_channel_definition.md  1  # a colour of something drawn or a current UI label; reword with the UI
+hdf5                docs/guides/87_channel_definition.md  1  # documents an HDF5 file feature that still exists; strike when the feature goes
+hdf5                docs/guides/98_imaging_tools.md  6  # documents an HDF5 file feature that still exists; strike when the feature goes
+detector_word       docs/guides/h2mm.md  1  # detector_word: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+hdf5                docs/guides/h2mm.md  2  # documents an HDF5 file feature that still exists; strike when the feature goes
+hdf5                docs/guides/index.md  1  # documents an HDF5 file feature that still exists; strike when the feature goes
+hdf5                docs/guides/screenshots/guides_26_36.py  2  # documents an HDF5 file feature that still exists; strike when the feature goes
+polarisation        docs/manual/data_input_and_file_format.md  3  # legacy manual / literature record / process notes, not current UI
+polarisation        docs/manual/determination_of_gfactor_and_depolarization_factors_using_chisurf.md  1  # legacy manual / literature record / process notes, not current UI
+hdf5                docs/manual/parameter_sampling.md  1  # legacy manual / literature record / process notes, not current UI
+detector            docs/reference/figures.md  2  # a colour of something drawn or a current UI label; reword with the UI
+hdf5                docs/reference/ndxplorer_headless_cli.md  2  # documents an HDF5 file feature that still exists; strike when the feature goes
+hdf5                docs/reference/plugins/bid_to_analysis.md  2  # generated from view specs/manifests; regenerate (docs-plugins) once the source is fixed
+hdf5                docs/reference/plugins/clsm.md  1  # generated from view specs/manifests; regenerate (docs-plugins) once the source is fixed
+hdf5                docs/reference/plugins/imaging_tools.md  2  # generated from view specs/manifests; regenerate (docs-plugins) once the source is fixed
+hdf5                docs/reference/plugins/img_pixel_intensity.md  2  # generated from view specs/manifests; regenerate (docs-plugins) once the source is fixed
+hdf5                docs/reference/plugins/index.md  4  # generated from view specs/manifests; regenerate (docs-plugins) once the source is fixed
+hdf5                docs/reference/plugins/microtime_histogram.md  1  # generated from view specs/manifests; regenerate (docs-plugins) once the source is fixed
+hdf5                docs/reference/plugins/microtime_shifter.md  1  # generated from view specs/manifests; regenerate (docs-plugins) once the source is fixed
+hdf5                docs/reference/plugins/photon_table.md  1  # generated from view specs/manifests; regenerate (docs-plugins) once the source is fixed
+hdf5                docs/reference/plugins/ptu_alex_creator.md  1  # generated from view specs/manifests; regenerate (docs-plugins) once the source is fixed
+hdf5                docs/reference/plugins/tttr_count_rate_analysis.md  1  # generated from view specs/manifests; regenerate (docs-plugins) once the source is fixed
+hdf5                docs/reference/plugins/tttr_header_edit.md  3  # generated from view specs/manifests; regenerate (docs-plugins) once the source is fixed
+hdf5                docs/reference/plugins/tttr_splitter.md  1  # generated from view specs/manifests; regenerate (docs-plugins) once the source is fixed
+hdf5                docs/reference/plugins/tttr_time_windows.md  1  # generated from view specs/manifests; regenerate (docs-plugins) once the source is fixed
+hdf5                docs/reference/plugins/tttr_to_pto.md  1  # generated from view specs/manifests; regenerate (docs-plugins) once the source is fixed
+hdf5                docs/reference/settings.md  1  # documents an HDF5 file feature that still exists; strike when the feature goes
+hdf5                docs/references/bibliography.yaml  2  # legacy manual / literature record / process notes, not current UI
+detector            docs/references/figures.yaml  4  # legacy manual / literature record / process notes, not current UI
+range               docs/references/figures.yaml  2  # legacy manual / literature record / process notes, not current UI
+hdf5                docs/references/index.md  2  # legacy manual / literature record / process notes, not current UI
+detector            modules/ndxplorer/ndxplorer/app/default_view.py  2  # read side: matches equations/axes/tables written before the detector names
+hdf5                modules/ndxplorer/ndxplorer/app/features/phasor_reference.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+detector            modules/ndxplorer/ndxplorer/app/features/session.py  1  # detector: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+hdf5                modules/ndxplorer/ndxplorer/app/menus.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+detector            modules/ndxplorer/ndxplorer/app/model.py  2  # read side: matches equations/axes/tables written before the detector names
+detector            modules/ndxplorer/ndxplorer/app/overlay_axes.py  1  # read side: matches equations/axes/tables written before the detector names
+hdf5                modules/ndxplorer/ndxplorer/cli.py  2  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+detector            modules/ndxplorer/ndxplorer/core/equation_graph.py  3  # read side: matches equations/axes/tables written before the detector names
+hdf5                modules/ndxplorer/ndxplorer/core/playback.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                modules/ndxplorer/ndxplorer/export/api.py  1  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+hdf5                modules/ndxplorer/ndxplorer/export/report.py  4  # HDF5 still written/read by this tool (imaging maps, fit/project files); a format migration to CSV/.pto, follow-up
+detector            modules/ndxplorer/ndxplorer/io/loading.py  3  # read side: matches equations/axes/tables written before the detector names
+hdf5                modules/ndxplorer/ndxplorer/io/loading.py  5  # reads third-party / legacy HDF5 input (MFD HDF5, Photon-HDF5); nothing is written as HDF5
+range               modules/ndxplorer/ndxplorer/io/loading.py  1  # read side: matches equations/axes/tables written before the detector names
+detector            modules/ndxplorer/ndxplorer/io/reader.py  10  # read side: legacy headers of external burst files, mapped on read
+hdf5                modules/ndxplorer/ndxplorer/io/reader.py  36  # reads third-party / legacy HDF5 input (MFD HDF5, Photon-HDF5); nothing is written as HDF5
+polarisation        modules/ndxplorer/ndxplorer/io/reader.py  1  # read side: legacy headers of external burst files, mapped on read
+bg                  modules/ndxplorer/ndxplorer/settings/curve_equations.yaml  6  # bg: not reworded in this round (identifier, docstring or legacy spelling read); port when the file is touched
+detector            okf/architecture/declarative-analysis-definitions.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/design/2026-10-30-acquisition-ux.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/design/2026-10-30-owner-instructions.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/burst.md  5  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/plugins/burst.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+range               okf/plugins/burst.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+detector            okf/plugins/chimol-web.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/documentation-standard.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/documentation-worklist.md  2  # OKF concept prose written before the rule; port when the concept is next touched
+detector            okf/plugins/emtk-references/accurate-next-pages/burst__accurate_fret.json  6  # OKF concept prose written before the rule; port when the concept is next touched
+detector            okf/plugins/emtk-references/burst__accurate_fret.json  6  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/emtk-references/burst__burst_h2mm.json  1  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/plugins/emtk-references/fcs__fcs_filter_calculator.json  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/emtk-references/latest-qt/burst__burst_h2mm.json  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/emtk-references/legacy/tttr__tttr_header_edit.json  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/emtk-references/microscopy__clsm.json  3  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/emtk-references/microscopy__img_pixel_intensity.json  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/emtk-references/microscopy__img_pixel_micro_time.json  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/emtk-references/microscopy__img_pixel_nb.json  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/emtk-references/microscopy__img_pixel_phasor.json  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/emtk-references/tttr-priority/tttr__tttr_time_windows.json  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/emtk-references/tttr__tttr_header_edit.json  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/emtk-references/tttr__tttr_time_windows.json  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/fcs.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/plugins/fcs.md  3  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation_ident  okf/plugins/fcs.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/imaging.md  5  # OKF concept prose written before the rule; port when the concept is next touched
+bg                  okf/plugins/ndxplorer-emtk-port.md  8  # OKF concept prose written before the rule; port when the concept is next touched
+detector            okf/plugins/ndxplorer-emtk-port.md  2  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/ndxplorer-emtk-port.md  3  # OKF concept prose written before the rule; port when the concept is next touched
+bg                  okf/plugins/ndxplorer.md  5  # OKF concept prose written before the rule; port when the concept is next touched
+detector            okf/plugins/ndxplorer.md  2  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/ndxplorer.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/plugins/profiles/chimol.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/profiles/pixel-phasor.md  2  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/plugins/quest-prototype-migration.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/trajectory.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/plugins/tttr.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/references/anisotropy-theory.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/references/fcs-pam-port.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation_ident  okf/references/fcs-pam-port.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/references/filtered-fcs-2dflcs-theory.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+detector            okf/references/known-issues.md  2  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/references/known-issues.md  25  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/references/known-issues.md  3  # OKF concept prose written before the rule; port when the concept is next touched
+range               okf/references/known-issues.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+bg                  okf/references/pda-theory.md  2  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/references/photophysics-simulation-theory.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+detector            okf/reviews/findings.md  10  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/reviews/findings.md  21  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/reviews/findings.md  17  # OKF concept prose written before the rule; port when the concept is next touched
+range               okf/reviews/findings.md  4  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/specs/assessment.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/specs/pto-mfdb.md  2  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/subsystems/columnar-store.md  10  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/subsystems/data-io.md  3  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/subsystems/fit-window.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/subsystems/fluorescence-domain.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/subsystems/mle-lifetime-fitting.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/subsystems/photon-container.md  3  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/subsystems/ribbon.md  2  # OKF concept prose written before the rule; port when the concept is next touched
+detector            okf/usecases/accurate-fret-calibration.md  5  # OKF concept prose written before the rule; port when the concept is next touched
+range               okf/usecases/accurate-fret-calibration.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/usecases/acquisition-simulated-measurement.md  2  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/usecases/burst-selection-fret.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+range               okf/usecases/burst-selection-fret.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/usecases/clsm-generator-ground-truth.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/usecases/flc-2d-lifetime-exchange.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/usecases/flim-pixel-maps-mle.md  9  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/usecases/flim-pixel-maps-mle.md  4  # OKF concept prose written before the rule; port when the concept is next touched
+detector            okf/usecases/image-colocalization.md  2  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/usecases/image-colocalization.md  3  # OKF concept prose written before the rule; port when the concept is next touched
+detector            okf/usecases/lifetime-fcs-simulator.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/usecases/mcmc-posterior-sampling.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/usecases/md-trajectory-fret.md  3  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/usecases/molecule-wise-lifetime-mle.md  3  # OKF concept prose written before the rule; port when the concept is next touched
+bg                  okf/usecases/ndx-mfd-burst-gating.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+detector            okf/usecases/ndx-mfd-burst-gating.md  4  # OKF concept prose written before the rule; port when the concept is next touched
+detector            okf/usecases/tcspc-simulate-and-recover.md  1  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/usecases/trajectory-preparation.md  11  # OKF concept prose written before the rule; port when the concept is next touched
+polarisation        okf/usecases/vv-vh-g-factor-calibration.md  2  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/workflows/build-and-env.md  14  # OKF concept prose written before the rule; port when the concept is next touched
+hdf5                okf/workflows/imp-local-build.md  1  # OKF concept prose written before the rule; port when the concept is next touched

@@ -9,6 +9,7 @@ convention-exempt: true
 * [Roadmap PRDs](roadmap-prds.md) - Numbered PRD design notes that drive current work.
 * [Benchmarks](benchmarks.md) - Where the measured performance of ChiSurf's own compute cores lives, what each number means, and the rule that it is regenerated with the component.
 * [Known issues & gotchas](known-issues.md) - Open functional bugs and recurring engineering pitfalls distilled from working bug logs.
+* [Nomenclature](nomenclature.md) - The names shown and stored (G|G detectors, Bg_<detector>, VV/VH, Tau (G|G), a:b ranges), where old data is renamed on read, and the guard.
 * [MMFDB architecture ideas](mmfdb-architecture-ideas.md) - The observed-problem → design-decision rationale behind the MMFDB architecture PRDs (17–27).
 * [MMFDB LIMS diagnosis](mmfdb-lims-diagnosis.md) - LIMS gap analysis and prior-art comparison behind the provenance/LIMS PRDs (12–15).
 * [Node/workflow-toolkit lessons](orange3-lessons.md) - Architecture lessons from an established visual node/workflow analysis toolkit, mapped to PRDs.
