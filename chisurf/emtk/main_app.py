@@ -1381,7 +1381,21 @@ class EmtkShellApp(ImApp):
     # ── session menus ─────────────────────────────────────────────────────
 
     def _theme_actions(self) -> list[MenuAction]:
-        """Settings: one checked entry per available style (switch now and keep for next start)."""
+        """Settings: one checked entry per available style (switch now and keep for next start).
+
+        Built once per style list and language and kept: the menus are built every frame (menu
+        bar, ribbon, shortcut table), and these entries -- whose state is read through their
+        ``checked`` callables when drawn -- cost ~1 ms a frame each time."""
+        from chisurf.core.settings import theme as stored_theme
+
+        key = (tuple(stored_theme.available_styles()), tr("Dark Blue"), tr("Blur behind dialogs"))
+        kept = self.__dict__.get("_theme_actions_kept")
+        if kept is None or kept[0] != key:
+            kept = self._theme_actions_kept = (key, self._build_theme_actions(list(key[0])))
+        return list(kept[1])
+
+    def _build_theme_actions(self, styles: list[str]) -> list[MenuAction]:
+        """The entries of :meth:`_theme_actions` for *styles*."""
         import pathlib
 
         from emtk import theme
@@ -1458,7 +1472,7 @@ class EmtkShellApp(ImApp):
                 name,
                 checked=partial(is_checked, name),
             )
-            for name in stored_theme.available_styles()
+            for name in styles
         ] + [blur]
 
     def session_menus(self) -> list[tuple[str, list[MenuAction]]]:

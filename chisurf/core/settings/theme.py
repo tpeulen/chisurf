@@ -82,8 +82,64 @@ def stored_style() -> str:
     return f"{stored()}.css"
 
 
+#: ``(directory stamps, names, when checked)`` of the last :func:`available_styles` listing.
+_STYLES_CACHE: tuple | None = None
+#: Seconds the listing is trusted before the folders' modification times are looked at again.
+STYLES_RECHECK_S = 2.0
+
+
+def _style_dirs() -> list:
+    """The folders style sheets are listed from: emtk's, ChiSurf's, the user's."""
+    import pathlib
+
+    import chisurf
+    from chisurf.core.settings import get_path
+
+    dirs = [pathlib.Path(chisurf.__file__).parent / "gui" / "styles"]
+    try:
+        from emtk import styles as emtk_styles
+
+        dirs.insert(0, pathlib.Path(emtk_styles.__file__).parent)
+    except Exception:  # noqa: BLE001 - listed without emtk's
+        pass
+    try:
+        dirs.append(get_path("settings") / "styles")
+    except Exception:  # noqa: BLE001 - no settings folder: none of the user's
+        pass
+    return dirs
+
+
 def available_styles() -> list[str]:
-    """Return all available stylesheet names (.css)."""
+    """Return all available stylesheet names (.css).
+
+    The shell builds its menus every frame and each asks for this list: it is listed again only
+    when one of the style folders changed (their modification times, looked at every
+    :data:`STYLES_RECHECK_S`), never per frame -- the globs cost 4-12 ms a frame.
+    """
+    global _STYLES_CACHE
+    import time
+
+    cached = _STYLES_CACHE
+    now = time.monotonic()
+    if cached is not None and now - cached[2] < STYLES_RECHECK_S:
+        return list(cached[1])
+    stamps = []
+    for folder in _style_dirs():
+        try:
+            stamps.append((str(folder), folder.stat().st_mtime_ns))
+        except OSError:
+            stamps.append((str(folder), None))
+    stamps = tuple(stamps)
+    if cached is not None and cached[0] == stamps:
+        _STYLES_CACHE = (stamps, cached[1], now)
+        return list(cached[1])
+    styles = _list_styles()
+    _STYLES_CACHE = (stamps, tuple(styles), now)
+    return styles
+
+
+def _list_styles() -> list[str]:
+    """The style sheet names, listed from the folders (:func:`available_styles` keeps them)."""
     import pathlib
 
     from emtk import theme as emtk_theme
