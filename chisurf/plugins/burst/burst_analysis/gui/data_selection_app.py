@@ -1329,16 +1329,30 @@ class BurstDataSelectionApp(TourTarget, ImApp):
             for det, value in (entry.get("g_factor") or {}).items()
         }
 
+    #: The G of a setup nobody calibrated. A setup at this value was not edited by hand: it was
+    #: (re)loaded from the setup library, which keeps the G it was created with, while the G last
+    #: written is restored with the session -- read as a hand edit, the reference dye's G was
+    #: never applied again and every fit ran at G 1.0.
+    UNCALIBRATED_G = 1.0
+
+    def _edited_by_hand(self, det: str, applied: dict) -> bool:
+        """Whether *det*'s setup G was changed by hand since it was last written here."""
+        current, last = self.setup_g(det), applied.get(det)
+        if last is None or current is None or abs(current - self.UNCALIBRATED_G) <= 5e-4:
+            return False
+        return abs(current - float(last)) > 5e-4
+
     def apply_all_g(self) -> int:
         """Write every computed G factor into the setup -- unless the setup's value is no longer
-        the one written last (the user edited it by hand: kept, and said so)."""
+        the one written last (the user edited it by hand: kept, and said so). A setup at the
+        uncalibrated G (:data:`UNCALIBRATED_G`) always takes the reference dye's."""
         applied = getattr(self.source, "applied_g", None)
         if not isinstance(applied, dict) or not callable(self.on_apply_g):
             return 0
         values = {}
         for det, g in self.computed_g().items():
-            current, last = self.setup_g(det), applied.get(det)
-            if last is not None and current is not None and abs(current - float(last)) > 5e-4:
+            current = self.setup_g(det)
+            if self._edited_by_hand(det, applied):
                 continue  # edited by hand since it was written
             if current is None or abs(current - g) > 5e-4:
                 values[det] = g
@@ -1350,10 +1364,7 @@ class BurstDataSelectionApp(TourTarget, ImApp):
     def hand_edited_g(self) -> list[str]:
         """The detectors whose setup G differs from the one last written (edited by hand)."""
         applied = getattr(self.source, "applied_g", None) or {}
-        return [
-            d for d, g in applied.items()
-            if self.setup_g(d) is not None and abs(self.setup_g(d) - float(g)) > 5e-4
-        ]
+        return [d for d in applied if self._edited_by_hand(d, applied)]
 
     def setup_g(self, det: str) -> float | None:
         info = (self.setup().get("detectors") or {}).get(det) or {}
