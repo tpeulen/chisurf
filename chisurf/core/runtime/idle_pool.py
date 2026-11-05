@@ -7,7 +7,8 @@ are memory nobody uses -- each burst-fit worker holds 1-3 GB once it has fitted 
 a few ChiSurf windows with their pools ran a 16 GB laptop out of memory (87 Python processes,
 34 GB). :class:`IdlePool` starts its processes on the first :meth:`~IdlePool.submit`, shuts them
 down once no task has run for :attr:`~IdlePool.idle_s` seconds, and starts them again on the next
-submit; a caller never holds a pool that was shut down under it.
+submit; a caller never holds a pool that was shut down under it. Its workers end themselves when
+the process that started them is gone (:func:`_exit_with_parent`).
 """
 
 from __future__ import annotations
@@ -30,6 +31,22 @@ def idle_seconds() -> float:
         return float(value) if value else DEFAULT_IDLE_S
     except ValueError:
         return DEFAULT_IDLE_S
+
+
+def _exit_with_parent(parent: int) -> None:
+    """Worker initializer: end this process once the process that started it is gone.
+
+    A pool's workers wait for tasks on a pipe and never notice a parent that died without
+    shutting them down (a crash, a kill, ``os._exit``): on ``ssh home`` 91 of them were left
+    behind by benchmark runs, each holding its imports and caches."""
+
+    def watch() -> None:
+        while True:
+            time.sleep(1.0)
+            if os.getppid() != parent:
+                os._exit(0)
+
+    threading.Thread(target=watch, name="exit-with-parent", daemon=True).start()
 
 
 class IdlePool:
@@ -62,7 +79,8 @@ class IdlePool:
                 import multiprocessing as mp
 
                 self._pool = concurrent.futures.ProcessPoolExecutor(
-                    max_workers=self.workers, mp_context=mp.get_context("spawn")
+                    max_workers=self.workers, mp_context=mp.get_context("spawn"),
+                    initializer=_exit_with_parent, initargs=(os.getpid(),),
                 )
             future = self._pool.submit(fn, *args, **kwargs)
             self._in_flight += 1

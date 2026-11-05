@@ -53,3 +53,28 @@ def test_fit_pool_is_an_idle_pool(monkeypatch):
         assert isinstance(engine.fit_pool(), IdlePool)
     finally:
         engine._drop_fit_pool()
+
+
+def test_workers_end_when_their_parent_dies(tmp_path):
+    """A parent that dies without shutting its pool down (crash, kill, os._exit) leaves no workers."""
+    import os
+    import subprocess
+    import sys
+
+    import psutil
+
+    script = tmp_path / "parent.py"
+    script.write_text(
+        "import os, sys\n"
+        "from chisurf.core.runtime.idle_pool import IdlePool\n"
+        "if __name__ == '__main__':\n"
+        "    pool = IdlePool(2, idle_s=0)\n"
+        "    print(pool.submit(os.getpid).result(timeout=60), flush=True)\n"
+        "    os._exit(0)\n"
+    )
+    env = dict(os.environ, PYTHONPATH=os.pathsep.join([os.getcwd(), *sys.path]))
+    out = subprocess.run([sys.executable, str(script)], capture_output=True, text=True, timeout=120,
+                         env=env, cwd=os.getcwd())
+    worker = int(out.stdout.strip().splitlines()[-1])
+    assert _wait(lambda: not psutil.pid_exists(worker) or psutil.Process(worker).status() == "zombie"), \
+        "the worker outlived its parent"
