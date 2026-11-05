@@ -1406,9 +1406,18 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         )
 
     def _trace_curves(self) -> dict[str, tuple[np.ndarray, np.ndarray]]:
-        """Count-rate trace (Hz) of the visible window: ``{"all": (t, rate), "selected": (t, rate)}``."""
-        from chisurf.core.fio.decimate import thin_for_plot
+        """Count-rate trace (Hz) of the visible window: ``{"all": (t, rate), "selected": (t, rate)}``.
 
+        Full resolution, one value per bin: thinning is done for the range on screen by
+        :meth:`visible_trace_curves`. Thinning the whole window once (60 s of 1 ms bins to 4000
+        points, i.e. the min and max of every 30 ms) and zooming into that made every burst a
+        spike from 0 and the background between bursts look elevated -- read as "bursts split"
+        on DNA13bp_3 (the bursts were whole; see the Burst Selection OKF concept).
+
+        "Selected" is the photons of the bursts the table holds (``start_stop``: gap fill and
+        photon minimum applied), not the raw search mask, whose sub-minimum fragments the
+        filter drops.
+        """
         diag = self.diagnostic or {}
         tttr = diag.get("tttr")
         first, last = self._window_indices()
@@ -1417,15 +1426,60 @@ class BurstSelectionModel(RunPickerMixin, WindowsPreflightMixin):
         width_ms = max(float(self.trace_bin_ms), 1e-3)
         out = {}
         if self.show_all_photons:
-            t, r = diag_mod.trace_rate_hz(
+            out["all"] = diag_mod.trace_rate_hz(
                 tttr[np.arange(first, last)], width_ms / 1000.0, width_ms, 0.0
             )
-            out["all"] = thin_for_plot(t, r, max_points=TRACE_PLOT_POINTS)
-        selected = np.asarray(diag["selected"], dtype=bool)
-        idx = np.where(selected[first:last])[0] + first
+        idx = np.flatnonzero(self._burst_photon_mask()[first:last]) + first
         if self.show_selected_photons and idx.size:
-            t, r = diag_mod.trace_rate_hz(tttr[idx], width_ms / 1000.0, width_ms, 0.0)
-            out["selected"] = thin_for_plot(t, r, max_points=TRACE_PLOT_POINTS)
+            out["selected"] = diag_mod.trace_rate_hz(tttr[idx], width_ms / 1000.0, width_ms, 0.0)
+        return out
+
+    def _burst_photon_mask(self) -> np.ndarray:
+        """Photons of the bursts in ``start_stop`` (inclusive stops); the search mask if there are none."""
+        diag = self.diagnostic or {}
+        selected = np.asarray(diag.get("selected", []), dtype=bool)
+        start_stop = np.asarray(diag.get("start_stop", []), dtype=np.int64).reshape(-1, 2)
+        if start_stop.size == 0:
+            return selected
+        edges = np.zeros(selected.size + 1, dtype=np.int64)
+        np.add.at(edges, np.clip(start_stop[:, 0], 0, selected.size), 1)
+        np.add.at(edges, np.clip(start_stop[:, 1] + 1, 0, selected.size), -1)
+        return np.cumsum(edges[:-1]) > 0
+
+    def burst_spans(self) -> tuple[np.ndarray, np.ndarray]:
+        """``(start_s, stop_s)`` of the bursts in the visible window, on the trace's clock."""
+        diag = self.diagnostic or {}
+        tttr = diag.get("tttr")
+        start_stop = np.asarray(diag.get("start_stop", []), dtype=np.int64).reshape(-1, 2)
+        first, last = self._window_indices()
+        if tttr is None or start_stop.size == 0 or last <= first:
+            return np.zeros(0), np.zeros(0)
+        inside = (start_stop[:, 1] >= first) & (start_stop[:, 0] < last)
+        start_stop = start_stop[inside]
+        macro = np.asarray(tttr.macro_times)
+        resolution = float(tttr.header.macro_time_resolution)
+        return (
+            macro[start_stop[:, 0]].astype(float) * resolution,
+            macro[start_stop[:, 1]].astype(float) * resolution,
+        )
+
+    def visible_trace_curves(
+        self, lo: float | None = None, hi: float | None = None
+    ) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+        """:meth:`trace_curves` cut to ``[lo, hi]`` seconds (one bin of margin) and thinned there.
+
+        Zoomed in to fewer than :data:`TRACE_PLOT_POINTS` bins the plot draws every bin as it is.
+        """
+        from chisurf.core.fio.decimate import thin_for_plot
+
+        out = {}
+        for key, (t, r) in self.trace_curves().items():
+            t, r = np.asarray(t, dtype=float), np.asarray(r, dtype=float)
+            if lo is not None and hi is not None and t.size:
+                a = max(0, int(np.searchsorted(t, lo, side="right")) - 1)
+                b = min(t.size, int(np.searchsorted(t, hi, side="right")) + 1)
+                t, r = t[a:b], r[a:b]
+            out[key] = thin_for_plot(t, r, max_points=TRACE_PLOT_POINTS)
         return out
 
     def dt_curves(self) -> dict[str, tuple[np.ndarray, np.ndarray]]:

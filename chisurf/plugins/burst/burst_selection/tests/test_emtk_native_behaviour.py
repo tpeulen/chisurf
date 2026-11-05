@@ -484,6 +484,8 @@ def test_the_count_rate_trace_draws_all_before_selected_and_respects_the_toggles
     """The selected trace is last (drawn on top) and a disabled trace is not even computed."""
     _Trace.calls.clear()
     _diagnostic(model, _Trace(), [False, False, True, False, True])
+    # "selected" is the photons of the bursts in start_stop; these bursts are the mask's photons
+    model.diagnostic["start_stop"] = np.array([[2, 2], [4, 4]])
     model.window_length_s = 0.0
     model.trace_bin_ms = 0.25
     # the window is fixed to photons 1..3 by a stand-in client

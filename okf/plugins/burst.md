@@ -9,6 +9,43 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
+**Burst Selection: "bursts seem split" was the trace, not the search (2026-11-05).** Owner, on
+DNA13bp_3 (RVZMT150, CUSUM/SPRT, L=5, S/B 3.317, background 3317 cps, >= 30 photons, gap fill 3,
+60 s window), zoomed to 33-35.6 s: the "Selected photons" trace dropped to 0 between short spikes
+where "All photons" looked elevated. Measured (first 60 s, `scratchpad/split/measure.py`, rerun on
+`ssh home` with `$DATA`; owner's settings replayed through `BurstSelectionModel` give **716**
+bursts): raw CUSUM 1617 segments, gap to the next one median **16.8 ms**, **0.0 %** shorter than
+one background inter-photon time (0.30 ms), **0.1 %** < 1 ms -- no pile-up of tiny gaps, so no
+splitting; gap fill 3 changes nothing (713 either way). Final bursts: median **68 photons**, median
+**4.0 ms**, 6 % of the time. 904 of the 1617 raw segments (56 %) hold < 30 photons; the filter
+drops them. Sliding window (APBS L=5 M=10 T=500 us) does split raw (37 % of gaps < 1/bg, many at 0)
+but gap fill 3 heals it (673 final bursts, median 56 ph). S/B 4 / 10 give 673 / 436 bursts.
+Cause of the picture: `_trace_curves` thinned the whole 60 s of 1 ms bins once to
+`TRACE_PLOT_POINTS` = 4000 (min and max of every 30 ms block) and the zoom showed those points
+joined by lines -- each block's min of the selected trace is 0, its max a burst peak, and the
+all-photon max of 30 background bins (Poisson at ~5.6 kHz incl. 10 % ungated photons) reads as
+"elevated". It also drew the raw search mask, sub-30 fragments included. Fixed: the model keeps
+full-resolution bins and `visible_trace_curves(lo, hi)` thins only the range on screen; "Selected"
+is the photons of `start_stop` (the table's bursts, `_burst_photon_mask`); `gui/trace_plot.py`
+draws stairs plus the bursts as shaded spans (`burst_spans`), and takes an `"x_range"` request in
+its state (for the display-range controls). Guard: `burst_selection/tests/test_burst_split_guard.py`
+(synthetic Gaussian transits: CUSUM with the owner's settings keeps one burst per transit, < 2 %
+of gaps < 3/bg; the trace keeps 1 ms bins in a 2.6 s zoom and sums to the burst photons).
+Reference check: tttrlib's CUSUM is already A/B-tested against a NumPy transcription of Zhang &
+Yang 2005 (exact) and PAM's `CUSUM_burstsearch` (Jaccard >= 0.85) in tttrlib
+`test/python/burstfilter/test_ab_burst_reference.py`; `junk/` holds no CUSUM/Lee-filter source
+(the grep hits are base64 in notebooks), so nothing was annotated there. Open:
+- *S/B 3.317 equals the background in kcps* (3317 cps): likely typed from the Background tool's
+  number. S/B is the burst-to-background *rate ratio* (registry default 4). Owner to confirm; if a
+  confusion, the field's label/tooltip should say "ratio, not a rate".
+- The screenshot's histogram said 1204 bursts in the window; the replay gives 716 (1061 with the
+  whole-file background 2373 cps, 1412 at >= 20 photons). Probably an older run; not reproduced.
+- The dT and decay plots still draw the raw search mask as "Selected photons" (the dT plot is
+  where the search's dT limits are set, so that may be right); decide whether decay should use
+  the burst photons like the trace.
+- Background estimates differ by window: 3333 cps over the first 60 s, 2373 cps over the whole
+  2696 s file (`detector_backgrounds_cps`); the GUI prefill uses the open file.
+
 **Burst MLE: G, references, the red pair, three shift parameters (2026-11-04).** Owner: "the g
 factor is not computed. i loaded rh110", "the time shifts seem all wrong", "where are the time
 shift settings? ... also in simple mode", "R|G should be calibrated on red, ie, R|R, g factor is

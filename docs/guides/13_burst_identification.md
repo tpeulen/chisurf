@@ -280,6 +280,13 @@ burst can be compared against the background rate (the **Background** step of
 Burst Analysis) directly. With 0.25 ms bins one photon is 4 kHz, which is why the
 background in {numref}`fig-burst-selection-mcs` sits in 4 kHz steps.
 
+The trace is drawn as stairs, one step per bin, and the bursts of the table are shaded
+behind it; "burst photons" are the photons of those bursts (gap fill and the photon
+minimum applied), not every fragment the search proposed. Zooming in redraws the bins
+of the range on screen, so at a few seconds you see each bin rather than the minimum
+and maximum of a block: two shaded spans are two bursts,
+and one shaded span with a ragged top is one burst whose bins fluctuate.
+
 ## See also
 
 - `chisurf/plugins/burst/burst_selection/`; `chisurf/core/fluorescence/burst/`.

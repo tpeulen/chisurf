@@ -140,7 +140,7 @@ def test_drop_run_and_draw_the_models_numbers(monkeypatch, app, files):
     assert app.model.diagnostic is not None
     spy = PlotSpy(monkeypatch)
     drv.draw(1)
-    assert ("plot_line", "Selected photons") in spy.calls
+    assert ("plot_stairs", "Selected photons") in spy.calls  # the count-rate trace, as stairs
     # unchanged request: kept; Restart searches again
     drv.click_name("toolAction_run")
     drv.draw(1)

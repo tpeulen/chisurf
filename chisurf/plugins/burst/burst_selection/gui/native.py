@@ -795,13 +795,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                 "(all photons and the selected burst photons) appears here."
             )
             return
-        if implot.begin_plot(f"Count rate ({m.trace_bin_ms:g} ms bins)", (-1, -1)):
-            implot.setup_axes("Time in the window (s)", "Count rate (kHz)")  # count rates read in kHz
-            for key, name in (("all", tr("All photons")), ("selected", tr("Selected photons"))):
-                if key in curves:
-                    x, y = curves[key]
-                    implot.plot_line(name, x, np.asarray(y, dtype=float) / 1e3)
-            implot.end_plot()
+        from .trace_plot import draw_count_rate
+
+        draw_count_rate(m, self.__dict__.setdefault("_trace_state", {}))
 
     def _dt(self, box=None) -> None:
         self.remember("dt", box)
